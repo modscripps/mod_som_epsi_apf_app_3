@@ -50,3 +50,12 @@ modules.order
 Module.symvers
 Mkfile.old
 dkms.conf
+*.mk
+GNU ARM v7.2.1 - Debug/mod_som_epsi_apf_app_3.bin
+GNU ARM v7.2.1 - Debug/mod_som_epsi_apf_app_3.ld
+GNU ARM v7.2.1 - Debug/mod_som_epsi_apf_app_3.s37
+imported_project_report.html
+.settings/com.silabs.ss.framework.ide.project.sls.core.prefs
+GNU ARM v7.2.1 - Debug/makefile
+GNU ARM v7.2.1 - Debug/mod_som_epsi_apf_app_3.axf
+imported_project_report.html
