@@ -1,0 +1,96 @@
+/*******************************************************************************
+ * @file mod_som_efe.h
+ * @brief MOD SOM foo bar command shell API
+ * @date Apr 01, 2020
+ * @author San Nguyen (stn004@ucsd.edu) - Multiscale Ocean Dynamics - SIO - UCSD
+ *
+ * @description
+ * This API uses micrium shell to insert shell table and execute shell commands
+ *
+ * This work is intended to support research, teaching, and private study.
+ * Use of this work beyond that allowed by "fair use" or any license applied to
+ * this work requires written permission of the Multiscale Ocean Dynamics group
+ * at the Scripps Institution of Oceanography, UCSD. Responsibility for
+ * obtaining permissions and any use and distribution of this work rests
+ * exclusively with the user.
+ ******************************************************************************/
+
+#ifndef MOD_SOM_EFE_CMD_H_
+#define MOD_SOM_EFE_CMD_H_
+
+#include "rtos_description.h"
+#include "mod_som_efe.h"
+#ifdef  RTOS_MODULE_COMMON_SHELL_AVAIL
+#include "mod_som_shell.h"
+
+#define MOD_SOM_EFE_STATUS_FAIL_TO_ADD_CMD_TBL 0x12U
+/*******************************************************************************
+ * @brief
+ *   Initialize EFE, command shell
+ *
+ * @return
+ *   MOD_SOM_STATUS_OK if initialization goes well
+ *   or otherwise
+ ******************************************************************************/
+mod_som_status_t mod_som_efe_init_shellcmd_f();
+/*******************************************************************************
+ * @brief
+ *   command shell for hello world command
+ * @param argc
+ *   argument count
+ * @param argv
+ *   argument values
+ * @param out_put_f
+ *   out_put_f (print function)
+ * @param cmd_param
+ *   command parameters (passing along)
+ * @return
+ *   Micrium Command Shell Status
+ ******************************************************************************/
+
+// place holder for functions
+CPU_INT16S mod_som_efe_cmd_sampling_f (CPU_INT16U argc,
+        CPU_CHAR *argv[],
+        SHELL_OUT_FNCT outFunc,
+        SHELL_CMD_PARAM *cmdParam);
+
+CPU_INT16S mod_som_efe_cmd_consumer_mode_f(CPU_INT16U argc,
+        CPU_CHAR *argv[],
+        SHELL_OUT_FNCT outFunc,
+        SHELL_CMD_PARAM *cmdParam);
+
+CPU_INT16S mod_som_efe_cmd_stop_sampling_f(CPU_INT16U argc,
+        CPU_CHAR *argv[],
+        SHELL_OUT_FNCT outFunc,
+        SHELL_CMD_PARAM *cmdParam);
+
+CPU_INT16S  mod_som_efe_cmd_off_f(CPU_INT16U argc,
+        CPU_CHAR *argv[],
+        SHELL_OUT_FNCT outFunc,
+        SHELL_CMD_PARAM *cmdParam);
+
+CPU_INT16S  mod_som_efe_cmd_sleep_f(CPU_INT16U argc,
+        CPU_CHAR *argv[],
+        SHELL_OUT_FNCT outFunc,
+        SHELL_CMD_PARAM *cmdParam);
+
+CPU_INT16S  mod_som_efe_cmd_probe_id_f(CPU_INT16U argc,
+        CPU_CHAR *argv[],
+        SHELL_OUT_FNCT outFunc,
+        SHELL_CMD_PARAM *cmdParam);
+
+CPU_INT16S  mod_som_efe_cmd_efe_id_f(CPU_INT16U argc,
+        CPU_CHAR *argv[],
+        SHELL_OUT_FNCT outFunc,
+        SHELL_CMD_PARAM *cmdParam);
+
+CPU_INT16S mod_som_efe_cmd_rampsig_f(CPU_INT16U argc,
+        CPU_CHAR *argv[],
+        SHELL_OUT_FNCT outFunc,
+        SHELL_CMD_PARAM *cmdParam);
+
+
+
+#endif //RTOS_MODULE_COMMON_SHELL_AVAIL
+
+#endif /* MOD_SOM_EFE_CMD_H_ */
