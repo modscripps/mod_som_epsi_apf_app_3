@@ -39,6 +39,9 @@
 #define MOD_SOM_APF_PAYLOAD_LENGTH          8
 #define MOD_SOM_APF_PAYLOAD_CHECKSUM_LENGTH 5
 
+#define MOD_SOM_APF_DACQ_STRUCT_SIZE        25000
+
+
 
 //------------------------------------------------------------------------------
 // TYPEDEFS
@@ -123,6 +126,16 @@ typedef struct{
 mod_som_apf_meta_data_t, *mod_som_apf_meta_data_ptr_t;
 
 
+/*******************************************************************************
+ * Dacq Stucture.
+ *
+ */
+typedef struct{
+
+  mod_som_apf_meta_data_t mod_som_apf_meta_data;
+  uint8_t data_acq[MOD_SOM_APF_DACQ_STRUCT_SIZE];
+}
+mod_som_apf_dacq_t, *mod_som_apf_dacq_ptr_t;
 
 /*******************************************************************************
 * @brief
@@ -148,17 +161,17 @@ typedef struct{
   float * avg_spec_shear_ptr;        //ALB pointer to spectrum
   float * avg_spec_accel_ptr;        //ALB pointer to spectrum
 
-  float avg_ctd_pressure;
-  float avg_ctd_temperature;
-  float avg_ctd_salinity;
-  float avg_ctd_fallrate;
+  float * avg_ctd_pressure;
+  float * avg_ctd_temperature;
+  float * avg_ctd_salinity;
+  float * avg_ctd_fallrate;
 
   float * nu;
   float * kappa;
   float * epsilon;
   float * chi;
 
-
+  mod_som_apf_dacq_t acq_profile;
 
    uint32_t dissrate_skipped;
 

@@ -316,6 +316,11 @@ mod_som_apf_status_t mod_som_apf_daq_start_f(uint64_t profile_id){
   status=MOD_SOM_APF_STATUS_OK;
   uint32_t delay=0xFF;
 
+
+  //ALB Open SD file
+  //ALB initialize Meta_Data Structure
+
+
 	//ALB start ADC master clock timer
   mod_som_apf_ptr->profile_id=profile_id;
   mod_som_apf_ptr->daq=true;

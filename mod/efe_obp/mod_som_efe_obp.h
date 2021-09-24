@@ -267,10 +267,11 @@ typedef struct{
   float avg_ctd_fallrate;
 
   float * nu;
+
   float * kappa;
   float * epsilon;
   float * chi;
-
+  float * fom; //figure of merit
 
   bool  started_flg;        //ALB ???
 
@@ -365,10 +366,34 @@ mod_som_status_t mod_som_efe_obp_parse_efe_data_f();
  *   MOD_SOM_STATUS_OK if initialization goes well
  *   or otherwise
  ******************************************************************************/
-mod_som_status_t mod_som_efe_obp_compute_spectra_data_f(float * curr_temp_seg_ptr,
-                                                        float * curr_shear_seg_ptr,
-                                                        float * curr_accel_seg_ptr);
+mod_som_status_t mod_som_efe_obp_compute_spectra_data_f(float * local_temp_seg_ptr,
+                                                        float * local_shear_seg_ptr,
+                                                        float * local_accel_seg_ptr,
+                                                        float * local_temp_spec_ptr,
+                                                        float * local_shear_spec_ptr,
+                                                        float * local_accel_spec_ptr
+                                                       );
 
+/*******************************************************************************
+ * @brief
+ *   Computes dissrate from averaged segment
+ *   once the efe obp starts it fill segment array.
+ *   We need to compute the FFT over the record (i.e. data received)
+ *
+ * @return
+ *   MOD_SOM_STATUS_OK if initialization goes well
+ *   or otherwise
+ ******************************************************************************/
+mod_som_status_t mod_som_efe_obp_compute_dissrate_data_f(
+                                                      float * local_temp_avg_spec_ptr,
+                                                      float * local_shear_avg_spec_ptr,
+                                                      float * local_accel_avg_spec_ptr,
+                                                      float * local_epsilon,
+                                                      float * local_chi,
+                                                      float * local_nu,
+                                                      float * local_kappa,
+                                                      float * local_fom
+                                                      );
 
 
 /*******************************************************************************

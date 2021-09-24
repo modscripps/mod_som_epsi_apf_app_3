@@ -1140,7 +1140,7 @@ void mod_som_efe_obp_cpt_spectra_task_f(void  *p_arg){
 
   int i;
   int segment_avail=0,reset_spectra_cnt=0;
-  int segment_offset=0;
+  int segment_offset=0;int spectra_offset=0;
   int padding = 0; // the padding should be big enough to include the time variance.
 
   float * curr_temp_seg_ptr;
@@ -1208,6 +1208,7 @@ void mod_som_efe_obp_cpt_spectra_task_f(void  *p_arg){
                   mod_som_efe_obp_ptr->fill_segment_ptr->seg_accel_volt_ptr+
                   segment_offset;
 
+              //ALB Get the avg CTD data
               mod_som_efe_obp_ptr->cpt_spectra_ptr->avg_timestamp=
                   mod_som_efe_obp_ptr->fill_segment_ptr->timestamp_segment;
 
@@ -1224,6 +1225,8 @@ void mod_som_efe_obp_cpt_spectra_task_f(void  *p_arg){
                   mod_som_efe_obp_ptr->fill_segment_ptr->avg_ctd_fallrate;
 
 
+
+
           tick=sl_sleeptimer_get_tick_count64();
           mystatus = sl_sleeptimer_tick64_to_ms(tick,\
                                                 &mod_som_efe_obp_ptr->start_computation_timestamp);
@@ -1231,16 +1234,19 @@ void mod_som_efe_obp_cpt_spectra_task_f(void  *p_arg){
           //CAP Add compute spectra functions
           mod_som_efe_obp_compute_spectra_data_f(curr_temp_seg_ptr,
                                                  curr_shear_seg_ptr,
-                                                 curr_accel_seg_ptr);
+                                                 curr_accel_seg_ptr,
+           mod_som_efe_obp_ptr->cpt_spectra_ptr->spec_temp_ptr+spectra_offset,
+           mod_som_efe_obp_ptr->cpt_spectra_ptr->spec_shear_ptr+spectra_offset,
+           mod_som_efe_obp_ptr->cpt_spectra_ptr->spec_accel_ptr+spectra_offset);
 
           //ALB Make fake spectra in order to build the consumer while CAP
           //ALB is merging the obp functions.
           for (i=0;i<mod_som_efe_obp_ptr->settings_ptr->nfft/2;i++){
-              mod_som_efe_obp_ptr->cpt_spectra_ptr->spec_temp_ptr[i]=
+              mod_som_efe_obp_ptr->cpt_spectra_ptr->spec_temp_ptr[i+spectra_offset]=
                     mod_som_efe_obp_ptr->fill_segment_ptr->seg_temp_volt_ptr[i];
-              mod_som_efe_obp_ptr->cpt_spectra_ptr->spec_shear_ptr[i]=
+              mod_som_efe_obp_ptr->cpt_spectra_ptr->spec_shear_ptr[i+spectra_offset]=
                   mod_som_efe_obp_ptr->fill_segment_ptr->seg_shear_volt_ptr[i];
-              mod_som_efe_obp_ptr->cpt_spectra_ptr->spec_accel_ptr[i]=
+              mod_som_efe_obp_ptr->cpt_spectra_ptr->spec_accel_ptr[i+spectra_offset]=
                   mod_som_efe_obp_ptr->fill_segment_ptr->seg_accel_volt_ptr[i];
           }
 
@@ -1249,6 +1255,10 @@ void mod_som_efe_obp_cpt_spectra_task_f(void  *p_arg){
           mod_som_efe_obp_ptr->cpt_spectra_ptr->spectrum_cnt++;
           segment_avail = mod_som_efe_obp_ptr->fill_segment_ptr->segment_cnt -
               mod_som_efe_obp_ptr->cpt_spectra_ptr->spectrum_cnt; //elements available have been produced
+
+          spectra_offset= (mod_som_efe_obp_ptr->cpt_spectra_ptr->spectrum_cnt %
+                          MOD_SOM_EFE_OBP_CPT_SPECTRA_NB_SPECTRA_PER_RECORD)*
+                           mod_som_efe_obp_ptr->settings_ptr->nfft/2;
 
           mod_som_efe_obp_ptr->fill_segment_ptr->segment_skipped=0;
           }
@@ -1301,6 +1311,13 @@ void mod_som_efe_obp_cpt_dissrate_task_f(void  *p_arg){
   float * curr_temp_spec_ptr;
   float * curr_shear_spec_ptr;
   float * curr_accel_spec_ptr;
+
+  float * local_epsilon_ptr;
+  float * local_chi_ptr;
+  float * local_nu_ptr;
+  float * local_kappa_ptr;
+  float * local_fom_ptr;
+
 
   while (DEF_ON) {
       /************************************************************************/
@@ -1419,7 +1436,36 @@ void mod_som_efe_obp_cpt_dissrate_task_f(void  *p_arg){
 
           if (mod_som_efe_obp_ptr->cpt_dissrate_ptr->dof_flag)
             {
+
+              //ALB update pointers
+              local_epsilon_ptr = mod_som_efe_obp_ptr->cpt_dissrate_ptr->epsilon +
+                             (mod_som_efe_obp_ptr->cpt_dissrate_ptr->dissrates_cnt%
+                              MOD_SOM_EFE_OBP_CPT_DISSRATE_NB_RATES_PER_RECORD);
+              local_chi_ptr     = mod_som_efe_obp_ptr->cpt_dissrate_ptr->chi +
+                             (mod_som_efe_obp_ptr->cpt_dissrate_ptr->dissrates_cnt%
+                              MOD_SOM_EFE_OBP_CPT_DISSRATE_NB_RATES_PER_RECORD);
+              local_nu_ptr      = mod_som_efe_obp_ptr->cpt_dissrate_ptr->nu +
+                             (mod_som_efe_obp_ptr->cpt_dissrate_ptr->dissrates_cnt%
+                              MOD_SOM_EFE_OBP_CPT_DISSRATE_NB_RATES_PER_RECORD);
+              local_kappa_ptr   = mod_som_efe_obp_ptr->cpt_dissrate_ptr->kappa +
+                             (mod_som_efe_obp_ptr->cpt_dissrate_ptr->dissrates_cnt%
+                              MOD_SOM_EFE_OBP_CPT_DISSRATE_NB_RATES_PER_RECORD);
+              local_fom_ptr     = mod_som_efe_obp_ptr->cpt_dissrate_ptr->fom +
+                             (mod_som_efe_obp_ptr->cpt_dissrate_ptr->dissrates_cnt%
+                              MOD_SOM_EFE_OBP_CPT_DISSRATE_NB_RATES_PER_RECORD);
+
               //CAP Add compute epsilon chi
+              //CAP Add compute spectra functions
+              mod_som_efe_obp_compute_dissrate_data_f(mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_spec_temp_ptr,
+                                                      mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_spec_shear_ptr,
+                                                      mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_spec_accel_ptr,
+                                                      local_epsilon_ptr        ,
+                                                      local_chi_ptr            ,
+                                                      local_nu_ptr             ,
+                                                      local_kappa_ptr          ,
+                                                      local_fom_ptr);
+
+
               //ALB Make fake epsilon and chi in order to build the consumer
               //ALB while CAP is merging the obp functions.
 
@@ -1578,10 +1624,39 @@ uint32_t index=0;
  *   MOD_SOM_STATUS_OK if initialization goes well
  *   or otherwise
  ******************************************************************************/
-mod_som_status_t mod_som_efe_obp_compute_spectra_data_f(float * curr_temp_seg_ptr,
-                                                        float * curr_shear_seg_ptr,
-                                                        float * curr_accel_seg_ptr)
+mod_som_status_t mod_som_efe_obp_compute_spectra_data_f(float * local_temp_seg_ptr,
+                                                        float * local_shear_seg_ptr,
+                                                        float * local_accel_seg_ptr,
+                                                        float * local_temp_spec_ptr,
+                                                        float * local_shear_spec_ptr,
+                                                        float * local_accel_spec_ptr
+                                                        )
 {
+  //CAP
+  return mod_som_efe_obp_encode_status_f(MOD_SOM_STATUS_OK);
+}
+
+/*******************************************************************************
+ * @brief
+ *   Computes dissrate from averaged segment
+ *   once the efe obp starts it fill segment array.
+ *   We need to compute the FFT over the record (i.e. data received)
+ *
+ * @return
+ *   MOD_SOM_STATUS_OK if initialization goes well
+ *   or otherwise
+ ******************************************************************************/
+mod_som_status_t mod_som_efe_obp_compute_dissrate_data_f(
+                                                      float * local_temp_avg_spec_ptr,
+                                                      float * local_shear_avg_spec_ptr,
+                                                      float * local_accel_avg_spec_ptr,
+                                                      float * local_epsilon,
+                                                      float * local_chi,
+                                                      float * local_nu,
+                                                      float * local_kappa,
+                                                      float * local_fom
+                                                      ){
+
   //CAP
   return mod_som_efe_obp_encode_status_f(MOD_SOM_STATUS_OK);
 }
