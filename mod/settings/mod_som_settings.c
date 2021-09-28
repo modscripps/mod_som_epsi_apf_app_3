@@ -14,6 +14,10 @@
 #include <mod_som_settings_cmd.h>
 #endif
 
+#ifdef  MOD_SOM_SDIO_EN
+#include "mod_som_sdio.h"
+#endif
+
 
 
 
@@ -481,6 +485,8 @@ mod_som_status_t mod_som_settings_sd_settings_f(){
   uint8_t length_header=32;
   uint8_t * local_settings_ptr;
 
+  mod_som_sdio_ptr_t local_sdio_ptr=mod_som_sdio_get_runtime_ptr_f();
+
 
   tick=sl_sleeptimer_get_tick_count64();
   mystatus = sl_sleeptimer_tick64_to_ms(tick,\
@@ -526,12 +532,15 @@ mod_som_status_t mod_som_settings_sd_settings_f(){
           "*%02x\r\n",payload_chksum);
 
 
-      mod_som_sdio_write_config_file_f((uint8_t*) &header,\
-                                       length_header);
-      mod_som_sdio_write_config_file_f((uint8_t*) &mod_som_settings_struct,
-                                       sizeof(mod_som_settings_struct));
-      mod_som_sdio_write_config_file_f((uint8_t*) &str_payload_chksum,\
-                                       MOD_SOM_SETTINGS_PAYLOAD_CHECKSUM_LENGTH);
+      mod_som_sdio_write_config_f((uint8_t*) &header,\
+                                       length_header,
+                                       local_sdio_ptr->data_file_ptr);
+      mod_som_sdio_write_config_f((uint8_t*) &mod_som_settings_struct,
+                                       sizeof(mod_som_settings_struct),
+                                       local_sdio_ptr->data_file_ptr);
+      mod_som_sdio_write_config_f((uint8_t*) &str_payload_chksum,\
+                                       MOD_SOM_SETTINGS_PAYLOAD_CHECKSUM_LENGTH,
+                                       local_sdio_ptr->data_file_ptr);
 
       return mod_som_settings_encode_status_f(MOD_SOM_STATUS_OK);
 }

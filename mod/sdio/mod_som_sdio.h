@@ -218,7 +218,7 @@ char buff_data[MAXBUFLEN];
 char read_buff[MOD_SOM_SDIO_BLOCK_LENGTH];
 
 mod_som_sdio_file_ptr_t data_file_ptr;
-mod_som_sdio_file_ptr_t config_file_ptr;
+//mod_som_sdio_file_ptr_t config_file_ptr;
 
 //FIL fstrc_config;
 //FIL fstrc_data;
@@ -287,6 +287,16 @@ mod_som_sdio_settings_t mod_som_sdio_get_settings_f();
 
 /*******************************************************************************
  * @brief
+ *   get sdio run time _ptr
+ *
+ * @return
+ *   MOD_SOM_STATUS_OK if function execute nicely
+ ******************************************************************************/
+mod_som_sdio_ptr_t mod_som_sdio_get_runtime_ptr_f();
+
+
+/*******************************************************************************
+ * @brief
  *   a function to open a file with a name from given from the shell
  *
  * @return
@@ -331,7 +341,9 @@ mod_som_status_t mod_som_sdio_close_file_f(mod_som_sdio_file_ptr_t mod_som_sdio_
  * @return
  *   MOD_SOM_STATUS_OK if function execute nicely
  ******************************************************************************/
-mod_som_status_t mod_som_sdio_write_config_file_f(uint8_t *data_ptr,uint32_t data_length);
+mod_som_status_t mod_som_sdio_write_config_f(uint8_t *data_ptr,
+                                                  uint32_t data_length,
+                                                  mod_som_sdio_file_ptr_t file_ptr);
 
 /*******************************************************************************
  * @brief

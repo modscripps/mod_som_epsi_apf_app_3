@@ -23,10 +23,6 @@
 
 #define MOD_SOM_APF_STATUS_FAIL_INIT_CMD 0x2U
 
-#define MOD_SOM_APF_STATUS_OK   0
-#define MOD_SOM_APF_STATUS_ERR -2   //ALB cannot -1 because it interfere with default shell ERR
-#define MOD_SOM_APF_OBP_CANNOT_ALLOCATE_SETUP 1
-#define MOD_SOM_APF_CANNOT_OPEN_CONFIG 2
 
 #define MOD_SOM_APF_SETTINGS_STR_lENGTH 8
 #define MOD_SOM_APF_HEADER              "APF0"
@@ -40,8 +36,51 @@
 #define MOD_SOM_APF_PAYLOAD_CHECKSUM_LENGTH 5
 
 #define MOD_SOM_APF_DACQ_STRUCT_SIZE        25000
+#define MOD_SOM_APF_DACQ_TIMESTAMP_SIZE     2
+#define MOD_SOM_APF_DACQ_DISSRATE_SIZE      3
+#define MOD_SOM_APF_DACQ_PRESSURE_SIZE      4
+#define MOD_SOM_APF_DACQ_FLAG_SIZE          1
+#define MOD_SOM_APF_DACQ_FOM_SIZE           1
 
 
+#define MOD_SOM_APF_METADATA_STRUCT_SIZE    36
+
+
+#define MOD_SOM_APF_PRODUCER_TASK_PRIO              18u
+#define MOD_SOM_APF_PRODUCER_TASK_STK_SIZE          512u
+#define MOD_SOM_APF_PRODUCER_DELAY                  10      // delay for fill segment task
+
+
+#define MOD_SOM_APF_CONSUMER_TASK_PRIO              18u
+#define MOD_SOM_APF_CONSUMER_TASK_STK_SIZE          512u
+#define MOD_SOM_APF_CONSUMER_DELAY                  10      // delay for fill segment task
+
+
+#define MOD_SOM_APF_STATUS_OK   0
+#define MOD_SOM_APF_STATUS_ERR -2   //ALB cannot -1 because it interfere with default shell ERR
+#define MOD_SOM_APF_STATUS_CANNOT_ALLOCATE_SETUP                0x1u
+#define MOD_SOM_APF_STATUS_CANNOT_ALLOCATE_CONFIG               0x2u
+#define MOD_SOM_APF_STATUS_CANNOT_ALLOCATE_PRODUCER             0x3u
+#define MOD_SOM_APF_STATUS_FAIL_TO_START_PRODUCER_TASK          0x4u
+#define MOD_SOM_APF_STATUS_FAIL_TO_STOP_PRODUCER_TASK           0x5u
+#define MOD_SOM_APF_STATUS_FAIL_TO_START_CONSUMER_TASK          0x6u
+#define MOD_SOM_APF_STATUS_FAIL_TO_STOP_CONSUMER_TASK           0x7u
+#define MOD_SOM_APF_STATUS_DAQ_IS_RUNNING                       0x8u
+
+
+#define MOD_SOM_APF_UPLOAD_DELAY                  25000000      // 0.5 delay upon reception of the upload cmd
+#define MOD_SOM_APF_UPLOAD_PACKET_CRC_SIZE        2
+#define MOD_SOM_APF_UPLOAD_PACKET_CNT_SIZE        2
+#define MOD_SOM_APF_UPLOAD_PACKET_LOAD_SIZE       986
+#define MOD_SOM_APF_UPLOAD_PACKET_SIZE            990
+#define MOD_SOM_APF_UPLOAD_APF11_ACK              0x06
+#define MOD_SOM_APF_UPLOAD_APF11_NACK             0x15
+#define MOD_SOM_APF_UPLOAD_EOT_BYTE               0x04
+#define MOD_SOM_APF_UPLOAD_APF11_TIMEOUT          250000000   // 5 second timeout
+#define MOD_SOM_APF_UPLOAD_MAX_TRY_PACKET         3           // 3 tries to send a packet
+
+
+#define MIN(X, Y) (((X) < (Y)) ? (X) : (Y))
 
 //------------------------------------------------------------------------------
 // TYPEDEFS
@@ -133,28 +172,22 @@ mod_som_apf_meta_data_t, *mod_som_apf_meta_data_ptr_t;
 typedef struct{
 
   mod_som_apf_meta_data_t mod_som_apf_meta_data;
-  uint8_t data_acq[MOD_SOM_APF_DACQ_STRUCT_SIZE];
+  uint8_t data_acq[MOD_SOM_APF_DACQ_STRUCT_SIZE-MOD_SOM_APF_METADATA_STRUCT_SIZE];
 }
 mod_som_apf_dacq_t, *mod_som_apf_dacq_ptr_t;
 
 /*******************************************************************************
 * @brief
-*   Procuder Structure to store collect the efe obp data
-*   and store them in an SD file.
-*
+*   Procuder Structure to  collect the efe obp data
 *   Profile Data structure
-
-
-*
-*
-*
-*
 ******************************************************************************/
 typedef struct{
+  bool  initialized_flag;
   bool  started_flg;        //ALB is the APF producer started
   bool  collect_flg;        //ALB flag to collect the data (Trigger by CTD data?)
 
   uint64_t dissrates_cnt;
+  uint64_t dissrates_cnt_offset;
   uint64_t avg_timestamp;
 
   float * avg_spec_temp_ptr;         //ALB pointer to spectrum
@@ -172,11 +205,54 @@ typedef struct{
   float * chi;
 
   mod_som_apf_dacq_t acq_profile;
+  uint8_t * dacq_ptr;
+  bool dacq_full;
+  uint32_t dacq_size;
+  uint32_t dacq_element_size;
 
-   uint32_t dissrate_skipped;
+  uint32_t dissrate_skipped;
 
 }
 mod_som_apf_producer_t, *mod_som_apf_producer_ptr_t;
+
+
+/*******************************************************************************
+* @brief
+*   Upload structure
+*   990 Packet with 2 bytes CRC+ 2 bytes counters + 986 payload bytes
+
+*
+*   Profile Data structure
+******************************************************************************/
+typedef struct{
+  uint8_t  CRC[MOD_SOM_APF_UPLOAD_PACKET_CRC_SIZE];
+  uint8_t  counters[MOD_SOM_APF_UPLOAD_PACKET_CNT_SIZE];
+  uint8_t  payload[MOD_SOM_APF_UPLOAD_PACKET_LOAD_SIZE];
+}
+mod_som_apf_upload_packet_t, *mod_som_apf_upload_packet_ptr_t;
+
+
+/*******************************************************************************
+* @brief
+*   Consumer structure to store the efe obp data in an SD file.
+*
+*   Profile Data structure
+******************************************************************************/
+typedef struct{
+  bool  initialized_flag;
+  bool  started_flg;        //ALB is the APF producer started
+
+  uint32_t  dacq_size;
+  uint8_t * data_ptr;
+
+  bool      consumed_flag;
+  uint8_t   send_packet_tries;
+  uint32_t  nb_packet_sent;
+
+  mod_som_apf_upload_packet_t packet;
+
+}
+mod_som_apf_consumer_t, *mod_som_apf_consumer_ptr_t;
 
 
 /*******************************************************************************
@@ -249,9 +325,12 @@ mod_som_apf_producer_t, *mod_som_apf_producer_ptr_t;
 ******************************************************************************/
 typedef struct{
    uint32_t initialize_flag;
+   mod_som_status_t status;
+
    mod_som_apf_settings_ptr_t settings_ptr;
    mod_som_apf_config_ptr_t   config_ptr;
    mod_som_apf_producer_ptr_t producer_ptr;
+   mod_som_apf_consumer_ptr_t consumer_ptr;
 
    uint64_t profile_id;
    bool     daq;
@@ -322,6 +401,26 @@ mod_som_apf_settings_t mod_som_apf_get_settings_f();
  *   or otherwise
  ******************************************************************************/
 mod_som_status_t mod_som_apf_construct_config_ptr_f();
+
+/*******************************************************************************
+ * @brief
+ *   construct producer_ptr
+ *
+ * @return
+ *   MOD_SOM_STATUS_OK if initialization goes well
+ *   or otherwise
+ ******************************************************************************/
+mod_som_status_t mod_som_apf_construct_producer_ptr_f();
+
+/*******************************************************************************
+ * @brief
+ *   construct consumer_ptr
+ *
+ * @return
+ *   MOD_SOM_STATUS_OK if initialization goes well
+ *   or otherwise
+ ******************************************************************************/
+mod_som_status_t mod_som_apf_construct_consumer_ptr_f();
 
 /*******************************************************************************
  * @brief
@@ -512,6 +611,81 @@ mod_som_apf_status_t mod_som_apf_time_status_f();
  *   MOD_SOM_APF_STATUS_OK if function execute nicely
  ******************************************************************************/
 mod_som_apf_status_t mod_som_apf_upload_f();
+
+/*******************************************************************************
+ * @brief
+ *   start apf producer task
+ *
+ * @return
+ *   MOD_SOM_STATUS_OK if initialization goes well
+ *   or otherwise
+ ******************************************************************************/
+mod_som_status_t mod_som_apf_start_producer_task_f();
+
+/*******************************************************************************
+ * @brief
+ *   stop apf producer task
+ *
+ * @return
+ *   MOD_SOM_STATUS_OK if initialization goes well
+ *   or otherwise
+ ******************************************************************************/
+mod_som_status_t mod_som_apf_stop_producer_task_f();
+
+/*******************************************************************************
+ * @brief
+ *   apf producer task
+ *
+ *   collect data and store them in the daq structure
+ *
+ *
+ * @return
+ *   MOD_SOM_STATUS_OK if initialization goes well
+ *   or otherwise
+ ******************************************************************************/
+void mod_som_apf_producer_task_f(void  *p_arg);
+
+/*******************************************************************************
+ * @brief
+ *   apf consumer task
+ *
+ *   1- store the dacq profile in a sd file (as the dacq_profile is getting filled up)
+ *   2- when asked stream out the data to the apf with the afp format
+ *
+ *
+ * @return
+ *   MOD_SOM_STATUS_OK if initialization goes well
+ *   or otherwise
+ ******************************************************************************/
+void mod_som_apf_consumer_task_f(void  *p_arg);
+
+/*******************************************************************************
+ * @brief
+ * convert the dissrates into MOD format
+ *
+ *
+ * @return
+ *   MOD_SOM_STATUS_OK if initialization goes well
+ *   or otherwise
+ ******************************************************************************/
+void mod_som_apf_dissrate_convert_f(float * curr_epsilon_ptr,
+                                    float * curr_chi_ptr,
+                                    float * curr_fom_ptr,
+                                    uint8_t * dacq_ptr);
+
+/*******************************************************************************
+ * @brief
+ * downgrade avg spectra into MOD format
+ *
+ *
+ * @return
+ *   MOD_SOM_STATUS_OK if initialization goes well
+ *   or otherwise
+ ******************************************************************************/
+void mod_som_apf_downgrade_spectra_f(float   * curr_temp_avg_spectra_ptr,
+                                     float   * curr_shear_avg_spectra_ptr,
+                                     float   * curr_accel_avg_spectra_ptr,
+                                     uint8_t * dacq_ptr);
 
 /*******************************************************************************
  * @function

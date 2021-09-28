@@ -273,7 +273,7 @@ void RETARGET_SerialInit(void)
 
 /**************************************************************************//**
  * @brief Receive a byte from USART/LEUART and put into global buffer
- * @return -1 on failure, or positive character integer on sucesss
+ * @return -1 on failure, or positive character integer on success
  *****************************************************************************/
 int RETARGET_ReadChar(void)
 {

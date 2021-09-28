@@ -11,6 +11,8 @@
 #ifdef MOD_SOM_APF_EN
 
 #include "mod_som_io.h"
+#include "math.h"
+
 
 #ifdef  RTOS_MODULE_COMMON_SHELL_AVAIL
 #include <apf/mod_som_apf_cmd.h>
@@ -22,7 +24,18 @@
 #endif
 
 
+#include <efe_obp/mod_som_efe_obp.h>
+
 mod_som_apf_ptr_t mod_som_apf_ptr;
+
+// producer task
+static CPU_STK mod_som_apf_producer_task_stk[MOD_SOM_APF_PRODUCER_TASK_STK_SIZE];
+static OS_TCB  mod_som_apf_producer_task_tcb;
+
+// consumer task
+static CPU_STK mod_som_apf_consumer_task_stk[MOD_SOM_APF_CONSUMER_TASK_STK_SIZE];
+static OS_TCB  mod_som_apf_consumer_task_tcb;
+
 
 /*******************************************************************************
  * @brief
@@ -106,6 +119,15 @@ mod_som_apf_status_t mod_som_apf_init_f(){
       return status;
     }
 
+    //ALB Allocate memory for the producer pointer,
+    //ALB using the settings_ptr variable
+    status |= mod_som_apf_construct_producer_ptr_f();
+    if (status!=MOD_SOM_STATUS_OK){
+        printf("APF not initialized\n");
+        return status;
+    }
+
+
     //ALB initialize mod_som_apf_ptr params
     mod_som_apf_ptr->profile_id=0;
     mod_som_apf_ptr->daq=false;
@@ -140,7 +162,7 @@ mod_som_status_t mod_som_apf_allocate_settings_ptr_f(){
   if(mod_som_apf_ptr->settings_ptr==NULL)
   {
     mod_som_apf_ptr = DEF_NULL;
-    return MOD_SOM_APF_OBP_CANNOT_ALLOCATE_SETUP;
+    return MOD_SOM_APF_STATUS_CANNOT_ALLOCATE_SETUP;
   }
 
 
@@ -208,7 +230,7 @@ mod_som_status_t mod_som_apf_construct_config_ptr_f(){
   if(mod_som_apf_ptr->config_ptr==NULL)
   {
     mod_som_apf_ptr = DEF_NULL;
-    return MOD_SOM_APF_CANNOT_OPEN_CONFIG;
+    return MOD_SOM_APF_STATUS_CANNOT_ALLOCATE_CONFIG;
   }
 
   mod_som_apf_config_ptr_t config_ptr = mod_som_apf_ptr->config_ptr;
@@ -227,6 +249,554 @@ mod_som_status_t mod_som_apf_construct_config_ptr_f(){
   return mod_som_apf_encode_status_f(MOD_SOM_STATUS_OK);
 }
 
+
+/*******************************************************************************
+ * @brief
+ *   construct producer_ptr
+ *
+ * @return
+ *   MOD_SOM_STATUS_OK if initialization goes well
+ *   or otherwise
+ ******************************************************************************/
+mod_som_status_t mod_som_apf_construct_producer_ptr_f(){
+
+  RTOS_ERR  err;
+  //ALB Start allocating  memory for config pointer
+  mod_som_apf_ptr->producer_ptr =
+      (mod_som_apf_producer_ptr_t)Mem_SegAlloc(
+          "MOD SOM APF producer.",DEF_NULL,
+          sizeof(mod_som_apf_producer_t),
+          &err);
+  // Check error code
+  APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
+  if(mod_som_apf_ptr->config_ptr==NULL)
+  {
+    mod_som_apf_ptr = DEF_NULL;
+    return MOD_SOM_APF_STATUS_CANNOT_ALLOCATE_PRODUCER;
+  }
+
+  mod_som_apf_ptr->producer_ptr->initialized_flag = false;
+  mod_som_apf_ptr->producer_ptr->started_flg  = false;
+  mod_som_apf_ptr->producer_ptr->collect_flg  = false;
+  mod_som_apf_ptr->producer_ptr->dacq_full    = false;
+  mod_som_apf_ptr->producer_ptr->dacq_ptr     =
+                          &mod_som_apf_ptr->producer_ptr->acq_profile.data_acq[0];
+  mod_som_apf_ptr->producer_ptr->dacq_size    =
+                           mod_som_apf_ptr->producer_ptr->dacq_ptr-
+                          &mod_som_apf_ptr->producer_ptr->acq_profile.data_acq[0];
+  mod_som_apf_ptr->producer_ptr->dissrates_cnt_offset=0;
+
+  mod_som_apf_ptr->producer_ptr->initialized_flag = true;
+  return mod_som_apf_encode_status_f(MOD_SOM_STATUS_OK);
+}
+
+/*******************************************************************************
+ * @brief
+ *   construct consumer_ptr
+ *
+ * @return
+ *   MOD_SOM_STATUS_OK if initialization goes well
+ *   or otherwise
+ ******************************************************************************/
+mod_som_status_t mod_som_apf_construct_consumer_ptr_f(){
+
+  RTOS_ERR  err;
+  //ALB Start allocating  memory for config pointer
+  mod_som_apf_ptr->consumer_ptr =
+      (mod_som_apf_consumer_ptr_t)Mem_SegAlloc(
+          "MOD SOM APF consumer.",DEF_NULL,
+          sizeof(mod_som_apf_consumer_t),
+          &err);
+  // Check error code
+  APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
+  if(mod_som_apf_ptr->config_ptr==NULL)
+  {
+    mod_som_apf_ptr = DEF_NULL;
+    return MOD_SOM_APF_STATUS_CANNOT_ALLOCATE_PRODUCER;
+  }
+
+  mod_som_apf_ptr->consumer_ptr->initialized_flag = false;
+  mod_som_apf_ptr->consumer_ptr->dacq_size=0;
+  mod_som_apf_ptr->consumer_ptr->data_ptr=
+                          &mod_som_apf_ptr->producer_ptr->acq_profile.data_acq[0];
+
+  mod_som_apf_ptr->consumer_ptr->initialized_flag = true;
+  return mod_som_apf_encode_status_f(MOD_SOM_STATUS_OK);
+}
+
+
+
+
+/*******************************************************************************
+ * @brief
+ *   start producer task
+ *
+ * @return
+ *   MOD_SOM_STATUS_OK if initialization goes well
+ *   or otherwise
+ ******************************************************************************/
+mod_som_status_t mod_som_apf_start_producer_task_f(){
+
+
+  RTOS_ERR err;
+  // Consumer Task 2
+  //ALB initialize all parameters. They should be reset right before
+  //ALB fill_segment task is starts running.
+  mod_som_apf_ptr->producer_ptr->avg_timestamp    = 0;
+  mod_som_apf_ptr->producer_ptr->collect_flg      = false;
+  mod_som_apf_ptr->producer_ptr->dissrate_skipped = 0;
+  mod_som_apf_ptr->producer_ptr->dissrates_cnt    = 0;
+  mod_som_apf_ptr->producer_ptr->initialized_flag = false;
+
+  mod_som_apf_ptr->producer_ptr->dacq_full    = false;
+  mod_som_apf_ptr->producer_ptr->dacq_ptr     =
+                          &mod_som_apf_ptr->producer_ptr->acq_profile.data_acq[0];
+  mod_som_apf_ptr->producer_ptr->dacq_size    =
+                           mod_som_apf_ptr->producer_ptr->dacq_ptr-
+                          &mod_som_apf_ptr->producer_ptr->acq_profile.data_acq[0];
+  mod_som_apf_ptr->producer_ptr->dissrates_cnt_offset=0;
+
+  mod_som_apf_ptr->producer_ptr->started_flg      = true;
+
+
+
+   OSTaskCreate(&mod_som_apf_producer_task_tcb,
+                        "apf producer task",
+                        mod_som_apf_producer_task_f,
+                        DEF_NULL,
+                        MOD_SOM_APF_PRODUCER_TASK_PRIO,
+            &mod_som_apf_producer_task_stk[0],
+            (MOD_SOM_APF_PRODUCER_TASK_STK_SIZE / 10u),
+            MOD_SOM_APF_PRODUCER_TASK_STK_SIZE,
+            0u,
+            0u,
+            DEF_NULL,
+            (OS_OPT_TASK_STK_CLR),
+            &err);
+
+
+  // Check error code
+  APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
+  if(RTOS_ERR_CODE_GET(err) != RTOS_ERR_NONE)
+    return (mod_som_apf_ptr->status = mod_som_apf_encode_status_f(MOD_SOM_APF_STATUS_FAIL_TO_START_PRODUCER_TASK));
+  return mod_som_apf_encode_status_f(MOD_SOM_STATUS_OK);
+}
+
+
+/*******************************************************************************
+ * @brief
+ *   stop producer task
+ *
+ * @return
+ *   MOD_SOM_STATUS_OK if initialization goes well
+ *   or otherwise
+ ******************************************************************************/
+mod_som_status_t mod_som_apf_stop_producer_task_f(){
+
+
+  RTOS_ERR err;
+  OSTaskDel(&mod_som_apf_producer_task_tcb,
+             &err);
+
+  mod_som_apf_ptr->producer_ptr->started_flg=false;
+
+
+  if(RTOS_ERR_CODE_GET(err) != RTOS_ERR_NONE)
+    return (mod_som_apf_ptr->status = mod_som_apf_encode_status_f(MOD_SOM_APF_STATUS_FAIL_TO_STOP_PRODUCER_TASK));
+
+  return mod_som_apf_encode_status_f(MOD_SOM_STATUS_OK);
+}
+
+
+/*******************************************************************************
+ * @brief
+ *   start consumer task
+ *
+ * @return
+ *   MOD_SOM_STATUS_OK if initialization goes well
+ *   or otherwise
+ ******************************************************************************/
+mod_som_status_t mod_som_apf_start_consumer_task_f(){
+
+
+  RTOS_ERR err;
+  // Consumer Task
+
+  mod_som_apf_ptr->consumer_ptr->dacq_size=0;
+  mod_som_apf_ptr->consumer_ptr->data_ptr=
+                          &mod_som_apf_ptr->producer_ptr->acq_profile.data_acq[0];
+
+  mod_som_apf_ptr->consumer_ptr->initialized_flag = true;
+
+
+   OSTaskCreate(&mod_som_apf_consumer_task_tcb,
+                        "apf consumer task",
+                        mod_som_apf_consumer_task_f,
+                        DEF_NULL,
+                        MOD_SOM_APF_CONSUMER_TASK_PRIO,
+            &mod_som_apf_consumer_task_stk[0],
+            (MOD_SOM_APF_CONSUMER_TASK_STK_SIZE / 10u),
+            MOD_SOM_APF_CONSUMER_TASK_STK_SIZE,
+            0u,
+            0u,
+            DEF_NULL,
+            (OS_OPT_TASK_STK_CLR),
+            &err);
+
+
+  // Check error code
+  APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
+  if(RTOS_ERR_CODE_GET(err) != RTOS_ERR_NONE)
+    return (mod_som_apf_ptr->status = mod_som_apf_encode_status_f(MOD_SOM_APF_STATUS_FAIL_TO_START_CONSUMER_TASK));
+  return mod_som_apf_encode_status_f(MOD_SOM_STATUS_OK);
+}
+
+
+/*******************************************************************************
+ * @brief
+ *   stop fill segment task
+ *
+ * @return
+ *   MOD_SOM_STATUS_OK if initialization goes well
+ *   or otherwise
+ ******************************************************************************/
+mod_som_status_t mod_som_apf_stop_consumer_task_f(){
+
+
+  RTOS_ERR err;
+  OSTaskDel(&mod_som_apf_consumer_task_tcb,
+             &err);
+
+  mod_som_apf_ptr->consumer_ptr->started_flg=false;
+
+
+  if(RTOS_ERR_CODE_GET(err) != RTOS_ERR_NONE)
+    return (mod_som_apf_ptr->status = mod_som_apf_encode_status_f(MOD_SOM_APF_STATUS_FAIL_TO_STOP_CONSUMER_TASK));
+
+  return mod_som_apf_encode_status_f(MOD_SOM_STATUS_OK);
+}
+
+
+
+/*******************************************************************************
+ * @brief
+ *   apf producer task
+ *
+ *   collect data and store them in the daq structure
+ *
+ *
+ * @return
+ *   MOD_SOM_STATUS_OK if initialization goes well
+ *   or otherwise
+ ******************************************************************************/
+void mod_som_apf_producer_task_f(void  *p_arg){
+  RTOS_ERR  err;
+
+  (void)p_arg; // Deliberately unused argument
+
+
+
+  int dissrate_avail=0, reset_dissrate_cnt=0;
+  int dissrate_elmnts_offset=0;
+  int avg_spectra_offset=0;
+
+  float * curr_temp_avg_spectra_ptr;
+  float * curr_shear_avg_spectra_ptr;
+  float * curr_accel_avg_spectra_ptr;
+  float * curr_epsilon_ptr;
+  float * curr_chi_ptr;
+  float * curr_fom_ptr;
+
+
+  int padding = 1; // the padding should be big enough to include the time variance.
+
+
+  mod_som_efe_obp_ptr_t mod_som_efe_obp_ptr=
+                                          mod_som_efe_obp_get_runtime_ptr_f();
+
+
+  while (DEF_ON) {
+
+
+
+      /************************************************************************/
+      //ALB APF producer phase 1
+      //ALB check if producer is started, and if the dacp_profile is NOT full
+      if (mod_som_apf_ptr->producer_ptr->started_flg &
+          !mod_som_apf_ptr->producer_ptr->dacq_full){
+          dissrate_avail = mod_som_efe_obp_ptr->sample_count -
+              mod_som_apf_ptr->producer_ptr->dissrates_cnt;  //calculate number of elements available have been produced
+
+          //ALB User stopped efe. I need to reset the obp producers count
+          if(dissrate_avail<0){
+              mod_som_apf_ptr->producer_ptr->dissrates_cnt = 0;
+          }
+          // LOOP without delay until caught up to latest produced element
+          while (dissrate_avail > 0)
+            {
+              // When have circular buffer overflow: have produced data bigger than consumer data: 1 circular buffer (n_elmnts)
+              // calculate new consumer count to skip ahead to the tail of the circular buffer (with optional padding),
+              // calculate the number of data we skipped, report number of elements skipped.
+              // Reset the consumers cnt equal with producer data plus padding
+              if (dissrate_avail>MOD_SOM_EFE_OBP_CPT_DISSRATE_NB_RATES_PER_RECORD){ // checking over flow. TODO check adding padding is correct.
+                  // reset the consumer count less one buffer than producer count plus padding
+                  //ALB I think I want to change this line from the cb example. The "-" only works if you overflowed once.
+                  reset_dissrate_cnt = mod_som_efe_obp_ptr->sample_count -
+                      MOD_SOM_EFE_OBP_CPT_DISSRATE_NB_RATES_PER_RECORD +
+                      padding;
+                  // calculate the number of skipped elements
+                  mod_som_apf_ptr->producer_ptr->dissrate_skipped = reset_dissrate_cnt -
+                      mod_som_apf_ptr->producer_ptr->dissrates_cnt;
+
+                  mod_som_io_print_f("\n apf obp prod task: CB overflow: sample count = %lu,"
+                      "cnsmr_cnt = %lu,skipped %lu elements \r\n ", \
+                      (uint32_t)mod_som_efe_obp_ptr->sample_count, \
+                      (uint32_t)mod_som_apf_ptr->producer_ptr->dissrates_cnt, \
+                      (uint32_t)mod_som_apf_ptr->producer_ptr->dissrate_skipped);
+
+                  mod_som_apf_ptr->producer_ptr->dissrates_cnt = reset_dissrate_cnt;
+              }
+
+              //ALB calculate the offset for current pointer
+              dissrate_elmnts_offset = mod_som_apf_ptr->producer_ptr->dissrates_cnt %
+                                       MOD_SOM_EFE_OBP_CPT_DISSRATE_NB_RATES_PER_RECORD;
+
+              avg_spectra_offset     = (mod_som_apf_ptr->producer_ptr->dissrates_cnt %
+                  MOD_SOM_EFE_OBP_FILL_SEGMENT_NB_SEGMENT_PER_RECORD)*
+                  mod_som_efe_obp_ptr->settings_ptr->nfft/2;
+
+              //ALB update the current avg_spectra pointers
+              curr_temp_avg_spectra_ptr   =
+                  mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_spec_temp_ptr+
+                  avg_spectra_offset;
+              curr_shear_avg_spectra_ptr   =
+                  mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_spec_shear_ptr+
+                  avg_spectra_offset;
+              curr_accel_avg_spectra_ptr   =
+                  mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_spec_accel_ptr+
+                  avg_spectra_offset;
+
+              //ALB update the dissrate pointers
+              curr_epsilon_ptr =mod_som_efe_obp_ptr->cpt_dissrate_ptr->epsilon+
+                                dissrate_elmnts_offset;
+              curr_chi_ptr     =mod_som_efe_obp_ptr->cpt_dissrate_ptr->chi+
+                                dissrate_elmnts_offset;
+              curr_fom_ptr     =mod_som_efe_obp_ptr->cpt_dissrate_ptr->fom+
+                                dissrate_elmnts_offset;
+
+
+              //ALB convert and store the current dissrate into the MOD format
+              // log10(epsi) log10(chi):  3bytes (12 bits for each epsi and chi sample)
+              mod_som_apf_dissrate_convert_f(curr_epsilon_ptr,
+                                             curr_chi_ptr,
+                                             curr_fom_ptr,
+                                             mod_som_apf_ptr->producer_ptr->dacq_ptr
+                                         );
+
+              switch (mod_som_apf_ptr->comm_telemetry_packet_format){
+                case F0:
+                  mod_som_apf_ptr->producer_ptr->dacq_element_size=0;
+                  break;
+                case F1:
+                  mod_som_apf_ptr->producer_ptr->dacq_element_size=
+                      MOD_SOM_APF_DACQ_TIMESTAMP_SIZE+
+                      MOD_SOM_APF_DACQ_PRESSURE_SIZE+
+                      MOD_SOM_APF_DACQ_DISSRATE_SIZE+
+                      MOD_SOM_APF_DACQ_FOM_SIZE;
+                  break;
+                case F2:
+                  mod_som_apf_ptr->producer_ptr->dacq_element_size=0;
+                  break;
+                case F3:
+                  mod_som_apf_ptr->producer_ptr->dacq_element_size=0;
+                  //ALB downgrade and store the avg_spectra ()
+                  mod_som_apf_downgrade_spectra_f(curr_temp_avg_spectra_ptr,
+                                                  curr_shear_avg_spectra_ptr,
+                                                  curr_accel_avg_spectra_ptr,
+                                                 mod_som_apf_ptr->producer_ptr->dacq_ptr
+                                             );
+                  break;
+              }
+
+              //ALB increment cnsmr count
+              mod_som_apf_ptr->producer_ptr->dissrates_cnt++;
+
+              //ALB update dissrate available
+              dissrate_avail = mod_som_efe_obp_ptr->sample_count -
+                  mod_som_apf_ptr->producer_ptr->dissrates_cnt; //elements available have been produced
+
+              //ALB update dacq_size
+              mod_som_apf_ptr->producer_ptr->dacq_size=
+                           mod_som_apf_ptr->producer_ptr->dacq_ptr-
+                          &mod_som_apf_ptr->producer_ptr->acq_profile.data_acq[0];
+
+              //ALB raise flag stop producer if profile is full (size(dacq)>=25kB)
+              //ALB update the number of sample
+              if (mod_som_apf_ptr->producer_ptr->dacq_size+
+                  mod_som_apf_ptr->producer_ptr->dacq_element_size>=
+                  MOD_SOM_APF_DACQ_STRUCT_SIZE)
+                {
+                  mod_som_apf_ptr->producer_ptr->dacq_full=true;
+                  mod_som_apf_ptr->producer_ptr->
+                  acq_profile.mod_som_apf_meta_data.sample_cnt=
+                      mod_som_apf_ptr->producer_ptr->dissrates_cnt-
+                      mod_som_apf_ptr->producer_ptr->dissrates_cnt_offset;
+
+                  mod_som_apf_ptr->producer_ptr->dissrates_cnt_offset=
+                      mod_som_apf_ptr->producer_ptr->
+                                   acq_profile.mod_som_apf_meta_data.sample_cnt;
+                }
+            }  // end of while (dissrate_avail > 0)
+          // ALB done with segment storing.
+          mod_som_apf_ptr->producer_ptr->dissrate_skipped = 0;
+      } //end if started
+
+      // Delay Start Task execution for
+      OSTimeDly( MOD_SOM_APF_PRODUCER_DELAY,             //   consumer delay is #define at the beginning OS Ticks
+                 OS_OPT_TIME_DLY,          //   from now.
+                 &err);
+      //   Check error code.
+      APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), ;);
+//      printf("EFEOBP efe: %lu\r\n",(uint32_t) mod_som_efe_obp_ptr->fill_segment_ptr->efe_element_cnt);
+//      printf("EFEOBP seg: %lu\r\n",(uint32_t) mod_som_efe_obp_ptr->fill_segment_ptr->segment_cnt);
+  } // end of while (DEF_ON)
+
+  PP_UNUSED_PARAM(p_arg);                                     // Prevent config warning.
+
+}
+
+
+
+
+/*******************************************************************************
+ * @brief
+ *   apf consumer task
+ *
+ *   1 - store the dacq profile in a sd file (as the dacq_profile is getting filled up)
+ *   2 - store the meta data on the sd when dacq_profile is full
+ *   3 - close SD file after meta data are written.
+ *   2- when asked stream out the data to the apf with the afp format
+ *
+ *
+ * @return
+ *   MOD_SOM_STATUS_OK if initialization goes well
+ *   or otherwise
+ ******************************************************************************/
+void mod_som_apf_consumer_task_f(void  *p_arg){
+  RTOS_ERR  err;
+
+  (void)p_arg; // Deliberately unused argument
+
+  int bytes_avail=0;
+
+  uint8_t * curr_dacq_ptr;
+
+
+  while (DEF_ON) {
+
+      if (mod_som_apf_ptr->consumer_ptr->started_flg){
+          bytes_avail = mod_som_apf_ptr->producer_ptr->dacq_size -
+              mod_som_apf_ptr->consumer_ptr->dacq_size;  //calculate number of elements available have been produced
+
+          //ALB  phase 1 continuously write the new data on the SD card until
+          //ALB  we reach the limit size MOD_SOM_APF_DACQ_STRUCT_SIZE (25kB)
+          //ALB  LOOP without delay until caught up to latest produced element
+          //ALB
+          while (bytes_avail > 0)
+            {
+              //ALB I am not using a similar desgin as the other consumer because
+              //ALB I am not dealing with a circular buffer
+
+
+              //ALB calculate the offset for current pointer
+              curr_dacq_ptr =&mod_som_apf_ptr->consumer_ptr->data_ptr[0]+
+                              mod_som_apf_ptr->consumer_ptr->dacq_size;
+
+
+              // ALB send this block to the SD card
+              mod_som_apf_ptr->consumer_ptr->consumed_flag=false;
+              mod_som_sdio_write_data_f(
+                                 curr_dacq_ptr,
+                                 bytes_avail,
+                                &mod_som_apf_ptr->consumer_ptr->consumed_flag);
+
+
+
+              //ALB update dacq size.
+              mod_som_apf_ptr->consumer_ptr->dacq_size+= bytes_avail;
+
+              //ALB update bytes available. Should always be 0 at that line.
+              bytes_avail = mod_som_apf_ptr->producer_ptr->dacq_size -
+                  mod_som_apf_ptr->consumer_ptr->dacq_size;
+
+            }  // end of while (bytes_avail > 0)
+
+          //ALB No bytes to write
+          //ALB Check if profile is over
+          //ALB Profile is over or reached his 25kB limit
+          //ALB write the Meta_Data on the SD card
+          if(mod_som_apf_ptr->producer_ptr->dacq_full){
+
+              mod_som_apf_ptr->consumer_ptr->consumed_flag=false;
+              mod_som_sdio_write_data_f(
+  (uint8_t *) &mod_som_apf_ptr->producer_ptr->acq_profile.mod_som_apf_meta_data,
+       sizeof(mod_som_apf_ptr->producer_ptr->acq_profile.mod_som_apf_meta_data),
+                                 &mod_som_apf_ptr->consumer_ptr->consumed_flag);
+          }
+
+
+          //ALB
+      } //end if started
+
+      // Delay Start Task execution for
+      OSTimeDly( MOD_SOM_APF_CONSUMER_DELAY,             //   consumer delay is #define at the beginning OS Ticks
+                 OS_OPT_TIME_DLY,          //   from now.
+                 &err);
+      //   Check error code.
+      APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), ;);
+  } // end of while (DEF_ON)
+
+  PP_UNUSED_PARAM(p_arg);                                     // Prevent config warning.
+
+}
+
+
+
+
+/*******************************************************************************
+ * @brief
+ * convert the dissrates into MOD format
+ *
+ *
+ * @return
+ *   MOD_SOM_STATUS_OK if initialization goes well
+ *   or otherwise
+ ******************************************************************************/
+void mod_som_apf_dissrate_convert_f(float * curr_epsilon_ptr,
+                                    float * curr_chi_ptr,
+                                    float * curr_fom_ptr,
+                                    uint8_t * dacq_ptr)
+{
+float test=1e-14;
+}
+
+
+/*******************************************************************************
+ * @brief
+ * downgrade avg spectra into MOD format
+ *
+ *
+ * @return
+ *   MOD_SOM_STATUS_OK if initialization goes well
+ *   or otherwise
+ ******************************************************************************/
+void mod_som_apf_downgrade_spectra_f(float   * curr_temp_avg_spectra_ptr,
+                                     float   * curr_shear_avg_spectra_ptr,
+                                     float   * curr_accel_avg_spectra_ptr,
+                                     uint8_t * dacq_ptr)
+{
+
+}
 
 
 /*******************************************************************************
@@ -315,10 +885,17 @@ mod_som_apf_status_t mod_som_apf_daq_start_f(uint64_t profile_id){
   mod_som_status_t status;
   status=MOD_SOM_APF_STATUS_OK;
   uint32_t delay=0xFF;
+  CPU_CHAR filename[100];
 
 
-  //ALB Open SD file
-  //ALB initialize Meta_Data Structure
+  //ALB Open SD file,
+  sprintf(filename, "Profile%lu",(uint32_t) profile_id);
+  mod_som_sdio_define_filename_f(filename);
+  //ALB write MODSOM settings on the SD file
+  mod_som_settings_sd_settings_f();
+  //ALB initialize Meta_Data Structure, TODO
+  mod_som_apf_init_meta_data(mod_som_apf_ptr->producer_ptr->
+                             acq_profile.mod_som_apf_meta_data);
 
 
 	//ALB start ADC master clock timer
@@ -329,9 +906,17 @@ mod_som_apf_status_t mod_som_apf_daq_start_f(uint64_t profile_id){
   status|=mod_som_efe_obp_start_cpt_spectra_task_f();
   status|=mod_som_efe_obp_start_cpt_dissrate_task_f();
 
-  //ALB start collecting CTD
+  //ALB start collecting CTD.
   status |= mod_som_sbe41_connect_f();
   status |= mod_som_sbe41_start_collect_data_f();
+
+  //ALB get a P reading and define the dz to get 25kB in the producer->dacq_profile
+  //TODO
+
+  //ALB start APF producer task
+  status |= mod_som_apf_start_producer_task_f();
+  //ALB start APF consumer task
+//  status |= mod_som_apf_start_consumer_task_f();
 
   while (delay>0){
       delay--;
@@ -386,7 +971,7 @@ mod_som_apf_status_t mod_som_apf_daq_stop_f(){
   mod_som_apf_ptr->daq=false;
 //ALB display msg
   if (status==MOD_SOM_APF_STATUS_OK){
-      mod_som_io_print_f("daq,stop,ack\r\n","stop");
+      mod_som_io_print_f("daq,stop,ack\r\n");
   }else{
       mod_som_io_print_f("daq,stop,nak,%lu\r\n",status);
 
@@ -424,6 +1009,47 @@ mod_som_apf_status_t mod_som_apf_daq_status_f(){
   }
 	return mod_som_apf_encode_status_f(MOD_SOM_APF_STATUS_OK);
 }
+
+/*******************************************************************************
+ * @brief
+ *    initialize dacq Meta_Data
+ *
+ * @return
+ *   MOD_SOM_APF_STATUS_OK if function execute nicely
+ ******************************************************************************/
+mod_som_apf_status_t mod_som_apf_init_meta_data(mod_som_apf_meta_data_t mod_som_apf_meta_data){
+
+  mod_som_apf_status_t status;
+
+  mod_som_efe_obp_ptr_t local_efe_obp=mod_som_efe_obp_get_runtime_ptr_f();
+
+
+  mod_som_apf_meta_data.NFFTdiag=local_efe_obp->settings_ptr->nfft/2;
+  mod_som_apf_meta_data.nfft=local_efe_obp->settings_ptr->nfft;
+  mod_som_apf_meta_data.algorithm_version=
+  mod_som_apf_meta_data.comm_telemetry_packet_format=
+  mod_som_apf_meta_data.efe_sn
+  mod_som_apf_meta_data.firmware_rev
+  mod_som_apf_meta_data.modsom_sn
+  mod_som_apf_meta_data.probe1.type
+  mod_som_apf_meta_data.probe1.sn
+  mod_som_apf_meta_data.probe1.cal
+  mod_som_apf_meta_data.probe2.type
+  mod_som_apf_meta_data.probe2.sn
+  mod_som_apf_meta_data.probe2.cal
+  mod_som_apf_meta_data.profile_id
+  mod_som_apf_meta_data.vibration_cutoff
+
+  //ALB get some values
+  mod_som_apf_meta_data.daq_timestamp
+  mod_som_apf_meta_data.voltage
+  mod_som_apf_meta_data.sample_cnt
+
+
+  return status;
+}
+
+
 
 /*******************************************************************************
  * @brief
@@ -626,15 +1252,156 @@ mod_som_apf_status_t mod_som_apf_time_status_f(){
  *   command shell for upload command
  *   start uploading data from the SD card to the apf
  *   should return an apf status.
+ *
+ *   stream the dacq structure through packets of 990 bytes each
+ *
+ *   Bytes 1-2  : CRC code
+ *   Bytes 3-4  : high 6 bits packet counter,
+ *                low 10 bits contains the number of data bytes.
+ *   Bytes 5-990: Epsi data(i.e., producer_ptr->acq profile )
  * @return
  *   MOD_SOM_APF_STATUS_OK if function execute nicely
  ******************************************************************************/
 mod_som_apf_status_t mod_som_apf_upload_f(){
 
+  mod_som_status_t status=MOD_SOM_APF_STATUS_OK;
 
-	mod_som_io_print_f("upload,ak,%s\r\n","UnixEpoch");
-	mod_som_io_print_f("upload,nak,%s\r\n","error message");
-	return mod_som_apf_encode_status_f(MOD_SOM_APF_STATUS_OK);
+  uint32_t delay=MOD_SOM_APF_UPLOAD_DELAY;
+
+  int c;
+
+  uint32_t   timeout = 0;
+  uint32_t   dacq_bytes_available = 0;
+  uint32_t   dacq_bytes_sent      = 0;
+  uint32_t   dacq_bytes_to_sent   = 0;
+  uint8_t *  current_data_ptr=
+      (uint8_t *) &mod_som_apf_ptr->producer_ptr->acq_profile;
+  uint8_t    eot_byte = MOD_SOM_APF_UPLOAD_EOT_BYTE;
+
+
+  //ALB start transmit the packets
+  //ALB check if daq is stopped
+  if(!mod_som_apf_ptr->daq){
+
+      //ALB upload cmd received
+      //ALB send msg back
+      mod_som_io_print_f("upload,ack,start\r\n");
+
+      //ALB wait 500 ms
+      while (delay>0){
+          delay--;
+      }
+
+
+      //ALB initialize send_packet_tries.
+      mod_som_apf_ptr->consumer_ptr->send_packet_tries=0;
+      //ALB split acq_profile into 990 bytes packets:
+      //ALB count how bytes are left to send out.
+      dacq_bytes_available=
+          mod_som_apf_ptr->producer_ptr->dacq_size-dacq_bytes_sent;
+
+      //ALB while bytes available > than 986 bytes
+      //ALB I build a full packet and stream it.
+      while ((dacq_bytes_available>=0) &
+          (mod_som_apf_ptr->consumer_ptr->send_packet_tries<
+              MOD_SOM_APF_UPLOAD_MAX_TRY_PACKET)){
+
+          //ALB define how many byte to send
+          //ALB i.e. min(dacq_bytes_available,
+          //ALB          MOD_SOM_APF_UPLOAD_PACKET_LOAD_SIZE)
+
+          dacq_bytes_to_sent=MIN(dacq_bytes_available,
+                                 MOD_SOM_APF_UPLOAD_PACKET_LOAD_SIZE);
+
+          //ALB end of profile sending the EOT bytes
+          if(dacq_bytes_to_sent==0){
+              current_data_ptr=&eot_byte;
+              dacq_bytes_to_sent=1;
+          }
+          //ALB copy the dacq bytes in the packet payload structure.
+          memcpy(&mod_som_apf_ptr->consumer_ptr->packet.payload,
+                 current_data_ptr,
+                 dacq_bytes_to_sent);
+          //ALB compute the packet CRC
+          //TODO
+          *((uint16_t *) &mod_som_apf_ptr->consumer_ptr->packet.CRC)=0;
+          //ALB compute the counters
+          //TODO
+          *((uint16_t *) &mod_som_apf_ptr->consumer_ptr->packet.counters)=0;
+
+          //ALB packet should be ready. Now send it
+          mod_som_apf_ptr->consumer_ptr->consumed_flag=false;
+          mod_som_io_stream_data_f(
+              (uint8_t *)&mod_som_apf_ptr->consumer_ptr->packet,
+              dacq_bytes_to_sent+MOD_SOM_APF_UPLOAD_PACKET_CRC_SIZE+
+              MOD_SOM_APF_UPLOAD_PACKET_CNT_SIZE,
+              &mod_som_apf_ptr->consumer_ptr->consumed_flag);
+
+          //ALB Wait for consumed_flag to be on before doing the following lines
+          //ALB I think the 5s timeout covers pretty much everything
+          while(mod_som_apf_ptr->consumer_ptr->consumed_flag){
+              timeout++;
+              if (timeout>MOD_SOM_APF_UPLOAD_APF11_TIMEOUT){
+                  status=MOD_SOM_APF_UPLOAD_APF11_TIMEOUT;
+                  mod_som_apf_ptr->consumer_ptr->consumed_flag=true;
+              }//end of timeout
+          }//while consumed flag
+
+          //ALB Wait for APF11 answer.
+          //ALB APF sends ACK if fine.
+          //ALB APF send NACK if not fine.
+          //ALB There is also a 5sec time out ~ NACK.
+          //ALB If NACK or timeout, try 3 times to send the packet.
+          //ALB If packet is NACK after 3 tries, go back to menu (i.e., exit the upload function).
+          if(timeout<MOD_SOM_APF_UPLOAD_APF11_TIMEOUT){
+              timeout=0;
+              c=0;
+              while (c < 0){ // Wait for valid input
+                  //Release for waiting tasks
+                  c = RETARGET_ReadChar();
+
+                  //ALB good transmit, go to next packet.
+                  if(c==MOD_SOM_APF_UPLOAD_APF11_ACK){
+                      //ALB update current_data_ptr to point to the next dacq data
+                      current_data_ptr+=dacq_bytes_to_sent;
+                      dacq_bytes_sent+=dacq_bytes_to_sent;
+                      mod_som_apf_ptr->consumer_ptr->send_packet_tries=0;
+                      status=MOD_SOM_APF_UPLOAD_APF11_ACK;
+                  }
+                  if(c==MOD_SOM_APF_UPLOAD_APF11_NACK){
+                      mod_som_apf_ptr->consumer_ptr->send_packet_tries++;
+                      status=MOD_SOM_APF_UPLOAD_APF11_NACK;
+
+                  }
+                  //ALB timeout
+                  timeout++;
+                  if (timeout>MOD_SOM_APF_UPLOAD_APF11_TIMEOUT){
+                      mod_som_apf_ptr->consumer_ptr->send_packet_tries++;
+                      c=1;//ALB set c>0 to get out of the while loop
+                      status=MOD_SOM_APF_UPLOAD_APF11_TIMEOUT;
+                  }//ALB end of timeout
+              }//ALB end of while c
+
+          }//ALB end of packet stream time out
+          //ALB update dacq_bytes_available.
+          dacq_bytes_available=
+              mod_som_apf_ptr->producer_ptr->dacq_size-dacq_bytes_sent;
+      }//ALB end of while bytes available
+
+
+  }else{
+      //ALB daq is still running
+      status=MOD_SOM_APF_STATUS_DAQ_IS_RUNNING;
+  }//ALB end if daq
+
+  //ALB end of upload send the upload status
+  if(status!=MOD_SOM_APF_STATUS_OK){
+      mod_som_io_print_f("upload,ak,success\r\n");
+
+  }else{
+      mod_som_io_print_f("upload,nak,%lu\r\n",status);
+  }
+  return mod_som_apf_encode_status_f(status);
 }
 #endif
 

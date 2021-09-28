@@ -159,7 +159,7 @@ CPU_INT16S mod_som_sdio_get_config_cmd_f(CPU_INT16U argc,
 	switch (argc){
 		case 2:
 			filename=argv[1];
-			mod_som_status_t status = mod_som_sdio_read_config_sd_f(filename);
+			status = mod_som_sdio_read_config_sd_f(filename);
 			break;
 		default:
 			printf("format: sdio.getconfig filename \r\n");
