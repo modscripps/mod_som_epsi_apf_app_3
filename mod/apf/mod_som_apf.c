@@ -244,6 +244,7 @@ mod_som_status_t mod_som_apf_construct_config_ptr_f(){
                                  MOD_SOM_APF_PAYLOAD_LENGTH         +
                                  MOD_SOM_APF_HEADER_CHECKSUM_LENGTH;
 
+  config_ptr->vibration_cut_off=MOD_SOM_APF_VIBRATION_CUT_OFF;
 
   config_ptr->initialized_flag = true;
   return mod_som_apf_encode_status_f(MOD_SOM_STATUS_OK);
@@ -285,6 +286,28 @@ mod_som_status_t mod_som_apf_construct_producer_ptr_f(){
                            mod_som_apf_ptr->producer_ptr->dacq_ptr-
                           &mod_som_apf_ptr->producer_ptr->acq_profile.data_acq[0];
   mod_som_apf_ptr->producer_ptr->dissrates_cnt_offset=0;
+
+
+  mod_som_apf_ptr->producer_ptr->decim_coef.dissrate_per_bit =
+                                       MOD_SOM_APF_PRODUCER_DISSRATE_RANGE/
+                                       (log10(MOD_SOM_APF_PRODUCER_MAX_DISSRATE)
+                                       -log10(MOD_SOM_APF_PRODUCER_MIN_DISSRATE));
+                                       ;
+  mod_som_apf_ptr->producer_ptr->decim_coef.dissrate_counts_at_origin =
+      - (mod_som_apf_ptr->producer_ptr->decim_coef.dissrate_per_bit*
+        log10(MOD_SOM_APF_PRODUCER_MAX_DISSRATE)) +
+        MOD_SOM_APF_PRODUCER_DISSRATE_RANGE;
+
+  mod_som_apf_ptr->producer_ptr->decim_coef.fom_per_bit =
+                                       MOD_SOM_APF_PRODUCER_FOM_RANGE/
+                                       (MOD_SOM_APF_PRODUCER_MAX_FOM
+                                       -MOD_SOM_APF_PRODUCER_MIN_FOM);
+                                       ;
+  mod_som_apf_ptr->producer_ptr->decim_coef.fom_counts_at_origin =
+      - (mod_som_apf_ptr->producer_ptr->decim_coef.fom_per_bit*
+        MOD_SOM_APF_PRODUCER_MAX_FOM) +
+        MOD_SOM_APF_PRODUCER_FOM_RANGE;
+
 
   mod_som_apf_ptr->producer_ptr->initialized_flag = true;
   return mod_som_apf_encode_status_f(MOD_SOM_STATUS_OK);
@@ -500,12 +523,15 @@ void mod_som_apf_producer_task_f(void  *p_arg){
   int dissrate_elmnts_offset=0;
   int avg_spectra_offset=0;
 
+  int64_t * curr_avg_timestamp_ptr;
   float * curr_temp_avg_spectra_ptr;
   float * curr_shear_avg_spectra_ptr;
   float * curr_accel_avg_spectra_ptr;
+  float * curr_avg_pressure_ptr;
   float * curr_epsilon_ptr;
   float * curr_chi_ptr;
-  float * curr_fom_ptr;
+  float * curr_epsi_fom_ptr;
+  float * curr_chi_fom_ptr;
 
 
   int padding = 1; // the padding should be big enough to include the time variance.
@@ -576,20 +602,36 @@ void mod_som_apf_producer_task_f(void  *p_arg){
                   mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_spec_accel_ptr+
                   avg_spectra_offset;
 
+              //ALB update avg timestamp
+              curr_avg_timestamp_ptr =
+                  &mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_timestamp[0]+
+                  dissrate_elmnts_offset;
+
+              //ALB update avg timestamp
+              curr_avg_pressure_ptr =
+                  &mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_ctd_pressure+
+                  dissrate_elmnts_offset;
+
               //ALB update the dissrate pointers
               curr_epsilon_ptr =mod_som_efe_obp_ptr->cpt_dissrate_ptr->epsilon+
                                 dissrate_elmnts_offset;
               curr_chi_ptr     =mod_som_efe_obp_ptr->cpt_dissrate_ptr->chi+
                                 dissrate_elmnts_offset;
-              curr_fom_ptr     =mod_som_efe_obp_ptr->cpt_dissrate_ptr->fom+
+              curr_epsi_fom_ptr     =mod_som_efe_obp_ptr->cpt_dissrate_ptr->epsi_fom+
                                 dissrate_elmnts_offset;
+              curr_chi_fom_ptr     =mod_som_efe_obp_ptr->cpt_dissrate_ptr->chi_fom+
+                                dissrate_elmnts_offset;
+
 
 
               //ALB convert and store the current dissrate into the MOD format
               // log10(epsi) log10(chi):  3bytes (12 bits for each epsi and chi sample)
-              mod_som_apf_dissrate_convert_f(curr_epsilon_ptr,
+              mod_som_apf_copy_F0_element_f( curr_avg_timestamp_ptr,
+                                             curr_avg_pressure_ptr,
+                                             curr_epsilon_ptr,
                                              curr_chi_ptr,
-                                             curr_fom_ptr,
+                                             curr_epsi_fom_ptr,
+                                             curr_chi_fom_ptr,
                                              mod_som_apf_ptr->producer_ptr->dacq_ptr
                                          );
 
@@ -598,11 +640,6 @@ void mod_som_apf_producer_task_f(void  *p_arg){
                   mod_som_apf_ptr->producer_ptr->dacq_element_size=0;
                   break;
                 case F1:
-                  mod_som_apf_ptr->producer_ptr->dacq_element_size=
-                      MOD_SOM_APF_DACQ_TIMESTAMP_SIZE+
-                      MOD_SOM_APF_DACQ_PRESSURE_SIZE+
-                      MOD_SOM_APF_DACQ_DISSRATE_SIZE+
-                      MOD_SOM_APF_DACQ_FOM_SIZE;
                   break;
                 case F2:
                   mod_som_apf_ptr->producer_ptr->dacq_element_size=0;
@@ -766,18 +803,114 @@ void mod_som_apf_consumer_task_f(void  *p_arg){
 /*******************************************************************************
  * @brief
  * convert the dissrates into MOD format
- *
- *
+ *    MOD epsilon is 3 bytes ranging from log10(1e-12) and log10(1e-3) V^2/Hz
+ *    MOD chi is 3 bytes ranging from log10(1e-12) and log10(1e-3) V^2/Hz
+ *    MOD fom is 1 byte
  * @return
  *   MOD_SOM_STATUS_OK if initialization goes well
  *   or otherwise
  ******************************************************************************/
-void mod_som_apf_dissrate_convert_f(float * curr_epsilon_ptr,
+void mod_som_apf_copy_F0_element_f(  uint64_t * curr_avg_timestamp_ptr,
+                                    float * curr_pressure_ptr,
+                                    float * curr_epsilon_ptr,
                                     float * curr_chi_ptr,
-                                    float * curr_fom_ptr,
+                                    float * curr_fom_epsi_ptr,
+                                    float * curr_fom_temp_ptr,
                                     uint8_t * dacq_ptr)
 {
-float test=1e-14;
+
+
+  uint32_t mod_epsilon, mod_chi;
+  uint8_t mod_epsi_fom,mod_chi_fom;
+  uint16_t local_avg_dissrate_timestamp; //ALB nb of sec since dacq
+
+  mod_som_apf_ptr->producer_ptr->dacq_element_size=
+      MOD_SOM_APF_DACQ_TIMESTAMP_SIZE+
+      MOD_SOM_APF_DACQ_PRESSURE_SIZE+
+      MOD_SOM_APF_DACQ_DISSRATE_SIZE+
+      MOD_SOM_APF_DACQ_FOM_SIZE;
+
+
+  float local_epsilon   = log10(*curr_epsilon_ptr);
+  float local_chi       = log10(*curr_chi_ptr);
+  float local_epsi_fom  = *curr_epsilon_ptr;
+  float local_chi_fom   = *curr_chi_ptr;
+
+
+  uint8_t  mod_bit_epsilon[MOD_SOM_APF_PRODUCER_DISSRATE_RES] = {0};
+  uint8_t  mod_bit_chi[MOD_SOM_APF_PRODUCER_DISSRATE_RES]     = {0};
+  uint8_t  mod_bit_fom;
+
+  float min_dissrate=log10(MOD_SOM_APF_PRODUCER_MIN_DISSRATE);
+  float max_dissrate=log10(MOD_SOM_APF_PRODUCER_MAX_DISSRATE);
+
+  float min_fom=MOD_SOM_APF_PRODUCER_MIN_FOM;
+  float max_fom=MOD_SOM_APF_PRODUCER_MAX_FOM;
+
+
+
+  //ALB decimate timestamps and store it
+  // dissrate timestamp - dacq start timestamp -> 2bytes (65000 sec)
+  local_avg_dissrate_timestamp =(uint16_t)
+                  (uint64_t)(mod_som_apf_ptr->producer_ptr->acq_profile.
+                             mod_som_apf_meta_data.daq_timestamp) -
+                              *curr_avg_timestamp_ptr;
+
+
+  local_epsilon = MAX(local_epsilon,min_dissrate);
+  local_chi     = MAX(local_chi,min_dissrate);
+
+  local_epsilon = MIN(local_epsilon,max_dissrate);
+  local_chi     = MIN(local_chi,max_dissrate);
+
+
+
+  local_epsi_fom     = MAX(local_epsi_fom,min_fom);
+  local_chi_fom      = MAX(local_chi_fom,min_fom);
+
+  local_epsi_fom     = MIN(local_epsi_fom,max_fom);
+  local_chi_fom      = MIN(local_chi_fom,max_fom);
+
+
+  mod_epsilon  = (uint32_t) ceil(local_epsilon*
+           mod_som_apf_ptr->producer_ptr->decim_coef.dissrate_per_bit+
+           mod_som_apf_ptr->producer_ptr->decim_coef.dissrate_counts_at_origin);
+
+  mod_chi      = (uint32_t) ceil(local_chi*
+           mod_som_apf_ptr->producer_ptr->decim_coef.dissrate_per_bit+
+           mod_som_apf_ptr->producer_ptr->decim_coef.dissrate_counts_at_origin);
+
+  mod_epsi_fom  = (uint8_t) ceil(local_epsi_fom*
+                     mod_som_apf_ptr->producer_ptr->decim_coef.fom_per_bit+
+                     mod_som_apf_ptr->producer_ptr->decim_coef.fom_counts_at_origin) ;
+  mod_chi_fom   = (uint8_t) ceil(local_chi_fom*
+                       mod_som_apf_ptr->producer_ptr->decim_coef.fom_per_bit+
+                       mod_som_apf_ptr->producer_ptr->decim_coef.fom_counts_at_origin) ;
+
+  mod_bit_fom = (mod_epsi_fom<<4) + mod_chi_fom;
+
+  for (int i=0;i<MOD_SOM_APF_PRODUCER_DISSRATE_RES;i++){
+      mod_bit_epsilon[i]= mod_epsilon>>(8*i);
+      mod_bit_chi[i]    = mod_chi>>(8*i);
+  }
+
+
+
+  memcpy(dacq_ptr,
+         &local_avg_dissrate_timestamp,
+         MOD_SOM_APF_DACQ_TIMESTAMP_SIZE);
+  dacq_ptr+=MOD_SOM_APF_DACQ_TIMESTAMP_SIZE;
+  memcpy(dacq_ptr,
+         &mod_bit_chi,
+         MOD_SOM_APF_PRODUCER_DISSRATE_RES);
+  dacq_ptr+=MOD_SOM_APF_PRODUCER_DISSRATE_RES;
+  memcpy(dacq_ptr,
+         &mod_bit_epsilon,
+         MOD_SOM_APF_PRODUCER_DISSRATE_RES);
+  dacq_ptr+=MOD_SOM_APF_PRODUCER_DISSRATE_RES;
+  memcpy(dacq_ptr,
+         &mod_bit_fom,
+         MOD_SOM_APF_PRODUCER_FOM_RES);
 }
 
 
@@ -887,9 +1020,9 @@ mod_som_apf_status_t mod_som_apf_daq_start_f(uint64_t profile_id){
   uint32_t delay=0xFF;
   CPU_CHAR filename[100];
 
-
+  mod_som_apf_ptr->profile_id=profile_id;
   //ALB Open SD file,
-  sprintf(filename, "Profile%lu",(uint32_t) profile_id);
+  sprintf(filename, "Profile%lu",(uint32_t) mod_som_apf_ptr->profile_id);
   mod_som_sdio_define_filename_f(filename);
   //ALB write MODSOM settings on the SD file
   mod_som_settings_sd_settings_f();
@@ -916,7 +1049,7 @@ mod_som_apf_status_t mod_som_apf_daq_start_f(uint64_t profile_id){
   //ALB start APF producer task
   status |= mod_som_apf_start_producer_task_f();
   //ALB start APF consumer task
-//  status |= mod_som_apf_start_consumer_task_f();
+  status |= mod_som_apf_start_consumer_task_f();
 
   while (delay>0){
       delay--;
@@ -1017,36 +1150,43 @@ mod_som_apf_status_t mod_som_apf_daq_status_f(){
  * @return
  *   MOD_SOM_APF_STATUS_OK if function execute nicely
  ******************************************************************************/
-mod_som_apf_status_t mod_som_apf_init_meta_data(mod_som_apf_meta_data_t mod_som_apf_meta_data){
+void mod_som_apf_init_meta_data(mod_som_apf_meta_data_t mod_som_apf_meta_data)
+{
 
-  mod_som_apf_status_t status;
 
   mod_som_efe_obp_ptr_t local_efe_obp=mod_som_efe_obp_get_runtime_ptr_f();
+  mod_som_settings_struct_ptr_t local_settings_ptr=
+                                              mod_som_settings_get_settings_f();
 
-
-  mod_som_apf_meta_data.NFFTdiag=local_efe_obp->settings_ptr->nfft/2;
   mod_som_apf_meta_data.nfft=local_efe_obp->settings_ptr->nfft;
-  mod_som_apf_meta_data.algorithm_version=
   mod_som_apf_meta_data.comm_telemetry_packet_format=
-  mod_som_apf_meta_data.efe_sn
-  mod_som_apf_meta_data.firmware_rev
-  mod_som_apf_meta_data.modsom_sn
-  mod_som_apf_meta_data.probe1.type
-  mod_som_apf_meta_data.probe1.sn
-  mod_som_apf_meta_data.probe1.cal
-  mod_som_apf_meta_data.probe2.type
-  mod_som_apf_meta_data.probe2.sn
-  mod_som_apf_meta_data.probe2.cal
-  mod_som_apf_meta_data.profile_id
-  mod_som_apf_meta_data.vibration_cutoff
+  mod_som_apf_meta_data.efe_sn=
+                      strtol(local_efe_obp->efe_settings_ptr->sn,NULL,10);
+  mod_som_apf_meta_data.firmware_rev=
+                      strtol(local_settings_ptr->firmware, NULL, 16);
+  mod_som_apf_meta_data.modsom_sn=
+                      strtol(local_settings_ptr->sn,NULL,10);
+
+  //ALB TODO local_efe_obp->efe_settings_ptr->sensors[0].name;
+  mod_som_apf_meta_data.probe1.type=temp;
+  mod_som_apf_meta_data.probe1.sn=
+   (uint16_t)  strtol(local_efe_obp->efe_settings_ptr->sensors[0].sn, NULL, 10);
+  mod_som_apf_meta_data.probe1.cal=
+   (uint16_t) ceil(local_efe_obp->efe_settings_ptr->sensors[0].cal);
+
+  mod_som_apf_meta_data.probe2.type=shear;
+  mod_som_apf_meta_data.probe2.sn=
+  (uint16_t)  strtol(local_efe_obp->efe_settings_ptr->sensors[1].sn, NULL, 10);
+  mod_som_apf_meta_data.probe2.cal=
+      (uint16_t) ceil(local_efe_obp->efe_settings_ptr->sensors[1].cal);
+
+  mod_som_apf_meta_data.profile_id=mod_som_apf_ptr->profile_id;
 
   //ALB get some values
-  mod_som_apf_meta_data.daq_timestamp
-  mod_som_apf_meta_data.voltage
-  mod_som_apf_meta_data.sample_cnt
+  mod_som_apf_meta_data.daq_timestamp=sl_sleeptimer_get_time();
 
-
-  return status;
+  mod_som_apf_meta_data.sample_cnt=0;
+  mod_som_apf_meta_data.end_metadata=0xFFFF;
 }
 
 
@@ -1245,6 +1385,60 @@ mod_som_apf_status_t mod_som_apf_time_status_f(){
 	mod_som_io_print_f("time,ak,%s\r\n","UnixEpoch");
 	mod_som_io_print_f("time,nak,%s\r\n","error message");
 	return mod_som_apf_encode_status_f(MOD_SOM_APF_STATUS_OK);
+}
+
+
+/*******************************************************************************
+ * @brief
+ *   command shell for mod_som_apf_cmd_comm_packet_format_f
+ *   set the format of the data
+ *   0 = no format (latter on called F0)
+ *   1 = format 1 (F1) time pressure epsilon chi fom
+ *   2 = format 2 (F2) time pressure epsilon chi fom + something
+ *   3 = format 3 (F3) time pressure epsilon chi + decimated spectra
+ *
+ * @param argc
+ *   argument count
+ * @param argv
+ *   argument values
+ * @param out_put_f
+ *   out_put_f (print function)
+ * @param cmd_param
+ *   command parameters (passing along)
+ * @return
+ *   apf Command Status
+ ******************************************************************************/
+mod_som_apf_status_t mod_som_apf_comm_packet_format_f(CPU_INT16U argc,
+                                                      CPU_CHAR *argv[])
+{
+
+  RTOS_ERR  p_err;
+  uint8_t mode;
+
+  if (argc==1){
+      printf("comm_packet_format %u\r\n.", mod_som_apf_ptr->comm_telemetry_packet_format);
+  }
+  else{
+    //ALB switch statement easy to handle all user input cases.
+    switch (argc){
+    case 2:
+      mode=shellStrtol(argv[1],&p_err);
+      if(mode<3){
+          mod_som_apf_ptr->comm_telemetry_packet_format=mode;
+      }else{
+          printf("format: efeobp.mode mode (0:segment, 1:spectra, 2: dissrates)\r\n");
+      }
+      break;
+    default:
+      printf("format: efeobp.mode mode (0:segment, 1:spectra, 2: dissrates)\r\n");
+      break;
+    }
+  }
+
+
+  mod_som_io_print_f("comm_packet_format,ak\r\n");
+  mod_som_io_print_f("comm_packet_format,nak,%s\r\n","error message");
+  return mod_som_apf_encode_status_f(MOD_SOM_APF_STATUS_OK);
 }
 
 /*******************************************************************************

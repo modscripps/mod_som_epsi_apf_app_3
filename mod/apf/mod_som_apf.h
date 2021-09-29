@@ -25,6 +25,7 @@
 
 
 #define MOD_SOM_APF_SETTINGS_STR_lENGTH 8
+#define MOD_SOM_APF_VIBRATION_CUT_OFF   50
 #define MOD_SOM_APF_HEADER              "APF0"
 
 #define MOD_SOM_APF_SYNC_LENGTH             1
@@ -43,12 +44,21 @@
 #define MOD_SOM_APF_DACQ_FOM_SIZE           1
 
 
-#define MOD_SOM_APF_METADATA_STRUCT_SIZE    36
+#define MOD_SOM_APF_METADATA_STRUCT_SIZE    30
+#define MOD_SOM_APF_END_METADATA_STRUCT     0xFFFF
 
 
 #define MOD_SOM_APF_PRODUCER_TASK_PRIO              18u
 #define MOD_SOM_APF_PRODUCER_TASK_STK_SIZE          512u
 #define MOD_SOM_APF_PRODUCER_DELAY                  10      // delay for fill segment task
+#define MOD_SOM_APF_PRODUCER_MIN_DISSRATE           1e-12   // min epsilon, chi or Fourier coef
+#define MOD_SOM_APF_PRODUCER_MAX_DISSRATE           1e-3    // min epsilon, chi or Fourier coef
+#define MOD_SOM_APF_PRODUCER_MIN_FOM                0       // mininum figure of merit
+#define MOD_SOM_APF_PRODUCER_MAX_FOM                10      // maininum figure of merit
+#define MOD_SOM_APF_PRODUCER_DISSRATE_RES           3       // mod dissrate resolution 3 bytes
+#define MOD_SOM_APF_PRODUCER_DISSRATE_RANGE         0xFFF   // mod dissrate resolution 3 bytes
+#define MOD_SOM_APF_PRODUCER_FOM_RES                1       // mod dissrate resolution 3 bytes
+#define MOD_SOM_APF_PRODUCER_FOM_RANGE              0xF   // mod dissrate resolution 3 bytes
 
 
 #define MOD_SOM_APF_CONSUMER_TASK_PRIO              18u
@@ -81,6 +91,7 @@
 
 
 #define MIN(X, Y) (((X) < (Y)) ? (X) : (Y))
+#define MAX(X, Y) (((X) > (Y)) ? (X) : (Y))
 
 //------------------------------------------------------------------------------
 // TYPEDEFS
@@ -93,6 +104,7 @@ typedef uint32_t mod_som_apf_status_t;
 typedef struct{
    uint32_t  initialized_flag;
    uint32_t  header_length;
+   uint8_t   vibration_cut_off;
 
 }mod_som_apf_config_t, *mod_som_apf_config_ptr_t;
 
@@ -116,7 +128,7 @@ mod_som_apf_settings_t, *mod_som_apf_settings_ptr_t;
 
 typedef struct{
   enum {t1,s1}type;
-  uint16_t sn[2];
+  uint16_t sn;
   uint16_t cal;
 }
 mod_som_apf_probe_t, *mod_som_apf_probe_ptr_t;
@@ -156,10 +168,7 @@ typedef struct{
   mod_som_apf_probe_t  probe2;
   uint8_t  comm_telemetry_packet_format;
   uint8_t  voltage;
-  uint8_t  algorithm_version;
-  uint8_t  vibration_cutoff;
   uint16_t sample_cnt;
-  uint16_t NFFTdiag;
   uint16_t end_metadata; //always 0xFFFF;
 }
 mod_som_apf_meta_data_t, *mod_som_apf_meta_data_ptr_t;
@@ -175,6 +184,22 @@ typedef struct{
   uint8_t data_acq[MOD_SOM_APF_DACQ_STRUCT_SIZE-MOD_SOM_APF_METADATA_STRUCT_SIZE];
 }
 mod_som_apf_dacq_t, *mod_som_apf_dacq_ptr_t;
+
+/*******************************************************************************
+ * conversion Structure.
+ * define the params need for the MOD dissrate decimation
+ */
+typedef struct{
+
+  float dissrate_per_bit;  //ALB  (dissrate range) / max(dissrate) - min(dissrate))
+  float dissrate_counts_at_origin;  //ALB  nb of counts for dissrate = 1
+
+  float fom_per_bit;  //ALB  (dissrate range) / max(dissrate) - min(dissrate))
+  float fom_counts_at_origin;  //ALB  nb of counts for dissrate = 1
+
+}
+mod_som_apf_decimation_t, *mod_som_apf_decimation_ptr_t;
+
 
 /*******************************************************************************
 * @brief
@@ -209,6 +234,7 @@ typedef struct{
   bool dacq_full;
   uint32_t dacq_size;
   uint32_t dacq_element_size;
+  mod_som_apf_decimation_t decim_coef;
 
   uint32_t dissrate_skipped;
 
@@ -479,6 +505,16 @@ mod_som_apf_status_t mod_som_apf_daq_stop_f();
 
 mod_som_apf_status_t mod_som_apf_daq_status_f();
 
+
+/*******************************************************************************
+ * @brief
+ *    initialize dacq Meta_Data
+ *
+ * @return
+ *   MOD_SOM_APF_STATUS_OK if function execute nicely
+ ******************************************************************************/
+void mod_som_apf_init_meta_data(mod_som_apf_meta_data_t mod_som_apf_meta_data);
+
 /*******************************************************************************
  * @brief
  *   command shell for FubarCal command
@@ -668,9 +704,12 @@ void mod_som_apf_consumer_task_f(void  *p_arg);
  *   MOD_SOM_STATUS_OK if initialization goes well
  *   or otherwise
  ******************************************************************************/
-void mod_som_apf_dissrate_convert_f(float * curr_epsilon_ptr,
+void mod_som_apf_copy_F0_element_f(  uint64_t * curr_avg_timestamp_ptr,
+                                    float * curr_pressure_ptr,
+                                    float * curr_epsilon_ptr,
                                     float * curr_chi_ptr,
-                                    float * curr_fom_ptr,
+                                    float * curr_fom_epsi_ptr,
+                                    float * curr_fom_temp_ptr,
                                     uint8_t * dacq_ptr);
 
 /*******************************************************************************

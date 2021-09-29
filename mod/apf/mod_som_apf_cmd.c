@@ -38,6 +38,7 @@ static SHELL_CMD  mod_som_apf_cmd_tbl[] =
         { "sleep", mod_som_apf_cmd_sleep_f },
         { "time", mod_som_apf_cmd_time_f },
         { "time?", mod_som_apf_cmd_time_status_f },
+        { "comm_packet_format", mod_som_apf_cmd_comm_packet_format_f },
         { "upload", mod_som_apf_cmd_upload_f },
         { 0, 0 }
 };
@@ -542,6 +543,38 @@ CPU_INT16S mod_som_apf_cmd_time_status_f(CPU_INT16U argc,
         return SHELL_EXEC_ERR;
     return SHELL_EXEC_ERR_NONE;
 }
+
+/*******************************************************************************
+ * @brief
+ *   command shell for mod_som_apf_cmd_comm_packet_format_f
+ *   set the format of the data
+ *   0 = no format (latter on called F0)
+ *   1 = format 1 (F1) time pressure epsilon chi fom
+ *   2 = format 2 (F2) time pressure epsilon chi fom + something
+ *   3 = format 3 (F3) time pressure epsilon chi + decimated spectra
+ * @param argc
+ *   argument count
+ * @param argv
+ *   argument values
+ * @param out_put_f
+ *   out_put_f (print function)
+ * @param cmd_param
+ *   command parameters (passing along)
+ * @return
+ *   apf Command Status
+ ******************************************************************************/
+CPU_INT16S mod_som_apf_cmd_comm_packet_format_f(CPU_INT16U argc,
+        CPU_CHAR *argv[],
+        SHELL_OUT_FNCT out_put_f,
+        SHELL_CMD_PARAM *cmd_param){
+
+    mod_som_apf_status_t status = mod_som_apf_comm_packet_format_f(argc,argv);
+
+    if(status != MOD_SOM_APF_STATUS_OK)
+        return SHELL_EXEC_ERR;
+    return SHELL_EXEC_ERR_NONE;
+}
+
 
 
 /*******************************************************************************

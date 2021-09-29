@@ -1316,7 +1316,9 @@ void mod_som_efe_obp_cpt_dissrate_task_f(void  *p_arg){
   float * local_chi_ptr;
   float * local_nu_ptr;
   float * local_kappa_ptr;
-  float * local_fom_ptr;
+  float * local_epsi_fom_ptr;
+  float * local_chi_fom_ptr;
+
 
 
   while (DEF_ON) {
@@ -1450,7 +1452,10 @@ void mod_som_efe_obp_cpt_dissrate_task_f(void  *p_arg){
               local_kappa_ptr   = mod_som_efe_obp_ptr->cpt_dissrate_ptr->kappa +
                              (mod_som_efe_obp_ptr->cpt_dissrate_ptr->dissrates_cnt%
                               MOD_SOM_EFE_OBP_CPT_DISSRATE_NB_RATES_PER_RECORD);
-              local_fom_ptr     = mod_som_efe_obp_ptr->cpt_dissrate_ptr->fom +
+              local_epsi_fom_ptr     = mod_som_efe_obp_ptr->cpt_dissrate_ptr->epsi_fom +
+                             (mod_som_efe_obp_ptr->cpt_dissrate_ptr->dissrates_cnt%
+                              MOD_SOM_EFE_OBP_CPT_DISSRATE_NB_RATES_PER_RECORD);
+              local_chi_fom_ptr     = mod_som_efe_obp_ptr->cpt_dissrate_ptr->chi_fom +
                              (mod_som_efe_obp_ptr->cpt_dissrate_ptr->dissrates_cnt%
                               MOD_SOM_EFE_OBP_CPT_DISSRATE_NB_RATES_PER_RECORD);
 
@@ -1463,7 +1468,8 @@ void mod_som_efe_obp_cpt_dissrate_task_f(void  *p_arg){
                                                       local_chi_ptr            ,
                                                       local_nu_ptr             ,
                                                       local_kappa_ptr          ,
-                                                      local_fom_ptr);
+                                                      local_epsi_fom_ptr       ,
+                                                      local_chi_fom_ptr);
 
 
               //ALB Make fake epsilon and chi in order to build the consumer
@@ -1488,6 +1494,26 @@ void mod_som_efe_obp_cpt_dissrate_task_f(void  *p_arg){
                   )+=
                       *(mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_spec_temp_ptr+i);
               }
+              for (i=0;i<mod_som_efe_obp_ptr->settings_ptr->nfft/2;i++){
+                  //ALB Awfully complicated lines to get the value
+                  //ALB of the current epsilon ptr and add the value of
+                  //ALB the current avg temp spec. Just playing with my ptr skilssssss
+                  *(mod_som_efe_obp_ptr->cpt_dissrate_ptr->epsi_fom +
+                      (mod_som_efe_obp_ptr->cpt_dissrate_ptr->dissrates_cnt%
+                          MOD_SOM_EFE_OBP_CPT_DISSRATE_NB_RATES_PER_RECORD)
+                  )+=
+                      *(mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_spec_shear_ptr+i);
+
+                  //ALB Awfully complicated lines to get the value
+                  //ALB of the current epsilon ptr and add the value of
+                  //ALB the current avg temp spec.  Just playing with my ptr skilssssss
+                  *(mod_som_efe_obp_ptr->cpt_dissrate_ptr->chi_fom +
+                      (mod_som_efe_obp_ptr->cpt_dissrate_ptr->dissrates_cnt%
+                          MOD_SOM_EFE_OBP_CPT_DISSRATE_NB_RATES_PER_RECORD)
+                  )+=
+                      *(mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_spec_temp_ptr+i);
+              }
+
 
               //ALB increment the counters
               mod_som_efe_obp_ptr->sample_count++;
@@ -1654,7 +1680,8 @@ mod_som_status_t mod_som_efe_obp_compute_dissrate_data_f(
                                                       float * local_chi,
                                                       float * local_nu,
                                                       float * local_kappa,
-                                                      float * local_fom
+                                                      float * local_epsi_fom,
+                                                      float * local_chi_fom
                                                       ){
 
   //CAP

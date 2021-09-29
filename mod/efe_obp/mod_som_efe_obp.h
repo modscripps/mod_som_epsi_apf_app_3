@@ -271,7 +271,8 @@ typedef struct{
   float * kappa;
   float * epsilon;
   float * chi;
-  float * fom; //figure of merit
+  float * epsi_fom; //figure of merit
+  float * chi_fom; //figure of merit
 
   bool  started_flg;        //ALB ???
 
@@ -392,7 +393,8 @@ mod_som_status_t mod_som_efe_obp_compute_dissrate_data_f(
                                                       float * local_chi,
                                                       float * local_nu,
                                                       float * local_kappa,
-                                                      float * local_fom
+                                                      float * local_epsi_fom,
+                                                      float * local_chi_fom
                                                       );
 
 
