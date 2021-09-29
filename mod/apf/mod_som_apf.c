@@ -1426,11 +1426,11 @@ mod_som_apf_status_t mod_som_apf_comm_packet_format_f(CPU_INT16U argc,
       if(mode<3){
           mod_som_apf_ptr->comm_telemetry_packet_format=mode;
       }else{
-          printf("format: efeobp.mode mode (0:segment, 1:spectra, 2: dissrates)\r\n");
+          printf("format: comm_packet_format mode (0:F0, 1:F1, 2: F2, 3:F3)\r\n");
       }
       break;
     default:
-      printf("format: efeobp.mode mode (0:segment, 1:spectra, 2: dissrates)\r\n");
+      printf("format: comm_packet_format mode (0:F0, 1:F1, 2: F2, 3:F3)\r\n");
       break;
     }
   }
