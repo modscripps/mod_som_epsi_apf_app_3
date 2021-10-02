@@ -5,6 +5,7 @@
  *      Author: snguyen
  */
 #include <efe_obp/mod_som_efe_obp.h>
+#include <efe_obp/mod_som_efe_obp_calc.h>
 #include "mod_som_io.h"
 #include "mod_som_priv.h"
 
@@ -1232,12 +1233,19 @@ void mod_som_efe_obp_cpt_spectra_task_f(void  *p_arg){
                                                 &mod_som_efe_obp_ptr->start_computation_timestamp);
 
           //CAP Add compute spectra functions
-          mod_som_efe_obp_compute_spectra_data_f(curr_temp_seg_ptr,
-                                                 curr_shear_seg_ptr,
-                                                 curr_accel_seg_ptr,
-           mod_som_efe_obp_ptr->cpt_spectra_ptr->spec_temp_ptr+spectra_offset,
-           mod_som_efe_obp_ptr->cpt_spectra_ptr->spec_shear_ptr+spectra_offset,
-           mod_som_efe_obp_ptr->cpt_spectra_ptr->spec_accel_ptr+spectra_offset);
+          mod_som_efe_obp_all_spectra_f(
+              curr_temp_seg_ptr,
+              curr_shear_seg_ptr,
+              curr_accel_seg_ptr,
+              spectra_offset,
+              mod_som_efe_obp_ptr
+              );
+//          mod_som_efe_obp_compute_spectra_data_f(curr_temp_seg_ptr,
+//                                                 curr_shear_seg_ptr,
+//                                                 curr_accel_seg_ptr,
+//           mod_som_efe_obp_ptr->cpt_spectra_ptr->spec_temp_ptr+spectra_offset,
+//           mod_som_efe_obp_ptr->cpt_spectra_ptr->spec_shear_ptr+spectra_offset,
+//           mod_som_efe_obp_ptr->cpt_spectra_ptr->spec_accel_ptr+spectra_offset);
 
           //ALB Make fake spectra in order to build the consumer while CAP
           //ALB is merging the obp functions.
@@ -1461,15 +1469,15 @@ void mod_som_efe_obp_cpt_dissrate_task_f(void  *p_arg){
 
               //CAP Add compute epsilon chi
               //CAP Add compute spectra functions
-              mod_som_efe_obp_compute_dissrate_data_f(mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_spec_temp_ptr,
-                                                      mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_spec_shear_ptr,
-                                                      mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_spec_accel_ptr,
-                                                      local_epsilon_ptr        ,
-                                                      local_chi_ptr            ,
-                                                      local_nu_ptr             ,
-                                                      local_kappa_ptr          ,
-                                                      local_epsi_fom_ptr       ,
-                                                      local_chi_fom_ptr);
+//              mod_som_efe_obp_compute_dissrate_data_f(mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_spec_temp_ptr,
+//                                                      mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_spec_shear_ptr,
+//                                                      mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_spec_accel_ptr,
+//                                                      local_epsilon_ptr        ,
+//                                                      local_chi_ptr            ,
+//                                                      local_nu_ptr             ,
+//                                                      local_kappa_ptr          ,
+//                                                      local_epsi_fom_ptr       ,
+//                                                      local_chi_fom_ptr);
 
 
               //ALB Make fake epsilon and chi in order to build the consumer
@@ -1672,19 +1680,31 @@ mod_som_status_t mod_som_efe_obp_compute_spectra_data_f(float * local_temp_seg_p
  *   MOD_SOM_STATUS_OK if initialization goes well
  *   or otherwise
  ******************************************************************************/
+//mod_som_status_t mod_som_efe_obp_compute_dissrate_data_f(
+//                                                      float * local_temp_avg_spec_ptr,
+//                                                      float * local_shear_avg_spec_ptr,
+//                                                      float * local_accel_avg_spec_ptr,
+//                                                      float * local_epsilon,
+//                                                      float * local_chi,
+//                                                      float * local_nu,
+//                                                      float * local_kappa,
+//                                                      float * local_epsi_fom,
+//                                                      float * local_chi_fom
+//                                                      )
 mod_som_status_t mod_som_efe_obp_compute_dissrate_data_f(
-                                                      float * local_temp_avg_spec_ptr,
-                                                      float * local_shear_avg_spec_ptr,
-                                                      float * local_accel_avg_spec_ptr,
+                                                      mod_som_efe_obp_ptr_t mod_som_efe_obp_ptr,
                                                       float * local_epsilon,
                                                       float * local_chi,
                                                       float * local_nu,
                                                       float * local_kappa,
                                                       float * local_epsi_fom,
                                                       float * local_chi_fom
-                                                      ){
+                                                      )
+{
 
   //CAP
+  mod_som_efe_obp_calc_epsilon_f(local_epsilon, local_nu, local_epsi_fom, mod_som_efe_obp_ptr);
+  mod_som_efe_obp_calc_chi_f(local_chi, local_kappa, local_chi_fom, mod_som_efe_obp_ptr);
   return mod_som_efe_obp_encode_status_f(MOD_SOM_STATUS_OK);
 }
 

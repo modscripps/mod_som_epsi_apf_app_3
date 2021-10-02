@@ -386,9 +386,7 @@ mod_som_status_t mod_som_efe_obp_compute_spectra_data_f(float * local_temp_seg_p
  *   or otherwise
  ******************************************************************************/
 mod_som_status_t mod_som_efe_obp_compute_dissrate_data_f(
-                                                      float * local_temp_avg_spec_ptr,
-                                                      float * local_shear_avg_spec_ptr,
-                                                      float * local_accel_avg_spec_ptr,
+                                                      mod_som_efe_obp_ptr_t mod_som_efe_obp_ptr,
                                                       float * local_epsilon,
                                                       float * local_chi,
                                                       float * local_nu,
