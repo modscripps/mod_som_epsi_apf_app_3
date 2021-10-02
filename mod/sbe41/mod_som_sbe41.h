@@ -331,6 +331,13 @@ mod_som_sbe41_ptr_t mod_som_sbe41_get_runtime_ptr_f();
 
 /*******************************************************************************
  * @brief
+ *   get the instantaneous pressure sbe41.
+ * @description
+ ******************************************************************************/
+float mod_som_sbe41_get_pressure_f();
+
+/*******************************************************************************
+ * @brief
  *   Initialize configuration pointer with default data defined by
  *   mod_bsp_config.h
  *

@@ -208,7 +208,7 @@ typedef struct{
   float avg_ctd_pressure;
   float avg_ctd_temperature;
   float avg_ctd_salinity;
-  float avg_ctd_fallrate;
+  float avg_ctd_dpdt;
 
   bool  started_flg;        //ALB ???
 
@@ -237,7 +237,7 @@ typedef struct{
   float avg_ctd_pressure;
   float avg_ctd_temperature;
   float avg_ctd_salinity;
-  float avg_ctd_fallrate;
+  float avg_ctd_dpdt;
 
   bool  started_flg;        //ALB ???
 
@@ -264,7 +264,7 @@ typedef struct{
   float avg_ctd_pressure;
   float avg_ctd_temperature;
   float avg_ctd_salinity;
-  float avg_ctd_fallrate;
+  float avg_ctd_dpdt;
 
   float * nu;
 

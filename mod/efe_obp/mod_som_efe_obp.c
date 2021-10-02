@@ -505,7 +505,7 @@ mod_som_status_t mod_som_efe_obp_construct_fill_segment_ptr_f(){
   mod_som_efe_obp_ptr->fill_segment_ptr->avg_ctd_pressure=0;
   mod_som_efe_obp_ptr->fill_segment_ptr->avg_ctd_temperature=0;
   mod_som_efe_obp_ptr->fill_segment_ptr->avg_ctd_salinity=0;
-  mod_som_efe_obp_ptr->fill_segment_ptr->avg_ctd_fallrate=0;
+  mod_som_efe_obp_ptr->fill_segment_ptr->avg_ctd_dpdt=0;
 
   //ALB initialize all parameters. They should be reset right before
   //ALB fill_segment task is starts running.
@@ -579,7 +579,7 @@ mod_som_status_t mod_som_efe_obp_construct_cpt_spectra_ptr_f(){
   mod_som_efe_obp_ptr->cpt_spectra_ptr->avg_ctd_pressure    =0;
   mod_som_efe_obp_ptr->cpt_spectra_ptr->avg_ctd_temperature =0;
   mod_som_efe_obp_ptr->cpt_spectra_ptr->avg_ctd_salinity    =0;
-  mod_som_efe_obp_ptr->cpt_spectra_ptr->avg_ctd_fallrate    =0;
+  mod_som_efe_obp_ptr->cpt_spectra_ptr->avg_ctd_dpdt    =0;
 
   //ALB initialize all parameters. They should be reset right before
   //ALB cpt_spectra task is starts running.
@@ -679,7 +679,7 @@ mod_som_status_t mod_som_efe_obp_construct_cpt_dissrate_ptr_f(){
   mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_ctd_pressure    =0;
   mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_ctd_temperature =0;
   mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_ctd_salinity    =0;
-  mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_ctd_fallrate    =0;
+  mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_ctd_dpdt    =0;
 
   //ALB initialize all parameters. They should be reset right before
   //ALB cpt_spectra task is starts running.
@@ -799,7 +799,7 @@ mod_som_status_t mod_som_efe_obp_start_fill_segment_task_f(){
   mod_som_efe_obp_ptr->fill_segment_ptr->avg_ctd_pressure=0;
   mod_som_efe_obp_ptr->fill_segment_ptr->avg_ctd_temperature=0;
   mod_som_efe_obp_ptr->fill_segment_ptr->avg_ctd_salinity=0;
-  mod_som_efe_obp_ptr->fill_segment_ptr->avg_ctd_fallrate=0;
+  mod_som_efe_obp_ptr->fill_segment_ptr->avg_ctd_dpdt=0;
 
    OSTaskCreate(&efe_obp_fill_segment_task_tcb,
                         "efe obp fill segment task",
@@ -849,7 +849,7 @@ mod_som_status_t mod_som_efe_obp_start_cpt_spectra_task_f(){
    mod_som_efe_obp_ptr->cpt_spectra_ptr->avg_ctd_pressure=0;
    mod_som_efe_obp_ptr->cpt_spectra_ptr->avg_ctd_temperature=0;
    mod_som_efe_obp_ptr->cpt_spectra_ptr->avg_ctd_salinity=0;
-   mod_som_efe_obp_ptr->cpt_spectra_ptr->avg_ctd_fallrate=0;
+   mod_som_efe_obp_ptr->cpt_spectra_ptr->avg_ctd_dpdt=0;
 
 
    OSTaskCreate(&efe_obp_cpt_spectra_task_tcb,
@@ -901,7 +901,7 @@ mod_som_status_t mod_som_efe_obp_start_cpt_dissrate_task_f(){
   mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_ctd_pressure=0;
   mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_ctd_temperature=0;
   mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_ctd_salinity=0;
-  mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_ctd_fallrate=0;
+  mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_ctd_dpdt=0;
 
 
    OSTaskCreate(&efe_obp_cpt_dissrate_task_tcb,
@@ -1075,7 +1075,7 @@ void mod_som_efe_obp_fill_segment_task_f(void  *p_arg){
                           local_sbe41_ptr->consumer_ptr->record_salinity[cnsmr_indx];
                   mod_som_efe_obp_ptr->fill_segment_ptr->avg_ctd_pressure +=
                           local_sbe41_ptr->consumer_ptr->record_pressure[cnsmr_indx];
-                  mod_som_efe_obp_ptr->fill_segment_ptr->avg_ctd_fallrate+=
+                  mod_som_efe_obp_ptr->fill_segment_ptr->avg_ctd_dpdt+=
                       local_sbe41_ptr->consumer_ptr->dPdt;
               }
 
@@ -1094,7 +1094,7 @@ void mod_som_efe_obp_fill_segment_task_f(void  *p_arg){
                       mod_som_efe_obp_ptr->settings_ptr->nfft;
                   mod_som_efe_obp_ptr->fill_segment_ptr->avg_ctd_pressure/=
                       mod_som_efe_obp_ptr->settings_ptr->nfft;
-                  mod_som_efe_obp_ptr->fill_segment_ptr->avg_ctd_fallrate/=
+                  mod_som_efe_obp_ptr->fill_segment_ptr->avg_ctd_dpdt/=
                       mod_som_efe_obp_ptr->settings_ptr->nfft;
               }
             }  // end of while (elemts_avail > 0)
@@ -1222,8 +1222,8 @@ void mod_som_efe_obp_cpt_spectra_task_f(void  *p_arg){
               mod_som_efe_obp_ptr->cpt_spectra_ptr->avg_ctd_salinity=
                   mod_som_efe_obp_ptr->fill_segment_ptr->avg_ctd_salinity;
 
-              mod_som_efe_obp_ptr->cpt_spectra_ptr->avg_ctd_fallrate  =
-                  mod_som_efe_obp_ptr->fill_segment_ptr->avg_ctd_fallrate;
+              mod_som_efe_obp_ptr->cpt_spectra_ptr->avg_ctd_dpdt  =
+                  mod_som_efe_obp_ptr->fill_segment_ptr->avg_ctd_dpdt;
 
 
 
@@ -1406,8 +1406,7 @@ void mod_som_efe_obp_cpt_dissrate_task_f(void  *p_arg){
                   mod_som_efe_obp_ptr->cpt_spectra_ptr->avg_ctd_temperature/
                   (float)mod_som_efe_obp_ptr->settings_ptr->degrees_of_freedom;
 
-              mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_ctd_fallrate+=
-                  mod_som_efe_obp_ptr->cpt_spectra_ptr->avg_ctd_fallrate/
+              mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_ctd_dpdt+=
                   (float)mod_som_efe_obp_ptr->settings_ptr->degrees_of_freedom;
 
 

@@ -36,12 +36,16 @@
 #define MOD_SOM_APF_PAYLOAD_LENGTH          8
 #define MOD_SOM_APF_PAYLOAD_CHECKSUM_LENGTH 5
 
-#define MOD_SOM_APF_DACQ_STRUCT_SIZE        25000
-#define MOD_SOM_APF_DACQ_TIMESTAMP_SIZE     2
-#define MOD_SOM_APF_DACQ_DISSRATE_SIZE      3
-#define MOD_SOM_APF_DACQ_PRESSURE_SIZE      4
-#define MOD_SOM_APF_DACQ_FLAG_SIZE          1
-#define MOD_SOM_APF_DACQ_FOM_SIZE           1
+#define MOD_SOM_APF_DACQ_STRUCT_SIZE         25000
+#define MOD_SOM_APF_DACQ_TIMESTAMP_SIZE      2
+#define MOD_SOM_APF_DACQ_DISSRATE_SIZE       3
+#define MOD_SOM_APF_DACQ_PRESSURE_SIZE       4
+#define MOD_SOM_APF_DACQ_DPDT_SIZE           4
+#define MOD_SOM_APF_DACQ_SEAWATER_SPEED_SIZE 4
+#define MOD_SOM_APF_DACQ_FLAG_SIZE           1
+#define MOD_SOM_APF_DACQ_FOM_SIZE            1
+#define MOD_SOM_APF_DACQ_F3_NFFT_DECIM       1024
+#define MOD_SOM_APF_DACQ_MINIMUM_PRESSURE    5
 
 
 #define MOD_SOM_APF_METADATA_STRUCT_SIZE    30
@@ -58,7 +62,7 @@
 #define MOD_SOM_APF_PRODUCER_DISSRATE_RES           3       // mod dissrate resolution 3 bytes
 #define MOD_SOM_APF_PRODUCER_DISSRATE_RANGE         0xFFF   // mod dissrate resolution 3 bytes
 #define MOD_SOM_APF_PRODUCER_FOM_RES                1       // mod dissrate resolution 3 bytes
-#define MOD_SOM_APF_PRODUCER_FOM_RANGE              0xF   // mod dissrate resolution 3 bytes
+#define MOD_SOM_APF_PRODUCER_FOM_RANGE              0xF     // mod dissrate resolution 3 bytes
 
 
 #define MOD_SOM_APF_CONSUMER_TASK_PRIO              18u
@@ -212,7 +216,8 @@ typedef struct{
   bool  collect_flg;        //ALB flag to collect the data (Trigger by CTD data?)
 
   uint64_t dissrates_cnt;
-  uint64_t dissrates_cnt_offset;
+  uint64_t stored_dissrates_cnt;
+
   uint64_t avg_timestamp;
 
   float * avg_spec_temp_ptr;         //ALB pointer to spectrum
@@ -222,7 +227,7 @@ typedef struct{
   float * avg_ctd_pressure;
   float * avg_ctd_temperature;
   float * avg_ctd_salinity;
-  float * avg_ctd_fallrate;
+  float * avg_ctd_dpdt;
 
   float * nu;
   float * kappa;
@@ -360,8 +365,11 @@ typedef struct{
 
    uint64_t profile_id;
    bool     daq;
+   float    dacq_start_pressure;
+   float    dacq_pressure;
+   float    dacq_dz;
 
-   enum {F0,F1,F2,F3}comm_telemetry_packet_format; //L0 p,t
+   enum {F0,F1,F2}comm_telemetry_packet_format; //L0 p,t
 
 }
 mod_som_apf_t, *mod_som_apf_ptr_t;
@@ -704,13 +712,14 @@ void mod_som_apf_consumer_task_f(void  *p_arg);
  *   MOD_SOM_STATUS_OK if initialization goes well
  *   or otherwise
  ******************************************************************************/
-void mod_som_apf_copy_F0_element_f(  uint64_t * curr_avg_timestamp_ptr,
+void mod_som_apf_copy_F1_element_f( uint64_t * curr_avg_timestamp_ptr,
                                     float * curr_pressure_ptr,
                                     float * curr_epsilon_ptr,
                                     float * curr_chi_ptr,
                                     float * curr_fom_epsi_ptr,
                                     float * curr_fom_temp_ptr,
                                     uint8_t * dacq_ptr);
+
 
 /*******************************************************************************
  * @brief
@@ -721,10 +730,15 @@ void mod_som_apf_copy_F0_element_f(  uint64_t * curr_avg_timestamp_ptr,
  *   MOD_SOM_STATUS_OK if initialization goes well
  *   or otherwise
  ******************************************************************************/
-void mod_som_apf_downgrade_spectra_f(float   * curr_temp_avg_spectra_ptr,
-                                     float   * curr_shear_avg_spectra_ptr,
-                                     float   * curr_accel_avg_spectra_ptr,
-                                     uint8_t * dacq_ptr);
+void mod_som_apf_copy_F2_element_f(  uint64_t * curr_avg_timestamp_ptr,
+                                float * curr_avg_pressure_ptr,
+                                float * curr_avg_dpdt_ptr,
+                                float * curr_epsilon_ptr,
+                                float * curr_chi_ptr,
+                                float * curr_temp_avg_spectra_ptr,
+                                float * curr_shear_avg_spectra_ptr,
+                                float * curr_accel_avg_spectra_ptr,
+                                uint8_t * dacq_ptr);
 
 /*******************************************************************************
  * @function

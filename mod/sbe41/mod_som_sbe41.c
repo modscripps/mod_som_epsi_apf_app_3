@@ -212,6 +212,20 @@ mod_som_sbe41_ptr_t mod_som_sbe41_get_runtime_ptr_f(){
   return mod_som_sbe41_ptr;
 }
 
+/*******************************************************************************
+ * @brief
+ *   get the instantaneous pressure sbe41.
+ * @description
+ ******************************************************************************/
+float mod_som_sbe41_get_pressure_f(){
+
+
+  uint32_t cnsmr_indx=mod_som_sbe41_ptr->consumer_ptr->cnsmr_cnt %
+                      mod_som_sbe41_ptr->consumer_ptr->max_element_per_record;
+
+  return mod_som_sbe41_ptr->consumer_ptr->record_pressure[cnsmr_indx];
+}
+
 
 //TODO create a function to check memory allocation when using memseg
 //mod_som_status_t mod_som_sbe41_check_memory_allocation_f(RTOS_ERR  err, void* struct_ptr){
@@ -1654,60 +1668,4 @@ mod_som_status_t mod_som_sbe41_encode_status_f(uint16_t status){
     return MOD_SOM_ENCODE_STATUS(MOD_SOM_SBE41_STATUS_PREFIX, status);
 }
 
-mod_som_status_t mod_som_sbe41_direct_communication_f(){
-    //TODO SN still working on this!!!
-    bool tmp_collect_data_flag = mod_som_sbe41_ptr->collect_data_flag;
-    mod_som_status_t status;
-    if(tmp_collect_data_flag){
-        status = mod_som_sbe41_stop_collect_data_f(mod_som_sbe41_ptr);
-        APP_RTOS_ASSERT_DBG((status == MOD_SOM_STATUS_OK), 1);
-        if(status != MOD_SOM_STATUS_OK)
-            return status;
-    }
 
-    char input_buf[128]="\0";
-    int c;
-    int32_t i;
-    while(DEF_ON){
-        for (i = 0; i < 127; i++) {
-            while ((c = RETARGET_ReadChar())<0);  //read until valid input
-            if (c == ASCII_CHAR_DELETE || c == 0x08) { // User inputed backspace
-                if (i) {
-                    mod_som_io_print_f("\b \b");
-                    input_buf[--i] = '\0';
-                }
-                i--;
-                continue;
-            } else if (c == '\r' || c == '\n') {
-                if (i) {
-                    mod_som_io_print_f("\r\n");
-                    break;
-                } else {
-                    mod_som_io_print_f("\r\n$ ");
-                    i--;
-                    continue;
-                }
-            }else if(c == 27){
-                for(i--;i>=0;i--){
-                    mod_som_io_print_f("\b \b");
-                }
-                input_buf[0] = '\0';
-            }else if (!(c>31 && c<127)){ // check for printable characters
-                i--;
-                continue;
-            }
-
-            mod_som_io_putchar_f(c); // Echo to terminal
-            input_buf[i] = c;
-        }
-        input_buf[i] = '\0';
-    }
-
-    if(tmp_collect_data_flag){
-        status = mod_som_sbe41_start_collect_data_f(mod_som_sbe41_ptr);
-        APP_RTOS_ASSERT_DBG((status == MOD_SOM_STATUS_OK), 1);
-        if(status != MOD_SOM_STATUS_OK)
-            return status;
-    }
-    return MOD_SOM_STATUS_OK;
-}
