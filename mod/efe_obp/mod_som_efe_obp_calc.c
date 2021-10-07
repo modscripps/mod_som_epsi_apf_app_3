@@ -425,7 +425,7 @@ void mod_som_efe_obp_calc_epsilon_f(float *local_epsilon, float *nu, float *fom,
 
   // pull in CTD values
   static float w, P, T, S;
-  w = mod_som_efe_obp_ptr->cpt_spectra_ptr->avg_ctd_fallrate;
+  w = mod_som_efe_obp_ptr->cpt_spectra_ptr->avg_ctd_dpdt;
   P = mod_som_efe_obp_ptr->cpt_spectra_ptr->avg_ctd_pressure;
   T = mod_som_efe_obp_ptr->cpt_spectra_ptr->avg_ctd_temperature;
   S = mod_som_efe_obp_ptr->cpt_spectra_ptr->avg_ctd_salinity;
@@ -571,7 +571,7 @@ void mod_som_efe_obp_calc_chi_f(float *local_epsilon, float *local_chi, float *k
 {
     // pull in CTD values
     static float w, P, T, S;
-    w = mod_som_efe_obp_ptr->cpt_spectra_ptr->avg_ctd_fallrate;
+    w = mod_som_efe_obp_ptr->cpt_spectra_ptr->avg_ctd_dpdt;
     P = mod_som_efe_obp_ptr->cpt_spectra_ptr->avg_ctd_pressure;
     T = mod_som_efe_obp_ptr->cpt_spectra_ptr->avg_ctd_temperature;
     S = mod_som_efe_obp_ptr->cpt_spectra_ptr->avg_ctd_salinity;
