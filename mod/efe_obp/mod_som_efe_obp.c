@@ -1703,7 +1703,7 @@ mod_som_status_t mod_som_efe_obp_compute_dissrate_data_f(
 
   //CAP
   mod_som_efe_obp_calc_epsilon_f(local_epsilon, local_nu, local_epsi_fom, mod_som_efe_obp_ptr);
-  mod_som_efe_obp_calc_chi_f(local_chi, local_kappa, local_chi_fom, mod_som_efe_obp_ptr);
+  mod_som_efe_obp_calc_chi_f(local_epsilon, local_chi, local_kappa, local_chi_fom, mod_som_efe_obp_ptr);
   return mod_som_efe_obp_encode_status_f(MOD_SOM_STATUS_OK);
 }
 
