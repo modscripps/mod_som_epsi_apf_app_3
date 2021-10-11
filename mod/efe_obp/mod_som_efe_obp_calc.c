@@ -195,7 +195,7 @@ void mod_som_efe_obp_all_spectra_f(float *temp_ptr, float *shear_ptr, float *acc
 /*******************************************************************************
  * @brief
  *   function to calculate power density spectra in appropriate units across all
- *   shear, temperature, and acceleration channels, average as necessary,
+ *   shear, temperature, and acceleration channels,
  *   and output in given structure
  * @param temp_ptr
  *   input - the ptr to temperature data from which to calculate spectra
@@ -376,7 +376,7 @@ void mod_som_efe_obp_accel_spectra_f(float *accel_ptr, int spectra_offset, mod_s
   // calculate spectrum from acceleration data
   power_spectrum_f(accel_ptr, spectrum_buffer, settings->nfft, config->f_samp);
   for (uint16_t i = 0; i < settings->nfft/2; i++) {
-    // convert spectra from V^/Hz to (g)^2/Hz, recalling g is ~9.81 m/s^2
+    // convert spectra from V^2/Hz to (g)^2/Hz, recalling g is ~9.81 m/s^2
     // NOTE: this should be double checked (linear offsets in space should not affect psd)
     spectrum_buffer[i] = 4*spectrum_buffer[i];
     // stuff spectrum into output
