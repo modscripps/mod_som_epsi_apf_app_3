@@ -52,7 +52,7 @@ mod_som_status_t mod_som_settings_init_f(){
 
 	//ALB Work around until I am sure re-using previous settings is safe.
 	//ALB right now I am ALWAYS starting from the default settings
-	mod_som_settings_struct.size=0xFFFFFFFF;
+//	mod_som_settings_struct.size=0xFFFFFFFF;
 
 	if(mod_som_settings_struct.size==0xFFFFFFFF){
 		//ALB case where the UserData page is already empty
@@ -387,6 +387,8 @@ mod_som_status_t mod_som_settings_clear_settings_f(){
 mod_som_status_t mod_som_settings_save_settings_f(){
 	//ALB - get the settings from other module
 	//ALB - write the settings_struct in the UserData page.
+  mod_som_status_t status=0;
+
 #if defined(MOD_SOM_CALENDAR_EN)
 		mod_som_settings_struct.mod_som_calendar_settings=mod_som_calendar_get_settings_f();
 #endif
@@ -435,33 +437,35 @@ mod_som_status_t mod_som_settings_save_settings_f(){
 
 	 	if ((msc_ret_val = MSC_ErasePage(userDataPage_ptr)) == mscReturnOk)
 	  	{
-	 		printf("Success for erasing before writing ...\r\n");//MHA
+//	 		printf("Success for erasing before writing ...\r\n");//MHA
 	 		// 2. success erasing data, now write data in the upper half page at the address: from base adding 2048: 0x0FE00800UL
 	 		// 2a. write back the copy data to lower half:
 	 		msc_ret_val = \
 	 				MSC_WriteWord(userDataPage_ptr, &mod_som_settings_struct, mod_som_settings_struct.size);
 	 		if (msc_ret_val == mscReturnOk)
 	 		{
-	 			printf("Success writing the copy in the lower half\r\n");//MHA
+//	 			printf("Success writing the copy in the lower half\r\n");//MHA
 }
 	 		// 2b. write the settings data in the upper half: later write the settings into this up half
 	 		msc_ret_val = MSC_WriteWord(uphalf_userDataPage, &mod_som_settings_struct, mod_som_settings_struct.size);
 	 		if (msc_ret_val == mscReturnOk)
 	 		{
-	 			printf("MSC: Write ok\n\r");
+//	 			printf("MSC: Write ok\n\r");
 	 			// check the data just written
 	 			// 3. Read to check written data
 	 			//Read_PrintSetupData(w_userDataInfo_addr, settingsData, sizeof(settingsData));
 	 		}
 	 		else
 	 			printf("MSC: Failed to write\n\r");
+	 		status|=MOD_SOM_SETTINGS_STATUS_FAIL_WRITING_USERPAGE_CMD;
 	   	}
 	 	else
-	  		printf("Failed to erase the page in msc\r\n");//MHA
+//	  		printf("Failed to erase the page in msc\r\n");//MHA
+    status|=MOD_SOM_SETTINGS_STATUS_FAIL_WRITING_USERPAGE_CMD;
 
 		// 4. disable the flash controller
 		MSC_Deinit();
-    return mod_som_settings_encode_status_f(MOD_SOM_STATUS_OK);
+    return mod_som_settings_encode_status_f(status);
 }
 
 /*******************************************************************************

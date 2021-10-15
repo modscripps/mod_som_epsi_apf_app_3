@@ -1,8 +1,8 @@
 /*******************************************************************************
  * @file mod_som_calendar.h
- * @brief MOD SOM foo bar command shell API Implementation
+ * @brief MOD SOM calendar command shell API Implementation
  * @date Apr 01, 2020
- * @author San Nguyen (stn004@ucsd.edu) - Multiscale Ocean Dynamics - SIO - UCSD
+ * @author aleboyer (aleboyer@ucsd.edu) - Multiscale Ocean Dynamics - SIO - UCSD
  *
  * @description
  * This API uses micrium shell to insert shell table and execute shell commands
@@ -102,7 +102,7 @@ CPU_INT16S mod_som_calendar_set_time_cmd_f(CPU_INT16U argc,
     	break;
     case 7:
     	year=shellStrtol(argv[1],&p_err);
-    	month=shellStrtol(argv[2],&p_err);
+    	month=shellStrtol(argv[2],&p_err)-1;//month is defined as zero upward
     	month_day=shellStrtol(argv[3],&p_err);
     	hour=shellStrtol(argv[4],&p_err);
     	min=shellStrtol(argv[5],&p_err);
@@ -148,7 +148,8 @@ CPU_INT16S mod_som_calendar_get_time_cmd_f(CPU_INT16U argc,
     case 1:
       sl_sleeptimer_get_datetime(&date);
       sl_sleeptimer_convert_date_to_str(str_date,50,(uint8_t*)format,&date);
-      printf("..%s",str_date);
+      mod_som_io_print_f(" %s",str_date);
+
       break;
     default:
       printf("..format cal.get  ... it will give the current data \r\n");

@@ -44,9 +44,9 @@
 #define MOD_SOM_APF_DACQ_SEAWATER_SPEED_SIZE 4
 #define MOD_SOM_APF_DACQ_FLAG_SIZE           1
 #define MOD_SOM_APF_DACQ_FOM_SIZE            1
-#define MOD_SOM_APF_DACQ_F3_NFFT_DECIM       1024
+#define MOD_SOM_APF_DACQ_F3_NFFT_DECIM_COEF  8  //4096foco/8 -> 320Hz/4 -> 40Hz
 #define MOD_SOM_APF_DACQ_MINIMUM_PRESSURE    5
-
+#define MOD_SOM_APF_DACQ_CTD_DELAY           100
 
 #define MOD_SOM_APF_METADATA_STRUCT_SIZE    30
 #define MOD_SOM_APF_END_METADATA_STRUCT     0xFFFF
@@ -60,9 +60,13 @@
 #define MOD_SOM_APF_PRODUCER_MIN_FOM                0       // mininum figure of merit
 #define MOD_SOM_APF_PRODUCER_MAX_FOM                10      // maininum figure of merit
 #define MOD_SOM_APF_PRODUCER_DISSRATE_RES           3       // mod dissrate resolution 3 bytes
-#define MOD_SOM_APF_PRODUCER_DISSRATE_RANGE         0xFFF   // mod dissrate resolution 3 bytes
-#define MOD_SOM_APF_PRODUCER_FOM_RES                1       // mod dissrate resolution 3 bytes
-#define MOD_SOM_APF_PRODUCER_FOM_RANGE              0xF     // mod dissrate resolution 3 bytes
+#define MOD_SOM_APF_PRODUCER_DISSRATE_RANGE         0xFFF   // mod dissrate range 12 bits
+#define MOD_SOM_APF_PRODUCER_FOM_RES                1       // mod fom resolution 1 bytes
+#define MOD_SOM_APF_PRODUCER_FOM_RANGE              0xF     // mod fomte range 1 bytes
+#define MOD_SOM_APF_PRODUCER_MIN_FOCO               1e-11   // min Fourier coef,
+#define MOD_SOM_APF_PRODUCER_MAX_FOCO               1       // max Fourier coef
+#define MOD_SOM_APF_PRODUCER_FOCO_RANGE             0xFFFF     // mod fourier coef resolution 16 bits
+#define MOD_SOM_APF_PRODUCER_FOCO_RES               2       // mod fom resolution 1 bytes
 
 
 #define MOD_SOM_APF_CONSUMER_TASK_PRIO              18u
@@ -79,7 +83,8 @@
 #define MOD_SOM_APF_STATUS_FAIL_TO_STOP_PRODUCER_TASK           0x5u
 #define MOD_SOM_APF_STATUS_FAIL_TO_START_CONSUMER_TASK          0x6u
 #define MOD_SOM_APF_STATUS_FAIL_TO_STOP_CONSUMER_TASK           0x7u
-#define MOD_SOM_APF_STATUS_DAQ_IS_RUNNING                       0x8u
+#define MOD_SOM_APF_STATUS_FAIL_WRONG_ARGUMENTS                 0x8u
+#define MOD_SOM_APF_STATUS_DAQ_IS_RUNNING                       0x9u
 
 
 #define MOD_SOM_APF_UPLOAD_DELAY                  25000000      // 0.5 delay upon reception of the upload cmd
@@ -120,6 +125,10 @@ typedef struct{
 typedef struct{
    uint32_t size;
    char header[MOD_SOM_APF_SETTINGS_STR_lENGTH];
+
+   enum {F0,F1,F2}comm_telemetry_packet_format; //L0 p,t
+   enum {SD0,SD1,SD2}sd_packet_format; //L0 p,t
+
    uint32_t initialize_flag;
 }
 mod_som_apf_settings_t, *mod_som_apf_settings_ptr_t;
@@ -195,12 +204,14 @@ mod_som_apf_dacq_t, *mod_som_apf_dacq_ptr_t;
  */
 typedef struct{
 
-  float dissrate_per_bit;  //ALB  (dissrate range) / max(dissrate) - min(dissrate))
-  float dissrate_counts_at_origin;  //ALB  nb of counts for dissrate = 1
+  float dissrate_per_bit;            //ALB  (dissrate range) / max(dissrate) - min(dissrate))
+  float dissrate_counts_at_origin;   //ALB  nb of counts for dissrate = 1
 
-  float fom_per_bit;  //ALB  (dissrate range) / max(dissrate) - min(dissrate))
-  float fom_counts_at_origin;  //ALB  nb of counts for dissrate = 1
+  float fom_per_bit;                 //ALB  (fom range) / max(fom) - min(fom))
+  float fom_counts_at_origin;        //ALB  nb of counts for dissrate = 1
 
+  float foco_per_bit;                 //ALB  (fourier coef range) / max(fourier) - min(fourier))
+  float foco_counts_at_origin;        //ALB   nb of counts for dissrate = 1
 }
 mod_som_apf_decimation_t, *mod_som_apf_decimation_ptr_t;
 
@@ -214,6 +225,8 @@ typedef struct{
   bool  initialized_flag;
   bool  started_flg;        //ALB is the APF producer started
   bool  collect_flg;        //ALB flag to collect the data (Trigger by CTD data?)
+
+  uint32_t nfft_diag;
 
   uint64_t dissrates_cnt;
   uint64_t stored_dissrates_cnt;
@@ -369,7 +382,6 @@ typedef struct{
    float    dacq_pressure;
    float    dacq_dz;
 
-   enum {F0,F1,F2}comm_telemetry_packet_format; //L0 p,t
 
 }
 mod_som_apf_t, *mod_som_apf_ptr_t;
@@ -455,17 +467,6 @@ mod_som_status_t mod_som_apf_construct_producer_ptr_f();
  *   or otherwise
  ******************************************************************************/
 mod_som_status_t mod_som_apf_construct_consumer_ptr_f();
-
-/*******************************************************************************
- * @brief
- *   a function to output hello
- *
- * @return
- *   MOD_SOM_APF_STATUS_OK if function execute nicely
-
- *   MOD_SOM_STATUS_OK if function execute nicely
- ******************************************************************************/
-mod_som_apf_status_t mod_som_apf_say_hello_world_f();
 
 /*******************************************************************************
  * @brief
@@ -576,15 +577,15 @@ mod_som_apf_status_t mod_som_apf_ok_status_f();
  ******************************************************************************/
 mod_som_apf_status_t mod_som_apf_poweroff_f();
 
-/*******************************************************************************
- * @brief
- *   command shell for EpsiNo command
- *   set the SOM and EFE SN
- *   should return an apf status.
- * @return
- *   MOD_SOM_APF_STATUS_OK if function execute nicely
- ******************************************************************************/
-mod_som_apf_status_t mod_som_apf_epsi_id_f();
+///*******************************************************************************
+// * @brief
+// *   command shell for EpsiNo command
+// *   set the SOM and EFE SN
+// *   should return an apf status.
+// * @return
+// *   MOD_SOM_APF_STATUS_OK if function execute nicely
+// ******************************************************************************/
+//mod_som_apf_status_t mod_som_apf_epsi_id_f();
 
 /*******************************************************************************
  * @brief
@@ -604,8 +605,8 @@ mod_som_apf_status_t mod_som_apf_epsi_id_status_f();
  * @return
  *   MOD_SOM_APF_STATUS_OK if function execute nicely
  ******************************************************************************/
-mod_som_apf_status_t mod_som_apf_probe_id_f();
-
+mod_som_apf_status_t mod_som_apf_probe_id_f(CPU_INT16U argc,
+                                            CPU_CHAR *argv[]);
 /*******************************************************************************
  * @brief
  *   command shell for ProbeNo? command
@@ -634,7 +635,8 @@ mod_som_apf_status_t mod_som_apf_sleep_f();
  * @return
  *   MOD_SOM_APF_STATUS_OK if function execute nicely
  ******************************************************************************/
-mod_som_apf_status_t mod_som_apf_time_f();
+mod_som_apf_status_t mod_som_apf_time_f(CPU_INT16U argc,
+                                        CPU_CHAR *argv[]);
 
 /*******************************************************************************
  * @brief
@@ -645,6 +647,29 @@ mod_som_apf_status_t mod_som_apf_time_f();
  *   MOD_SOM_APF_STATUS_OK if function execute nicely
  ******************************************************************************/
 mod_som_apf_status_t mod_som_apf_time_status_f();
+
+/*******************************************************************************
+ * @brief
+ *   command shell for mod_som_apf_cmd_comm_packet_format_f
+ *   set the format of the data
+ *   0 = no format (latter on called F0)
+ *   1 = format 1 (F1) time pressure epsilon chi fom
+ *   2 = format 2 (F2) time pressure epsilon chi fom + something
+ *   3 = format 3 (F3) time pressure epsilon chi + decimated spectra
+ *
+ * @param argc
+ *   argument count
+ * @param argv
+ *   argument values
+ * @param out_put_f
+ *   out_put_f (print function)
+ * @param cmd_param
+ *   command parameters (passing along)
+ * @return
+ *   apf Command Status
+ ******************************************************************************/
+mod_som_apf_status_t mod_som_apf_comm_packet_format_f(CPU_INT16U argc,
+                                                      CPU_CHAR *argv[]);
 
 /*******************************************************************************
  * @brief

@@ -224,7 +224,7 @@ sl_status_t mod_som_calendar_set_time_f(uint16_t year, uint8_t month,
   //MHA month is defined as zero upwards, so add one to it so user enters dates in familiar format
   sl_status_t status=sl_sleeptimer_build_datetime(
             &mod_som_calendar_ptr->mod_som_calendar_settings_ptr->initial_date,\
-                                   year,month-1,month_day,hour,min,sec,tz_offset);
+                                   year,month,month_day,hour,min,sec,tz_offset);
     // initialization of the start date
      status=sl_sleeptimer_set_datetime(
             &mod_som_calendar_ptr->mod_som_calendar_settings_ptr->initial_date);

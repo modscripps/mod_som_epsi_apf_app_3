@@ -23,25 +23,25 @@
 /* @var mod_som_apf_cmd_tbl predefined command table of fixed size        */
 static SHELL_CMD  mod_som_apf_cmd_tbl[] =
 {
-        { "Daq", mod_som_apf_cmd_daq_f },
-        { "Daq?", mod_som_apf_cmd_daq_status_f },
-        { "FubarCal", mod_som_apf_cmd_fubar_f },
-        { "FubarCal?", mod_som_apf_cmd_fubar_status_f },
-        { "FwRev?", mod_som_apf_cmd_fwrev_status_f },
-        { "$menu", mod_som_apf_cmd_menu_f },
-        { "ok?", mod_som_apf_cmd_ok_status_f },
-        { "PowerOff", mod_som_apf_cmd_poweroff_f },
-        { "EpsiNo", mod_som_apf_cmd_epsi_id_f },
-        { "EpsiNo?", mod_som_apf_cmd_epsi_id_status_f },
-        { "ProbeNo", mod_som_apf_cmd_probe_id_f },
-        { "ProbeNo?", mod_som_apf_cmd_probe_id_status_f },
-        { "sleep", mod_som_apf_cmd_sleep_f },
-        { "time", mod_som_apf_cmd_time_f },
-        { "time?", mod_som_apf_cmd_time_status_f },
+        { "Daq",          mod_som_apf_cmd_daq_f },
+        { "Daq?",         mod_som_apf_cmd_daq_status_f },
+        { "time",         mod_som_apf_cmd_time_f },
+        { "time?",        mod_som_apf_cmd_time_status_f },
+        { "$menu",        mod_som_apf_cmd_menu_f },
+        { "--ok?",        mod_som_apf_cmd_ok_status_f },
+        { "sleep",        mod_som_apf_cmd_sleep_f },
+        { "FwRev?",       mod_som_apf_cmd_fwrev_status_f },
+        { "upload",       mod_som_apf_cmd_upload_f },
+        { "EpsiNo?",      mod_som_apf_cmd_epsi_id_status_f },
+        { "ProbeNo",      mod_som_apf_cmd_probe_id_f },
+        { "ProbeNo?",     mod_som_apf_cmd_probe_id_status_f },
+        { "PowerOff",     mod_som_apf_cmd_poweroff_f },
+        { "SD_Format",    mod_som_apf_cmd_sd_format_f },
+        { "Process_Nfft", mod_som_apf_cmd_process_nfft_f },
         { "comm_packet_format", mod_som_apf_cmd_comm_packet_format_f },
-        { "upload", mod_som_apf_cmd_upload_f },
         { 0, 0 }
 };
+//{ "EpsiNo", mod_som_apf_cmd_epsi_id_f },
 
 /*******************************************************************************
  * @brief
@@ -188,62 +188,7 @@ CPU_INT16S mod_som_apf_cmd_daq_status_f(CPU_INT16U argc,
         return SHELL_EXEC_ERR;
     return SHELL_EXEC_ERR_NONE;
 }
-/*******************************************************************************
- * @brief
- *   command shell for FubarCal command
- *   run FubarCal cmd with arguments arg1, arg2, ..., argn
- *   it should return a Fubar status
- * @param argc
- *   argument count
- * @param argv
- *   argument values
- * @param out_put_f
- *   out_put_f (print function)
- * @param cmd_param
- *   command parameters (passing along)
- * @return
- *   apf Command Status
- ******************************************************************************/
-CPU_INT16S mod_som_apf_cmd_fubar_f(CPU_INT16U argc,
-        CPU_CHAR *argv[],
-        SHELL_OUT_FNCT out_put_f,
-        SHELL_CMD_PARAM *cmd_param){
 
-    mod_som_apf_status_t status = mod_som_apf_fubar_f();
-
-    if(status != MOD_SOM_APF_STATUS_OK)
-        return SHELL_EXEC_ERR;
-    return SHELL_EXEC_ERR_NONE;
-}
-
-/*******************************************************************************
- * @brief
- *   command shell for FubarCal? command
- *   display Fubar status
- *   it should return an error if can not access to the information
-
- * @param argc
- *   argument count
- * @param argv
- *   argument values
- * @param out_put_f
- *   out_put_f (print function)
- * @param cmd_param
- *   command parameters (passing along)
- * @return
- *   apf Command Status
- ******************************************************************************/
-CPU_INT16S mod_som_apf_cmd_fubar_status_f(CPU_INT16U argc,
-        CPU_CHAR *argv[],
-        SHELL_OUT_FNCT out_put_f,
-        SHELL_CMD_PARAM *cmd_param){
-
-    mod_som_apf_status_t status = mod_som_apf_fubar_status_f();
-
-    if(status != MOD_SOM_APF_STATUS_OK)
-        return SHELL_EXEC_ERR;
-    return SHELL_EXEC_ERR_NONE;
-}
 
 /*******************************************************************************
  * @brief
@@ -326,7 +271,6 @@ CPU_INT16S mod_som_apf_cmd_poweroff_f(CPU_INT16U argc,
         SHELL_OUT_FNCT out_put_f,
         SHELL_CMD_PARAM *cmd_param){
 
-//    mod_som_apf_status_t status = mod_som_apf_fwrev_f();
     mod_som_apf_status_t status = mod_som_apf_poweroff_f();
 
     if(status != MOD_SOM_APF_STATUS_OK)
@@ -334,34 +278,34 @@ CPU_INT16S mod_som_apf_cmd_poweroff_f(CPU_INT16U argc,
     return SHELL_EXEC_ERR_NONE;
 }
 
-/*******************************************************************************
- * @brief
- *   command shell for EpsiNo command
- *   set the SOM and EFE SN
- *   should return an apf status.
- *
- * @param argc
- *   argument count
- * @param argv
- *   argument values
- * @param out_put_f
- *   out_put_f (print function)
- * @param cmd_param
- *   command parameters (passing along)
- * @return
- *   apf Command Status
- ******************************************************************************/
-CPU_INT16S mod_som_apf_cmd_epsi_id_f(CPU_INT16U argc,
-        CPU_CHAR *argv[],
-        SHELL_OUT_FNCT out_put_f,
-        SHELL_CMD_PARAM *cmd_param){
-
-    mod_som_apf_status_t status = mod_som_apf_epsi_id_f();
-
-    if(status != MOD_SOM_APF_STATUS_OK)
-        return SHELL_EXEC_ERR;
-    return SHELL_EXEC_ERR_NONE;
-}
+///*******************************************************************************
+// * @brief
+// *   command shell for EpsiNo command
+// *   set the SOM and EFE SN
+// *   should return an apf status.
+// *
+// * @param argc
+// *   argument count
+// * @param argv
+// *   argument values
+// * @param out_put_f
+// *   out_put_f (print function)
+// * @param cmd_param
+// *   command parameters (passing along)
+// * @return
+// *   apf Command Status
+// ******************************************************************************/
+//CPU_INT16S mod_som_apf_cmd_epsi_id_f(CPU_INT16U argc,
+//        CPU_CHAR *argv[],
+//        SHELL_OUT_FNCT out_put_f,
+//        SHELL_CMD_PARAM *cmd_param){
+//
+//    mod_som_apf_status_t status = mod_som_apf_epsi_id_f();
+//
+//    if(status != MOD_SOM_APF_STATUS_OK)
+//        return SHELL_EXEC_ERR;
+//    return SHELL_EXEC_ERR_NONE;
+//}
 
 
 /*******************************************************************************
@@ -419,7 +363,7 @@ CPU_INT16S mod_som_apf_cmd_probe_id_f(CPU_INT16U argc,
         SHELL_CMD_PARAM *cmd_param){
 
 //    mod_som_apf_status_t status = mod_som_apf_fwrev_f();
-    mod_som_apf_status_t status = mod_som_apf_probe_id_f();
+    mod_som_apf_status_t status = mod_som_apf_probe_id_f(argc,argv);
 
     if(status != MOD_SOM_APF_STATUS_OK)
         return SHELL_EXEC_ERR;
@@ -508,7 +452,7 @@ CPU_INT16S mod_som_apf_cmd_time_f(CPU_INT16U argc,
         SHELL_OUT_FNCT out_put_f,
         SHELL_CMD_PARAM *cmd_param){
 
-    mod_som_apf_status_t status = mod_som_apf_time_f();
+    mod_som_apf_status_t status = mod_som_apf_time_f(argc,argv);
 
     if(status != MOD_SOM_APF_STATUS_OK)
         return SHELL_EXEC_ERR;
@@ -574,6 +518,64 @@ CPU_INT16S mod_som_apf_cmd_comm_packet_format_f(CPU_INT16U argc,
         return SHELL_EXEC_ERR;
     return SHELL_EXEC_ERR_NONE;
 }
+
+/*******************************************************************************
+ * @brief
+ *   command shell for mod_som_apf_cmd_process_nfft_f
+ *   set the the number of fourier coef in a segment
+ * @param argc
+ *   argument count
+ * @param argv
+ *   argument values
+ * @param out_put_f
+ *   out_put_f (print function)
+ * @param cmd_param
+ *   command parameters (passing along)
+ * @return
+ *   apf Command Status
+ ******************************************************************************/
+CPU_INT16S mod_som_apf_cmd_process_nfft_f(CPU_INT16U argc,
+        CPU_CHAR *argv[],
+        SHELL_OUT_FNCT out_put_f,
+        SHELL_CMD_PARAM *cmd_param){
+
+    mod_som_apf_status_t status = 0;
+
+    if(status != MOD_SOM_APF_STATUS_OK)
+        return SHELL_EXEC_ERR;
+    return SHELL_EXEC_ERR_NONE;
+}
+
+/*******************************************************************************
+ * @brief
+ *   command shell for mod_som_apf_cmd_sd_format_f
+ *   set the format of the data stored in the SD card
+ *   0 = no format (latter on called SD0)
+ *   1 = format 1 (SD1) time pressure epsilon chi fom dpdt kvis avg_t avg_s decimated avg spectra
+ *   2 = format 2 (SD2) time pressure epsilon chi fom dpdt kvis avg_t avg_s full avg spectra
+ * @param argc
+ *   argument count
+ * @param argv
+ *   argument values
+ * @param out_put_f
+ *   out_put_f (print function)
+ * @param cmd_param
+ *   command parameters (passing along)
+ * @return
+ *   apf Command Status
+ ******************************************************************************/
+CPU_INT16S mod_som_apf_cmd_sd_format_f(CPU_INT16U argc,
+        CPU_CHAR *argv[],
+        SHELL_OUT_FNCT out_put_f,
+        SHELL_CMD_PARAM *cmd_param){
+
+    mod_som_apf_status_t status = mod_som_apf_sd_format_f(argc,argv);
+
+    if(status != MOD_SOM_APF_STATUS_OK)
+        return SHELL_EXEC_ERR;
+    return SHELL_EXEC_ERR_NONE;
+}
+
 
 
 

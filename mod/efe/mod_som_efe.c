@@ -377,6 +377,14 @@ mod_som_status_t mod_som_efe_init_f(){
   mod_som_efe_ptr->voltage=0;
 	mod_som_efe_ptr->sigramp_flag=0;
 
+  //turn on EFE hardware
+  status |= mod_som_efe_disable_hardware_f();
+  if (status!=MOD_SOM_STATUS_OK){
+      printf("%s not initialized\n",MOD_SOM_EFE_HEADER);
+    return status;
+  }
+
+
 	mod_som_efe_ptr->initialized_flag = true;
 	printf("%s initialized\r\n",MOD_SOM_EFE_HEADER);//MHA
 
@@ -2177,6 +2185,11 @@ mod_som_status_t mod_som_efe_sampling_f()
   // initialize the sample count.
   mod_som_efe_ptr->sample_count=0;
 
+  //ALB turn on EFE hardware
+  mod_som_efe_enable_hardware_f();
+
+  mod_som_efe_config_adc_f(mod_som_efe_ptr);
+
   //MHA: need to enable the EFE MEZZ board for FCTD
   //    /* EFE Enable: configure the LEUART pins and EFE MEZZ EN (send power to the EFE MEZZ)*/
 //    GPIO_PinModeSet(mod_som_efe_ptr->config_ptr->port.en_port, mod_som_sbe49_ptr->config_ptr->port.en_pin,
@@ -2215,6 +2228,9 @@ mod_som_status_t mod_som_efe_stop_sampling_f()
 	// lower all the pertinent flags
 	mod_som_efe_ptr->sampling_flag = 0;
 	mod_som_efe_ptr->data_ready_flag=0;
+
+  //ALB turn on EFE hardware
+  mod_som_efe_disable_hardware_f();
 
 	//MHA kluge for FCTD
 #ifdef MOD_SOM_FCTD_EN

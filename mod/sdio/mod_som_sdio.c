@@ -88,6 +88,7 @@ mod_som_status_t mod_som_sdio_init_f(){
     mod_som_sdio_struct.file_number=0;
     mod_som_sdio_struct.new_file_flag=false;
     mod_som_sdio_struct.listoverflow_flag=false;
+    mod_som_sdio_struct.enable_flag=false;
 
     //ALB What is that?
     if(mod_som_sdio_struct.max_size_of_complete_data_block == 0)
@@ -98,7 +99,7 @@ mod_som_status_t mod_som_sdio_init_f(){
     mod_som_sdio_default_settings_f();
     //allocate memory
     mod_som_sdio_allocate_memory_f();
-    //enable hardware
+    //ALB enable hardware
     mod_som_sdio_enable_hardware_f();
     //mount fatFS memory.
     // ALB the SDIO software does not have a disk_initialization working correctly.
@@ -110,6 +111,9 @@ mod_som_status_t mod_som_sdio_init_f(){
 
     //ALB start the SDIO task.
     mod_som_sdio_start_f();
+
+    //ALB enable hardware
+    mod_som_sdio_disable_hardware_f();
 
     // return default mod som OK.
     //TODO handle error from the previous calls.
@@ -126,8 +130,11 @@ mod_som_status_t mod_som_sdio_init_f(){
  ******************************************************************************/
 
 mod_som_status_t mod_som_sdio_enable_hardware_f(){
+  int delay=833333; //ALB 60s at 50e6 Hz
 
-	CMU_ClockEnable(cmuClock_GPIO, true);
+  if(!mod_som_sdio_struct.enable_flag){
+      mod_som_sdio_struct.enable_flag=true;
+  CMU_ClockEnable(cmuClock_GPIO, true);
 
     //TODO use bsp_som variables to initialize the SD card.
     // Soldered sdCard slot
@@ -142,11 +149,54 @@ mod_som_status_t mod_som_sdio_enable_hardware_f(){
     GPIO_PinModeSet(gpioPortA, 2, gpioModePushPullAlternate, 1);  // SDIO_DAT2
     GPIO_PinModeSet(gpioPortA, 3, gpioModePushPullAlternate, 1);  // SDIO_DAT3
 
+    while (delay>0){
+        delay--;
+    }
+
+
+  }
+
     // return default mod som OK.
     // TODO handle error from the previous calls.
 	return mod_som_sdio_encode_status_f(MOD_SOM_STATUS_OK);
 
 }
+
+/*******************************************************************************
+ * @brief
+ *   disable hardware
+ *
+ * @return
+ *   MOD_SOM_STATUS_OK if function execute nicely
+ ******************************************************************************/
+
+mod_som_status_t mod_som_sdio_disable_hardware_f(){
+int delay=833333; //ALB 60s at 50e6 Hz
+
+  if(mod_som_sdio_struct.enable_flag){
+      mod_som_sdio_struct.enable_flag=false;
+    //TODO use bsp_som variables to initialize the SD card.
+    // Soldered sdCard slot
+    GPIO_PinModeSet(gpioPortD, 6u, gpioModePushPull, 0); //SD_EN
+    GPIO_PinModeSet(gpioPortB, 10, gpioModeInput, 0);             // SDIO_CD
+    GPIO_PinModeSet(gpioPortE, 15, gpioModePushPullAlternate, 0); // SDIO_CMD
+    GPIO_PinModeSet(gpioPortE, 14, gpioModePushPullAlternate, 0); // SDIO_CLK
+    GPIO_PinModeSet(gpioPortA, 0, gpioModePushPullAlternate, 0);  // SDIO_DAT0
+    GPIO_PinModeSet(gpioPortA, 1, gpioModePushPullAlternate, 0);  // SDIO_DAT1
+    GPIO_PinModeSet(gpioPortA, 2, gpioModePushPullAlternate, 0);  // SDIO_DAT2
+    GPIO_PinModeSet(gpioPortA, 3, gpioModePushPullAlternate, 0);  // SDIO_DAT3
+
+    while (delay>0){
+        delay--;
+    }
+  }
+    // return default mod som OK.
+    // TODO handle error from the previous calls.
+  return mod_som_sdio_encode_status_f(MOD_SOM_STATUS_OK);
+
+}
+
+
 /*******************************************************************************
  * @brief
  *   mount fatFS hardware

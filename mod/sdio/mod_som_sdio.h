@@ -227,6 +227,8 @@ mod_som_sdio_file_ptr_t data_file_ptr;
 bool initialized_flag;
 bool started_flag;
 bool listoverflow_flag;
+bool enable_flag;
+
 uint32_t file_number;
 mod_som_sdio_settings_ptr_t mod_som_sdio_settings_ptr;
 sl_sleeptimer_timestamp_t open_file_time;
@@ -258,7 +260,25 @@ OS_Q msg_queue;
  ******************************************************************************/
 mod_som_status_t mod_som_sdio_init_f();
 
+/*******************************************************************************
+ * @brief
+ *   enable hardware
+ *
+ * @return
+ *   MOD_SOM_STATUS_OK if function execute nicely
+ ******************************************************************************/
 mod_som_status_t mod_som_sdio_enable_hardware_f();
+
+/*******************************************************************************
+ * @brief
+ *   disable hardware
+ *
+ * @return
+ *   MOD_SOM_STATUS_OK if function execute nicely
+ ******************************************************************************/
+
+mod_som_status_t mod_som_sdio_disable_hardware_f();
+
 mod_som_status_t mod_som_sdio_mount_fatfs_f();
 mod_som_status_t mod_som_sdio_allocate_memory_f();
 mod_som_status_t mod_som_sdio_default_settings_f();
