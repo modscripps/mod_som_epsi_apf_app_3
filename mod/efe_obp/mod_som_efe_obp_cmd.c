@@ -31,6 +31,7 @@ static SHELL_CMD  mod_som_obp_cmd_tbl[] =
     { "efeobp.init",    mod_som_efe_obp_cmd_init_f},
     { "efeobp.mode",    mod_som_efe_obp_cmd_mode_f},
     { "efeobp.channel", mod_som_efe_obp_cmd_channel_f},
+    { "efeobp.format", mod_som_efe_obp_cmd_format_f},
         { 0, 0 }
 };
 
@@ -129,7 +130,28 @@ CPU_INT16S mod_som_efe_obp_cmd_mode_f(CPU_INT16U argc,
         SHELL_CMD_PARAM *cmd_param){
     mod_som_status_t status = 0;
 
-    mod_som_efe_obp_consumer_mode_f(argc,argv);
+    mod_som_efe_obp_mode_f(argc,argv);
+
+
+    if(status != MOD_SOM_STATUS_OK)
+        return SHELL_EXEC_ERR;
+    return SHELL_EXEC_ERR_NONE;
+}
+
+/*******************************************************************************
+ * @brief
+ *   command shell for init command
+ *   initialize obp module
+ * @return
+ *   Micrium Command Shell Status
+ ******************************************************************************/
+CPU_INT16S mod_som_efe_obp_cmd_format_f(CPU_INT16U argc,
+        CPU_CHAR *argv[],
+        SHELL_OUT_FNCT out_put_f,
+        SHELL_CMD_PARAM *cmd_param){
+    mod_som_status_t status = 0;
+
+    mod_som_efe_obp_consumer_format_f(argc,argv);
 
 
     if(status != MOD_SOM_STATUS_OK)

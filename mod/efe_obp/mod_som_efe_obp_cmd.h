@@ -95,6 +95,18 @@ CPU_INT16S mod_som_efe_obp_cmd_mode_f(CPU_INT16U argc,
  * @return
  *   Micrium Command Shell Status
  ******************************************************************************/
+CPU_INT16S mod_som_efe_obp_cmd_format_f(CPU_INT16U argc,
+        CPU_CHAR *argv[],
+        SHELL_OUT_FNCT out_put_f,
+        SHELL_CMD_PARAM *cmd_param);
+
+/*******************************************************************************
+ * @brief
+ *   command shell for init command
+ *   initialize obp module
+ * @return
+ *   Micrium Command Shell Status
+ ******************************************************************************/
 CPU_INT16S mod_som_efe_obp_cmd_channel_f(CPU_INT16U argc,
         CPU_CHAR *argv[],
         SHELL_OUT_FNCT out_put_f,

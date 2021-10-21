@@ -108,10 +108,6 @@ CPU_INT16S mod_som_shell_output_f(CPU_CHAR *pbuf,
         CPU_INT16U buf_len,
         void *popt);
 
-CPU_INT16S mod_som_shell_no_output_f(CPU_CHAR *pbuf,
-        CPU_INT16U buf_len,
-        void *popt);
-
 uint16_t mod_som_shell_decode_status_f(mod_som_status_t status);
 
 mod_som_status_t mod_som_shell_encode_status_f(uint16_t status);

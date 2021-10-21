@@ -33,10 +33,13 @@
 #include "em_device.h"
 #include "em_cmu.h"
 
-/******************************************************************************
- * Local types
- *****************************************************************************/
+//ALB
+#include "diskio.h"
 
+/******************************************************************************
+ * Local defines
+ *****************************************************************************/
+#define LOCAL_STA_NODISK    0x02
 /******************************************************************************
  * Local prototypes
  *****************************************************************************/
@@ -275,6 +278,9 @@ uint32_t SDIO_S_SendCMDWithOutDAT(SDIO_TypeDef *sdio_t,
 {
   uint32_t tmpReg_u32;
   uint32_t regVal_u32 = sdio_t->PRSSTAT;
+//  //ALB add delay
+//  int delay=0xFFFF;
+
   //1. Check Command Inhibit Used
   while (regVal_u32 & _SDIO_PRSSTAT_CMDINHIBITCMD_MASK)
   {
@@ -318,14 +324,14 @@ uint32_t SDIO_S_SendCMDWithOutDAT(SDIO_TypeDef *sdio_t,
   // Sequence to Finalize Command
   // 1. Wait for Command Complete
   while (!(sdio_t->IFCR & _SDIO_IFCR_CMDCOM_MASK));
-//  ALB add a timeout in case there is no scard
-//  int delay=0xFFFF;
 //  while (!(sdio_t->IFCR & _SDIO_IFCR_CMDCOM_MASK) & (delay>=0) ){
-//	  delay--;
-//  }
-//  if (delay==0){
-//	  return 0; //0x02 is STA_NODISK in diskio.h
-//  }
+////        ALB add a timeout in case there is no scard
+//          delay--;
+//        if (delay==0){
+//            return LOCAL_STA_NODISK;//0x02 is STA_NODISK in diskio.h
+//          return 0;
+//        }
+//  };
   // 2. clear previous command complete int
   while ((sdio_t->IFCR & _SDIO_IFCR_CMDCOM_MASK))
   {
@@ -601,10 +607,15 @@ static void SDIO_S_CardInitialization_and_Identification(SDIO_TypeDef *sdio_t)
 
   uint32_t tempVar_u32 = 0x0;
   uint8_t attemptCnt_u8 = 2;
+//  //ALB add result of SDIO_S_SendCMDWithOutDAT
+//  uint8_t return_SendCMDWithOutDAT=0;
 
   // 1. Reset Card
+//  return_SendCMDWithOutDAT=SDIO_S_SendCMDWithOutDAT(sdio_t, CMD0, 0);
   SDIO_S_SendCMDWithOutDAT(sdio_t, CMD0, 0);
-
+//  if (return_SendCMDWithOutDAT==LOCAL_STA_NODISK){
+//      disk_status (return_SendCMDWithOutDAT);
+//  }
   while (attemptCnt_u8 != 0)
   {
     // 2. Voltage Check

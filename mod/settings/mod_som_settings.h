@@ -30,7 +30,7 @@
 #if defined(MOD_SOM_EFE_EN)
 #include "mod_som_efe.h"
 #endif
-#if defined(MOD_SOM_OBP_EN)
+#if defined(MOD_SOM_EFE_OBP_EN)
 #include "mod_som_efe_obp.h"
 #endif
 #if defined(MOD_SOM_APF_EN)
@@ -110,7 +110,7 @@ mod_som_sdio_settings_t mod_som_sdio_settings;
 #if defined(MOD_SOM_APF_EN)
 mod_som_apf_settings_t mod_som_apf_settings;
 #endif
-#if defined(MOD_SOM_OBP_EN)
+#if defined(MOD_SOM_EFE_OBP_EN)
 mod_som_efe_obp_settings_t mod_som_efe_obp_settings;
 #endif
 

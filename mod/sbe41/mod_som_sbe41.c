@@ -764,6 +764,10 @@ mod_som_status_t mod_som_sbe41_start_collect_data_f(){
       mod_som_io_print_f("$%s: Device is not yet initialized!\r\n",mod_som_sbe41_ptr->settings_ptr->data_header_text);
       return (mod_som_sbe41_ptr->status = mod_som_sbe41_encode_status_f(MOD_SOM_SBE41_STATUS_NOT_INITIALIZED));
   }
+  if(mod_som_sbe41_ptr->collect_data_flag){
+      mod_som_io_print_f("$%s: already started!\r\n",mod_som_sbe41_ptr->settings_ptr->data_header_text);
+      return (mod_som_sbe41_ptr->status = mod_som_sbe41_encode_status_f(MOD_SOM_SBE41_STATUS_NOT_INITIALIZED));
+  }
 
     USART_TypeDef           *usart_ptr;
 

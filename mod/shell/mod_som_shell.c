@@ -100,31 +100,6 @@ CPU_INT16S mod_som_shell_output_f(CPU_CHAR *pbuf,
     mod_som_io_stream_data_f((uint8_t *)pbuf,buf_len,DEF_NULL);
     return buf_len;
 }
-/*****************************************************************************
- * @brief
- *   Printf shell output function. used for micrium shell
- *   ALB this is trick so I do not have any print during Shell-Exect
- *
- * @param pbuf
- *   String to be printed
- *
- * @param buf_len
- *   Lenght of the string
- *
- * @param popt
- *   Options, these are not used in this example
- *
- * @return
- *   How many characters that was printed.
- ******************************************************************************/
-CPU_INT16S mod_som_shell_no_output_f(CPU_CHAR *pbuf,
-        CPU_INT16U buf_len,
-        void *popt){
-    (void)popt; // Unused argument
-
-//    mod_som_io_stream_data_f((uint8_t *)pbuf,buf_len,DEF_NULL);
-    return buf_len;
-}
 
 
 //------------------------------------------------------------------------------
@@ -168,34 +143,34 @@ mod_som_status_t mod_som_shell_execute_input_f(char* input,uint32_t input_len){
     };
     //execute the commands
 //    Shell_Exec(input, mod_som_shell_output_f, &p_cmd_param, &err);
-    Shell_Exec(input, mod_som_shell_no_output_f, &p_cmd_param, &err);
+    Shell_Exec(input, mod_som_shell_output_f, &p_cmd_param, &err);
 
     switch (RTOS_ERR_CODE_GET(err)) {
     case RTOS_ERR_NULL_PTR:
 //        shellPrint(mod_som_shell_output_f, "Error, NULL pointer passed.\n");
-        shellPrintf(mod_som_shell_output_f,"nak,%s, NULL pointer passed\r\n",input);
+        shellPrintf(mod_som_shell_output_f,"%s, NULL pointer passed",input);
         break;
     case RTOS_ERR_NOT_FOUND:
 //        shellPrintf(mod_som_shell_output_f, "Error, command not found: %s\n", input);
-        shellPrintf(mod_som_shell_output_f,"nak,%s\r\n", input);
+        shellPrintf(mod_som_shell_output_f,"%s", input);
         break;
     case RTOS_ERR_NOT_SUPPORTED:
 //        shellPrint(mod_som_shell_output_f, "Error, command not supported.\n");
-        shellPrintf(mod_som_shell_output_f,"nak,%s, command not supported\r\n", input);
+        shellPrintf(mod_som_shell_output_f,"%s, command not supported", input);
         break;
     case RTOS_ERR_INVALID_ARG:
 //        shellPrint(mod_som_shell_output_f, "Error, invalid arguments\n");
-        shellPrintf(mod_som_shell_output_f,"nak,%s, invalid arguments\r\n", input);
+        shellPrintf(mod_som_shell_output_f,"%s, invalid arguments", input);
         break;
     case RTOS_ERR_SHELL_CMD_EXEC:
 //        shellPrint(mod_som_shell_output_f, "Error, command failed to execute.\n");
-        shellPrintf(mod_som_shell_output_f,"nak,%s, command failed to execute\r\n", input);
+        shellPrintf(mod_som_shell_output_f,"%s, command failed to execute", input);
         break;
     case RTOS_ERR_NONE: /* No errors. */
         break;
     default:
 //        shellPrint(mod_som_shell_output_f, "Error, unknown error\n");
-        shellPrintf(mod_som_shell_output_f,"nak,%s,  unknown error\r\n", input);
+        shellPrintf(mod_som_shell_output_f,"%s, unknown error", input);
         break;
     }
     return mod_som_shell_encode_status_f(MOD_SOM_STATUS_OK);
@@ -235,7 +210,7 @@ mod_som_status_t mod_som_shell_get_input_f(char *buf, uint32_t * buf_len){
             //TODO Food for thought an actual log would be a good thing.
         }
 
-        if (c == 44) { // ALB ApF specific conver ","(44) into blank (32)
+        if (c == 44) { // ALB APF specific convert ","(44) into blank (32)
             c=32;
         }
         if (c == ASCII_CHAR_DELETE || c == 0x08) { // User inputed backspace
@@ -316,7 +291,7 @@ void mod_som_shell_task_f(void *p_arg){
                 (OS_OPT      )OS_OPT_TIME_DLY,
                 &err);
         APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
-        shellPrint(mod_som_shell_output_f, "\r ");
+//        shellPrint(mod_som_shell_output_f, "\r ");
         mod_som_shell_get_input_f(input_buf,&input_buf_len);
 
         if (!Str_Cmp(input_buf, "exit")) {

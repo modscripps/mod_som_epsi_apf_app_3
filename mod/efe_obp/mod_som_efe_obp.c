@@ -5,6 +5,10 @@
  *      Author: snguyen
  */
 #include <efe_obp/mod_som_efe_obp.h>
+
+#ifdef  MOD_SOM_EFE_OBP_EN
+
+
 #include <efe_obp/mod_som_efe_obp_calc.h>
 #include "mod_som_io.h"
 #include "mod_som_priv.h"
@@ -170,6 +174,14 @@ mod_som_status_t mod_som_efe_obp_init_f(){
       return status;
     }
 
+    //ALB Allocate memory for the calib pointer,
+    //ALB using the settings_ptr variable
+    status |= mod_som_efe_obp_construct_calibration_ptr_f();
+  if (status!=MOD_SOM_STATUS_OK){
+    printf("EFE OBP not initialized\n");
+    return status;
+  }
+
     // ALB Allocate memory for the consumer_ptr,
     // ALB contains the consumer stream data_ptr and stream_data length.
     // ALB This pointer is also used to store the data on the SD card
@@ -178,6 +190,10 @@ mod_som_status_t mod_som_efe_obp_init_f(){
       printf("EFE OBP not initialized\n");
       return status;
     }
+
+    mod_som_epsiobp_init_f(mod_som_efe_obp_ptr->config_ptr,
+                           mod_som_efe_obp_ptr->settings_ptr,
+                           mod_som_efe_obp_ptr->calibration_ptr);
 
     // ALB Allocate memory for the consumer_ptr,
     // ALB contains the consumer stream data_ptr and stream_data length.
@@ -190,6 +206,7 @@ mod_som_status_t mod_som_efe_obp_init_f(){
       return status;
     }
 
+    //ALB get runtime sbe41 for futur use.
     local_sbe41_ptr=mod_som_sbe41_get_runtime_ptr_f();
 
 
@@ -198,8 +215,6 @@ mod_som_status_t mod_som_efe_obp_init_f(){
     mod_som_efe_obp_ptr->data_ready_flag             = 0;
     mod_som_efe_obp_ptr->start_computation_timestamp = 0;
     mod_som_efe_obp_ptr->stop_computation_timestamp  = 0;
-    mod_som_efe_obp_ptr->mode                        = 0;                       //ALB 0:stream, 1:store, 2: Aggregator, 3: apf
-    mod_som_efe_obp_ptr->format                      = 0;                       //ALB 0:segment, 1:FFT, 2: rates, 3: segment+FFT+rates
 
     mod_som_efe_obp_ptr->initialized_flag            = true;
 
@@ -211,17 +226,6 @@ mod_som_status_t mod_som_efe_obp_init_f(){
 
 }
 
-/*******************************************************************************
- * @brief
- *   a function to output hello
- *
- * @return
- *   MOD_SOM_STATUS_OK if function execute nicely
- ******************************************************************************/
-mod_som_status_t mod_som_efe_obp_say_hello_world_f(){
-    mod_som_io_print_f("[foo bar]: hello world\r\n");
-    return mod_som_efe_obp_encode_status_f(MOD_SOM_STATUS_OK);
-}
 
 /*******************************************************************************
  * @brief
@@ -280,6 +284,10 @@ mod_som_status_t mod_som_efe_obp_default_settings_f(
   settings_ptr->channels_id[0]     = 0 ; //select channel t1
   settings_ptr->channels_id[1]     = 2 ; //select channel s1
   settings_ptr->channels_id[2]     = 6 ; //select channel a3
+
+  settings_ptr->mode=stream;
+  settings_ptr->format=spectra;
+  settings_ptr->channel=shear;
 
   strncpy(settings_ptr->header,
           MOD_SOM_EFE_OBP_HEADER,MOD_SOM_EFE_OBP_SETTINGS_STR_lENGTH);
@@ -359,6 +367,63 @@ mod_som_status_t mod_som_efe_obp_construct_config_ptr_f(){
 
 /*******************************************************************************
  * @brief
+ *   construct calibration_ptr
+ *
+ * @return
+ *   MOD_SOM_STATUS_OK if initialization goes well
+ *   or otherwise
+ ******************************************************************************/
+mod_som_status_t mod_som_efe_obp_construct_calibration_ptr_f(){
+
+  RTOS_ERR  err;
+  //ALB Start allocating  memory for config pointer
+  mod_som_efe_obp_ptr->calibration_ptr =
+      (mod_som_efe_obp_calibration_ptr_t)Mem_SegAlloc(
+          "MOD SOM EFE OBP calib.",DEF_NULL,
+          sizeof(mod_som_efe_obp_calibration_t),
+          &err);
+  // Check error code
+  APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
+  if(mod_som_efe_obp_ptr->calibration_ptr==NULL)
+  {
+    mod_som_efe_obp_ptr = DEF_NULL;
+    return MOD_SOM_EFE_OBP_CANNOT_OPEN_CALIBRATION;
+  }
+
+  mod_som_efe_obp_calibration_ptr_t calib_ptr = mod_som_efe_obp_ptr->calibration_ptr;
+  // TODO It will always return MOD_SOM_STATUS_OK.
+  // TODO I do not know how to check if everything is fine here.
+
+  // ALB Allocate memory for the spectra
+  calib_ptr->cafilter_coeff = (float *)Mem_SegAlloc(
+        "MOD SOM EFE OBP CA coef ptr",DEF_NULL,
+        sizeof(float)*mod_som_efe_obp_ptr->settings_ptr->nfft/2,
+        &err);
+  APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
+
+  // ALB Allocate memory for the spectra
+  calib_ptr->cafilter_freq = (float *)Mem_SegAlloc(
+        "MOD SOM EFE OBP FREQ PTR",DEF_NULL,
+        sizeof(float)*mod_som_efe_obp_ptr->settings_ptr->nfft/2,
+        &err);
+  APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
+
+//  calib_ptr->cafilter_coeff={0,0,0,0};
+//  calib_ptr->cafilter_freq={0,0,0,0};
+  calib_ptr->cafilter_size=4;
+  calib_ptr->fp07_dTdV=20;
+  calib_ptr->fp07_noise[0]=0;
+  calib_ptr->fp07_noise[1]=0;
+  calib_ptr->fp07_noise[2]=0;
+  calib_ptr->fp07_noise[3]=0;
+  calib_ptr->shear_sv=20;
+
+
+  return mod_som_efe_obp_encode_status_f(MOD_SOM_STATUS_OK);
+}
+
+/*******************************************************************************
+ * @brief
  *   construct consumer structure
  *
  *   The consumer will creates 3 type of records: segment, spectra, rates.
@@ -411,7 +476,7 @@ mod_som_status_t mod_som_efe_obp_construct_consumer_ptr_f(){
   //ALB I am going to print only one channel.
   mod_som_efe_obp_ptr->consumer_ptr->max_payload_length =
      sizeof(uint64_t)+
-     (mod_som_efe_obp_ptr->settings_ptr->nfft*sizeof(float))*
+     3*(mod_som_efe_obp_ptr->settings_ptr->nfft*sizeof(float))*
       MOD_SOM_EFE_OBP_CONSUMER_NB_SEGMENT_PER_RECORD;
 
   mod_som_efe_obp_ptr->consumer_ptr->max_record_length=
@@ -428,8 +493,6 @@ mod_som_status_t mod_som_efe_obp_construct_consumer_ptr_f(){
 
 
   //ALB initialize counters.
-  mod_som_efe_obp_ptr->consumer_ptr->mode         = spectra;
-  mod_som_efe_obp_ptr->consumer_ptr->channel      = shear;
   mod_som_efe_obp_ptr->consumer_ptr->segment_cnt  = 0;
   mod_som_efe_obp_ptr->consumer_ptr->spectrum_cnt = 0;
   mod_som_efe_obp_ptr->consumer_ptr->rates_cnt    = 0;
@@ -1024,8 +1087,9 @@ void mod_som_efe_obp_fill_segment_task_f(void  *p_arg){
                  (uint8_t*)
                  local_mod_som_efe_ptr->config_ptr->element_map[data_elmnts_offset];
 
-              if((mod_som_efe_obp_ptr->fill_segment_ptr->efe_element_cnt%
-                  mod_som_efe_obp_ptr->settings_ptr->nfft/2)==0){
+              mod_som_efe_obp_ptr->fill_segment_ptr->efe_element_cnt++;  // increment cnsmr count
+             if((mod_som_efe_obp_ptr->fill_segment_ptr->efe_element_cnt%
+                  (mod_som_efe_obp_ptr->settings_ptr->nfft/2))==0){
                 //ALB copy the timestamp of the mid-segment (nfft/2)
                 //ALB (to bootstrap the segment in time and  save sapce )
                 memcpy(&mod_som_efe_obp_ptr->fill_segment_ptr->timestamp_segment,
@@ -1059,14 +1123,14 @@ void mod_som_efe_obp_fill_segment_task_f(void  *p_arg){
                                          local_efeobp_efe_accel_ptr);
 
 
-              mod_som_efe_obp_ptr->fill_segment_ptr->efe_element_cnt++;  // increment cnsmr count
               elmnts_avail = local_mod_som_efe_ptr->sample_count -
                       mod_som_efe_obp_ptr->fill_segment_ptr->efe_element_cnt; //elements available have been produced
 
-              cnsmr_indx=local_sbe41_ptr->consumer_ptr->cnsmr_cnt % \
-                          local_sbe41_ptr->consumer_ptr->max_element_per_record;
 
               if(local_sbe41_ptr->collect_data_flag){
+                  cnsmr_indx=local_sbe41_ptr->consumer_ptr->cnsmr_cnt % \
+                              local_sbe41_ptr->consumer_ptr->max_element_per_record;
+
                   mod_som_efe_obp_ptr->fill_segment_ptr->avg_ctd_pressure +=
                           local_sbe41_ptr->consumer_ptr->record_pressure[cnsmr_indx];
                   mod_som_efe_obp_ptr->fill_segment_ptr->avg_ctd_temperature +=
@@ -1233,19 +1297,19 @@ void mod_som_efe_obp_cpt_spectra_task_f(void  *p_arg){
                                                 &mod_som_efe_obp_ptr->start_computation_timestamp);
 
           //CAP Add compute spectra functions
-          mod_som_efe_obp_all_spectra_f(
-              curr_temp_seg_ptr,
-              curr_shear_seg_ptr,
-              curr_accel_seg_ptr,
-              spectra_offset,
-              mod_som_efe_obp_ptr
-              );
-//          mod_som_efe_obp_compute_spectra_data_f(curr_temp_seg_ptr,
-//                                                 curr_shear_seg_ptr,
-//                                                 curr_accel_seg_ptr,
-//           mod_som_efe_obp_ptr->cpt_spectra_ptr->spec_temp_ptr+spectra_offset,
-//           mod_som_efe_obp_ptr->cpt_spectra_ptr->spec_shear_ptr+spectra_offset,
-//           mod_som_efe_obp_ptr->cpt_spectra_ptr->spec_accel_ptr+spectra_offset);
+//          mod_som_efe_obp_all_spectra_f(
+//              curr_temp_seg_ptr,
+//              curr_shear_seg_ptr,
+//              curr_accel_seg_ptr,
+//              spectra_offset,
+//              mod_som_efe_obp_ptr
+//              );
+          mod_som_efe_obp_compute_spectra_data_f(curr_temp_seg_ptr,
+                                                 curr_shear_seg_ptr,
+                                                 curr_accel_seg_ptr,
+           mod_som_efe_obp_ptr->cpt_spectra_ptr->spec_temp_ptr+spectra_offset,
+           mod_som_efe_obp_ptr->cpt_spectra_ptr->spec_shear_ptr+spectra_offset,
+           mod_som_efe_obp_ptr->cpt_spectra_ptr->spec_accel_ptr+spectra_offset);
 
           //ALB Make fake spectra in order to build the consumer while CAP
           //ALB is merging the obp functions.
@@ -1545,9 +1609,6 @@ void mod_som_efe_obp_cpt_dissrate_task_f(void  *p_arg){
                  &err);
       //   Check error code.
       APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), ;);
-//      printf("EFEOBP dof: %lu\r\n",(uint32_t) mod_som_efe_obp_ptr->cpt_dissrate_ptr->spectrum_cnt %
-//             mod_som_efe_obp_ptr->settings_ptr->degrees_of_freedom);
-//      printf("EFEOBP diss: %lu\r\n",(uint32_t) mod_som_efe_obp_ptr->cpt_dissrate_ptr->dissrates_cnt);
 
  } // end of while (DEF_ON)
 
@@ -1725,7 +1786,7 @@ mod_som_status_t mod_som_efe_obp_start_consumer_task_f(){
       return (mod_som_efe_obp_ptr->status = mod_som_efe_obp_encode_status_f(MOD_SOM_EFE_OBP_NOT_STARTED));
   }
 
-  switch(mod_som_efe_obp_ptr->consumer_ptr->mode){
+  switch(mod_som_efe_obp_ptr->settings_ptr->format){
     case segment:
       memcpy(mod_som_efe_obp_ptr->consumer_ptr->tag,
               MOD_SOM_EFE_OBP_CONSUMER_SEGMENT_TAG,
@@ -1834,7 +1895,7 @@ void mod_som_efe_obp_consumer_task_f(void  *p_arg){
           (mod_som_efe_obp_ptr->fill_segment_ptr->segment_cnt>=1)){
 
 
-          switch(mod_som_efe_obp_ptr->consumer_ptr->mode){
+          switch(mod_som_efe_obp_ptr->settings_ptr->format){
             case segment:
               memcpy(mod_som_efe_obp_ptr->consumer_ptr->tag,
                      MOD_SOM_EFE_OBP_CONSUMER_SEGMENT_TAG,
@@ -2010,7 +2071,7 @@ void mod_som_efe_obp_consumer_task_f(void  *p_arg){
 
 
 
-          switch(mod_som_efe_obp_ptr->mode){
+          switch(mod_som_efe_obp_ptr->settings_ptr->mode){
             case 0:
               //ALB stream
               mod_som_efe_obp_ptr->consumer_ptr->consumed_flag=false;
@@ -2122,33 +2183,35 @@ uint32_t mod_som_efe_obp_copy_producer_segment_f()
 
   indx+=sizeof(uint64_t);
 
-  switch(mod_som_efe_obp_ptr->consumer_ptr->channel){
-    case temp:
+//  switch(mod_som_efe_obp_ptr->settings_ptr->channel){
+//    case temp:
       memcpy(&mod_som_efe_obp_ptr->consumer_ptr->record_ptr[indx],
              &mod_som_efe_obp_ptr->fill_segment_ptr->seg_temp_volt_ptr[
             (mod_som_efe_obp_ptr->consumer_ptr->segment_cnt%
              (2*MOD_SOM_EFE_OBP_FILL_SEGMENT_NB_SEGMENT_PER_RECORD))
            * mod_som_efe_obp_ptr->settings_ptr->nfft/2],
              mod_som_efe_obp_ptr->settings_ptr->nfft*sizeof(float));
+      indx+=mod_som_efe_obp_ptr->settings_ptr->nfft*sizeof(float);
 
-      break;
-    case shear:
+//      break;
+//    case shear:
       memcpy(&mod_som_efe_obp_ptr->consumer_ptr->record_ptr[indx],
              &mod_som_efe_obp_ptr->fill_segment_ptr->seg_shear_volt_ptr[
             (mod_som_efe_obp_ptr->consumer_ptr->segment_cnt%
              (2*MOD_SOM_EFE_OBP_FILL_SEGMENT_NB_SEGMENT_PER_RECORD))
            * mod_som_efe_obp_ptr->settings_ptr->nfft/2],
              mod_som_efe_obp_ptr->settings_ptr->nfft*sizeof(float));
-      break;
-    case accel:
+//      break;
+//    case accel:
+      indx+=mod_som_efe_obp_ptr->settings_ptr->nfft*sizeof(float);
       memcpy(&mod_som_efe_obp_ptr->consumer_ptr->record_ptr[indx],
              &mod_som_efe_obp_ptr->fill_segment_ptr->seg_accel_volt_ptr[
              (mod_som_efe_obp_ptr->consumer_ptr->segment_cnt%
              (2*MOD_SOM_EFE_OBP_FILL_SEGMENT_NB_SEGMENT_PER_RECORD))
             * mod_som_efe_obp_ptr->settings_ptr->nfft/2],
               mod_som_efe_obp_ptr->settings_ptr->nfft*sizeof(float));
-      break;
-  }
+//      break;
+//  }
 
     //ALB return the length of the payload
     indx+=mod_som_efe_obp_ptr->settings_ptr->nfft*sizeof(float);
@@ -2178,8 +2241,8 @@ uint32_t mod_som_efe_obp_copy_producer_segment_f()
 
     indx+=sizeof(uint64_t);
 
-      switch(mod_som_efe_obp_ptr->consumer_ptr->channel){
-    case temp:
+//      switch(mod_som_efe_obp_ptr->consumer_ptr->channel){
+//    case temp:
 
     memcpy(&mod_som_efe_obp_ptr->consumer_ptr->record_ptr[indx],
            &mod_som_efe_obp_ptr->cpt_spectra_ptr->spec_temp_ptr[
@@ -2187,24 +2250,27 @@ uint32_t mod_som_efe_obp_copy_producer_segment_f()
                        MOD_SOM_EFE_OBP_CPT_SPECTRA_NB_SPECTRA_PER_RECORD)
                        * mod_som_efe_obp_ptr->settings_ptr->nfft/2],
            mod_som_efe_obp_ptr->settings_ptr->nfft/2*sizeof(float));
-    break;
-    case shear:
+//    break;
+//    case shear:
+    indx+=mod_som_efe_obp_ptr->settings_ptr->nfft/2*sizeof(float);
+
       memcpy(&mod_som_efe_obp_ptr->consumer_ptr->record_ptr[indx],
              &mod_som_efe_obp_ptr->cpt_spectra_ptr->spec_shear_ptr[
                         (mod_som_efe_obp_ptr->consumer_ptr->spectrum_cnt%
                          MOD_SOM_EFE_OBP_CPT_SPECTRA_NB_SPECTRA_PER_RECORD)
                          * mod_som_efe_obp_ptr->settings_ptr->nfft/2],
              mod_som_efe_obp_ptr->settings_ptr->nfft/2*sizeof(float));
-      break;
-    case accel:
+//      break;
+//    case accel:
+      indx+=mod_som_efe_obp_ptr->settings_ptr->nfft/2*sizeof(float);
       memcpy(&mod_som_efe_obp_ptr->consumer_ptr->record_ptr[indx],
              &mod_som_efe_obp_ptr->cpt_spectra_ptr->spec_accel_ptr[
                         (mod_som_efe_obp_ptr->consumer_ptr->spectrum_cnt%
                          MOD_SOM_EFE_OBP_CPT_SPECTRA_NB_SPECTRA_PER_RECORD)
                          * mod_som_efe_obp_ptr->settings_ptr->nfft/2],
              mod_som_efe_obp_ptr->settings_ptr->nfft/2*sizeof(float));
-      break;
-      }
+//      break;
+//      }
 
     //ALB return the length of the payload
     indx+=mod_som_efe_obp_ptr->settings_ptr->nfft/2*sizeof(float);
@@ -2287,16 +2353,49 @@ uint32_t mod_som_efe_obp_copy_producer_segment_f()
 // ALB command functions //SN edited to be functions called in shell //SN need to edit comments
 /*******************************************************************************
  * @brief
+ *   change efeobp.format  for the 'efeobp.format' command.
+ ******************************************************************************/
+mod_som_status_t mod_som_efe_obp_consumer_format_f(CPU_INT16U argc,CPU_CHAR *argv[])
+{
+
+  RTOS_ERR  p_err;
+  uint8_t format;
+
+  if (argc==1){
+      printf("efeobp.format %u\r\n.", mod_som_efe_obp_ptr->settings_ptr->format);
+  }
+  else{
+    //ALB switch statement easy to handle all user input cases.
+    switch (argc){
+    case 2:
+      format=shellStrtol(argv[1],&p_err);
+      if(format<3){
+          mod_som_efe_obp_ptr->settings_ptr->format=format;
+      }else{
+          printf("format: efeobp.format format (0:segment, 1:spectra, 2: dissrates)\r\n");
+      }
+      break;
+    default:
+      printf("format: efeobp.format format (0:segment, 1:spectra, 2: dissrates)\r\n");
+      break;
+    }
+  }
+
+  return mod_som_efe_encode_status_f(MOD_SOM_STATUS_OK);
+}
+
+/*******************************************************************************
+ * @brief
  *   change efeobp.mode  for the 'efeobp.mode' command.
  ******************************************************************************/
-mod_som_status_t mod_som_efe_obp_consumer_mode_f(CPU_INT16U argc,CPU_CHAR *argv[])
+mod_som_status_t mod_som_efe_obp_mode_f(CPU_INT16U argc,CPU_CHAR *argv[])
 {
 
   RTOS_ERR  p_err;
   uint8_t mode;
 
   if (argc==1){
-      printf("efeobp.mode %u\r\n.", mod_som_efe_obp_ptr->consumer_ptr->mode);
+      printf("efeobp.mode %u\r\n.", mod_som_efe_obp_ptr->settings_ptr->mode);
   }
   else{
     //ALB switch statement easy to handle all user input cases.
@@ -2304,19 +2403,20 @@ mod_som_status_t mod_som_efe_obp_consumer_mode_f(CPU_INT16U argc,CPU_CHAR *argv[
     case 2:
       mode=shellStrtol(argv[1],&p_err);
       if(mode<3){
-          mod_som_efe_obp_ptr->consumer_ptr->mode=mode;
+          mod_som_efe_obp_ptr->settings_ptr->mode=mode;
       }else{
-          printf("format: efeobp.mode mode (0:segment, 1:spectra, 2: dissrates)\r\n");
+          printf("mode: efeobp.mode mode (0:stream, 1:store, 2: other)\r\n");
       }
       break;
     default:
-      printf("format: efeobp.mode mode (0:segment, 1:spectra, 2: dissrates)\r\n");
+      printf("mode: efeobp.mode mode (0:stream, 1:store, 2: other)\r\n");
       break;
     }
   }
 
   return mod_som_efe_encode_status_f(MOD_SOM_STATUS_OK);
 }
+
 
 // ALB command functions //SN edited to be functions called in shell //SN need to edit comments
 /*******************************************************************************
@@ -2330,7 +2430,7 @@ mod_som_status_t mod_som_efe_obp_consumer_channel_f(CPU_INT16U argc,CPU_CHAR *ar
   uint8_t channel;
 
   if (argc==1){
-      printf("efeobp.channel %u\r\n.", mod_som_efe_obp_ptr->consumer_ptr->channel);
+      printf("efeobp.channel %u\r\n.", mod_som_efe_obp_ptr->settings_ptr->channel);
   }
   else{
     //ALB switch statement easy to handle all user input cases.
@@ -2338,7 +2438,7 @@ mod_som_status_t mod_som_efe_obp_consumer_channel_f(CPU_INT16U argc,CPU_CHAR *ar
     case 2:
       channel=shellStrtol(argv[1],&p_err);
       if(channel<3){
-          mod_som_efe_obp_ptr->consumer_ptr->channel=channel;
+          mod_som_efe_obp_ptr->settings_ptr->channel=channel;
       }else{
           printf("format: efeobp.channel (0:temperature, 1:shear, 2: acceleration)\r\n");
       }
@@ -2403,4 +2503,5 @@ mod_som_status_t mod_som_efe_obp_encode_status_f(uint8_t mod_som_io_status){
     return MOD_SOM_ENCODE_STATUS(MOD_SOM_EFE_OBP_STATUS_PREFIX, mod_som_io_status);
 }
 
+#endif
 

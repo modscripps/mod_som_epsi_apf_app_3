@@ -45,6 +45,10 @@ DSTATUS disk_initialize (
     SDIO_Init(SDIO,
               400000,             // 400kHz
               cmuClock_HFPER);
+    //ALB check status again because I added a stat = NODISK inside SendCMDWithOutDAT
+    //ALB TODO figure how cmd are sent exactly to the SD card and set the timer inside disk_status
+    if (stat & STA_NODISK) return stat;           /* No card in the socket */
+
 	uint8_t a_u8 = SDIO_GetActCardStateType();
 	switch(a_u8){
 	  case SDHC_SDXC:
@@ -67,6 +71,13 @@ DSTATUS disk_status (
 )
 {
   if (drv) return STA_NOINIT;     /* Supports only single drive */
+  //ALB quick change to detect absence of SD card with software.
+  //ALB the check is done inside sdio.c SDIO_S_CardInitialization_and_Identification
+  //ALB using a delay I set inside SDIO_S_SendCMDWithOutDAT. SDIO_S_SendCMDWithOutDAT will return
+  //ALB STA_NODISK instead of the default 1 (i think). TODO check on this.
+//  if (drv==STA_NODISK){
+//      stat=STA_NODISK;
+//  }
   return stat;
 }
 

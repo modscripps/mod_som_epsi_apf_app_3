@@ -123,7 +123,7 @@ void mod_som_modules_init_f()
 #if defined(MOD_SOM_EFE_EN)
     mod_som_efe_init_f();
 #endif
-#if defined(MOD_SOM_OBP_EN)
+#if defined(MOD_SOM_EFE_OBP_EN)
     mod_som_efe_obp_init_f();
 #endif
 #if defined(MOD_SOM_APF_EN)
@@ -218,7 +218,7 @@ void mod_som_main_task_f(void *p_arg)
         }
 
 
-        //ALB toggle led to tel us it alive
+        //ALB toggle led to tell us it alive
         GPIO_PinOutToggle(gpioPortC, 6); // LED
 
         APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);

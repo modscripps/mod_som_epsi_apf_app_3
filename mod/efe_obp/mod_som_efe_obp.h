@@ -99,6 +99,7 @@
 #define MOD_SOM_EFE_OBP_STATUS_ERR_FAIL_TO_FLUSH_QUEUE              0x13u
 #define MOD_SOM_EFE_OBP_STATUS_ERR_FAIL_TO_ALLOCATE_DYNAMIC_MEMORY  0x14u
 #define MOD_SOM_EFE_OBP_NOT_STARTED                                 0x15u
+#define MOD_SOM_EFE_OBP_CANNOT_OPEN_CALIBRATION                     0x16u
 
 
 //count to volt
@@ -147,6 +148,11 @@ typedef struct{
     uint32_t record_format;
     uint32_t telemetry_format;
     uint32_t channels_id[MOD_SOM_EFE_OBP_CHANNEL_NUMBER];     //
+    enum       {stream,store,other}mode;
+    enum       {segment,spectra,dissrate}format;
+    enum       {temp,shear,accel}channel;
+
+
     uint32_t initialize_flag;
 }
 mod_som_efe_obp_settings_t, *mod_som_efe_obp_settings_ptr_t;
@@ -164,8 +170,6 @@ typedef struct{
   uint32_t   payload_length;
   uint8_t    header[MOD_SOM_EFE_OBP_MAX_HEADER_SIZE];
   char       tag[MOD_SOM_EFE_OBP_TAG_LENGTH];
-  enum       {segment,spectra,dissrate}mode;
-  enum       {temp,shear,accel}channel;
 
   uint32_t   segments_length;
   uint32_t   spectra_length;
@@ -287,11 +291,11 @@ mod_som_efe_obp_data_cpt_dissrate_t, *mod_som_efe_obp_data_cpt_dissrate_ptr_t;
  *   Structure managing the production of EFE OBP data (epsi, chi, accel, spectra)
  ******************************************************************************/
 typedef struct{
-  float    * shear_sv;
-  float    * fp07_dTdV;
-  uint16_t   Tdiff_size;
-  float    * Tdiff_freq;
-  float    * Tdiff_coeff;
+  float      shear_sv;
+  float      fp07_dTdV;
+//  uint16_t   Tdiff_size;
+//  float    * Tdiff_freq;
+//  float    * Tdiff_coeff;
   uint16_t   cafilter_size;
   float    * cafilter_freq;
   float    * cafilter_coeff;
@@ -313,12 +317,11 @@ typedef struct{
     uint64_t sample_count;
     uint64_t start_computation_timestamp;
     uint64_t stop_computation_timestamp;
-    uint8_t  mode;
-    uint8_t  format;
 
     mod_som_efe_obp_settings_ptr_t      settings_ptr;      //
     mod_som_efe_settings_ptr_t          efe_settings_ptr;  //
     mod_som_efe_obp_config_ptr_t        config_ptr;        //
+    mod_som_efe_obp_calibration_ptr_t   calibration_ptr;
     mod_som_efe_obp_data_consumer_ptr_t consumer_ptr;
     mod_som_efe_obp_data_fill_segment_ptr_t fill_segment_ptr;
     mod_som_efe_obp_data_cpt_spectra_ptr_t  cpt_spectra_ptr;
@@ -398,15 +401,6 @@ mod_som_status_t mod_som_efe_obp_compute_dissrate_data_f(
 
 /*******************************************************************************
  * @brief
- *   a function to output hello
- *
- * @return
- *   MOD_SOM_STATUS_OK if function execute nicely
- ******************************************************************************/
-mod_som_status_t mod_som_efe_obp_say_hello_world_f();
-
-/*******************************************************************************
- * @brief
  *   construct settings_ptr
  *
  * @return
@@ -457,6 +451,15 @@ mod_som_efe_obp_ptr_t mod_som_efe_obp_get_runtime_ptr_f();
  *   or otherwise
  ******************************************************************************/
 mod_som_status_t mod_som_efe_obp_construct_config_ptr_f();
+/*******************************************************************************
+ * @brief
+ *   construct calibration_ptr
+ *
+ * @return
+ *   MOD_SOM_STATUS_OK if initialization goes well
+ *   or otherwise
+ ******************************************************************************/
+mod_som_status_t mod_som_efe_obp_construct_calibration_ptr_f();
 
 /*******************************************************************************
  * @brief
@@ -555,12 +558,16 @@ uint32_t mod_som_efe_obp_copy_producer_spectra_f();
 
 uint32_t mod_som_efe_obp_copy_producer_dissrate_f();
 
-
+/*******************************************************************************
+ * @brief
+ *   change efeobp.format  for the 'efeobp.format' command.
+ ******************************************************************************/
+mod_som_status_t mod_som_efe_obp_consumer_format_f(CPU_INT16U argc,CPU_CHAR *argv[]);
 /*******************************************************************************
  * @brief
  *   change efeobp.mode  for the 'efeobp.mode' command.
  ******************************************************************************/
-mod_som_status_t mod_som_efe_obp_consumer_mode_f(
+mod_som_status_t mod_som_efe_obp_mode_f(
     CPU_INT16U argc,
     CPU_CHAR *argv[]);
 

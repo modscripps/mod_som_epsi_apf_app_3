@@ -506,11 +506,6 @@
 			<locationURI>STUDIO_SDK_LOC/platform/micrium_os/common/source/rtos/rtos_utils_priv.h</locationURI>
 		</link>
 		<link>
-			<name>common/source/shell/shell.c</name>
-			<type>1</type>
-			<locationURI>STUDIO_SDK_LOC/platform/micrium_os/common/source/shell/shell.c</locationURI>
-		</link>
-		<link>
 			<name>common/source/shell/shell_cmd.c</name>
 			<type>1</type>
 			<locationURI>STUDIO_SDK_LOC/platform/micrium_os/common/source/shell/shell_cmd.c</locationURI>

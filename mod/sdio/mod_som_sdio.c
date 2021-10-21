@@ -130,7 +130,8 @@ mod_som_status_t mod_som_sdio_init_f(){
  ******************************************************************************/
 
 mod_som_status_t mod_som_sdio_enable_hardware_f(){
-  int delay=833333; //ALB 60s at 50e6 Hz
+//  int delay=833333; //ALB 60s at 50e6 Hz
+  int delay=0xFFFF; //ALB 60s at 50e6 Hz
 
   if(!mod_som_sdio_struct.enable_flag){
       mod_som_sdio_struct.enable_flag=true;
@@ -171,7 +172,8 @@ mod_som_status_t mod_som_sdio_enable_hardware_f(){
  ******************************************************************************/
 
 mod_som_status_t mod_som_sdio_disable_hardware_f(){
-int delay=833333; //ALB 60s at 50e6 Hz
+//int delay=833333; //ALB 60s at 50e6 Hz
+int delay=0xFFFF; //ALB 60s at 50e6 Hz
 
   if(mod_som_sdio_struct.enable_flag){
       mod_som_sdio_struct.enable_flag=false;
@@ -385,6 +387,8 @@ mod_som_status_t mod_som_sdio_define_filename_f(CPU_CHAR* filename){
 	char * time_buff;
 
 	CPU_CHAR data_file_buf[100];   //ALB with this version of ff.c the filename can *not* be more than 8
+
+  mod_som_sdio_enable_hardware_f();
 
 	//ALB store file prefix
 	memcpy(mod_som_sdio_struct.mod_som_sdio_settings_ptr->prefix_file, filename,strlen(filename));
@@ -1095,7 +1099,7 @@ static void mod_som_sdio_print_task_f(void *p_arg)
     CPU_TS time_passed_msg_pend;
     uint32_t i;
 
-    CORE_DECLARE_IRQ_STATE;
+//    CORE_DECLARE_IRQ_STATE;
 
     uint32_t n_count = 0;
     while(DEF_ON){

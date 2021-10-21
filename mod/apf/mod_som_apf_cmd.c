@@ -158,7 +158,7 @@ CPU_INT16S mod_som_apf_cmd_daq_f(CPU_INT16U argc,
 
 	if(status != MOD_SOM_APF_STATUS_OK)
 		return MOD_SOM_APF_STATUS_ERR;
-	return MOD_SOM_APF_STATUS_ERR;
+	return status;
 }
 
 /*******************************************************************************

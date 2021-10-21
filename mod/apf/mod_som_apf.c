@@ -198,7 +198,7 @@ mod_som_status_t mod_som_apf_default_settings_f(
           MOD_SOM_APF_HEADER,MOD_SOM_APF_SETTINGS_STR_lENGTH);
 
   settings_ptr->comm_telemetry_packet_format=F1;
-  settings_ptr->sd_packet_format=SD2;
+  settings_ptr->sd_packet_format=SD0;
 
   settings_ptr->initialize_flag=true;
   settings_ptr->size=sizeof(*settings_ptr);
@@ -1214,15 +1214,15 @@ mod_som_apf_status_t mod_som_apf_daq_start_f(uint64_t profile_id){
   mod_som_apf_ptr->profile_id=profile_id;
   mod_som_apf_ptr->daq=true;
 	//ALB start turbulence processing task
-  status|= mod_som_efe_obp_start_fill_segment_task_f();
-  status|= mod_som_efe_obp_start_cpt_spectra_task_f();
-  status|= mod_som_efe_obp_start_cpt_dissrate_task_f();
+ status|= mod_som_efe_obp_start_fill_segment_task_f();
+// status|= mod_som_efe_obp_start_cpt_spectra_task_f();
+//  status|= mod_som_efe_obp_start_cpt_dissrate_task_f();
 
 
-  // Delay Start Task execution for
-  OSTimeDly( MOD_SOM_APF_DACQ_CTD_DELAY,             //   consumer delay is #define at the beginning OS Ticks
-             OS_OPT_TIME_DLY,          //   from now.
-             &err);
+//  // Delay Start Task execution for
+//  OSTimeDly( MOD_SOM_APF_DACQ_CTD_DELAY,             //   consumer delay is #define at the beginning OS Ticks
+//             OS_OPT_TIME_DLY,          //   from now.
+//             &err);
 
 
   //ALB get a P reading and define the dz to get 25kB in the producer->dacq_profile
@@ -1249,10 +1249,10 @@ mod_som_apf_status_t mod_som_apf_daq_start_f(uint64_t profile_id){
 
 
 
-  //ALB start APF producer task
-  status |= mod_som_apf_start_producer_task_f();
-  //ALB start APF consumer task
-  status |= mod_som_apf_start_consumer_task_f();
+//  //ALB start APF producer task
+//  status |= mod_som_apf_start_producer_task_f();
+//  //ALB start APF consumer task
+//  status |= mod_som_apf_start_consumer_task_f();
 
   //ALB poor practice delay I think OS_TIME_delay would the same and free the CPU for other tasks.
   while (delay>0){
@@ -1264,9 +1264,9 @@ mod_som_apf_status_t mod_som_apf_daq_start_f(uint64_t profile_id){
 
   //ALB output good behavior
   if (status==0){
-      mod_som_io_print_f("daq,ack,%lu\r\n",(uint32_t) profile_id);
+      mod_som_io_print_f("daq,ack,%lu",(uint32_t) profile_id);
   }else{
-      mod_som_io_print_f("daq,nak,%lu\r\n",status);
+      mod_som_io_print_f("daq,nak,%lu",status);
   }
 
 	return mod_som_apf_encode_status_f(MOD_SOM_APF_STATUS_OK);
@@ -1318,9 +1318,9 @@ mod_som_apf_status_t mod_som_apf_daq_stop_f(){
   mod_som_apf_ptr->daq=false;
 //ALB display msg
   if (status==MOD_SOM_APF_STATUS_OK){
-      mod_som_io_print_f("daq,stop,ack\r\n");
+      mod_som_io_print_f("daq,stop,ack");
   }else{
-      mod_som_io_print_f("daq,stop,nak,%lu\r\n",status);
+      mod_som_io_print_f("daq,stop,nak,%lu",status);
 
   }
 
@@ -1345,14 +1345,14 @@ mod_som_apf_status_t mod_som_apf_daq_status_f(){
   status=MOD_SOM_APF_STATUS_OK;
 
   if(mod_som_apf_ptr->daq){
-      status=mod_som_io_print_f("daq?,ack,%s\r\n","enabled");
+      status=mod_som_io_print_f("daq?,ack,%s","enabled");
   }else{
-      status=mod_som_io_print_f("daq?,ack,%s\r\n","disabled");
+      status=mod_som_io_print_f("daq?,ack,%s","disabled");
   }
 
   //ALB Dana want an error message here but I do not think there is a situation
   if (status!=MOD_SOM_APF_STATUS_OK){
-      mod_som_io_print_f("daq?,nak,%lu\r\n",status);
+      mod_som_io_print_f("daq?,nak,%lu",status);
   }
 	return mod_som_apf_encode_status_f(MOD_SOM_APF_STATUS_OK);
 }
@@ -1419,7 +1419,7 @@ mod_som_apf_status_t mod_som_apf_fwrev_status_f(){
                                           mod_som_settings_get_settings_f();
 
 
-  mod_som_io_print_f("FwRev?,ack,%s\r\n",local_settings_ptr->firmware);
+  mod_som_io_print_f("FwRev?,ack,%s",local_settings_ptr->firmware);
 
 	return mod_som_apf_encode_status_f(MOD_SOM_APF_STATUS_OK);
 }
@@ -1436,7 +1436,7 @@ mod_som_apf_status_t mod_som_apf_ok_status_f(){
 
 	// Wake up sensor's interface.
 	//
-	mod_som_io_print_f("ok?,ack,%s\r\n","status report");
+	mod_som_io_print_f("ok?,ack,%s","status report");
 
 //	mod_som_io_print_f("ok?,nak,%s\r\n","error message");
 	return mod_som_apf_encode_status_f(MOD_SOM_APF_STATUS_OK);
@@ -1457,7 +1457,7 @@ mod_som_apf_status_t mod_som_apf_poweroff_f(){
   //make sure we are not in daq mode
   mod_som_apf_daq_stop_f();
   //ALB save settings in the UserData page
-	mod_som_io_print_f("poweroff,ack\r\n");
+	mod_som_io_print_f("poweroff,ack");
 	return mod_som_apf_encode_status_f(MOD_SOM_APF_STATUS_OK);
 }
 
@@ -1495,13 +1495,13 @@ mod_som_apf_status_t mod_som_apf_epsi_id_status_f(){
                                           mod_som_settings_get_settings_f();
 
 
-  status|=mod_som_io_print_f("EpsiNo,ack,SOM%s,%s,EFE%s,%s\r\n",
+  status|=mod_som_io_print_f("EpsiNo,ack,SOM%s,%s,EFE%s,%s",
 	                   local_settings_ptr->rev,local_settings_ptr->sn,
 	                   local_settings_ptr->mod_som_efe_settings.rev,
 	                   local_settings_ptr->mod_som_efe_settings.sn);
 
 if (status>0){
-    mod_som_io_print_f("EpsiNo?,nak,%lu\r\n",status);
+    mod_som_io_print_f("EpsiNo?,nak,%lu",status);
 }
 	return mod_som_apf_encode_status_f(MOD_SOM_APF_STATUS_OK);
 }
@@ -1553,12 +1553,12 @@ mod_som_apf_status_t mod_som_apf_probe_id_f(CPU_INT16U argc,
 
       if (argument_flag){
           status|=mod_som_settings_save_settings_f();
-          status|= mod_som_io_print_f("ProbeNo,ack,%s,%s,%lu\r\n",argv[1],
+          status|= mod_som_io_print_f("ProbeNo,ack,%s,%s,%lu",argv[1],
                                       local_efe_settings_ptr->sensors[channel_id].sn,
                                       (uint32_t)local_efe_settings_ptr->sensors[channel_id].cal);
       }else{
           status|=MOD_SOM_APF_STATUS_FAIL_WRONG_ARGUMENTS;
-          mod_som_io_print_f("ProbeNo,nak,%lu\r\n",status);
+          mod_som_io_print_f("ProbeNo,nak,%lu",status);
       }
 
       break;
@@ -1566,7 +1566,7 @@ mod_som_apf_status_t mod_som_apf_probe_id_f(CPU_INT16U argc,
       status|=MOD_SOM_APF_STATUS_FAIL_WRONG_ARGUMENTS;
   }
   if(status>0){
-      mod_som_io_print_f("ProbeNo,nak,%lu\r\n",status);
+      mod_som_io_print_f("ProbeNo,nak,%lu",status);
   }
 	return mod_som_apf_encode_status_f(MOD_SOM_APF_STATUS_OK);
 }
@@ -1586,15 +1586,15 @@ mod_som_apf_status_t mod_som_apf_probe_id_status_f(){
   mod_som_efe_settings_ptr_t local_efe_settings_ptr=
       mod_som_efe_get_settings_ptr_f();
 
-  status|= mod_som_io_print_f("ProbeNo,ack,%s,%s,%lu\r\n","S",
+  status|= mod_som_io_print_f("ProbeNo,ack,%s,%s,%lu","S",
                               local_efe_settings_ptr->sensors[1].sn,
                               (uint32_t)local_efe_settings_ptr->sensors[1].cal);
-  status|= mod_som_io_print_f("ProbeNo,ack,%s,%s,%lu\r\n","S",
+  status|= mod_som_io_print_f("ProbeNo,ack,%s,%s,%lu","S",
                               local_efe_settings_ptr->sensors[0].sn,
                               (uint32_t)local_efe_settings_ptr->sensors[0].cal);
 
   if(status>0){
-      mod_som_io_print_f("ProbeNo,nak,%lu\r\n",status);
+      mod_som_io_print_f("ProbeNo,nak,%lu",status);
   }
 
 	return mod_som_apf_encode_status_f(MOD_SOM_APF_STATUS_OK);
@@ -1649,9 +1649,9 @@ mod_som_apf_status_t mod_som_apf_sleep_f(){
       mod_som_sdio_disable_hardware_f();
 
       if (status==0){
-          status|=mod_som_io_print_f("sleep,ak\r\n");
+          status|=mod_som_io_print_f("sleep,ak");
       }else{
-          status|=mod_som_io_print_f("sleep,nak,%lu\r\n",status);
+          status|=mod_som_io_print_f("sleep,nak,%lu",status);
       }
   }
 
@@ -1694,11 +1694,11 @@ mod_som_apf_status_t mod_som_apf_time_f(CPU_INT16U argc,
   sec=date.sec;
 
   status|=mod_som_calendar_set_time_f(year,month,month_day,hour,min,sec,time_zone);
-
-  status|=mod_som_io_print_f("time,ak,%s\r\n",argv[1]);
+  status|=mod_som_settings_save_settings_f();
+  status|=mod_som_io_print_f("time,ak,%s",argv[1]);
 
   if (status==MOD_SOM_APF_STATUS_OK){
-      mod_som_io_print_f("time,nak,%lu\r\n",status);
+      mod_som_io_print_f("time,nak,%lu",status);
   }
 	return mod_som_apf_encode_status_f(MOD_SOM_APF_STATUS_OK);
 }
@@ -1718,10 +1718,10 @@ mod_som_apf_status_t mod_som_apf_time_status_f(){
 
   time= sl_sleeptimer_get_time();
 
-  status|=mod_som_io_print_f("time,ak,%lu\r\n",time);
+  status|=mod_som_io_print_f("time,ak,%lu",time);
 
    if (status==MOD_SOM_APF_STATUS_OK){
-	    mod_som_io_print_f("time,nak,%lu\r\n",status);
+	    mod_som_io_print_f("time,nak,%lu",status);
 	}
 
 	return mod_som_apf_encode_status_f(MOD_SOM_APF_STATUS_OK);
@@ -1755,10 +1755,6 @@ mod_som_apf_status_t mod_som_apf_comm_packet_format_f(CPU_INT16U argc,
   RTOS_ERR  p_err;
   uint8_t mode;
 
-  if (argc==1){
-      printf("comm_packet_format %u\r\n.", mod_som_apf_ptr->settings_ptr->comm_telemetry_packet_format);
-  }
-  else{
     //ALB switch statement easy to handle all user input cases.
     switch (argc){
     case 2:
@@ -1766,14 +1762,13 @@ mod_som_apf_status_t mod_som_apf_comm_packet_format_f(CPU_INT16U argc,
       if(mode<3){
           mod_som_apf_ptr->settings_ptr->comm_telemetry_packet_format=mode;
       }else{
-          printf("format: comm_packet_format mode (0:F0, 1:F1, 2: F2)\r\n");
+          mod_som_io_print_f("comm_packet_format,nak,%s","argument to high");
       }
       break;
     default:
-      printf("format: comm_packet_format mode (0:F0, 1:F1, 2: F2)\r\n");
+      mod_som_io_print_f("comm_packet_format,nak,%s","wrong arguments");
       break;
     }
-  }
 
   switch (mod_som_apf_ptr->settings_ptr->comm_telemetry_packet_format){
     case F0:
@@ -1798,7 +1793,9 @@ mod_som_apf_status_t mod_som_apf_comm_packet_format_f(CPU_INT16U argc,
       break;
   }
 
-  mod_som_io_print_f("comm_packet_format,ak\r\n");
+  mod_som_settings_save_settings_f();
+
+  mod_som_io_print_f("comm_packet_format,ak");
   return mod_som_apf_encode_status_f(MOD_SOM_APF_STATUS_OK);
 }
 
@@ -1806,9 +1803,10 @@ mod_som_apf_status_t mod_som_apf_comm_packet_format_f(CPU_INT16U argc,
  * @brief
  *   command shell for mod_som_apf_cmd_sd_format_f
  *   set the format of the data stored in the SD card
- *   0 = no format (latter on called SD0)
- *   1 = format 1 (SD1) time pressure epsilon chi fom dpdt kvis avg_t avg_s decimated avg spectra
- *   2 = format 2 (SD2) time pressure epsilon chi fom dpdt kvis avg_t avg_s full avg spectra
+ *   0 = no sd storage format (latter on called SD0)
+ *   1 = raw store everything on the SD card
+ *   2 = time pressure epsilon chi fom dpdt kvis avg_t avg_s decimated spectra
+ *   3 = time pressure epsilon chi fom dpdt kvis avg_t avg_s full avg spectra
  *
  * @param argc
  *   argument count
@@ -1825,53 +1823,69 @@ mod_som_apf_status_t mod_som_apf_sd_format_f(CPU_INT16U argc,
                                                       CPU_CHAR *argv[])
 {
 
-  RTOS_ERR  p_err;
+  mod_som_apf_status_t status=0;
+  char *endptr;
   uint8_t mode;
+  bool good_argument=false;
+  CPU_INT16U argc_sbe41 = 2;
+  CPU_CHAR   *argv_sbe41_sd[2]={"sbe.mode" ,"1"};
+  CPU_CHAR   *argv_sbe41_off[2]={"sbe.mode" ,"2"};
+  CPU_INT16U argc_efe = 2;
+  CPU_CHAR   *argv_efe_sd[2]={"efe.mode" ,"1"};
+  CPU_CHAR   *argv_efe_off[2]={"efe.mode" ,"2"};
+  CPU_INT16U argc_efe_obp = 2;
+  CPU_CHAR   *argv_efe_obp_sd[2]={"efeobp.mode" ,"1"};
+  CPU_CHAR   *argv_efe_obp_off[2]={"efeobp.mode" ,"2"};
+  CPU_CHAR   *argv_efe_obp_format[2]={"efeobp.format" ,"1"}; //spectra
 
-  if (argc==1){
-      printf("sd_format %u\r\n.", mod_som_apf_ptr->settings_ptr->sd_packet_format);
-  }
-  else{
     //ALB switch statement easy to handle all user input cases.
     switch (argc){
     case 2:
-      mode=shellStrtol(argv[1],&p_err);
-      if(mode<3){
+//      mode=shellStrtol(argv[1],&p_err);
+      mode = strtol(argv[1], &endptr, 10); // strtol
+
+      if((mode<3) & (mode>=0)){
           mod_som_apf_ptr->settings_ptr->sd_packet_format=mode;
-      }else{
-          printf("format: sd_format mode (0:SD0, 1:SD1, 2: SD2)\r\n");
+          good_argument=true;
       }
       break;
-    default:
-      printf("format: sd_format mode (0:F0, 1:F1, 2: F2)\r\n");
-      break;
     }
+
+    if(mod_som_apf_ptr->settings_ptr->sd_packet_format>1){
+        //ALB start writing data on the sd from the apf producers.
+        mod_som_apf_ptr->consumer_ptr->started_flg=true;
+    }
+    if(mod_som_apf_ptr->settings_ptr->sd_packet_format==1){
+        //ALB write raw data in the Profile file
+        mod_som_sbe41_consumer_mode_f(argc_sbe41,argv_sbe41_sd);
+        mod_som_efe_consumer_mode_f(argc_efe,argv_efe_sd);
+    }else{
+        //ALB sd_mode will use apf producer data.
+        //ALB make sure I turn off raw data sd write.
+        mod_som_sbe41_consumer_mode_f(argc_sbe41,argv_sbe41_off);
+        mod_som_efe_consumer_mode_f(argc_efe,argv_efe_off);
+    }
+
+
+    if(mod_som_apf_ptr->settings_ptr->sd_packet_format==2){
+        //ALB write spectra from efeobp in
+        mod_som_efe_obp_consumer_format_f(argc_efe_obp,argv_efe_obp_format);
+        mod_som_efe_obp_mode_f(argc_efe_obp,argv_efe_obp_sd);
+    }else{
+        mod_som_efe_obp_mode_f(argc_efe_obp,argv_efe_obp_off);
+    }
+
+    if(mod_som_apf_ptr->settings_ptr->sd_packet_format==3){
+
+    }
+
+  status|=mod_som_settings_save_settings_f();
+
+  if(good_argument){
+      mod_som_io_print_f("sd_format,ak");
+  }else{
+      mod_som_io_print_f("sd_format,nak,%s","wrong arguments");
   }
-
-  switch (mod_som_apf_ptr->settings_ptr->comm_telemetry_packet_format){
-    case F0:
-      mod_som_apf_ptr->producer_ptr->dacq_element_size=0;
-      break;
-    case F1:
-      mod_som_apf_ptr->producer_ptr->dacq_element_size=
-          MOD_SOM_APF_DACQ_TIMESTAMP_SIZE+
-          MOD_SOM_APF_DACQ_PRESSURE_SIZE+
-          MOD_SOM_APF_DACQ_DISSRATE_SIZE+
-          MOD_SOM_APF_DACQ_FOM_SIZE;
-      break;
-    case F2:
-      mod_som_apf_ptr->producer_ptr->dacq_element_size=
-          MOD_SOM_APF_DACQ_TIMESTAMP_SIZE+
-          MOD_SOM_APF_DACQ_PRESSURE_SIZE+
-          MOD_SOM_APF_DACQ_DISSRATE_SIZE+
-          MOD_SOM_APF_DACQ_SEAWATER_SPEED_SIZE+
-         (MOD_SOM_EFE_OBP_CHANNEL_NUMBER*
-          mod_som_apf_ptr->producer_ptr->nfft_diag);
-
-      break;
-  }
-
-  mod_som_io_print_f("comm_packet_format,ak\r\n");
   return mod_som_apf_encode_status_f(MOD_SOM_APF_STATUS_OK);
 }
 
@@ -1914,7 +1928,7 @@ mod_som_apf_status_t mod_som_apf_upload_f(){
 
       //ALB upload cmd received
       //ALB send msg back
-      mod_som_io_print_f("upload,ack,start\r\n");
+      mod_som_io_print_f("upload,ack,start");
 
       //ALB wait 500 ms
       while (delay>0){
@@ -2025,10 +2039,10 @@ mod_som_apf_status_t mod_som_apf_upload_f(){
 
   //ALB end of upload send the upload status
   if(status!=MOD_SOM_APF_STATUS_OK){
-      mod_som_io_print_f("upload,ak,success\r\n");
+      mod_som_io_print_f("upload,ak,success");
 
   }else{
-      mod_som_io_print_f("upload,nak,%lu\r\n",status);
+      mod_som_io_print_f("upload,nak,%lu",status);
   }
   return mod_som_apf_encode_status_f(status);
 }

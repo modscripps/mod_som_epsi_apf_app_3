@@ -242,7 +242,7 @@ void mod_som_efe_obp_shear_spectra_f(float *shear_ptr, int spectra_offset, mod_s
   power_spectrum_f(shear_ptr, spectrum_buffer, settings->nfft, config->f_samp);
   // convert spectra from V^2/Hz to (m/s)^2/Hz
   for (uint16_t i = 0; i < settings->nfft/2; i++) {
-      spectrum_buffer[i] = spectrum_buffer[i]*pow(2*g/(*(cals->shear_sv)*w), 2);
+      spectrum_buffer[i] = spectrum_buffer[i]*pow(2*g/(cals->shear_sv*w), 2);
       // run spectrum through filter
       spectrum_buffer[i] = spectrum_buffer[i]/shear_filter[i];
       // stuff spectrum into output
@@ -308,7 +308,7 @@ void mod_som_efe_obp_temp_spectra_f(float *temp_ptr, int spectra_offset, mod_som
   power_spectrum_f(temp_ptr, spectrum_buffer, settings->nfft, config->f_samp);
   // convert spectra from V^2/Hz to (degC)^2/Hz
   for (uint16_t i = 0; i < settings->nfft/2; i++) {
-    spectrum_buffer[i] = spectrum_buffer[i]*pow(*(cals->fp07_dTdV), 2);
+    spectrum_buffer[i] = spectrum_buffer[i]*pow(cals->fp07_dTdV, 2);
   }
   // find cutoff before filtering
   *(vals->fp07_cutoff) = mod_som_epsiobp_fp07_cutoff_f(spectrum_buffer, settings->nfft/2);
@@ -666,7 +666,7 @@ void mod_som_epsiobp_fp07_filters_f(float *fp07_filter, float fall_rate)
   uint16_t end = settings->nfft/2;
   float denom = 2*vals->freq[end - 1];
   // interpolate to get proper Tdiff filter given freq
-  interp1_f(cals->Tdiff_freq, cals->Tdiff_coeff, cals->Tdiff_size, vals->freq, Tdiff, settings->nfft/2);
+//  interp1_f(cals->Tdiff_freq, cals->Tdiff_coeff, cals->Tdiff_size, vals->freq, Tdiff, settings->nfft/2);
   // loop to find values for other elements of the filter
   for (uint16_t i = 0; i < settings->nfft/2; i++) {
     // elect_fp07 is the ADC filter, in this case a sinc4 function, will eventually need to change to allow for user input
