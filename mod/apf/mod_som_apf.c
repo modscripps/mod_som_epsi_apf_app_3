@@ -763,7 +763,8 @@ void mod_som_apf_producer_task_f(void  *p_arg){
  * @brief
  *   apf consumer task
  *
- *   1 - store the dacq profile in a sd file (as the dacq_profile is getting filled up)
+ *   1 - Always write time pressure epsi chi fom on the sd card
+ *   1bis - strore the decimated avg spectra
  *   2 - store the meta data on the sd when dacq_profile is full
  *   3 - close SD file after meta data are written.
  *   2- when asked stream out the data to the apf with the afp format
@@ -1868,7 +1869,7 @@ mod_som_apf_status_t mod_som_apf_sd_format_f(CPU_INT16U argc,
 
 
     if(mod_som_apf_ptr->settings_ptr->sd_packet_format==2){
-        //ALB write spectra from efeobp in
+        //ALB write spectra from efeobp on the SD card
         mod_som_efe_obp_consumer_format_f(argc_efe_obp,argv_efe_obp_format);
         mod_som_efe_obp_mode_f(argc_efe_obp,argv_efe_obp_sd);
     }else{
@@ -1876,6 +1877,8 @@ mod_som_apf_status_t mod_som_apf_sd_format_f(CPU_INT16U argc,
     }
 
     if(mod_som_apf_ptr->settings_ptr->sd_packet_format==3){
+        //ALB write decimated spectra from apf on the SDcard.
+
 
     }
 

@@ -170,15 +170,80 @@ void mod_som_epsiobp_init_f(mod_som_efe_obp_config_ptr_t config_ptr_in, mod_som_
 //  cals->dTdV = (float*) malloc(num_fp07*sizeof(float));
 //  shear_data = (float*) malloc(fft_size*sizeof(float)); // shear probe data vector
 //  fp07_data = (float*) malloc(fft_size*sizeof(float)); // fp07 data vector
-  vals->freq = (float*) calloc(settings->nfft/2, sizeof(float)); // freq vector, zero freq NOT included
-  vals->kvec = (float*) calloc(settings->nfft/2, sizeof(float)); // wavenumber vector
-  vals->fp07_noise = (float*) calloc(settings->nfft/2, sizeof(float)); // fp07 noise vector
-  vals->hamming_window = (float*) calloc(settings->nfft, sizeof(float)); // hamming window weights vector
-  vals->epsi_spectrum_buffer = (float*) calloc(settings->nfft/2, sizeof(float)); // buffer for spectra
-  vals->chi_spectrum_buffer = (float*) calloc(settings->nfft/2, sizeof(float));
-  vals->epsi_averaged_spectrum = (float*) calloc(settings->nfft/2, sizeof(float)); // buffer for averaged spectrum
-  vals->chi_averaged_spectrum = (float*) calloc(settings->nfft, sizeof(float));
-  spectrum_buffer = (float*) calloc(settings->nfft/2, sizeof(float));
+
+  RTOS_ERR  err;
+
+  //ALB alloc memory for setup pointer
+  //set up default configuration
+  vals =
+      (mod_som_efe_obp_calc_vals_ptr_t)Mem_SegAlloc(
+          "MOD SOM EFE OBP vals.",DEF_NULL,
+          sizeof(mod_som_efe_obp_calc_vals_t),
+          &err);
+
+  // Check error code
+  APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
+  vals->freq =
+      (float *)Mem_SegAlloc(
+          "MOD SOM EFE OBP vals freq.",DEF_NULL,
+          sizeof(float)*settings->nfft/2,
+          &err);
+
+  // Check error code
+  APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
+  vals->kvec =
+      (float *)Mem_SegAlloc(
+          "MOD SOM EFE OBP vals kvec.",DEF_NULL,
+          sizeof(float)*settings->nfft/2,
+          &err);
+  // Check error code
+  APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
+  vals->fp07_noise =
+      (float *)Mem_SegAlloc(
+          "MOD SOM EFE OBP vals fp07_noise.",DEF_NULL,
+          sizeof(float)*settings->nfft/2,
+          &err);
+  // Check error code
+  APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
+  vals->hamming_window =
+      (float *)Mem_SegAlloc(
+          "MOD SOM EFE OBP vals hamming_window.",DEF_NULL,
+          sizeof(float)*settings->nfft/2,
+          &err);
+  // Check error code
+  APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
+  vals->epsi_spectrum_buffer =
+      (float *)Mem_SegAlloc(
+          "MOD SOM EFE OBP vals epsi_spectrum_buffer.",DEF_NULL,
+          sizeof(float)*settings->nfft/2,
+          &err);
+  // Check error code
+  APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
+  vals->chi_spectrum_buffer =
+      (float *)Mem_SegAlloc(
+          "MOD SOM EFE OBP vals chi_spectrum_buffer.",DEF_NULL,
+          sizeof(float)*settings->nfft/2,
+          &err);
+  // Check error code
+  APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
+  spectrum_buffer =
+      (float *)Mem_SegAlloc(
+          "MOD SOM EFE OBP spectrum_buffer.",DEF_NULL,
+          sizeof(float)*settings->nfft/2,
+          &err);
+  // Check error code
+  APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
+
+
+//  vals->freq = (float*) calloc(settings->nfft/2, sizeof(float)); // freq vector, zero freq NOT included
+//  vals->kvec = (float*) calloc(settings->nfft/2, sizeof(float)); // wavenumber vector
+//  vals->fp07_noise = (float*) calloc(settings->nfft/2, sizeof(float)); // fp07 noise vector
+//  vals->hamming_window = (float*) calloc(settings->nfft, sizeof(float)); // hamming window weights vector
+//  vals->epsi_spectrum_buffer = (float*) calloc(settings->nfft/2, sizeof(float)); // buffer for spectra
+//  vals->chi_spectrum_buffer = (float*) calloc(settings->nfft/2, sizeof(float));
+//  vals->epsi_averaged_spectrum = (float*) calloc(settings->nfft/2, sizeof(float)); // buffer for averaged spectrum
+//  vals->chi_averaged_spectrum = (float*) calloc(settings->nfft, sizeof(float));
+//  spectrum_buffer = (float*) calloc(settings->nfft/2, sizeof(float));
   // calculate the frequency vector
   for (uint16_t i = 0; i < settings->nfft/2; i++) {
     vals->freq[i] = (float) (i + 1)/(settings->nfft)*config->f_samp;
