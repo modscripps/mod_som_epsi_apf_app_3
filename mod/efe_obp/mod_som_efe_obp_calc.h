@@ -66,7 +66,10 @@ typedef struct {
 // OBP CALC INIT
 void mod_som_epsiobp_init_f(mod_som_efe_obp_config_ptr_t config_ptr_in, mod_som_efe_obp_settings_ptr_t settings_ptr_in, mod_som_efe_obp_calibration_ptr_t cals_ptr_in);
 // OBP CALCS
-void mod_som_efe_obp_all_spectra_f(float *temp_ptr, float *shear_ptr, float *accel_ptr, int spectra_offset, mod_som_efe_obp_ptr_t mod_som_efe_obp_ptr);
+// OBP CALCULATIONS
+void mod_som_efe_obp_shear_spectrum_f(float *seg_buffer, int spectra_offset, mod_som_efe_obp_ptr_t mod_som_efe_obp_ptr);
+void mod_som_efe_obp_temp_spectrum_f(float *seg_buffer, int spectra_offset, mod_som_efe_obp_ptr_t mod_som_efe_obp_ptr);
+void mod_som_efe_obp_accel_spectrum_f(float *seg_buffer, int spectra_offset, mod_som_efe_obp_ptr_t mod_som_efe_obp_ptr);
 void mod_som_efe_obp_calc_epsilon_f(float *local_epsilon, float *nu, float *fom, mod_som_efe_obp_ptr_t mod_som_efe_obp_ptr);
 void mod_som_efe_obp_calc_chi_f(float *local_epsilon, float *local_chi, float *kappa, float *fom, mod_som_efe_obp_ptr_t mod_som_efe_obp_ptr);
 

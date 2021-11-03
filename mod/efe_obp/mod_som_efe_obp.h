@@ -207,6 +207,7 @@ typedef struct{
   uint64_t half_segment_cnt;
 
   uint64_t * timestamp_segment_ptr;
+  float * segment_buffer_ptr;
   float * seg_temp_volt_ptr;
   float * seg_shear_volt_ptr;
   float * seg_accel_volt_ptr;

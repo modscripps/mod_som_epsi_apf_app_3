@@ -550,6 +550,13 @@ mod_som_status_t mod_som_efe_obp_construct_fill_segment_ptr_f(){
 
   // ALB Allocate memory for the spectra
 
+  // Check error code
+  APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
+  mod_som_efe_obp_ptr->fill_segment_ptr->segment_buffer_ptr = (float *)Mem_SegAlloc(
+          "MOD SOM EFE OBP segment_buffer.",DEF_NULL,
+          sizeof(float)*mod_som_efe_obp_ptr->settings_ptr->nfft,
+          &err);
+
   APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
   mod_som_efe_obp_ptr->fill_segment_ptr->timestamp_segment_ptr = (uint64_t *)Mem_SegAlloc(
         "MOD SOM EFE OBP timestamp seg ptr",DEF_NULL,
@@ -1347,6 +1354,70 @@ void mod_som_efe_obp_cpt_spectra_task_f(void  *p_arg){
           mystatus = sl_sleeptimer_tick64_to_ms(tick,\
                                                 &mod_som_efe_obp_ptr->start_computation_timestamp);
 
+          //ALB I need to fill up the segment buffer. I need that buffer because
+            //ALB I organised the segment circular buffer in half-segment.
+            //ALB I need a way to create a segment with the last half-segment and the first half segment.
+            //ALB My solution is a segment buffer in which I ll copy the segments one after the other.
+            uint32_t indx = 0;
+
+            //ALB start copying the segment in the record buffer.
+            //ALB I do it it in 2 times to write 2 half segments in order
+            //ALB to handle the weird case of the end of the timeseries
+            //ALB halfseg4 and halfseg1.
+
+            // start with shear
+            memcpy(&mod_som_efe_obp_ptr->fill_segment_ptr->segment_buffer_ptr[indx],
+                   &curr_shear_seg_ptr[
+                  (mod_som_efe_obp_ptr->consumer_ptr->segment_cnt%
+                   (2*MOD_SOM_EFE_OBP_FILL_SEGMENT_NB_SEGMENT_PER_RECORD))
+                 * mod_som_efe_obp_ptr->settings_ptr->nfft/2],
+                   mod_som_efe_obp_ptr->settings_ptr->nfft/2*sizeof(float));
+            indx+=mod_som_efe_obp_ptr->settings_ptr->nfft/2*sizeof(float);
+            memcpy(&mod_som_efe_obp_ptr->fill_segment_ptr->segment_buffer_ptr[indx],
+                   &curr_shear_seg_ptr[
+                  ((mod_som_efe_obp_ptr->consumer_ptr->segment_cnt+1)%
+                   (2*MOD_SOM_EFE_OBP_FILL_SEGMENT_NB_SEGMENT_PER_RECORD))
+                 * mod_som_efe_obp_ptr->settings_ptr->nfft/2],
+                   mod_som_efe_obp_ptr->settings_ptr->nfft/2*sizeof(float));
+            // call shear spectrum function
+            mod_som_efe_obp_shear_spectrum_f(mod_som_efe_obp_ptr->fill_segment_ptr->segment_buffer_ptr, spectra_offset, mod_som_efe_obp_ptr);
+            // move on to temperature
+            indx = 0;
+            memcpy(&mod_som_efe_obp_ptr->fill_segment_ptr->segment_buffer_ptr[indx],
+                   &curr_temp_seg_ptr[
+                  (mod_som_efe_obp_ptr->consumer_ptr->segment_cnt%
+                   (2*MOD_SOM_EFE_OBP_FILL_SEGMENT_NB_SEGMENT_PER_RECORD))
+                 * mod_som_efe_obp_ptr->settings_ptr->nfft/2],
+                   mod_som_efe_obp_ptr->settings_ptr->nfft/2*sizeof(float));
+            indx+=mod_som_efe_obp_ptr->settings_ptr->nfft/2*sizeof(float);
+            memcpy(&mod_som_efe_obp_ptr->fill_segment_ptr->segment_buffer_ptr[indx],
+                   &curr_temp_seg_ptr[
+                  ((mod_som_efe_obp_ptr->consumer_ptr->segment_cnt+1)%
+                   (2*MOD_SOM_EFE_OBP_FILL_SEGMENT_NB_SEGMENT_PER_RECORD))
+                 * mod_som_efe_obp_ptr->settings_ptr->nfft/2],
+                   mod_som_efe_obp_ptr->settings_ptr->nfft/2*sizeof(float));
+            // call temperature spectrum function
+            mod_som_efe_obp_temp_spectrum_f(mod_som_efe_obp_ptr->fill_segment_ptr->segment_buffer_ptr, spectra_offset, mod_som_efe_obp_ptr);
+            // last do acceleration
+            indx = 0;
+            memcpy(&mod_som_efe_obp_ptr->fill_segment_ptr->segment_buffer_ptr[indx],
+                     &curr_accel_seg_ptr[
+                     (mod_som_efe_obp_ptr->consumer_ptr->segment_cnt%
+                     (2*MOD_SOM_EFE_OBP_FILL_SEGMENT_NB_SEGMENT_PER_RECORD))
+                    * mod_som_efe_obp_ptr->settings_ptr->nfft/2],
+                      mod_som_efe_obp_ptr->settings_ptr->nfft/2*sizeof(float));
+
+            indx+=mod_som_efe_obp_ptr->settings_ptr->nfft/2*sizeof(float);
+            memcpy(&mod_som_efe_obp_ptr->fill_segment_ptr->segment_buffer_ptr[indx],
+                   &curr_accel_seg_ptr[
+                   ((mod_som_efe_obp_ptr->consumer_ptr->segment_cnt+1)%
+                   (2*MOD_SOM_EFE_OBP_FILL_SEGMENT_NB_SEGMENT_PER_RECORD))
+                  * mod_som_efe_obp_ptr->settings_ptr->nfft/2],
+                    mod_som_efe_obp_ptr->settings_ptr->nfft/2*sizeof(float));
+            // call accel spectrum function
+            mod_som_efe_obp_accel_spectrum_f(mod_som_efe_obp_ptr->fill_segment_ptr->segment_buffer_ptr, spectra_offset, mod_som_efe_obp_ptr);
+
+          //CAP THE BELOW IS NOW OBSOLETE
           //CAP Add compute spectra functions
 //          mod_som_efe_obp_all_spectra_f(
 //              curr_temp_seg_ptr,
