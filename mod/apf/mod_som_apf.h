@@ -48,7 +48,7 @@
 #define MOD_SOM_APF_DACQ_MINIMUM_PRESSURE    5
 #define MOD_SOM_APF_DACQ_CTD_DELAY           100
 
-#define MOD_SOM_APF_METADATA_STRUCT_SIZE    30
+#define MOD_SOM_APF_METADATA_STRUCT_SIZE    31
 #define MOD_SOM_APF_END_METADATA_STRUCT     0xFFFF
 
 
@@ -74,6 +74,11 @@
 #define MOD_SOM_APF_CONSUMER_DELAY                  10      // delay for fill segment task
 
 
+#define MOD_SOM_APF_SHELL_TASK_PRIO              21u
+#define MOD_SOM_APF_SHELL_TASK_STK_SIZE          512u
+#define MOD_SOM_APF_SHELL_DELAY                  1      // delay for fill segment task
+//#define MOD_SOM_APF_SHELL_SAMPLE_LASTCHAR        '\r'
+
 #define MOD_SOM_APF_STATUS_OK   0
 #define MOD_SOM_APF_STATUS_ERR -2   //ALB cannot -1 because it interfere with default shell ERR
 #define MOD_SOM_APF_STATUS_CANNOT_ALLOCATE_SETUP                0x1u
@@ -85,6 +90,7 @@
 #define MOD_SOM_APF_STATUS_FAIL_TO_STOP_CONSUMER_TASK           0x7u
 #define MOD_SOM_APF_STATUS_FAIL_WRONG_ARGUMENTS                 0x8u
 #define MOD_SOM_APF_STATUS_DAQ_IS_RUNNING                       0x9u
+#define MOD_SOM_APF_STATUS_FAIL_TO_ALLOCATE_MEMORY              0x10U
 
 
 #define MOD_SOM_APF_UPLOAD_DELAY                  25000000      // 0.5 delay upon reception of the upload cmd
@@ -114,6 +120,8 @@ typedef struct{
    uint32_t  initialized_flag;
    uint32_t  header_length;
    uint8_t   vibration_cut_off;
+   mod_som_com_port_t port;
+   uint32_t baud_rate;
 
 }mod_som_apf_config_t, *mod_som_apf_config_ptr_t;
 
@@ -155,18 +163,16 @@ mod_som_apf_probe_t, *mod_som_apf_probe_ptr_t;
 4-5    Profile identifier (i.e., profile number)
 6-7    SOM serial number - revision (two bytes for serial and revision)
 8-9    EFE serial number - revision   (two bytes for serial and revision)
-10-14  Firmware revision. ALB: I would recommend the latest github commit number like 6e92d93  (could be 4 bytes in hex)
-15-16  Nfft  (2 bytes) ALB not a param the user can change
-17-21  <ProbeType1><ProbeSerNo1><ProbeCalcoef1> (1+2 +2 bytes)
-22-26  <ProbeType2><ProbeSerNo2><ProbeCalcoef2>(1+2 +2 bytes)
+10-13  Firmware revision. ALB: I would recommend the latest github commit number like 6e92d93  (could be 4 bytes in hex)
+14-15  Nfft  (2 bytes) ALB not a param the user can change
+16-20  <ProbeType1><ProbeSerNo1><ProbeCalcoef1> (1+2 +2 bytes)
+21-25  <ProbeType2><ProbeSerNo2><ProbeCalcoef2>(1+2 +2 bytes)
 
-27      comm_telemetry_packet_format (1 byte)
-28      Voltage 1 byte
-29      4 bits Epsilon - 4 bits chi algorithm version
-30      Vibration cut off frequency (1 byte)
-31-32   Number of samples.
-33-34   NFFTdiag (should be 0 when comm_telemetry_packet_format is *not* 3 )
-35-36   0xFFFF
+26      comm_telemetry_packet_format (1 byte)
+27      sd_format (1 byte)
+
+28-29   Number of samples.
+30-31   0xFFFF
 ******************************************************************************/
 
 typedef struct{
@@ -180,7 +186,7 @@ typedef struct{
   mod_som_apf_probe_t  probe1;
   mod_som_apf_probe_t  probe2;
   uint8_t  comm_telemetry_packet_format;
-  uint8_t  voltage;
+  uint8_t  sd_format;
   uint16_t sample_cnt;
   uint16_t end_metadata; //always 0xFFFF;
 }
@@ -287,7 +293,10 @@ typedef struct{
   bool  started_flg;        //ALB is the APF producer started
 
   uint32_t  dacq_size;
-  uint8_t * data_ptr;
+  uint8_t * dacq_ptr;
+  uint64_t dissrates_cnt;
+  uint32_t dissrate_skipped;
+  uint32_t stored_dissrates_cnt;
 
   bool      consumed_flag;
   uint8_t   send_packet_tries;
@@ -297,6 +306,36 @@ typedef struct{
 
 }
 mod_som_apf_consumer_t, *mod_som_apf_consumer_ptr_t;
+
+/*******************************************************************************
+ * @brief
+ *     peripheral structure for MOD SOM APF
+ * @description
+ *     this structure is based on the peripheral structure described in
+ *     mod_som_common.h, mod_som_prf_t. The first 3 fields of the structure
+ *     has to be the same as that of mod_som_prf_t.
+ * @field handle_port
+ *     a pointer to UART handle port (same as mod_som_prf_t)
+ * @field irq_f
+ *     pointer to interrupt callback function
+ *     if UART port has two interrupt callback function, this would be the RX
+ *     interrupt callback function
+ * @field irq_extra_f
+ *     pointer to additional interrupt callback function
+ *     if UART port has two interrupt callback function, this would be the TX
+ *     interrupt callback function
+ * @field irqn
+ *     interrupt number identification for the interrupt system
+ ******************************************************************************/
+typedef struct{
+    void * handle_port;
+    void (* irq_f)();
+    void (* irq_extra_f)();
+    IRQn_Type irqn;
+    enum {retarget,apfleuart} portID;
+}mod_som_apf_prf_t,*mod_som_apf_prf_ptr_t;
+
+
 
 
 /*******************************************************************************
@@ -375,6 +414,7 @@ typedef struct{
    mod_som_apf_config_ptr_t   config_ptr;
    mod_som_apf_producer_ptr_t producer_ptr;
    mod_som_apf_consumer_ptr_t consumer_ptr;
+   mod_som_apf_prf_ptr_t      com_prf_ptr;
 
    uint64_t profile_id;
    bool     daq;
@@ -704,6 +744,17 @@ mod_som_apf_status_t mod_som_apf_upload_f();
 
 /*******************************************************************************
  * @brief
+ *   construct apf com_prf
+ *   ALB We should be able to choose between RETARGET_SERIAL and any other port
+ *   (e.g., LEUART)
+ *
+ * @param mod_som_apf_ptr
+ *   runtime device pointer where data can be stored and communication is done
+ ******************************************************************************/
+mod_som_status_t mod_som_apf_construct_com_prf_f();
+
+/*******************************************************************************
+ * @brief
  *   start apf producer task
  *
  * @return
@@ -751,6 +802,42 @@ void mod_som_apf_consumer_task_f(void  *p_arg);
 
 /*******************************************************************************
  * @brief
+ *   apf shell task
+ *
+ *   shell task
+ *
+ *
+ * @return
+ *   MOD_SOM_STATUS_OK if initialization goes well
+ *   or otherwise
+ ******************************************************************************/
+void mod_som_apf_shell_task_f(void  *p_arg);
+
+/*******************************************************************************
+ * @brief
+ *   Get text input APEX.
+ *
+ *
+ * @param buf
+ *   Buffer to hold the input string.
+ * @param buf_length
+ *  Length of buffer as the user is typing
+ ******************************************************************************/
+mod_som_status_t mod_som_apf_shell_get_input_f(char *buf, uint32_t * buf_len);
+
+/*******************************************************************************
+ * @brief
+ *   Execute user's input when a carriage return is pressed.
+ *
+ * @param input
+ *   The string entered at prompt.
+ * @param input_len
+ *   Length of string input
+ ******************************************************************************/
+mod_som_status_t mod_som_apf_shell_execute_input_f(char* input,uint32_t input_len);
+
+/*******************************************************************************
+ * @brief
  * convert the dissrates into MOD format
  *
  *
@@ -777,6 +864,16 @@ void mod_som_apf_copy_F1_element_f( uint64_t * curr_avg_timestamp_ptr,
  *   or otherwise
  ******************************************************************************/
 void mod_som_apf_copy_F2_element_f(  uint64_t * curr_avg_timestamp_ptr,
+                                float * curr_avg_pressure_ptr,
+                                float * curr_avg_dpdt_ptr,
+                                float * curr_epsilon_ptr,
+                                float * curr_chi_ptr,
+                                float * curr_temp_avg_spectra_ptr,
+                                float * curr_shear_avg_spectra_ptr,
+                                float * curr_accel_avg_spectra_ptr,
+                                uint8_t * dacq_ptr);
+
+void mod_som_apf_copy_sd_element_f(  uint64_t * curr_avg_timestamp_ptr,
                                 float * curr_avg_pressure_ptr,
                                 float * curr_avg_dpdt_ptr,
                                 float * curr_epsilon_ptr,

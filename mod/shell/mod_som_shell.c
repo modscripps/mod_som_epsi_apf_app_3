@@ -180,6 +180,8 @@ mod_som_status_t mod_som_shell_execute_input_f(char* input,uint32_t input_len){
  * @brief
  *   Get text input from user.
  *
+ *   /MG
+ *
  * @param buf
  *   Buffer to hold the input string.
  * @param buf_length

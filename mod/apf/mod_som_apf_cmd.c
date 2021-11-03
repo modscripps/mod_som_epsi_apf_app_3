@@ -17,6 +17,8 @@
 #include  <common/source/shell/shell_priv.h>
 
 
+//ALB
+
 //------------------------------------------------------------------------------
 // local variable declarations
 //------------------------------------------------------------------------------
@@ -610,81 +612,6 @@ CPU_INT16S mod_som_apf_cmd_upload_f(CPU_INT16U argc,
 
 
 
-
-//----------------------------------------------------------------------------------------------
-// ALB function concerning the apf shell
-// - change coma (",";44) for space (" ";32)
-/*******************************************************************************
- * @brief
- *   Get text input from user.
- *
- * @param buf
- *   Buffer to hold the input string.
- * @param buf_length
- *  Length of buffer as the user is typing
- ******************************************************************************/
-mod_som_apf_status_t mod_som_apf_shell_get_input_f(char *buf, uint32_t * buf_len){
-    int c;
-    int32_t i;
-    RTOS_ERR err;
-
-    Mem_Set(buf, '\0', MOD_SOM_SHELL_INPUT_BUF_SIZE); // Clear previous input
-    for (i = 0; i < MOD_SOM_SHELL_INPUT_BUF_SIZE - 1; i++) {
-        c = RETARGET_ReadChar();
-        while (c < 0){ // Wait for valid input
-            //Release for waiting tasks
-            OSTimeDly(
-                    (OS_TICK     )MOD_SOM_CFG_LOOP_TICK_DELAY,
-                    (OS_OPT      )OS_OPT_TIME_DLY,
-                    &err);
-            APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
-            c = RETARGET_ReadChar();
-        }
-
-        if (c == ASCII_CHAR_DELETE || c == 0x08) { // User inputed backspace
-            if (i) {
-                mod_som_io_print_f("\b \b");
-                buf[--i] = '\0';
-            }
-            i--;
-            continue;
-        } else if (c == '\r' || c == '\n') {
-            if (i) {
-                mod_som_io_print_f("\r\n");
-                break;
-            } else {
-                mod_som_io_print_f("\r\n$ ");
-                i--;
-                continue;
-            }
-        }else if(c == 27){
-            for(i--;i>=0;i--){
-                mod_som_io_print_f("\b \b");
-                //Release for waiting tasks
-                OSTimeDly(
-                        (OS_TICK     )MOD_SOM_CFG_LOOP_TICK_DELAY,
-                        (OS_OPT      )OS_OPT_TIME_DLY,
-                        &err);
-            }
-            buf[0] = '\0';
-            continue;
-        }else if (!(c>31 && c<127)){ // check for printable characters
-        	i--;
-            continue;
-        }
-    	//ALB convert coma from apf command into space. So our micrium parser works without too much of a head ache
-        if(c==44){
-        	c=32;
-        }
-        //ALB ask Dana if we need to *not* echo the char.
-        mod_som_io_putchar_f(c); // Echo to terminal
-        buf[i] = c;
-    }
-
-    buf[i] = '\0';
-    *(buf_len) = i;
-    return mod_som_shell_encode_status_f(MOD_SOM_STATUS_OK);
-}
 
 
 

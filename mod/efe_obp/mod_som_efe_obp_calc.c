@@ -80,6 +80,9 @@ static mod_som_efe_obp_calc_vals_ptr_t vals;
 // spectrum buffer for calculation storage and operation
 float *spectrum_buffer;
 
+// segment buffer for calculation storage and operation
+float *segment_buffer_ptr;
+
 // UNIVERSAL CONSTANTS
 static const float g = 9.807; // m/s^2
 // CALIBRATION INPUTS
@@ -220,6 +223,14 @@ void mod_som_epsiobp_init_f(mod_som_efe_obp_config_ptr_t config_ptr_in, mod_som_
   // Check error code
   APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
 
+  segment_buffer_ptr =
+      (float *)Mem_SegAlloc(
+          "MOD SOM EFE OBP segment_buffer.",DEF_NULL,
+          sizeof(float)*settings->nfft,
+          &err);
+  // Check error code
+  APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
+
 
 //  vals->freq = (float*) calloc(settings->nfft/2, sizeof(float)); // freq vector, zero freq NOT included
 //  vals->kvec = (float*) calloc(settings->nfft/2, sizeof(float)); // wavenumber vector
@@ -259,10 +270,81 @@ void mod_som_efe_obp_all_spectra_f(float *temp_ptr, float *shear_ptr, float *acc
  *   the relevant input CTD data
  ******************************************************************************/
 {
+
+  //ALB I need to fill up the segment buffer. I need that buffer because
+  //ALB I organised the segment circular buffer in half-segment.
+  //ALB I need a way to create a segment with the last half-segment and the first half segment.
+  //ALB My solution is a segment buffer in which I ll copy the segments one after the other.
+
+
+  uint32_t indx = 0;
+  //ALB start copying the segment in the record buffer.
+  //ALB I do it it in 2 times to write 2 half segments in order
+  //ALB to handle the weird case of the end of the timeseries
+  //ALB halfseg4 and halfseg1.
+  memcpy(&segment_buffer_ptr[indx],
+         &temp_ptr[
+        (mod_som_efe_obp_ptr->consumer_ptr->segment_cnt%
+         (2*MOD_SOM_EFE_OBP_FILL_SEGMENT_NB_SEGMENT_PER_RECORD))
+       * mod_som_efe_obp_ptr->settings_ptr->nfft/2],
+         mod_som_efe_obp_ptr->settings_ptr->nfft/2*sizeof(float));
+
+  indx+=mod_som_efe_obp_ptr->settings_ptr->nfft/2*sizeof(float);
+
+  memcpy(&segment_buffer_ptr[indx],
+         &temp_ptr[
+        ((mod_som_efe_obp_ptr->consumer_ptr->segment_cnt+1)%
+         (2*MOD_SOM_EFE_OBP_FILL_SEGMENT_NB_SEGMENT_PER_RECORD))
+       * mod_som_efe_obp_ptr->settings_ptr->nfft/2],
+         mod_som_efe_obp_ptr->settings_ptr->nfft/2*sizeof(float));
+
   // call appropriate functions
-  mod_som_efe_obp_shear_spectra_f(shear_ptr, spectra_offset, mod_som_efe_obp_ptr);
-  mod_som_efe_obp_temp_spectra_f(temp_ptr, spectra_offset, mod_som_efe_obp_ptr);
-  mod_som_efe_obp_accel_spectra_f(accel_ptr, spectra_offset, mod_som_efe_obp_ptr);
+  mod_som_efe_obp_temp_spectra_f(segment_buffer_ptr, spectra_offset, mod_som_efe_obp_ptr);
+
+  indx = 0;
+
+  memcpy(&segment_buffer_ptr[indx],
+         &shear_ptr[
+        (mod_som_efe_obp_ptr->consumer_ptr->segment_cnt%
+         (2*MOD_SOM_EFE_OBP_FILL_SEGMENT_NB_SEGMENT_PER_RECORD))
+       * mod_som_efe_obp_ptr->settings_ptr->nfft/2],
+         mod_som_efe_obp_ptr->settings_ptr->nfft/2*sizeof(float));
+
+  indx+=mod_som_efe_obp_ptr->settings_ptr->nfft/2*sizeof(float);
+
+  memcpy(&segment_buffer_ptr[indx],
+         &shear_ptr[
+        ((mod_som_efe_obp_ptr->consumer_ptr->segment_cnt+1)%
+         (2*MOD_SOM_EFE_OBP_FILL_SEGMENT_NB_SEGMENT_PER_RECORD))
+       * mod_som_efe_obp_ptr->settings_ptr->nfft/2],
+         mod_som_efe_obp_ptr->settings_ptr->nfft/2*sizeof(float));
+
+  // call appropriate functions
+    mod_som_efe_obp_shear_spectra_f(segment_buffer_ptr, spectra_offset, mod_som_efe_obp_ptr);
+
+  indx = 0;
+
+  memcpy(&segment_buffer_ptr[indx],
+         &accel_ptr[
+         (mod_som_efe_obp_ptr->consumer_ptr->segment_cnt%
+         (2*MOD_SOM_EFE_OBP_FILL_SEGMENT_NB_SEGMENT_PER_RECORD))
+        * mod_som_efe_obp_ptr->settings_ptr->nfft/2],
+          mod_som_efe_obp_ptr->settings_ptr->nfft/2*sizeof(float));
+
+  indx+=mod_som_efe_obp_ptr->settings_ptr->nfft/2*sizeof(float);
+
+  memcpy(&segment_buffer_ptr[indx],
+         &accel_ptr[
+         ((mod_som_efe_obp_ptr->consumer_ptr->segment_cnt+1)%
+         (2*MOD_SOM_EFE_OBP_FILL_SEGMENT_NB_SEGMENT_PER_RECORD))
+        * mod_som_efe_obp_ptr->settings_ptr->nfft/2],
+          mod_som_efe_obp_ptr->settings_ptr->nfft/2*sizeof(float));
+
+  mod_som_efe_obp_accel_spectra_f(segment_buffer_ptr, spectra_offset, mod_som_efe_obp_ptr);
+
+
+
+
 }
 
 void mod_som_efe_obp_shear_spectra_f(float *shear_ptr, int spectra_offset, mod_som_efe_obp_ptr_t mod_som_efe_obp_ptr)
@@ -345,7 +427,7 @@ void mod_som_efe_obp_temp_spectra_f(float *temp_ptr, int spectra_offset, mod_som
 {
   // SHEAR
   // pull in fall rate
-  float w = mod_som_efe_obp_ptr->cpt_spectra_ptr->avg_ctd_pressure;
+  float w = mod_som_efe_obp_ptr->cpt_spectra_ptr->avg_ctd_dpdt;
   //  pull in fp07 filter function and calculate using fall speed as input
   float fp07_filter[settings->nfft/2];
   mod_som_epsiobp_fp07_filters_f(fp07_filter, w);
