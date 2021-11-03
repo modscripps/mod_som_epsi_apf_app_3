@@ -208,21 +208,7 @@ void mod_som_epsiobp_init_f(mod_som_efe_obp_config_ptr_t config_ptr_in, mod_som_
   vals->hamming_window =
       (float *)Mem_SegAlloc(
           "MOD SOM EFE OBP vals hamming_window.",DEF_NULL,
-          sizeof(float)*settings->nfft/2,
-          &err);
-  // Check error code
-  APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
-  vals->epsi_spectrum_buffer =
-      (float *)Mem_SegAlloc(
-          "MOD SOM EFE OBP vals epsi_spectrum_buffer.",DEF_NULL,
-          sizeof(float)*settings->nfft/2,
-          &err);
-  // Check error code
-  APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
-  vals->chi_spectrum_buffer =
-      (float *)Mem_SegAlloc(
-          "MOD SOM EFE OBP vals chi_spectrum_buffer.",DEF_NULL,
-          sizeof(float)*settings->nfft/2,
+          sizeof(float)*settings->nfft,
           &err);
   // Check error code
   APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
@@ -239,8 +225,6 @@ void mod_som_epsiobp_init_f(mod_som_efe_obp_config_ptr_t config_ptr_in, mod_som_
 //  vals->kvec = (float*) calloc(settings->nfft/2, sizeof(float)); // wavenumber vector
 //  vals->fp07_noise = (float*) calloc(settings->nfft/2, sizeof(float)); // fp07 noise vector
 //  vals->hamming_window = (float*) calloc(settings->nfft, sizeof(float)); // hamming window weights vector
-//  vals->epsi_spectrum_buffer = (float*) calloc(settings->nfft/2, sizeof(float)); // buffer for spectra
-//  vals->chi_spectrum_buffer = (float*) calloc(settings->nfft/2, sizeof(float));
 //  vals->epsi_averaged_spectrum = (float*) calloc(settings->nfft/2, sizeof(float)); // buffer for averaged spectrum
 //  vals->chi_averaged_spectrum = (float*) calloc(settings->nfft, sizeof(float));
 //  spectrum_buffer = (float*) calloc(settings->nfft/2, sizeof(float));
@@ -301,7 +285,6 @@ void mod_som_efe_obp_shear_spectra_f(float *shear_ptr, int spectra_offset, mod_s
   // Get the electronics transfer functions.
   float shear_filter[settings->nfft/2];
   mod_som_epsiobp_shear_filters_f(shear_filter, w);
-
   // removed looping over all shear channels, now just doing 1
   // calculate spectrum from shear data
   power_spectrum_f(shear_ptr, spectrum_buffer, settings->nfft, config->f_samp);
@@ -727,7 +710,7 @@ void mod_som_epsiobp_fp07_filters_f(float *fp07_filter, float fall_rate)
  ******************************************************************************/
 {
   // define arrays and variables
-  float elect_fp07[settings->nfft/2], magsq[settings->nfft/2], Tdiff[settings->nfft/2];
+  float elect_fp07[settings->nfft/2], magsq[settings->nfft/2];
   uint16_t end = settings->nfft/2;
   float denom = 2*vals->freq[end - 1];
   // interpolate to get proper Tdiff filter given freq
@@ -739,7 +722,7 @@ void mod_som_epsiobp_fp07_filters_f(float *fp07_filter, float fall_rate)
     // magsq filter comes from... where? but it's function is constant and shouldn't ever change
     magsq[i] = 1/(1 + pow((2*M_PI*0.005*pow(fall_rate, -0.32)*vals->freq[i]), 2.0));
     // calculate single filter array
-    fp07_filter[i] = pow(elect_fp07[i], 2)*magsq[i]*pow(Tdiff[i], 2);
+    fp07_filter[i] = pow(elect_fp07[i], 2)*magsq[i];
   }
 }
 
