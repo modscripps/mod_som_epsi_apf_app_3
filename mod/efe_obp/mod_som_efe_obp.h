@@ -60,6 +60,7 @@
 #define MOD_SOM_EFE_OBP_CONSUMER_NB_DISSRATE_PER_RECORD      1
 #define MOD_SOM_EFE_OBP_CONSUMER_SEGMENT_TAG             "SEGM"
 #define MOD_SOM_EFE_OBP_CONSUMER_SPECTRA_TAG             "SPEC"
+#define MOD_SOM_EFE_OBP_CONSUMER_AVGSPEC_TAG             "AVGS"
 #define MOD_SOM_EFE_OBP_CONSUMER_RATE_TAG                "RATE"
 #define MOD_SOM_EFE_OBP_CONSUMER_PAYLOAD_CHECKSUM_LENGTH     5
 
@@ -149,7 +150,7 @@ typedef struct{
     uint32_t telemetry_format;
     uint32_t channels_id[MOD_SOM_EFE_OBP_CHANNEL_NUMBER];     //
     enum       {stream,store,other}mode;
-    enum       {segment,spectra,dissrate}format;
+    enum       {segment,spectra,avgspec,none}format;
     enum       {temp,shear,accel}channel;
 
 
@@ -178,10 +179,11 @@ typedef struct{
 
   uint64_t   segment_cnt;
   uint64_t   spectrum_cnt;
+  uint64_t   avgspec_cnt;
   uint64_t   rates_cnt;
   uint64_t   record_timestamp;
 
-  uint8_t * record_ptr;     //ALB pointer to the segments section in the record
+  uint8_t *  record_ptr;     //ALB pointer to the segments section in the record
 
   uint8_t    data_ready_flg;           //ALB ???
   uint8_t    header_chksum;
@@ -204,7 +206,7 @@ typedef struct{
   uint64_t segment_cnt;
   uint64_t half_segment_cnt;
 
-  uint64_t timestamp_segment;
+  uint64_t * timestamp_segment_ptr;
   float * seg_temp_volt_ptr;
   float * seg_shear_volt_ptr;
   float * seg_accel_volt_ptr;
@@ -546,6 +548,17 @@ uint32_t mod_som_efe_obp_copy_producer_segment_f();
 
 uint32_t mod_som_efe_obp_copy_producer_spectra_f();
 
+/*******************************************************************************
+   * @brief
+   *   copy spectra in the cnsmr buffer
+   *
+   *
+   * @return
+   *   MOD_SOM_STATUS_OK if initialization goes well
+   *   or otherwise
+   ******************************************************************************/
+
+  uint32_t mod_som_efe_obp_copy_producer_avgspectra_f();
 /*******************************************************************************
  * @brief
  *   copy spectra in the cnsmr buffer
