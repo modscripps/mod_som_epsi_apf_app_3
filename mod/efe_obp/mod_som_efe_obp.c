@@ -1368,14 +1368,14 @@ void mod_som_efe_obp_cpt_spectra_task_f(void  *p_arg){
             // start with shear
             memcpy(&mod_som_efe_obp_ptr->fill_segment_ptr->segment_buffer_ptr[indx],
                    &curr_shear_seg_ptr[
-                  (mod_som_efe_obp_ptr->consumer_ptr->segment_cnt%
+                  (mod_som_efe_obp_ptr->cpt_spectra_ptr->spectrum_cnt%
                    (2*MOD_SOM_EFE_OBP_FILL_SEGMENT_NB_SEGMENT_PER_RECORD))
                  * mod_som_efe_obp_ptr->settings_ptr->nfft/2],
                    mod_som_efe_obp_ptr->settings_ptr->nfft/2*sizeof(float));
             indx+=mod_som_efe_obp_ptr->settings_ptr->nfft/2*sizeof(float);
             memcpy(&mod_som_efe_obp_ptr->fill_segment_ptr->segment_buffer_ptr[indx],
                    &curr_shear_seg_ptr[
-                  ((mod_som_efe_obp_ptr->consumer_ptr->segment_cnt+1)%
+                  ((mod_som_efe_obp_ptr->cpt_spectra_ptr->spectrum_cnt+1)%
                    (2*MOD_SOM_EFE_OBP_FILL_SEGMENT_NB_SEGMENT_PER_RECORD))
                  * mod_som_efe_obp_ptr->settings_ptr->nfft/2],
                    mod_som_efe_obp_ptr->settings_ptr->nfft/2*sizeof(float));
@@ -1385,14 +1385,14 @@ void mod_som_efe_obp_cpt_spectra_task_f(void  *p_arg){
             indx = 0;
             memcpy(&mod_som_efe_obp_ptr->fill_segment_ptr->segment_buffer_ptr[indx],
                    &curr_temp_seg_ptr[
-                  (mod_som_efe_obp_ptr->consumer_ptr->segment_cnt%
+                  (mod_som_efe_obp_ptr->cpt_spectra_ptr->spectrum_cnt%
                    (2*MOD_SOM_EFE_OBP_FILL_SEGMENT_NB_SEGMENT_PER_RECORD))
                  * mod_som_efe_obp_ptr->settings_ptr->nfft/2],
                    mod_som_efe_obp_ptr->settings_ptr->nfft/2*sizeof(float));
             indx+=mod_som_efe_obp_ptr->settings_ptr->nfft/2*sizeof(float);
             memcpy(&mod_som_efe_obp_ptr->fill_segment_ptr->segment_buffer_ptr[indx],
                    &curr_temp_seg_ptr[
-                  ((mod_som_efe_obp_ptr->consumer_ptr->segment_cnt+1)%
+                  ((mod_som_efe_obp_ptr->cpt_spectra_ptr->spectrum_cnt+1)%
                    (2*MOD_SOM_EFE_OBP_FILL_SEGMENT_NB_SEGMENT_PER_RECORD))
                  * mod_som_efe_obp_ptr->settings_ptr->nfft/2],
                    mod_som_efe_obp_ptr->settings_ptr->nfft/2*sizeof(float));
@@ -1402,7 +1402,7 @@ void mod_som_efe_obp_cpt_spectra_task_f(void  *p_arg){
             indx = 0;
             memcpy(&mod_som_efe_obp_ptr->fill_segment_ptr->segment_buffer_ptr[indx],
                      &curr_accel_seg_ptr[
-                     (mod_som_efe_obp_ptr->consumer_ptr->segment_cnt%
+                     (mod_som_efe_obp_ptr->cpt_spectra_ptr->spectrum_cnt%
                      (2*MOD_SOM_EFE_OBP_FILL_SEGMENT_NB_SEGMENT_PER_RECORD))
                     * mod_som_efe_obp_ptr->settings_ptr->nfft/2],
                       mod_som_efe_obp_ptr->settings_ptr->nfft/2*sizeof(float));
@@ -1410,7 +1410,7 @@ void mod_som_efe_obp_cpt_spectra_task_f(void  *p_arg){
             indx+=mod_som_efe_obp_ptr->settings_ptr->nfft/2*sizeof(float);
             memcpy(&mod_som_efe_obp_ptr->fill_segment_ptr->segment_buffer_ptr[indx],
                    &curr_accel_seg_ptr[
-                   ((mod_som_efe_obp_ptr->consumer_ptr->segment_cnt+1)%
+                   ((mod_som_efe_obp_ptr->cpt_spectra_ptr->spectrum_cnt+1)%
                    (2*MOD_SOM_EFE_OBP_FILL_SEGMENT_NB_SEGMENT_PER_RECORD))
                   * mod_som_efe_obp_ptr->settings_ptr->nfft/2],
                     mod_som_efe_obp_ptr->settings_ptr->nfft/2*sizeof(float));

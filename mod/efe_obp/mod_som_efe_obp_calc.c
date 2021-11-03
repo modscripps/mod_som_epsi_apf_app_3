@@ -80,9 +80,6 @@ static mod_som_efe_obp_calc_vals_ptr_t vals;
 // spectrum buffer for calculation storage and operation
 float *spectrum_buffer;
 
-// segment buffer for calculation storage and operation
-float *segment_buffer_ptr;
-
 // UNIVERSAL CONSTANTS
 static const float g = 9.807; // m/s^2
 // CALIBRATION INPUTS
