@@ -134,13 +134,13 @@ mod_som_apf_status_t mod_som_apf_init_f(){
         return status;
     }
 
-    //ALB Allocate memory for the producer pointer,
-    //ALB using the settings_ptr variable
-    status |= mod_som_apf_construct_com_prf_f();
-    if (status!=MOD_SOM_STATUS_OK){
-        printf("APF not initialized\n");
-        return status;
-    }
+//    //ALB Allocate memory for the producer pointer,
+//    //ALB using the settings_ptr variable
+//    status |= mod_som_apf_construct_com_prf_f();
+//    if (status!=MOD_SOM_STATUS_OK){
+//        printf("APF not initialized\n");
+//        return status;
+//    }
 
 
 
@@ -1188,6 +1188,8 @@ void mod_som_apf_shell_task_f(void  *p_arg){
   char     input_buf[MOD_SOM_SHELL_INPUT_BUF_SIZE];
   uint32_t input_buf_len;
 
+  uint32_t status;
+  uint32_t port;
 
   while (DEF_ON) {
       OSTimeDly(
@@ -1195,15 +1197,26 @@ void mod_som_apf_shell_task_f(void  *p_arg){
               (OS_OPT      )OS_OPT_TIME_DLY,
               &err);
       APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
-      mod_som_apf_shell_get_input_f(input_buf,&input_buf_len);
+      status = mod_som_apf_shell_get_line_f(input_buf,&input_buf_len); // get the whole string from the port (i.e LEUART)
+      if (status > 0) // if not success
+        {
+          port = mod_som_apf_ptr->config_ptr->port.com_port;  // get the port here or it get port from send_line_f() - think about it
+          mod_som_apf_send_line_f(port, "mod_som_apf_shell_get_line_f() could not succeed \n");
+        }
 
       if (!Str_Cmp(input_buf, "exit")) {
           break;
       }
+      // need to do
+      status = mod_som_apf_convert_string_f(input_buf, input_buf_len);   // convert the input string to the right format: cap -> uncap, coma -> space
+      status = mod_som_shell_execute_input_f(input_buf,input_buf_len);   // execute the appropriate routine base on the command. Return the mod_som_status
 
-      mod_som_apf_shell_execute_input_f(input_buf,input_buf_len);
   }
 }
+
+//TODO Modify the string to match the APF shell rules
+//TODO Not case sensitive
+//TODO coma
 
 /*******************************************************************************
  * @brief
@@ -1228,23 +1241,23 @@ mod_som_status_t mod_som_apf_shell_execute_input_f(char* input,uint32_t input_le
 /*******************************************************************************
  * @brief
  *   Get text input from user.
- *
+ *   TODO
  *
  * @param buf
  *   Buffer to hold the input string.
  * @param buf_length
  *  Length of buffer as the user is typing
  ******************************************************************************/
-mod_som_status_t mod_som_apf_shell_get_input_f(char *buf, uint32_t * buf_len){
+mod_som_status_t mod_som_apf_shell_get_line_f(char *buf, uint32_t * buf_len){
     int c;
     int32_t i;
     RTOS_ERR err;
 
     Mem_Set(buf, '\0', MOD_SOM_SHELL_INPUT_BUF_SIZE); // Clear previous input
     for (i = 0; i < MOD_SOM_SHELL_INPUT_BUF_SIZE - 1; i++) {
-        //TODO change RETARGET_ReadChar
-        //TODO to apfport_readchar();
-        c = RETARGET_ReadChar();
+        //TODO write mod_som_apf_get_char_f
+        //c = mod_som_apf_get_char_f(); // call for getting char from LEUART
+//        while (c < 0 && c!='\r'){ // Wait for valid input and with condition the end of the string '\r'
         while (c < 0){ // Wait for valid input
             //Release for waiting tasks
             OSTimeDly(
@@ -1253,12 +1266,12 @@ mod_som_status_t mod_som_apf_shell_get_input_f(char *buf, uint32_t * buf_len){
                     &err);
             APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
             //TODO change RETARGET_ReadChar
-            //TODO to apfport_readchar();
-            c = RETARGET_ReadChar();
-
+            // c = mod_som_apf_get_char_f();// call for getting char from LEUART
+// shoud save 'c' in the buf string (passing to the function)
         }
+// this point, we have a full command string
 
-        //TODO parse the string
+
 
 
         buf[i] = c;
@@ -1267,6 +1280,47 @@ mod_som_status_t mod_som_apf_shell_get_input_f(char *buf, uint32_t * buf_len){
     buf[i] = '\0';
     *(buf_len) = i;
     return mod_som_shell_encode_status_f(MOD_SOM_STATUS_OK);
+}
+
+
+//TODO Modify the string to match the APF shell rules
+//TODO Not case sensitive
+//TODO coma
+
+/*******************************************************************************
+ * @brief
+ *   Get char input from a PORT.
+ *
+ *
+ * @param buf
+ *   Buffer to hold the input string.
+ * @param buf_length
+ *  Length of buffer as the user is typing
+ ******************************************************************************/
+mod_som_status_t mod_som_apf_get_char_f(LEUART_TypeDef *leuart){
+  //TODO get one bytes from the select port
+
+  //byte = LEUART_Rx(LEUART_TypeDef *leuart)
+
+  //
+  return 0;
+}
+
+/*******************************************************************************
+ * @brief
+ *   Send a line from a PORT.
+ *
+ *
+ * @param buf
+ *   Buffer to hold the input string.
+ * @param buf_length
+ *  Length of buffer as the user is typing
+ ******************************************************************************/
+mod_som_status_t mod_som_apf_send_line_f(LEUART_TypeDef *leuart,char * buf, uint32_t nb_of_char_to_send){
+  //TODO send one line to the port
+  mod_som_apf_ptr->com_prf_ptr->handle_port = \
+                                      mod_som_apf_ptr->config_ptr->port.com_port;
+  //
 }
 
 
