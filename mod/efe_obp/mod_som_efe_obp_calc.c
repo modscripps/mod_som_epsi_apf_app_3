@@ -110,10 +110,10 @@ static void power_spectrum_f(float *data, float *spectrum, uint32_t size, float 
 //static void average_spectra_f(uint16_t size, uint8_t num_blocks, float *spectra_in, float *spectrum_out);
 static void hamming_window_f(uint16_t size, float sampling_frequency, float *hamming_window, float normalization);
 static float sinc_f(float x);
-static void interp1_f(float *x, float *v, uint16_t size, float *xq, float *vq, uint16_t sizeq);
+static void interp1_f(float *x, float *v, uint32_t size, float *xq, float *vq, uint32_t sizeq);
 static void smooth_movingmean_f(float *data, float *smoothed, uint16_t size, uint16_t window);
-static void detrend_f(float *data, uint16_t size, float *detrended_data);
-static void find_vector_indices_f(float *vector, uint16_t size, float *limits, uint16_t *indices);
+static void detrend_f(float *data, uint32_t size, float *detrended_data);
+static void find_vector_indices_f(float *vector, uint32_t size, float *limits, uint16_t *indices);
 // SEAWATER PROPERTIES
 static float seawater_specific_heat_f(float salinity, float temperature);
 static float seawater_density_f(float salinity, float temperature, float pressure);
@@ -862,7 +862,7 @@ float sinc_f(float x)
   return value;
 }
 
-void interp1_f(float *x, float *v, uint16_t size, float *xq, float *vq, uint16_t sizeq)
+void interp1_f(float *x, float *v, uint32_t size, float *xq, float *vq, uint32_t sizeq)
 /*******************************************************************************
  * @brief
  *   function to interpolate a given set of data onto another array of independent variable values
@@ -982,7 +982,7 @@ void smooth_movingmean_f(float *data, float *smoothed, uint16_t size, uint16_t w
   }
 }
 
-void detrend_f(float *data, uint16_t size, float *detrended_data)
+void detrend_f(float *data, uint32_t size, float *detrended_data)
 /*******************************************************************************
  * @brief
  *   function to detrend an array using least squares (i.e. remove line of best fit)
@@ -1019,7 +1019,7 @@ void detrend_f(float *data, uint16_t size, float *detrended_data)
   }
 }
 
-void find_vector_indices_f(float *vector, uint16_t size, float *limits, uint16_t *indices)
+void find_vector_indices_f(float *vector, uint32_t size, float *limits, uint16_t *indices)
 /*******************************************************************************
  * @brief
  *   function to find the indices of an array at the given limits

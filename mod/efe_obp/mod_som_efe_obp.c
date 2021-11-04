@@ -1380,7 +1380,7 @@ void mod_som_efe_obp_cpt_spectra_task_f(void  *p_arg){
                  * mod_som_efe_obp_ptr->settings_ptr->nfft/2],
                    mod_som_efe_obp_ptr->settings_ptr->nfft/2*sizeof(float));
             // call shear spectrum function
-            mod_som_efe_obp_shear_spectrum_f(mod_som_efe_obp_ptr->fill_segment_ptr->segment_buffer_ptr, spectra_offset, mod_som_efe_obp_ptr);
+//            mod_som_efe_obp_shear_spectrum_f(mod_som_efe_obp_ptr->fill_segment_ptr->segment_buffer_ptr, spectra_offset, mod_som_efe_obp_ptr);
             // move on to temperature
             indx = 0;
             memcpy(&mod_som_efe_obp_ptr->fill_segment_ptr->segment_buffer_ptr[indx],
@@ -1397,7 +1397,7 @@ void mod_som_efe_obp_cpt_spectra_task_f(void  *p_arg){
                  * mod_som_efe_obp_ptr->settings_ptr->nfft/2],
                    mod_som_efe_obp_ptr->settings_ptr->nfft/2*sizeof(float));
             // call temperature spectrum function
-            mod_som_efe_obp_temp_spectrum_f(mod_som_efe_obp_ptr->fill_segment_ptr->segment_buffer_ptr, spectra_offset, mod_som_efe_obp_ptr);
+//            mod_som_efe_obp_temp_spectrum_f(mod_som_efe_obp_ptr->fill_segment_ptr->segment_buffer_ptr, spectra_offset, mod_som_efe_obp_ptr);
             // last do acceleration
             indx = 0;
             memcpy(&mod_som_efe_obp_ptr->fill_segment_ptr->segment_buffer_ptr[indx],
@@ -1415,7 +1415,7 @@ void mod_som_efe_obp_cpt_spectra_task_f(void  *p_arg){
                   * mod_som_efe_obp_ptr->settings_ptr->nfft/2],
                     mod_som_efe_obp_ptr->settings_ptr->nfft/2*sizeof(float));
             // call accel spectrum function
-            mod_som_efe_obp_accel_spectrum_f(mod_som_efe_obp_ptr->fill_segment_ptr->segment_buffer_ptr, spectra_offset, mod_som_efe_obp_ptr);
+//            mod_som_efe_obp_accel_spectrum_f(mod_som_efe_obp_ptr->fill_segment_ptr->segment_buffer_ptr, spectra_offset, mod_som_efe_obp_ptr);
 
           //CAP THE BELOW IS NOW OBSOLETE
           //CAP Add compute spectra functions
