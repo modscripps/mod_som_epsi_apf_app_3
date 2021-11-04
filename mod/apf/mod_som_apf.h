@@ -827,6 +827,18 @@ mod_som_status_t mod_som_apf_shell_get_input_f(char *buf, uint32_t * buf_len);
 
 /*******************************************************************************
  * @brief
+ *   Get text input from user.
+ *   TODO
+ *
+ * @param buf
+ *   Buffer to hold the input string.
+ * @param buf_length
+ *  Length of buffer as the user is typing
+ ******************************************************************************/
+mod_som_status_t mod_som_apf_shell_get_line_f(char *buf, uint32_t * buf_len);
+
+/*******************************************************************************
+ * @brief
  *   Execute user's input when a carriage return is pressed.
  *
  * @param input
@@ -835,6 +847,29 @@ mod_som_status_t mod_som_apf_shell_get_input_f(char *buf, uint32_t * buf_len);
  *   Length of string input
  ******************************************************************************/
 mod_som_status_t mod_som_apf_shell_execute_input_f(char* input,uint32_t input_len);
+/*******************************************************************************
+ * @brief
+ *   Get text input from user.
+ *   TODO
+ *
+ * @param buf
+ *   Buffer to hold the input string.
+ * @param buf_length
+ *  Length of buffer as the user is typing
+ ******************************************************************************/
+mod_som_status_t mod_som_apf_shell_get_line_f(char *buf, uint32_t * buf_len);
+
+/*******************************************************************************
+ * @brief
+ *   Send a line from a PORT.
+ *
+ *
+ * @param buf
+ *   Buffer to hold the input string.
+ * @param buf_length
+ *  Length of buffer as the user is typing
+ ******************************************************************************/
+mod_som_status_t mod_som_apf_send_line_f(LEUART_TypeDef *leuart, char * buf, uint32_t nb_of_char_to_send);
 
 /*******************************************************************************
  * @brief
