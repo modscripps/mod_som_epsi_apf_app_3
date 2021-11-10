@@ -133,14 +133,14 @@ mod_som_apf_status_t mod_som_apf_init_f(){
         printf("APF not initialized\n");
         return status;
     }
-
+// enable the reading and parsing the input command/string through the LEUART - Arnaud&Mai - Nov 10, 2021
 //    //ALB Allocate memory for the producer pointer,
 //    //ALB using the settings_ptr variable
-//    status |= mod_som_apf_construct_com_prf_f();
-//    if (status!=MOD_SOM_STATUS_OK){
-//        printf("APF not initialized\n");
-//        return status;
-//    }
+    status |= mod_som_apf_construct_com_prf_f();
+    if (status!=MOD_SOM_STATUS_OK){
+        printf("APF not initialized\n");
+        return status;
+    }
 
 
 
@@ -1190,7 +1190,7 @@ void mod_som_apf_shell_task_f(void  *p_arg){
   uint32_t input_buf_len;
 
   uint32_t status;
-  uint32_t port;
+  LEUART_TypeDef  *apf_leuart_ptr;
 
   while (DEF_ON) {
       OSTimeDly(
@@ -1200,10 +1200,11 @@ void mod_som_apf_shell_task_f(void  *p_arg){
       APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
       // get the whole string from the port
       status = mod_som_apf_shell_get_line_f(input_buf,&input_buf_len); // get the whole string from the port (i.e LEUART)
+
       if (status > 0) // if not success
       {
-          port = mod_som_apf_ptr->config_ptr->port.com_port;  // get the port here or it get port from send_line_f() - think about it
-          mod_som_apf_send_line_f(port, "mod_som_apf_shell_get_line_f() could not succeed \n",input_buf_len);
+          apf_leuart_ptr = (LEUART_TypeDef *)mod_som_apf_ptr->com_prf_ptr->handle_port;
+          mod_som_apf_send_line_f(apf_leuart_ptr, "mod_som_apf_shell_get_line_f() could not succeed \n",input_buf_len);
       }
 
       if (!Str_Cmp(input_buf, "exit"))
@@ -1211,9 +1212,8 @@ void mod_som_apf_shell_task_f(void  *p_arg){
           break;
       }
       // we have the whole string, we would convert the string to the right format string we want
-      status = mod_som_apf_convert_string_f(*input_buf, *output_buf);   // convert the input string to the right format: cap -> uncap, coma -> space
+      status = mod_som_apf_convert_string_f(input_buf, output_buf);   // convert the input string to the right format: cap -> uncap, coma -> space
       status = mod_som_shell_execute_input_f(output_buf,input_buf_len);   // execute the appropriate routine base on the command. Return the mod_som_status
-
   }
 }
 
@@ -1288,39 +1288,31 @@ mod_som_status_t mod_som_apf_shell_get_line_f(char *buf, uint32_t * buf_len)
  *  Length of buffer as the user is typing
  ******************************************************************************/
 mod_som_status_t mod_som_apf_shell_get_line_f(char *buf, uint32_t * buf_len){
-    int c;
+  int32_t ret_val;
     int32_t i;
     RTOS_ERR err;
     char read_char;
     LEUART_TypeDef  *apf_leuart_ptr;
+    char* str_temp;
+
+    str_temp = buf;
 
     Mem_Set(buf, '\0', MOD_SOM_SHELL_INPUT_BUF_SIZE); // Clear previous input
 
-    // get the LEUART port
+    // get the fd of LEUART port
     apf_leuart_ptr = (LEUART_TypeDef *)mod_som_apf_ptr->com_prf_ptr->handle_port;
 
     for (i = 0; i < MOD_SOM_SHELL_INPUT_BUF_SIZE - 1; i++)
     {
         //get character from the port
-        c = mod_som_apf_get_char_f(apf_leuart_ptr, &read_char); // call for getting char from LEUART
-//        while (c < 0 && c!='\r'){ // Wait for valid input and with condition the end of the string '\r'
-        while (c < 0){ // Wait for valid input
-            //Release for waiting tasks
-            OSTimeDly(
-                    (OS_TICK     )MOD_SOM_CFG_LOOP_TICK_DELAY,
-                    (OS_OPT      )OS_OPT_TIME_DLY,
-                    &err);
-            APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
-            //change RETARGET_ReadChar
-            c = mod_som_apf_get_char_f(apf_leuart_ptr, &read_char);// call for getting char from LEUART
-            //save 'c' in the buf string (passing to the function)
-            buf_len++;
-        }
-        buf[i] = read_char;
-    }
+        ret_val = mod_som_apf_get_char_f(apf_leuart_ptr, &read_char); // call for getting char from LEUART
 
-    buf[i] = '\0';
-    *(buf_len) = i;
+        if (read_char!='\r')  // if the received character is return character, get out of the for loop
+          break;
+        buf[i] = read_char; // save the read character into the buffer
+    }
+    buf[i] = '\0'; // terminate the string
+    *buf_len = i;  // increment the count of the received characters
     return mod_som_shell_encode_status_f(MOD_SOM_STATUS_OK);
 }
 
@@ -1338,13 +1330,18 @@ mod_som_status_t mod_som_apf_shell_get_line_f(char *buf, uint32_t * buf_len){
  *   port
  * @param get_char
  *  character as the user is typing
+ *  LEUART() is always waiting the input character -> this funct is always return 0 - Arnaud & Mai
  ******************************************************************************/
 mod_som_status_t mod_som_apf_get_char_f(LEUART_TypeDef *leuart_ptr, char* read_char)
 {
   //Get one bytes from the select port
   *read_char = LEUART_Rx(leuart_ptr);
 
-  return read_char;
+  // if not succeed, it return error
+  if (*read_char==0)
+    return mod_som_shell_encode_status_f(MOD_SOM_STATUS_NOT_OK);
+  // otherwise, return ok
+  return mod_som_shell_encode_status_f(MOD_SOM_STATUS_OK);
 }
 
 /*******************************************************************************
