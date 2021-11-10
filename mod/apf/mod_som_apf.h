@@ -954,5 +954,7 @@ mod_som_status_t mod_som_apf_encode_status_f(uint8_t mod_som_io_status);
  ******************************************************************************/
 uint8_t mod_som_apf_decode_status_f(mod_som_status_t mod_som_status);
 
+uint32_t mod_som_apf_convert_string_f(char* input_str, char* output_str);
+mod_som_status_t mod_som_apf_get_char_f(LEUART_TypeDef *leuart, char* read_char);
 
 #endif /* MOD_APF_MOD_SOM_APF_H_ */
