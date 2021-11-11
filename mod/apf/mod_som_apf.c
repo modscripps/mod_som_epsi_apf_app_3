@@ -479,6 +479,7 @@ mod_som_status_t mod_som_apf_construct_com_prf_f(){
         }
 
         // define com port in the com struct.
+        // com_port is the same with handle_port: it should be named the same - Arnaud Nov 11, 2021
         mod_som_apf_ptr->com_prf_ptr->handle_port = \
                                     mod_som_apf_ptr->config_ptr->port.com_port;
 
@@ -489,8 +490,7 @@ mod_som_status_t mod_som_apf_construct_com_prf_f(){
 
         leuart_ptr  = \
             (LEUART_TypeDef *) mod_som_apf_ptr->com_prf_ptr->handle_port;
-//        leuart_init.baudrate   = mod_som_apf_ptr->config_ptr->baud_rate;
-        leuart_init.baudrate   = 115200;
+        leuart_init.baudrate   = mod_som_apf_ptr->config_ptr->baud_rate;
 
         //parity set
         //ALB the switch statements are a legacy from the previous APF module
@@ -563,11 +563,13 @@ mod_som_status_t mod_som_apf_construct_com_prf_f(){
   GPIO_PinModeSet(mod_som_apf_ptr->config_ptr->port.en_port, mod_som_apf_ptr->config_ptr->port.en_pin,
                   gpioModePushPull, 1);
 
+  // configuration for RX & TX port, set "out"=0 - Arnaud - Nov 10, 2021
   GPIO_PinModeSet(mod_som_apf_ptr->config_ptr->port.rx_port, mod_som_apf_ptr->config_ptr->port.rx_pin,
                   gpioModeInput, 0);
 
   GPIO_PinModeSet(mod_som_apf_ptr->config_ptr->port.tx_port, mod_som_apf_ptr->config_ptr->port.tx_pin,
                   gpioModePushPull, 1);
+
   GPIO_PinModeSet(gpioPortC,0,gpioModePushPull, 1);
 
   LEUART_Enable((LEUART_TypeDef *)mod_som_apf_ptr->com_prf_ptr->handle_port, leuartEnable);
@@ -1304,7 +1306,7 @@ mod_som_status_t mod_som_apf_shell_get_line_f(char *buf, uint32_t * buf_len)
  ******************************************************************************/
 mod_som_status_t mod_som_apf_shell_get_line_f(char *buf, uint32_t * buf_len){
   int32_t ret_val;
-    int32_t i;
+    int32_t i=0;
     RTOS_ERR err;
     char read_char;
     LEUART_TypeDef  *apf_leuart_ptr;
@@ -1322,7 +1324,7 @@ mod_som_status_t mod_som_apf_shell_get_line_f(char *buf, uint32_t * buf_len){
         //get character from the port
         ret_val = mod_som_apf_get_char_f(apf_leuart_ptr, &read_char); // call for getting char from LEUART
 
-        if (read_char!='\r')  // if the received character is return character, get out of the for loop
+        if (read_char=='\r')  // if the received character is return character, get out of the for loop
           break;
         buf[i] = read_char; // save the read character into the buffer
     }

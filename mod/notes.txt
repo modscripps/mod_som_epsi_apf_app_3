@@ -2,3 +2,9 @@ https://docs.google.com/document/d/1a9dwQBslkNep6KjzCQmvuR2wHN7S-oRmH1CP5ZiGqEE/
 
 
 |........|........|........|
+Nov 11: 
+"mod_som_apg_bsp.c"
+APF: change the baudrate to 115200 - Arnaud
+// configuration for RX port - Arnaud
+  GPIO_PinModeSet(mod_som_apf_ptr->config_ptr->port.rx_port, mod_som_apf_ptr->config_ptr->port.rx_pin,
+                  gpioModeInput, 0);
