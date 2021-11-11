@@ -489,7 +489,8 @@ mod_som_status_t mod_som_apf_construct_com_prf_f(){
 
         leuart_ptr  = \
             (LEUART_TypeDef *) mod_som_apf_ptr->com_prf_ptr->handle_port;
-        leuart_init.baudrate   = mod_som_apf_ptr->config_ptr->baud_rate;
+//        leuart_init.baudrate   = mod_som_apf_ptr->config_ptr->baud_rate;
+        leuart_init.baudrate   = 115200;
 
         //parity set
         //ALB the switch statements are a legacy from the previous APF module
@@ -567,6 +568,8 @@ mod_som_status_t mod_som_apf_construct_com_prf_f(){
 
   GPIO_PinModeSet(mod_som_apf_ptr->config_ptr->port.tx_port, mod_som_apf_ptr->config_ptr->port.tx_pin,
                   gpioModePushPull, 1);
+  GPIO_PinModeSet(gpioPortC,0,gpioModePushPull, 1);
+
   LEUART_Enable((LEUART_TypeDef *)mod_som_apf_ptr->com_prf_ptr->handle_port, leuartEnable);
 
 
