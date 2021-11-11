@@ -213,6 +213,7 @@ mod_som_status_t mod_som_efe_obp_init_f(){
     //ALB temporary for debug so I do not type the command
     mod_som_efe_obp_start_fill_segment_task_f();
     mod_som_efe_obp_start_cpt_spectra_task_f();
+    mod_som_efe_obp_start_cpt_dissrate_task_f();
     mod_som_efe_obp_start_consumer_task_f();
 
     mod_som_efe_obp_ptr->sample_count                = 0;
@@ -1465,7 +1466,6 @@ void mod_som_efe_obp_cpt_spectra_task_f(void  *p_arg){
                  &err);
       //   Check error code.
       APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), ;);
-//      printf("EFEOBP spec: %lu\r\n",(uint32_t) mod_som_efe_obp_ptr->cpt_spectra_ptr->spectrum_cnt);
   } // end of while (DEF_ON)
 
   PP_UNUSED_PARAM(p_arg);                                     // Prevent config warning.
@@ -1654,15 +1654,13 @@ void mod_som_efe_obp_cpt_dissrate_task_f(void  *p_arg){
 
               //CAP Add compute epsilon chi
               //CAP Add compute spectra functions
-//              mod_som_efe_obp_compute_dissrate_data_f(mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_spec_temp_ptr,
-//                                                      mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_spec_shear_ptr,
-//                                                      mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_spec_accel_ptr,
-//                                                      local_epsilon_ptr        ,
-//                                                      local_chi_ptr            ,
-//                                                      local_nu_ptr             ,
-//                                                      local_kappa_ptr          ,
-//                                                      local_epsi_fom_ptr       ,
-//                                                      local_chi_fom_ptr);
+              mod_som_efe_obp_compute_dissrate_data_f(mod_som_efe_obp_ptr      ,
+                                                      local_epsilon_ptr        ,
+                                                      local_chi_ptr            ,
+                                                      local_nu_ptr             ,
+                                                      local_kappa_ptr          ,
+                                                      local_epsi_fom_ptr       ,
+                                                      local_chi_fom_ptr);
 
 
               //ALB Make fake epsilon and chi in order to build the consumer
@@ -1862,17 +1860,6 @@ mod_som_status_t mod_som_efe_obp_compute_spectra_data_f(float * local_temp_seg_p
  *   MOD_SOM_STATUS_OK if initialization goes well
  *   or otherwise
  ******************************************************************************/
-//mod_som_status_t mod_som_efe_obp_compute_dissrate_data_f(
-//                                                      float * local_temp_avg_spec_ptr,
-//                                                      float * local_shear_avg_spec_ptr,
-//                                                      float * local_accel_avg_spec_ptr,
-//                                                      float * local_epsilon,
-//                                                      float * local_chi,
-//                                                      float * local_nu,
-//                                                      float * local_kappa,
-//                                                      float * local_epsi_fom,
-//                                                      float * local_chi_fom
-//                                                      )
 mod_som_status_t mod_som_efe_obp_compute_dissrate_data_f(
                                                       mod_som_efe_obp_ptr_t mod_som_efe_obp_ptr,
                                                       float * local_epsilon,
@@ -1885,8 +1872,8 @@ mod_som_status_t mod_som_efe_obp_compute_dissrate_data_f(
 {
 
   //CAP
-  mod_som_efe_obp_calc_epsilon_f(local_epsilon, local_nu, local_epsi_fom, mod_som_efe_obp_ptr);
-  mod_som_efe_obp_calc_chi_f(local_epsilon, local_chi, local_kappa, local_chi_fom, mod_som_efe_obp_ptr);
+//  mod_som_efe_obp_calc_epsilon_f(local_epsilon, local_nu, local_epsi_fom, mod_som_efe_obp_ptr);
+//  mod_som_efe_obp_calc_chi_f(local_epsilon, local_chi, local_kappa, local_chi_fom, mod_som_efe_obp_ptr);
   return mod_som_efe_obp_encode_status_f(MOD_SOM_STATUS_OK);
 }
 

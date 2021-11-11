@@ -8,3 +8,7 @@ APF: change the baudrate to 115200 - Arnaud
 // configuration for RX port - Arnaud
   GPIO_PinModeSet(mod_som_apf_ptr->config_ptr->port.rx_port, mod_som_apf_ptr->config_ptr->port.rx_pin,
                   gpioModeInput, 0);
+
+Nov11- Arnaud:                   
+Now we can execute commands from the APEX shell. 
+I want to work on the answers we send back to APEX. "nak" buissness.

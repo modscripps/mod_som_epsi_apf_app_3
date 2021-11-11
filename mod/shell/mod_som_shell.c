@@ -212,9 +212,6 @@ mod_som_status_t mod_som_shell_get_input_f(char *buf, uint32_t * buf_len){
             //TODO Food for thought an actual log would be a good thing.
         }
 
-        if (c == 44) { // ALB APF specific convert ","(44) into blank (32)
-            c=32;
-        }
         if (c == ASCII_CHAR_DELETE || c == 0x08) { // User inputed backspace
             if (i) {
                 mod_som_io_print_f("\b \b");

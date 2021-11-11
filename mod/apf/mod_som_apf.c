@@ -1929,15 +1929,7 @@ mod_som_apf_status_t mod_som_apf_daq_start_f(uint64_t profile_id){
 
   status|=mod_som_efe_sampling_f();
 
-
-  //ALB output good behavior
-  if (status==0){
-      mod_som_io_print_f("daq,ack,%lu",(uint32_t) profile_id);
-  }else{
-      mod_som_io_print_f("daq,nak,%lu",status);
-  }
-
-	return mod_som_apf_encode_status_f(MOD_SOM_APF_STATUS_OK);
+	return status;
 }
 /*******************************************************************************
  * @brief
@@ -1984,15 +1976,8 @@ mod_som_apf_status_t mod_som_apf_daq_stop_f(){
 
   //reset Daq flag
   mod_som_apf_ptr->daq=false;
-//ALB display msg
-  if (status==MOD_SOM_APF_STATUS_OK){
-      mod_som_io_print_f("daq,stop,ack");
-  }else{
-      mod_som_io_print_f("daq,stop,nak,%lu",status);
 
-  }
-
-	return mod_som_apf_encode_status_f(MOD_SOM_APF_STATUS_OK);
+	return status;
 }
 
 
@@ -2008,22 +1993,22 @@ mod_som_apf_status_t mod_som_apf_daq_stop_f(){
  *   MOD_SOM_APF_STATUS_OK if function execute nicely
  ******************************************************************************/
 
-mod_som_apf_status_t mod_som_apf_daq_status_f(){
-  mod_som_status_t status;
-  status=MOD_SOM_APF_STATUS_OK;
-
-  if(mod_som_apf_ptr->daq){
-      status=mod_som_io_print_f("daq?,ack,%s","enabled");
-  }else{
-      status=mod_som_io_print_f("daq?,ack,%s","disabled");
-  }
-
-  //ALB Dana want an error message here but I do not think there is a situation
-  if (status!=MOD_SOM_APF_STATUS_OK){
-      mod_som_io_print_f("daq?,nak,%lu",status);
-  }
-	return mod_som_apf_encode_status_f(MOD_SOM_APF_STATUS_OK);
-}
+//mod_som_apf_status_t mod_som_apf_daq_status_f(){
+//  mod_som_status_t status;
+//  status=MOD_SOM_APF_STATUS_OK;
+//
+//  if(mod_som_apf_ptr->daq){
+//      status=mod_som_io_print_f("daq?,ack,%s","enabled");
+//  }else{
+//      status=mod_som_io_print_f("daq?,ack,%s","disabled");
+//  }
+//
+//  //ALB Dana want an error message here but I do not think there is a situation
+//  if (status!=MOD_SOM_APF_STATUS_OK){
+//      mod_som_io_print_f("daq?,nak,%lu",status);
+//  }
+//	return mod_som_apf_encode_status_f(MOD_SOM_APF_STATUS_OK);
+//}
 
 /*******************************************************************************
  * @brief
