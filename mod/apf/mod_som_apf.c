@@ -558,6 +558,18 @@ mod_som_status_t mod_som_apf_construct_com_prf_f(){
       break;
   }
 
+  //    /* SBE Enable: configure the LEUART pins and SBE EN (send power to the SBE)*/
+  GPIO_PinModeSet(mod_som_apf_ptr->config_ptr->port.en_port, mod_som_apf_ptr->config_ptr->port.en_pin,
+                  gpioModePushPull, 1);
+
+  GPIO_PinModeSet(mod_som_apf_ptr->config_ptr->port.rx_port, mod_som_apf_ptr->config_ptr->port.rx_pin,
+                  gpioModeInput, 0);
+
+  GPIO_PinModeSet(mod_som_apf_ptr->config_ptr->port.tx_port, mod_som_apf_ptr->config_ptr->port.tx_pin,
+                  gpioModePushPull, 1);
+  LEUART_Enable((LEUART_TypeDef *)mod_som_apf_ptr->com_prf_ptr->handle_port, leuartEnable);
+
+
   //ALB start the shell tasks
   // Consumer Task 2
   //ALB initialize all parameters. They should be reset right before
