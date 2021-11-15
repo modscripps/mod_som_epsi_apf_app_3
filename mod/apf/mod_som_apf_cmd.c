@@ -201,11 +201,11 @@ CPU_INT16S mod_som_apf_cmd_daq_status_f(CPU_INT16U argc,
 
     status=MOD_SOM_APF_STATUS_OK;
 
-    if(mod_som_apf_ptr->daq){
-        status=mod_som_io_print_f("daq?,ack,%s","enabled");
-    }else{
-        status=mod_som_io_print_f("daq?,ack,%s","disabled");
-    }
+//    if(mod_som_apf_ptr->daq){
+//        status=mod_som_io_print_f("daq?,ack,%s","enabled");
+//    }else{
+//        status=mod_som_io_print_f("daq?,ack,%s","disabled");
+//    }
 
     //ALB Dana want an error message here but I do not think there is a situation
     if (status!=MOD_SOM_APF_STATUS_OK){
