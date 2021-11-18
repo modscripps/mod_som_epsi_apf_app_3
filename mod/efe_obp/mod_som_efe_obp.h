@@ -299,7 +299,7 @@ typedef struct{
 //  uint16_t   Tdiff_size;
 //  float    * Tdiff_freq;
 //  float    * Tdiff_coeff;
-  uint16_t   cafilter_size;
+  uint32_t   cafilter_size;
   float    * cafilter_freq;
   float    * cafilter_coeff;
   float      fp07_noise[4];

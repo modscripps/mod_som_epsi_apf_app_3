@@ -25,21 +25,21 @@
 /* @var mod_som_apf_cmd_tbl predefined command table of fixed size        */
 static SHELL_CMD  mod_som_apf_cmd_tbl[] =
 {
-        { "Daq",          mod_som_apf_cmd_daq_f },
-        { "Daq?",         mod_som_apf_cmd_daq_status_f },
+        { "daq",          mod_som_apf_cmd_daq_f },
+        { "daq?",         mod_som_apf_cmd_daq_status_f },
         { "time",         mod_som_apf_cmd_time_f },
         { "time?",        mod_som_apf_cmd_time_status_f },
         { "$menu",        mod_som_apf_cmd_menu_f },
         { "--ok?",        mod_som_apf_cmd_ok_status_f },
         { "sleep",        mod_som_apf_cmd_sleep_f },
-        { "FwRev?",       mod_som_apf_cmd_fwrev_status_f },
+        { "fwrev?",       mod_som_apf_cmd_fwrev_status_f },
         { "upload",       mod_som_apf_cmd_upload_f },
-        { "EpsiNo?",      mod_som_apf_cmd_epsi_id_status_f },
-        { "ProbeNo",      mod_som_apf_cmd_probe_id_f },
-        { "ProbeNo?",     mod_som_apf_cmd_probe_id_status_f },
-        { "PowerOff",     mod_som_apf_cmd_poweroff_f },
-        { "SD_Format",    mod_som_apf_cmd_sd_format_f },
-        { "Process_Nfft", mod_som_apf_cmd_process_nfft_f },
+        { "epsino?",      mod_som_apf_cmd_epsi_id_status_f },
+        { "probeno",      mod_som_apf_cmd_probe_id_f },
+        { "probeno?",     mod_som_apf_cmd_probe_id_status_f },
+        { "poweroff",     mod_som_apf_cmd_poweroff_f },
+        { "sd_format",    mod_som_apf_cmd_sd_format_f },
+        { "process_nfft", mod_som_apf_cmd_process_nfft_f },
         { "comm_packet_format", mod_som_apf_cmd_comm_packet_format_f },
         { 0, 0 }
 };
@@ -136,7 +136,7 @@ CPU_INT16S mod_som_apf_cmd_daq_f(CPU_INT16U argc,
 		SHELL_CMD_PARAM *cmd_param){
 
 	mod_som_apf_status_t status;
-	uint8_t profile_id;
+	uint64_t profile_id;
 	RTOS_ERR err;
 
 	for (int i = 1; i < argc; i++) {
@@ -149,9 +149,21 @@ CPU_INT16S mod_som_apf_cmd_daq_f(CPU_INT16U argc,
 				//ALB it will the last argument as profile id
 				profile_id = shellStrtol(argv[++i], &err); // Convert argument to int
 				status = mod_som_apf_daq_start_f((uint64_t)profile_id);
+			  if (status==0){
+			      mod_som_io_print_f("daq,start,ack,%lu",(uint32_t) profile_id);
+			  }else{
+			      mod_som_io_print_f("daq,start,nak,%lu",status);
+			  }
 			}
 		} else if (!Str_Cmp(argv[i], "stop")) {
 			status = mod_som_apf_daq_stop_f();
+			//ALB display msg
+			  if (status==MOD_SOM_APF_STATUS_OK){
+			      mod_som_io_print_f("daq,stop,ack");
+			  }else{
+			      mod_som_io_print_f("daq,stop,nak,%lu",status);
+			  }
+
 		} else {
 	        mod_som_io_print_f("daq,nak,%s.\r\n","invalid daq cmd");
 			return MOD_SOM_APF_STATUS_ERR;
@@ -184,7 +196,21 @@ CPU_INT16S mod_som_apf_cmd_daq_status_f(CPU_INT16U argc,
         SHELL_OUT_FNCT out_put_f,
         SHELL_CMD_PARAM *cmd_param){
 
-    mod_som_apf_status_t status = mod_som_apf_daq_status_f();
+//    mod_som_apf_status_t status = mod_som_apf_daq_status_f();
+    mod_som_apf_status_t status;
+
+    status=MOD_SOM_APF_STATUS_OK;
+
+//    if(mod_som_apf_ptr->daq){
+//        status=mod_som_io_print_f("daq?,ack,%s","enabled");
+//    }else{
+//        status=mod_som_io_print_f("daq?,ack,%s","disabled");
+//    }
+
+    //ALB Dana want an error message here but I do not think there is a situation
+    if (status!=MOD_SOM_APF_STATUS_OK){
+        mod_som_io_print_f("daq?,nak,%lu",status);
+    }
 
     if(status != MOD_SOM_APF_STATUS_OK)
         return SHELL_EXEC_ERR;

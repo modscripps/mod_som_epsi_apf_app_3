@@ -554,7 +554,7 @@ mod_som_apf_status_t mod_som_apf_daq_stop_f();
  *   MOD_SOM_APF_STATUS_OK if function execute nicely
  ******************************************************************************/
 
-mod_som_apf_status_t mod_som_apf_daq_status_f();
+//mod_som_apf_status_t mod_som_apf_daq_status_f();
 
 
 /*******************************************************************************

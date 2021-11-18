@@ -642,7 +642,8 @@ void mod_som_epsiobp_shear_filters_f(float *shear_filter, float fall_rate)
   uint16_t end = settings->nfft/2;
   float denom = 2*vals->freq[end - 1];
   // interpolate to get proper cafilter given freq
-  interp1_f(cals->cafilter_freq, cals->cafilter_coeff, cals->cafilter_size, vals->freq, ca_shear, settings->nfft/2);
+  float *ca_freq = cals->cafilter_freq, *ca_coeff = cals->cafilter_coeff, *v_freq = vals->freq;
+  interp1_f(ca_freq, ca_coeff, cals->cafilter_size, v_freq, ca_shear, settings->nfft/2);
   // loop to find values for other elements of the filter
   for (uint16_t i = 0; i < settings->nfft/2; i++) {
     // elect_shear is the ADC filter, in this case a sinc4 function, will eventually need to change to allow for user input
