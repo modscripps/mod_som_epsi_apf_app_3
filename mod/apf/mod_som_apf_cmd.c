@@ -151,6 +151,7 @@ CPU_INT16S mod_som_apf_cmd_daq_f(CPU_INT16U argc,
 				status = mod_som_apf_daq_start_f((uint64_t)profile_id);
 			  if (status==0){
 			      mod_som_io_print_f("daq,start,ack,%lu",(uint32_t) profile_id);
+
 			  }else{
 			      mod_som_io_print_f("daq,start,nak,%lu",status);
 			  }

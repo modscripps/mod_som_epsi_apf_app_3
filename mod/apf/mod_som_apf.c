@@ -1209,6 +1209,9 @@ void mod_som_apf_shell_task_f(void  *p_arg){
   uint32_t temp_str_len = 0;
 
   uint32_t status;
+  //TODO This is very hardware dependent
+  //TODO Be careful if you want to change serial port
+  //TODO This will
   LEUART_TypeDef  *apf_leuart_ptr;
   temp_str_len = strlen(temp_str);
 
@@ -1224,7 +1227,6 @@ void mod_som_apf_shell_task_f(void  *p_arg){
       // send "NAK,<expression>\r\n"
       if (status > 0) // if not success: send a message to APF (LEUART port)
       {
-          apf_leuart_ptr = (LEUART_TypeDef *)mod_som_apf_ptr->com_prf_ptr->handle_port;
           mod_som_apf_send_line_f(apf_leuart_ptr, temp_str,temp_str_len);
           //      status = mod_som_apf_send_line_f(apf_leuart_ptr, "NAK,<ReceivedCmd>,\r\n",input_buf_len);
       }
@@ -1236,7 +1238,9 @@ void mod_som_apf_shell_task_f(void  *p_arg){
       // we have the whole string, we would convert the string to the right format string we want
       status = mod_som_apf_convert_string_f(input_buf, output_buf);   // convert the input string to the right format: cap -> uncap, coma -> space
       status = mod_som_shell_execute_input_f(output_buf,input_buf_len);   // execute the appropriate routine base on the command. Return the mod_som_status
-      status = mod_som_apf_send_line_f(apf_leuart_ptr, output_buf,input_buf_len);  // test send the string
+//      status = mod_som_apf_send_line_f(apf_leuart_ptr, output_buf,input_buf_len);  // test send the string
+      status = mod_som_apf_send_line_f(mod_som_apf_ptr->com_prf_ptr->handle_port, output_buf,input_buf_len);  // test send the string
+
   }
 }
 
@@ -1380,17 +1384,17 @@ mod_som_status_t mod_som_apf_get_char_f(LEUART_TypeDef *leuart_ptr, char* read_c
  ******************************************************************************/
 mod_som_status_t mod_som_apf_send_line_f(LEUART_TypeDef *leuart_ptr,char * buf, uint32_t nb_of_char_to_send)
 {
-  char *send_char = *buf;
+  uint8_t *send_char = (uint8_t*) buf;
   int i;
 
   for (i=0; i<nb_of_char_to_send; i++)
   {
-    LEUART_Tx(leuart_ptr, (uint8_t) *send_char);
+    LEUART_Tx(leuart_ptr,  *send_char);
     send_char++;
   }
   //TODO send one line to the port
-//  mod_som_apf_ptr->com_prf_ptr->handle_port = \
-//                                      mod_som_apf_ptr->config_ptr->port.com_port;
+  return 0;
+
 }
 
 
