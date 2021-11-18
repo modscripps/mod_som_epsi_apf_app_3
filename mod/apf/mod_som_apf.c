@@ -1205,9 +1205,12 @@ void mod_som_apf_shell_task_f(void  *p_arg){
   char     input_buf[MOD_SOM_SHELL_INPUT_BUF_SIZE];
   char     output_buf[MOD_SOM_SHELL_INPUT_BUF_SIZE];
   uint32_t input_buf_len;
+  char     temp_str = "NAK,<ReceivedCmd>,\r\n";
+  uint32_t temp_str_len = 0;
 
   uint32_t status;
   LEUART_TypeDef  *apf_leuart_ptr;
+  temp_str_len = strlen(temp_str);
 
   while (DEF_ON) {
       OSTimeDly(
@@ -1222,10 +1225,8 @@ void mod_som_apf_shell_task_f(void  *p_arg){
       if (status > 0) // if not success: send a message to APF (LEUART port)
       {
           apf_leuart_ptr = (LEUART_TypeDef *)mod_som_apf_ptr->com_prf_ptr->handle_port;
-          // need to design this function
-          //
-          // passing:
-          //mod_som_apf_send_line_f(apf_leuart_ptr, "NAK,<ReceivedCmd>,\r\n",input_buf_len);
+          mod_som_apf_send_line_f(apf_leuart_ptr, temp_str,temp_str_len);
+          //      status = mod_som_apf_send_line_f(apf_leuart_ptr, "NAK,<ReceivedCmd>,\r\n",input_buf_len);
       }
 
       if (!Str_Cmp(input_buf, "exit"))
@@ -1235,7 +1236,7 @@ void mod_som_apf_shell_task_f(void  *p_arg){
       // we have the whole string, we would convert the string to the right format string we want
       status = mod_som_apf_convert_string_f(input_buf, output_buf);   // convert the input string to the right format: cap -> uncap, coma -> space
       status = mod_som_shell_execute_input_f(output_buf,input_buf_len);   // execute the appropriate routine base on the command. Return the mod_som_status
-
+      status = mod_som_apf_send_line_f(apf_leuart_ptr, output_buf,input_buf_len);  // test send the string
   }
 }
 
@@ -1314,37 +1315,30 @@ mod_som_status_t mod_som_apf_shell_get_line_f(char *buf, uint32_t * bytes_read){
     int32_t i=0;
     RTOS_ERR err;
     char read_char;
-    uint32_t bytes_read_local = 0;
     LEUART_TypeDef  *apf_leuart_ptr;
-    char* str_temp;
-
-
-    str_temp = buf;
 
     Mem_Set(buf, '\0', MOD_SOM_SHELL_INPUT_BUF_SIZE); // Clear previous input
 
     // get the fd of LEUART port
     apf_leuart_ptr = (LEUART_TypeDef *)mod_som_apf_ptr->com_prf_ptr->handle_port;
 
-    // use do while loop to read input from APF until geting '\r' character
-    // the function would be ended either reach the max characters need to read or '\r'
-
-    ret_val = mod_som_apf_get_char_f(apf_leuart_ptr, &read_char); // call for getting char from LEUART
-    bytes_read_local++;
-    while(read_char!='\r'&& bytes_read_local<MOD_SOM_SHELL_INPUT_BUF_SIZE)
-   {
-        buf[i] = read_char; // save the read character into the buffer
-        //get character from the port
+    // use for to read input from APF until geting '\r' character
+    // it would be ended either reach the max characters need to read or '\r'
+    for (i=0;i<MOD_SOM_SHELL_INPUT_BUF_SIZE;i++)
+    {
         ret_val = mod_som_apf_get_char_f(apf_leuart_ptr, &read_char); // call for getting char from LEUART
-        bytes_read_local++;
-   }
-    buf[i] = '\0'; // terminate the string
-    *bytes_read = bytes_read_local;  // increment the count of the received characters
-
+        buf[i] = read_char;// save the read character into the buffer
+        if (read_char == '\r')
+        {
+            buf[i] = '\0';
+            break;
+        }
+    }
+    *bytes_read = i;
     return mod_som_shell_encode_status_f(MOD_SOM_STATUS_OK);
 }
 
-// get the string from APF (via passing L
+// get the string from APF (universal)
 // mod_som_status_t mod_som_get_line_f(char *buf, uint32_t * bytes_read, uint32_t max_len, LEUART_TypeDef  *apf_leuart_ptr)
 
 //TODO Modify the string to match the APF shell rules
