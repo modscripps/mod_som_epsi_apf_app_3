@@ -108,6 +108,7 @@
 #define MIN(X, Y) (((X) < (Y)) ? (X) : (Y))
 #define MAX(X, Y) (((X) > (Y)) ? (X) : (Y))
 
+#define MOD_SOM_APF_REPLY_MAX_LEN 128
 //------------------------------------------------------------------------------
 // TYPEDEFS
 //------------------------------------------------------------------------------
@@ -422,6 +423,7 @@ typedef struct{
    float    dacq_pressure;
    float    dacq_dz;
 
+   char apf_reply_str[MOD_SOM_APF_REPLY_MAX_LEN];   // add reply str from APF - Arnaud&Mai Nov 16, 2021
 
 }
 mod_som_apf_t, *mod_som_apf_ptr_t;

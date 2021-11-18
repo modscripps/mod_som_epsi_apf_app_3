@@ -1218,10 +1218,14 @@ void mod_som_apf_shell_task_f(void  *p_arg){
       // get the whole string from the port
       status = mod_som_apf_shell_get_line_f(input_buf,&input_buf_len); // get the whole string from the port (i.e LEUART)
 
-      if (status > 0) // if not success
+      // send "NAK,<expression>\r\n"
+      if (status > 0) // if not success: send a message to APF (LEUART port)
       {
           apf_leuart_ptr = (LEUART_TypeDef *)mod_som_apf_ptr->com_prf_ptr->handle_port;
-          mod_som_apf_send_line_f(apf_leuart_ptr, "mod_som_apf_shell_get_line_f() could not succeed \n",input_buf_len);
+          // need to design this function
+          //
+          // passing:
+          //mod_som_apf_send_line_f(apf_leuart_ptr, "NAK,<ReceivedCmd>,\r\n",input_buf_len);
       }
 
       if (!Str_Cmp(input_buf, "exit"))
@@ -1231,6 +1235,7 @@ void mod_som_apf_shell_task_f(void  *p_arg){
       // we have the whole string, we would convert the string to the right format string we want
       status = mod_som_apf_convert_string_f(input_buf, output_buf);   // convert the input string to the right format: cap -> uncap, coma -> space
       status = mod_som_shell_execute_input_f(output_buf,input_buf_len);   // execute the appropriate routine base on the command. Return the mod_som_status
+
   }
 }
 
@@ -1296,21 +1301,23 @@ mod_som_status_t mod_som_apf_shell_execute_input_f(char* input,uint32_t input_le
  * Function Name:
 mod_som_status_t mod_som_apf_shell_get_line_f(char *buf, uint32_t * buf_len)
  * Description:
- *   Get text input from user.
- *   TODO
+ *   Get string (with max len = MOD_SOM_SHELL_INPUT_BUF_SIZE) input from user.
+ *
  *
  * @param buf
  *   Buffer to hold the input string.
  * @param buf_length
  *  Length of buffer as the user is typing
  ******************************************************************************/
-mod_som_status_t mod_som_apf_shell_get_line_f(char *buf, uint32_t * buf_len){
+mod_som_status_t mod_som_apf_shell_get_line_f(char *buf, uint32_t * bytes_read){
   int32_t ret_val;
     int32_t i=0;
     RTOS_ERR err;
     char read_char;
+    uint32_t bytes_read_local = 0;
     LEUART_TypeDef  *apf_leuart_ptr;
     char* str_temp;
+
 
     str_temp = buf;
 
@@ -1319,20 +1326,26 @@ mod_som_status_t mod_som_apf_shell_get_line_f(char *buf, uint32_t * buf_len){
     // get the fd of LEUART port
     apf_leuart_ptr = (LEUART_TypeDef *)mod_som_apf_ptr->com_prf_ptr->handle_port;
 
-    for (i = 0; i < MOD_SOM_SHELL_INPUT_BUF_SIZE - 1; i++)
-    {
+    // use do while loop to read input from APF until geting '\r' character
+    // the function would be ended either reach the max characters need to read or '\r'
+
+    ret_val = mod_som_apf_get_char_f(apf_leuart_ptr, &read_char); // call for getting char from LEUART
+    bytes_read_local++;
+    while(read_char!='\r'&& bytes_read_local<MOD_SOM_SHELL_INPUT_BUF_SIZE)
+   {
+        buf[i] = read_char; // save the read character into the buffer
         //get character from the port
         ret_val = mod_som_apf_get_char_f(apf_leuart_ptr, &read_char); // call for getting char from LEUART
-
-        if (read_char=='\r')  // if the received character is return character, get out of the for loop
-          break;
-        buf[i] = read_char; // save the read character into the buffer
-    }
+        bytes_read_local++;
+   }
     buf[i] = '\0'; // terminate the string
-    *buf_len = i;  // increment the count of the received characters
+    *bytes_read = bytes_read_local;  // increment the count of the received characters
+
     return mod_som_shell_encode_status_f(MOD_SOM_STATUS_OK);
 }
 
+// get the string from APF (via passing L
+// mod_som_status_t mod_som_get_line_f(char *buf, uint32_t * bytes_read, uint32_t max_len, LEUART_TypeDef  *apf_leuart_ptr)
 
 //TODO Modify the string to match the APF shell rules
 //TODO Not case sensitive
@@ -1371,11 +1384,19 @@ mod_som_status_t mod_som_apf_get_char_f(LEUART_TypeDef *leuart_ptr, char* read_c
  * @param buf_length
  *  Length of buffer as the user is typing
  ******************************************************************************/
-mod_som_status_t mod_som_apf_send_line_f(LEUART_TypeDef *leuart,char * buf, uint32_t nb_of_char_to_send){
+mod_som_status_t mod_som_apf_send_line_f(LEUART_TypeDef *leuart_ptr,char * buf, uint32_t nb_of_char_to_send)
+{
+  char *send_char = *buf;
+  int i;
+
+  for (i=0; i<nb_of_char_to_send; i++)
+  {
+    LEUART_Tx(leuart_ptr, (uint8_t) *send_char);
+    send_char++;
+  }
   //TODO send one line to the port
-  mod_som_apf_ptr->com_prf_ptr->handle_port = \
-                                      mod_som_apf_ptr->config_ptr->port.com_port;
-  //
+//  mod_som_apf_ptr->com_prf_ptr->handle_port = \
+//                                      mod_som_apf_ptr->config_ptr->port.com_port;
 }
 
 
@@ -2380,6 +2401,12 @@ mod_som_apf_status_t mod_som_apf_time_f(CPU_INT16U argc,
  *   command shell for time? command
  *   get UnixEpoch time on SOM
  *   should return an apf status.
+ * Description:
+ * - get the port
+ * - get time
+ * - construct the time string
+ * - get the string len of the time string
+ * - send the string to the port
  * @return
  *   MOD_SOM_APF_STATUS_OK if function execute nicely
  ******************************************************************************/
@@ -2387,10 +2414,23 @@ mod_som_apf_status_t mod_som_apf_time_status_f(){
 
   mod_som_status_t status = 0;
   sl_sleeptimer_timestamp_t time;
+  LEUART_TypeDef* apf_leuart_ptr;
+  char afp_reply_str[MOD_SOM_SHELL_INPUT_BUF_SIZE]="\0";
+  size_t reply_str_len = 0;
+
+  // get the port's fd
+  apf_leuart_ptr = (LEUART_TypeDef *)mod_som_apf_ptr->com_prf_ptr->handle_port;
 
   time= sl_sleeptimer_get_time();
 
-  status|=mod_som_io_print_f("time,ak,%lu",time);
+  status|=mod_som_io_print_f("time,ak,%lu\r\n",time);
+
+  // save time string into the apf structure - Arnaud&Mai - Nov 16, 2021
+  fprintf(mod_som_apf_ptr->apf_reply_str,"time,ak,%lu\r\n",(unsigned long)time);
+  reply_str_len = strlen(mod_som_apf_ptr->apf_reply_str);
+
+  // sending the time string to the APF port - Arnaud&Mai - Nov 16, 2021
+  status = mod_som_apf_send_line_f(apf_leuart_ptr,mod_som_apf_ptr->apf_reply_str, reply_str_len);
 
    if (status==MOD_SOM_APF_STATUS_OK){
 	    mod_som_io_print_f("time,nak,%lu",status);
