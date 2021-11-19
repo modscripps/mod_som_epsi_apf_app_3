@@ -490,6 +490,14 @@ mod_som_apf_settings_t mod_som_apf_get_settings_f();
  *   or otherwise
  ******************************************************************************/
 mod_som_status_t mod_som_apf_construct_config_ptr_f();
+/*******************************************************************************
+ * @brief
+ *   get the setup struct ptr
+ *
+ * @param config_ptr
+ *   configuration pointer
+ ******************************************************************************/
+void* mod_som_apf_get_port_ptr_f();
 
 /*******************************************************************************
  * @brief

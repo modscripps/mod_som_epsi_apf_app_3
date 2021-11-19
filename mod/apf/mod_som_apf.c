@@ -233,6 +233,18 @@ mod_som_apf_settings_t mod_som_apf_get_settings_f(){
 
 /*******************************************************************************
  * @brief
+ *   get the setup struct ptr
+ *
+ * @param config_ptr
+ *   configuration pointer
+ ******************************************************************************/
+void* mod_som_apf_get_port_ptr_f(){
+  return mod_som_apf_ptr->com_prf_ptr->handle_port;
+}
+
+
+/*******************************************************************************
+ * @brief
  *   construct config_ptr
  *
  * @return

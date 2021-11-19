@@ -139,12 +139,13 @@ CPU_INT16S mod_som_apf_cmd_daq_f(CPU_INT16U argc,
 	uint64_t profile_id;
 	RTOS_ERR err;
 
+
   // paramters for send_line_f()
   char apf_reply_str[MOD_SOM_SHELL_INPUT_BUF_SIZE]="\0";
   size_t reply_str_len = 0;
   LEUART_TypeDef* apf_leuart_ptr;
+  apf_leuart_ptr =(LEUART_TypeDef *) mod_som_apf_get_port_ptr_f();
   // get the port's fd
-  apf_leuart_ptr = (LEUART_TypeDef *)mod_som_apf_ptr->com_prf_ptr->handle_port;
 
 
 	for (int i = 1; i < argc; i++) {
@@ -193,13 +194,6 @@ CPU_INT16S mod_som_apf_cmd_daq_f(CPU_INT16U argc,
 			return MOD_SOM_APF_STATUS_ERR;
 		}
 	}
-
-  // save time string into the temporary local string - Mai - Nov 18, 2021
-  sprintf(apf_reply_str,"time,ak,%lu\r\n",argv[1]);
-  reply_str_len = strlen(apf_reply_str);
-
-  // sending the above string to the APF port - Mai - Nov 18, 2021
-  status = mod_som_apf_send_line_f(apf_leuart_ptr,apf_reply_str, reply_str_len);
 
 	if(status != MOD_SOM_APF_STATUS_OK)
 		return MOD_SOM_APF_STATUS_ERR;
