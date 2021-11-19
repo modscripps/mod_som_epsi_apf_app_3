@@ -2083,6 +2083,7 @@ void mod_som_apf_init_meta_data(mod_som_apf_meta_data_t mod_som_apf_meta_data)
  *   display Firmware Revision ID
  *
  * ALB comment #1
+ * ALB Hello mai
  * @return
  *   MOD_SOM_APF_STATUS_OK if function execute nicely
  ******************************************************************************/
