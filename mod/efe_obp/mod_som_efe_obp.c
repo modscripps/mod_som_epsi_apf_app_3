@@ -72,11 +72,11 @@ static CPU_STK efe_obp_fill_segment_task_stk[MOD_SOM_EFE_OBP_FILL_SEGMENT_TASK_S
 static OS_TCB  efe_obp_fill_segment_task_tcb;
 
 // compute spectra
-static CPU_STK efe_obp_cpt_spectra_task_stk[MOD_SOM_EFE_OBP_FILL_SEGMENT_TASK_STK_SIZE];
+static CPU_STK efe_obp_cpt_spectra_task_stk[MOD_SOM_EFE_OBP_CPT_SPECTRA_TASK_STK_SIZE];
 static OS_TCB  efe_obp_cpt_spectra_task_tcb;
 
 // compute dissrate
-static CPU_STK efe_obp_cpt_dissrate_task_stk[MOD_SOM_EFE_OBP_FILL_SEGMENT_TASK_STK_SIZE];
+static CPU_STK efe_obp_cpt_dissrate_task_stk[MOD_SOM_EFE_OBP_CPT_DISSRATE_TASK_STK_SIZE];
 static OS_TCB  efe_obp_cpt_dissrate_task_tcb;
 
 
@@ -1398,7 +1398,7 @@ void mod_som_efe_obp_cpt_spectra_task_f(void  *p_arg){
                  * mod_som_efe_obp_ptr->settings_ptr->nfft/2],
                    mod_som_efe_obp_ptr->settings_ptr->nfft/2*sizeof(float));
             // call temperature spectrum function
-            mod_som_efe_obp_temp_spectrum_f(mod_som_efe_obp_ptr->fill_segment_ptr->segment_buffer_ptr, spectra_offset, mod_som_efe_obp_ptr);
+//            mod_som_efe_obp_temp_spectrum_f(mod_som_efe_obp_ptr->fill_segment_ptr->segment_buffer_ptr, spectra_offset, mod_som_efe_obp_ptr);
             // last do acceleration
             indx = 0;
             memcpy(&mod_som_efe_obp_ptr->fill_segment_ptr->segment_buffer_ptr[indx],
@@ -1416,7 +1416,7 @@ void mod_som_efe_obp_cpt_spectra_task_f(void  *p_arg){
                   * mod_som_efe_obp_ptr->settings_ptr->nfft/2],
                     mod_som_efe_obp_ptr->settings_ptr->nfft/2*sizeof(float));
             // call accel spectrum function
-            mod_som_efe_obp_accel_spectrum_f(mod_som_efe_obp_ptr->fill_segment_ptr->segment_buffer_ptr, spectra_offset, mod_som_efe_obp_ptr);
+//            mod_som_efe_obp_accel_spectrum_f(mod_som_efe_obp_ptr->fill_segment_ptr->segment_buffer_ptr, spectra_offset, mod_som_efe_obp_ptr);
 
 //          mod_som_efe_obp_compute_spectra_data_f(curr_temp_seg_ptr,
 //                                                 curr_shear_seg_ptr,
@@ -1425,16 +1425,16 @@ void mod_som_efe_obp_cpt_spectra_task_f(void  *p_arg){
 //           mod_som_efe_obp_ptr->cpt_spectra_ptr->spec_shear_ptr+spectra_offset,
 //           mod_som_efe_obp_ptr->cpt_spectra_ptr->spec_accel_ptr+spectra_offset);
 //
-//          //ALB Make fake spectra in order to build the consumer while CAP
-//          //ALB is merging the obp functions.
-//          for (i=0;i<mod_som_efe_obp_ptr->settings_ptr->nfft/2;i++){
-//              mod_som_efe_obp_ptr->cpt_spectra_ptr->spec_temp_ptr[i+spectra_offset]=
-//                    mod_som_efe_obp_ptr->fill_segment_ptr->seg_temp_volt_ptr[i];
-//              mod_som_efe_obp_ptr->cpt_spectra_ptr->spec_shear_ptr[i+spectra_offset]=
-//                  mod_som_efe_obp_ptr->fill_segment_ptr->seg_shear_volt_ptr[i];
-//              mod_som_efe_obp_ptr->cpt_spectra_ptr->spec_accel_ptr[i+spectra_offset]=
-//                  mod_som_efe_obp_ptr->fill_segment_ptr->seg_accel_volt_ptr[i];
-//          }
+          //ALB Make fake spectra in order to build the consumer while CAP
+          //ALB is merging the obp functions.
+          for (i=0;i<mod_som_efe_obp_ptr->settings_ptr->nfft/2;i++){
+              mod_som_efe_obp_ptr->cpt_spectra_ptr->spec_temp_ptr[i+spectra_offset]=
+                    mod_som_efe_obp_ptr->fill_segment_ptr->seg_temp_volt_ptr[i];
+              mod_som_efe_obp_ptr->cpt_spectra_ptr->spec_shear_ptr[i+spectra_offset]=
+                  mod_som_efe_obp_ptr->fill_segment_ptr->seg_shear_volt_ptr[i];
+              mod_som_efe_obp_ptr->cpt_spectra_ptr->spec_accel_ptr[i+spectra_offset]=
+                  mod_som_efe_obp_ptr->fill_segment_ptr->seg_accel_volt_ptr[i];
+          }
 
           //ALB update mod_som_efe_obp_ptr->producer_ptr->volt_read_index
           //ALB to get a new segment with a 50% overlap.

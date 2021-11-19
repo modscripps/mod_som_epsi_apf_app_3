@@ -91,6 +91,7 @@
 #define MOD_SOM_APF_STATUS_FAIL_WRONG_ARGUMENTS                 0x8u
 #define MOD_SOM_APF_STATUS_DAQ_IS_RUNNING                       0x9u
 #define MOD_SOM_APF_STATUS_FAIL_TO_ALLOCATE_MEMORY              0x10U
+#define MOD_SOM_APF_STATUS_FAIL_SEND_MS                         0x11U
 
 
 #define MOD_SOM_APF_UPLOAD_DELAY                  25000000      // 0.5 delay upon reception of the upload cmd
@@ -871,7 +872,7 @@ mod_som_status_t mod_som_apf_shell_get_line_f(char *buf, uint32_t * buf_len);
  * @param buf_length
  *  Length of buffer as the user is typing
  ******************************************************************************/
-mod_som_status_t mod_som_apf_send_line_f(LEUART_TypeDef *leuart, char * buf, uint32_t nb_of_char_to_send);
+uint32_t mod_som_apf_send_line_f(LEUART_TypeDef *leuart, char * buf, uint32_t nb_of_char_to_send);
 
 /*******************************************************************************
  * @brief

@@ -88,7 +88,6 @@ mod_som_status_t mod_som_main_init_f(void){
 
 
     //    Mem_Set(&mod_som_sys_peripherals_list_ptr,0,sizeof(mod_som_sys_prf_list_t));
-
     // Creates a dynamic memory pool for peripherals
     Mem_DynPoolCreate(
             "MOD SOM peripheral list Dynamic Memory Pool",
@@ -220,10 +219,8 @@ mod_som_status_t mod_som_main_start_f(void){
     printf(__DATE__);
     printf(" ");
     printf(__TIME__);
-    printf("\r\n== MOD SOM EPSI BASE Application ==\r\n");
-    printf("\r\n== Version MHA 6/21/2021 ==\r\n");
-//    printf("\r\n== COMPILED FOR FCTD!!! NOT FOR USE WITH EPSI/EFE ==\r\n"); // CHANGE THIS SPLASH FOR FCTD or EPSI
-    printf("\r\n== COMPILED FOR EPSI/EFE!!! NOT FOR USE WITH FCTD ==\r\n"); // CHANGE THIS SPLASH FOR FCTD or EPSI
+    printf("\r\n== MOD SOM APF BASE Application ==\r\n");
+    printf("\r\n== Version ALB 11/18/2021 ==\r\n");
     printf("\r\n\r\n");
     printf("\r\n== YOU MUST SET THE CLOCK NOW WITH 'time.set'!!! ==\r\n");
     printf("\r\n\r\n");
@@ -254,7 +251,7 @@ mod_som_status_t mod_som_main_start_f(void){
             (OS_OPT_TASK_STK_CHK | OS_OPT_TASK_STK_CLR),
             &err);
     // Check error code
-    //SN stall if round robin errors
+    //SN stall if Task create fails
     APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
 
     OSStart(&err); // Start the kernel

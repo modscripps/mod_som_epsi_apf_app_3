@@ -406,7 +406,7 @@ mod_som_status_t mod_som_apf_construct_consumer_ptr_f(){
   mod_som_apf_ptr->consumer_ptr->stored_dissrates_cnt = 0;
 
   mod_som_apf_ptr->consumer_ptr->dacq_ptr =
-      (uint8_t)Mem_SegAlloc(
+      (uint8_t*)Mem_SegAlloc(
           "MOD SOM APF consumer dacq.",DEF_NULL,
           sizeof(uint8_t)*MOD_SOM_EFE_OBP_DEFAULT_NFFT,
           &err);
@@ -1003,8 +1003,6 @@ void mod_som_apf_consumer_task_f(void  *p_arg){
 
   (void)p_arg; // Deliberately unused argument
 
-  int bytes_avail=0;
-
   uint8_t * curr_dacq_ptr;
 
   int dissrate_avail=0, reset_dissrate_cnt=0;
@@ -1205,16 +1203,12 @@ void mod_som_apf_shell_task_f(void  *p_arg){
   char     input_buf[MOD_SOM_SHELL_INPUT_BUF_SIZE];
   char     output_buf[MOD_SOM_SHELL_INPUT_BUF_SIZE];
   uint32_t input_buf_len;
-  char     temp_str = "NAK,<ReceivedCmd>,\r\n";
-  uint32_t temp_str_len = 0;
 
   uint32_t status;
   //TODO This is very hardware dependent
   //TODO Be careful if you want to change serial port
   //TODO This will
-  temp_str_len = strlen(temp_str);
 
-  apf_leuart_ptr = (LEUART_TypeDef *)mod_som_apf_ptr->com_prf_ptr->handle_port;
   while (DEF_ON) {
       OSTimeDly(
               (OS_TICK     )MOD_SOM_APF_SHELL_DELAY,
@@ -1227,7 +1221,7 @@ void mod_som_apf_shell_task_f(void  *p_arg){
       // send "NAK,<expression>\r\n"
       if (status > 0) // if not success: send a message to APF (LEUART port)
       {
-          mod_som_apf_send_line_f(mod_som_apf_ptr->com_prf_ptr->handle_port, temp_str,temp_str_len);
+//          mod_som_apf_send_line_f(mod_som_apf_ptr->com_prf_ptr->handle_port, temp_str,temp_str_len);
           //      status = mod_som_apf_send_line_f(apf_leuart_ptr, "NAK,<ReceivedCmd>,\r\n",input_buf_len);
       }
 
@@ -1238,12 +1232,10 @@ void mod_som_apf_shell_task_f(void  *p_arg){
       // we have the whole string, we would convert the string to the right format string we want
       status = mod_som_apf_convert_string_f(input_buf, output_buf);   // convert the input string to the right format: cap -> uncap, coma -> space
       status = mod_som_shell_execute_input_f(output_buf,input_buf_len);   // execute the appropriate routine base on the command. Return the mod_som_status
-<<<<<<< Updated upstream
-//      status = mod_som_apf_send_line_f(mod_som_apf_ptr->com_prf_ptr->handle_port, output_buf,input_buf_len);  // test send the string
 
-=======
-       status = mod_som_apf_send_line_f(apf_leuart_ptr, output_buf,input_buf_len);  // test send the string
->>>>>>> Stashed changes
+//       status = mod_som_apf_send_line_f(mod_som_apf_ptr->com_prf_ptr->handle_port,
+//                                        output_buf,input_buf_len);  // test send the string
+
   }
 }
 
@@ -1318,9 +1310,8 @@ mod_som_status_t mod_som_apf_shell_get_line_f(char *buf, uint32_t * buf_len)
  *  Length of buffer as the user is typing
  ******************************************************************************/
 mod_som_status_t mod_som_apf_shell_get_line_f(char *buf, uint32_t * bytes_read){
-  int32_t ret_val;
+  mod_som_status_t status;
     int32_t i=0;
-    RTOS_ERR err;
     char read_char;
     LEUART_TypeDef  *apf_leuart_ptr;
 
@@ -1333,7 +1324,7 @@ mod_som_status_t mod_som_apf_shell_get_line_f(char *buf, uint32_t * bytes_read){
     // it would be ended either reach the max characters need to read or '\r'
     for (i=0;i<MOD_SOM_SHELL_INPUT_BUF_SIZE;i++)
     {
-        ret_val = mod_som_apf_get_char_f(apf_leuart_ptr, &read_char); // call for getting char from LEUART
+        status = mod_som_apf_get_char_f(apf_leuart_ptr, &read_char); // call for getting char from LEUART
         buf[i] = read_char;// save the read character into the buffer
         if (read_char == '\r')
         {
@@ -1342,7 +1333,7 @@ mod_som_status_t mod_som_apf_shell_get_line_f(char *buf, uint32_t * bytes_read){
         }
     }
     *bytes_read = i;
-    return mod_som_shell_encode_status_f(MOD_SOM_STATUS_OK);
+    return status;
 }
 
 // get the string from APF (universal)
@@ -1385,8 +1376,9 @@ mod_som_status_t mod_som_apf_get_char_f(LEUART_TypeDef *leuart_ptr, char* read_c
  * @param buf_length
  *  Length of buffer as the user is typing
  ******************************************************************************/
-mod_som_status_t mod_som_apf_send_line_f(LEUART_TypeDef *leuart_ptr,char * buf, uint32_t nb_of_char_to_send)
+uint32_t mod_som_apf_send_line_f(LEUART_TypeDef *leuart_ptr,char * buf, uint32_t nb_of_char_to_send)
 {
+  uint32_t nb_char_sent=0;
   uint8_t *send_char = (uint8_t*) buf;
   int i;
 
@@ -1394,9 +1386,10 @@ mod_som_status_t mod_som_apf_send_line_f(LEUART_TypeDef *leuart_ptr,char * buf, 
   {
     LEUART_Tx(leuart_ptr,  *send_char);
     send_char++;
+    nb_char_sent++;
   }
   //TODO send one line to the port
-  return 0;
+  return nb_char_sent;
 
 }
 
@@ -2094,9 +2087,12 @@ void mod_som_apf_init_meta_data(mod_som_apf_meta_data_t mod_som_apf_meta_data)
  ******************************************************************************/
 mod_som_apf_status_t mod_som_apf_fwrev_status_f(){
 
-  mod_som_apf_status_t status;
+  mod_som_apf_status_t status=0;
+  uint32_t bytes_send;
+
   char apf_reply_str[MOD_SOM_SHELL_INPUT_BUF_SIZE]="\0";
-  size_t reply_str_len = 0;
+  uint32_t reply_str_len = 0;
+
   LEUART_TypeDef* apf_leuart_ptr;
   // get the port's fd
   apf_leuart_ptr = (LEUART_TypeDef *)mod_som_apf_ptr->com_prf_ptr->handle_port;
@@ -2105,15 +2101,18 @@ mod_som_apf_status_t mod_som_apf_fwrev_status_f(){
                                           mod_som_settings_get_settings_f();
 
 
-  mod_som_io_print_f("FwRev?,ack,%s\r\n",local_settings_ptr->firmware);
+  mod_som_io_print_f("fwrev?,ack,%s\r\n",local_settings_ptr->firmware);
 
   // save time string into the temporary local string - Mai - Nov 18, 2021
-  sprintf(apf_reply_str,"FwRev?,ack,%s\r\n",local_settings_ptr->firmware);
+  sprintf(apf_reply_str,"fwrev?,ack,%s\r\n",local_settings_ptr->firmware);
   reply_str_len = strlen(apf_reply_str);
   // sending the above string to the APF port - Mai - Nov 18, 2021
-  status = mod_som_apf_send_line_f(apf_leuart_ptr,apf_reply_str, reply_str_len);
+  bytes_send = mod_som_apf_send_line_f(apf_leuart_ptr,apf_reply_str, reply_str_len);
+  if (bytes_send!=reply_str_len){
+      status=MOD_SOM_APF_STATUS_FAIL_SEND_MS;
+  }
 
-	return mod_som_apf_encode_status_f(MOD_SOM_APF_STATUS_OK);
+	return status;
 }
 
 /*******************************************************************************
@@ -2143,7 +2142,7 @@ mod_som_apf_status_t mod_som_apf_ok_status_f(){
   status = mod_som_apf_send_line_f(apf_leuart_ptr,apf_reply_str, reply_str_len);
 
 //	mod_som_io_print_f("ok?,nak,%s\r\n","error message");
-	return mod_som_apf_encode_status_f(MOD_SOM_APF_STATUS_OK);
+	return status;
 }
 
 /*******************************************************************************

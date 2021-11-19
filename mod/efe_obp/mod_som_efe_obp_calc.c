@@ -77,6 +77,13 @@ static mod_som_efe_obp_calibration_ptr_t cals;
 static mod_som_efe_obp_calc_vals_ptr_t vals;
 // will contain freq, kvec, hamming_window, normalization, fp07_noise, epsi_spectrum_buffer, chi_spectrum_buffer, epsi_averaged_spectrum, chi_averaged_spectrum
 
+static mod_som_efe_obp_calc_filters_ptr_t filters_ptr;
+
+static mod_som_efe_obp_calc_theospec_ptr_t theospec_ptr;
+
+static mod_som_efe_obp_calc_fft_ptr_t fft_ptr;
+
+
 // spectrum buffer for calculation storage and operation
 float *spectrum_buffer;
 
@@ -142,6 +149,7 @@ void mod_som_epsiobp_init_f(mod_som_efe_obp_config_ptr_t config_ptr_in, mod_som_
   config = config_ptr_in;
   settings = settings_ptr_in;
   cals = cals_ptr_in;
+
 //  // read in calibration inputs
 //  num_shear = config.num_shear;
 //  num_fp07 = config.num_fp07;
@@ -216,6 +224,126 @@ void mod_som_epsiobp_init_f(mod_som_efe_obp_config_ptr_t config_ptr_in, mod_som_
   // Check error code
   APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
 
+
+  //ALB alloc memory for setup pointer
+  //set up default configuration
+  filters_ptr =
+      (mod_som_efe_obp_calc_filters_ptr_t)Mem_SegAlloc(
+          "MOD SOM EFE OBP filters.",DEF_NULL,
+          sizeof(mod_som_efe_obp_calc_filters_t),
+          &err);
+  // Check error code
+  APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
+  filters_ptr->ca_shear =
+      (float *)Mem_SegAlloc(
+          "MOD SOM EFE OBP filt ca.",DEF_NULL,
+          sizeof(float)*settings->nfft/2,
+          &err);
+  APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
+
+  filters_ptr->elect_fp07 =
+      (float *)Mem_SegAlloc(
+          "MOD SOM EFE OBP filt elecfpo7.",DEF_NULL,
+          sizeof(float)*settings->nfft/2,
+          &err);
+  APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
+
+  filters_ptr->elect_shear =
+      (float *)Mem_SegAlloc(
+          "MOD SOM EFE OBP filt elecshe.",DEF_NULL,
+          sizeof(float)*settings->nfft/2,
+          &err);
+  APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
+  filters_ptr->fp07_filter =
+      (float *)Mem_SegAlloc(
+          "MOD SOM EFE OBP filt fpo7.",DEF_NULL,
+          sizeof(float)*settings->nfft/2,
+          &err);
+  APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
+
+  filters_ptr->magsq =
+      (float *)Mem_SegAlloc(
+          "MOD SOM EFE OBP filt magsq.",DEF_NULL,
+          sizeof(float)*settings->nfft/2,
+          &err);
+  APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
+
+  filters_ptr->oakey_shear =
+      (float *)Mem_SegAlloc(
+          "MOD SOM EFE OBP filt oakey.",DEF_NULL,
+          sizeof(float)*settings->nfft/2,
+          &err);
+  APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
+
+  filters_ptr->shear_filter =
+      (float *)Mem_SegAlloc(
+          "MOD SOM EFE OBP filt shear.",DEF_NULL,
+          sizeof(float)*settings->nfft/2,
+          &err);
+  APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
+
+  theospec_ptr =
+      (mod_som_efe_obp_calc_theospec_ptr_t)Mem_SegAlloc(
+          "MOD SOM EFE OBP filters.",DEF_NULL,
+          sizeof(mod_som_efe_obp_calc_filters_t),
+          &err);
+  // Check error code
+  APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
+  theospec_ptr->batchelor_spec =
+      (float *)Mem_SegAlloc(
+          "MOD SOM EFE OBP theo batch.",DEF_NULL,
+          sizeof(float)*settings->nfft/2,
+          &err);
+  APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
+
+  theospec_ptr->panchev_spec =
+      (float *)Mem_SegAlloc(
+          "MOD SOM EFE OBP theo panch.",DEF_NULL,
+          sizeof(float)*settings->nfft/2,
+          &err);
+  APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
+
+  theospec_ptr->kn =
+      (float *)Mem_SegAlloc(
+          "MOD SOM EFE OBP theo kn.",DEF_NULL,
+          sizeof(float)*settings->nfft/2,
+          &err);
+  APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
+
+  fft_ptr =
+      (mod_som_efe_obp_calc_fft_ptr_t)Mem_SegAlloc(
+          "MOD SOM EFE OBP fft.",DEF_NULL,
+          sizeof(mod_som_efe_obp_calc_fft_t),
+          &err);
+  // Check error code
+  APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
+  fft_ptr->detrended_data =
+      (float *)Mem_SegAlloc(
+          "MOD SOM EFE OBP fft detre.",DEF_NULL,
+          sizeof(float)*settings->nfft/2,
+          &err);
+  APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
+  fft_ptr->fft_data =
+      (float *)Mem_SegAlloc(
+          "MOD SOM EFE OBP fft data.",DEF_NULL,
+          sizeof(float)*settings->nfft/2,
+          &err);
+  APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
+  fft_ptr->hamming_window =
+      (float *)Mem_SegAlloc(
+          "MOD SOM EFE OBP fft hamming.",DEF_NULL,
+          sizeof(float)*settings->nfft/2,
+          &err);
+  APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
+  fft_ptr->windowed_data =
+      (float *)Mem_SegAlloc(
+          "MOD SOM EFE OBP fft windata.",DEF_NULL,
+          sizeof(float)*settings->nfft/2,
+          &err);
+  APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
+
+
+
 //  vals->freq = (float*) calloc(settings->nfft/2, sizeof(float)); // freq vector, zero freq NOT included
 //  vals->kvec = (float*) calloc(settings->nfft/2, sizeof(float)); // wavenumber vector
 //  vals->fp07_noise = (float*) calloc(settings->nfft/2, sizeof(float)); // fp07 noise vector
@@ -254,8 +382,10 @@ void mod_som_efe_obp_shear_spectrum_f(float *seg_buffer, int spectra_offset, mod
   // pull in fall rate
   float w = mod_som_efe_obp_ptr->cpt_spectra_ptr->avg_ctd_dpdt;
   // Get the electronics transfer functions.
-  float shear_filter[settings->nfft/2];
-  mod_som_epsiobp_shear_filters_f(shear_filter, w);
+
+  //ALB modify
+//  float shear_filter[settings->nfft/2];
+  mod_som_epsiobp_shear_filters_f(filters_ptr->shear_filter, w);
   // removed looping over all shear channels, now just doing 1
   // calculate spectrum from shear data
   power_spectrum_f(seg_buffer, spectrum_buffer, settings->nfft, config->f_samp);
@@ -263,7 +393,7 @@ void mod_som_efe_obp_shear_spectrum_f(float *seg_buffer, int spectra_offset, mod
   for (uint16_t i = 0; i < settings->nfft/2; i++) {
       spectrum_buffer[i] = spectrum_buffer[i]*pow(2*g/(cals->shear_sv*w), 2);
       // run spectrum through filter
-      spectrum_buffer[i] = spectrum_buffer[i]/shear_filter[i];
+      spectrum_buffer[i] = spectrum_buffer[i]/filters_ptr->shear_filter[i];
       // stuff spectrum into output
       *(mod_som_efe_obp_ptr->cpt_spectra_ptr->spec_shear_ptr+spectra_offset) = spectrum_buffer[i];
   }
@@ -318,8 +448,11 @@ void mod_som_efe_obp_temp_spectrum_f(float *seg_buffer, int spectra_offset, mod_
   // pull in fall rate
   float w = mod_som_efe_obp_ptr->cpt_spectra_ptr->avg_ctd_dpdt;
   //  pull in fp07 filter function and calculate using fall speed as input
-  float fp07_filter[settings->nfft/2];
-  mod_som_epsiobp_fp07_filters_f(fp07_filter, w);
+
+  //ALB modify
+//  float fp07_filter[settings->nfft/2];
+
+  mod_som_epsiobp_fp07_filters_f(filters_ptr->fp07_filter, w);
   // removed looping over all temp channels, now just doing 1
   //init cutoff to end so no funny business
   *(vals->fp07_cutoff) = settings->nfft/2;
@@ -333,7 +466,7 @@ void mod_som_efe_obp_temp_spectrum_f(float *seg_buffer, int spectra_offset, mod_
   *(vals->fp07_cutoff) = mod_som_epsiobp_fp07_cutoff_f(spectrum_buffer, settings->nfft/2);
   for (uint16_t i = 0; i < settings->nfft/2; i++) {
     // correct spectrum using filter, divide by filter to get temp spectrum vs. freq
-    spectrum_buffer[i] = spectrum_buffer[i]/fp07_filter[i];
+    spectrum_buffer[i] = spectrum_buffer[i]/filters_ptr->fp07_filter[i];
     // stuff spectrum into output
    *(mod_som_efe_obp_ptr->cpt_spectra_ptr->spec_temp_ptr+spectra_offset) = spectrum_buffer[i];
   }
@@ -567,9 +700,10 @@ void mod_som_efe_obp_calc_epsilon_f(float *local_epsilon, float *nu, float *fom,
   }
   *local_epsilon = eps_3;
   // calculate figure of merit
-  float panchev_spec[settings->nfft/2];
+  //ALB modify
+//  float panchev_spec[settings->nfft/2];
   float panchev_integral;
-  panchev_integral = panchev_f(eps_3, kvis, kvec_3_size, panchev_spec);
+  panchev_integral = panchev_f(eps_3, kvis, kvec_3_size, theospec_ptr->panchev_spec);
   *fom = spectrum_integral/panchev_integral;
 //    }
 }
@@ -620,9 +754,10 @@ void mod_som_efe_obp_calc_chi_f(float *local_epsilon, float *local_chi, float *k
     float chi = 6*kappa_t*dk*chi_sum;
     *local_chi = chi;
     float batchelor_integral;
-    float batchelor_spec[settings->nfft/2];
+    //ALB modify
+//    float batchelor_spec[settings->nfft/2];
     float kvis = seawater_kinematic_viscosity_f(S, T, P);
-    batchelor_integral = batchelor_f(*local_epsilon, chi, kvis, kappa_t, *(vals->fp07_cutoff), batchelor_spec);
+    batchelor_integral = batchelor_f(*local_epsilon, chi, kvis, kappa_t, *(vals->fp07_cutoff), theospec_ptr->batchelor_spec);
     *fom = chi_sum/batchelor_integral;
 //  }
 }
@@ -638,20 +773,26 @@ void mod_som_epsiobp_shear_filters_f(float *shear_filter, float fall_rate)
  ******************************************************************************/
 {
   // define arrays and variables
-  float elect_shear[settings->nfft/2], ca_shear[settings->nfft/2], oakey_shear[settings->nfft/2];
+  //ALB modify
+//  float elect_shear[settings->nfft/2];
+//  float ca_shear[settings->nfft/2];
+//  float oakey_shear[settings->nfft/2];
+
   uint16_t end = settings->nfft/2;
   float denom = 2*vals->freq[end - 1];
   // interpolate to get proper cafilter given freq
   float *ca_freq = cals->cafilter_freq, *ca_coeff = cals->cafilter_coeff, *v_freq = vals->freq;
-  interp1_f(ca_freq, ca_coeff, cals->cafilter_size, v_freq, ca_shear, settings->nfft/2);
+  interp1_f(ca_freq, ca_coeff, cals->cafilter_size, v_freq, filters_ptr->ca_shear, settings->nfft/2);
   // loop to find values for other elements of the filter
   for (uint16_t i = 0; i < settings->nfft/2; i++) {
     // elect_shear is the ADC filter, in this case a sinc4 function, will eventually need to change to allow for user input
-    elect_shear[i] = pow(sinc_f(vals->freq[i]/denom), 4.0);
+      filters_ptr->elect_shear[i] = pow(sinc_f(vals->freq[i]/denom), 4.0);
     // oakey filter comes from airfoil probe response
-    oakey_shear[i] = oakey_filter_f(vals->freq[i], fall_rate);
+      filters_ptr->oakey_shear[i] = oakey_filter_f(vals->freq[i], fall_rate);
     // calculate single filter array
-    shear_filter[i] = pow((ca_shear[i]*elect_shear[i]), 2.0)*oakey_shear[i];
+    shear_filter[i] = pow((filters_ptr->ca_shear[i]*
+                           filters_ptr->elect_shear[i]), 2.0)*
+                           filters_ptr->oakey_shear[i];
   }
 }
 
@@ -682,7 +823,8 @@ void mod_som_epsiobp_fp07_filters_f(float *fp07_filter, float fall_rate)
  ******************************************************************************/
 {
   // define arrays and variables
-  float elect_fp07[settings->nfft/2], magsq[settings->nfft/2];
+  //ALB modify
+//  float elect_fp07[settings->nfft/2], magsq[settings->nfft/2];
   uint16_t end = settings->nfft/2;
   float denom = 2*vals->freq[end - 1];
   // interpolate to get proper Tdiff filter given freq
@@ -690,11 +832,11 @@ void mod_som_epsiobp_fp07_filters_f(float *fp07_filter, float fall_rate)
   // loop to find values for other elements of the filter
   for (uint16_t i = 0; i < settings->nfft/2; i++) {
     // elect_fp07 is the ADC filter, in this case a sinc4 function, will eventually need to change to allow for user input
-    elect_fp07[i] = pow(sinc_f(vals->freq[i]/denom), 4.0);
+      filters_ptr->elect_fp07[i] = pow(sinc_f(vals->freq[i]/denom), 4.0);
     // magsq filter comes from... where? but it's function is constant and shouldn't ever change
-    magsq[i] = 1/(1 + pow((2*M_PI*0.005*pow(fall_rate, -0.32)*vals->freq[i]), 2.0));
+      filters_ptr->magsq[i] = 1/(1 + pow((2*M_PI*0.005*pow(fall_rate, -0.32)*vals->freq[i]), 2.0));
     // calculate single filter array
-    fp07_filter[i] = pow(elect_fp07[i], 2)*magsq[i];
+    fp07_filter[i] = pow(filters_ptr->elect_fp07[i], 2)*filters_ptr->magsq[i];
   }
 }
 
@@ -766,7 +908,8 @@ void power_spectrum_f(float *data, float *spectrum, uint32_t size, float samplin
   end = size/2 - 1;
   float nyquist_power = 0;
 //  static float df;
-  float detrended_data[size], hamming_window[size], windowed_data[size], fft_data[size]; // see note about hamming window near calculation below
+  //ALB modify
+//  float detrended_data[size], hamming_window[size], windowed_data[size], fft_data[size]; // see note about hamming window near calculation below
 //  df = (float) sampling_frequency / (float) size;
   // this initialization should be taken out and probably put in a separate function so we're not reinitializing on every spectrum; it wastes a huge amount of time
   // this being said, sometimes weird errors pop up when this isn't initialized here, so...
@@ -776,19 +919,19 @@ void power_spectrum_f(float *data, float *spectrum, uint32_t size, float samplin
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   float epsi_spectrum_buffer[size/2]; // for reasons that I don't understand, this array must be defined down here in order to have a valid pointer
   // detrend the input data
-  detrend_f(data, size, detrended_data);
+  detrend_f(data, size, fft_ptr->detrended_data);
   /////////////////////////////////////////////////////////////////
   // CAP TODO can now change this to array multiplication using DSP library functions
   // apply a hamming window to the current data block
   for (j = 0; j < size; j++) {
-    windowed_data[j] = detrended_data[j]*hamming_window[j];
+      fft_ptr->windowed_data[j] = fft_ptr->detrended_data[j]*fft_ptr->hamming_window[j];
   };
   // fft the windowed data
-  arm_rfft_fast_f32(&rfft_instance_1, windowed_data, fft_data, fft_direction);
+  arm_rfft_fast_f32(&rfft_instance_1, fft_ptr->windowed_data, fft_ptr->fft_data, fft_direction);
   // store the correct value for power at the nyquist frequency
-  nyquist_power = fft_data[1];
+  nyquist_power = fft_ptr->fft_data[1];
   // compute the square magnitude of the complex fft values
-  arm_cmplx_mag_squared_f32(fft_data, epsi_spectrum_buffer, size);
+  arm_cmplx_mag_squared_f32(fft_ptr->fft_data, epsi_spectrum_buffer, size);
   // plug the power at the nyquist frequency into the spectrum vector in the correct location
   spectrum[end] = pow(nyquist_power, 2) / vals->normalization;
   ///////////////////////////////////////////////////////////////////////////////////
@@ -1189,20 +1332,21 @@ float panchev_f(float epsilon, float kvis, uint16_t kvec_size, float *panchev_sp
   conv = 1/(eta*2.0*M_PI);
   float zeta[10] = {0.05, 0.15, 0.25, 0.35, 0.45, 0.55, 0.65, 0.75, 0.85, 0.95};
   float scale = 2*M_PI*pow((epsilon*pow(kvis, 5)), 0.25);
-  float kn[settings->nfft/2];
+  //ALB modify
+//  float kn[settings->nfft/2];
   float sum = 0;
   float dk = vals->kvec[1] - vals->kvec[0];
   float integral = 0;
 
   // compute spectrum
   for (uint16_t i = 0; i < kvec_size; i++) {
-      kn[i] = vals->kvec[i]/conv;
+      theospec_ptr->kn[i] = vals->kvec[i]/conv;
       for (uint16_t j = 0; j < (sizeof(zeta)/sizeof(zeta[0])); j++) {
           z = zeta[j];
-          sum = sum + delta*(1 + pow(z, 2))*(a*pow(z, c23) + (sc32*ac32)*pow(kn[i], c23))*exp(-c32*a*pow((kn[i]/z), c43) - (sc32*ac32*pow((kn[i]/z), 2)));
+          sum = sum + delta*(1 + pow(z, 2))*(a*pow(z, c23) + (sc32*ac32)*pow(theospec_ptr->kn[i], c23))*exp(-c32*a*pow((theospec_ptr->kn[i]/z), c43) - (sc32*ac32*pow((theospec_ptr->kn[i]/z), 2)));
       }
-      phi = 0.5*pow(kn[i], -5.0/3.0)*sum;
-      panchev_spec[i] = scale*pow((kn[i]/eta), 2)*phi;
+      phi = 0.5*pow(theospec_ptr->kn[i], -5.0/3.0)*sum;
+      panchev_spec[i] = scale*pow((theospec_ptr->kn[i]/eta), 2)*phi;
       integral = integral + panchev_spec[i]*dk;
   }
 
