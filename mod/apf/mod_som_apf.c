@@ -1375,6 +1375,7 @@ mod_som_status_t mod_som_apf_get_char_f(LEUART_TypeDef *leuart_ptr, char* read_c
  *   Buffer to hold the input string.
  * @param buf_length
  *  Length of buffer as the user is typing
+ *  edit: Nov 19, 2021
  ******************************************************************************/
 uint32_t mod_som_apf_send_line_f(LEUART_TypeDef *leuart_ptr,char * buf, uint32_t nb_of_char_to_send)
 {

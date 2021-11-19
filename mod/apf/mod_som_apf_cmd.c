@@ -139,37 +139,67 @@ CPU_INT16S mod_som_apf_cmd_daq_f(CPU_INT16U argc,
 	uint64_t profile_id;
 	RTOS_ERR err;
 
+  // paramters for send_line_f()
+  char apf_reply_str[MOD_SOM_SHELL_INPUT_BUF_SIZE]="\0";
+  size_t reply_str_len = 0;
+  LEUART_TypeDef* apf_leuart_ptr;
+  // get the port's fd
+  apf_leuart_ptr = (LEUART_TypeDef *)mod_som_apf_ptr->com_prf_ptr->handle_port;
+
+
 	for (int i = 1; i < argc; i++) {
 		if (!Str_Cmp(argv[i], "start")) {
 			if (argc<3){
 
 		        mod_som_io_print_f("daq,nak,%s.\r\n","Missing Profile ID.");
+		        // save time string into the temporary local string - Mai - Nov 18, 2021
+		        sprintf(apf_reply_str,"daq,nak,%s.\r\n","Missing Profile ID.");
 			}else{
 				//ALB I do not display error if there is more than 1 profile id.
 				//ALB it will the last argument as profile id
 				profile_id = shellStrtol(argv[++i], &err); // Convert argument to int
 				status = mod_som_apf_daq_start_f((uint64_t)profile_id);
+
 			  if (status==0){
-			      mod_som_io_print_f("daq,start,ack,%lu",(uint32_t) profile_id);
+			      mod_som_io_print_f("daq,start,ack,%lu\r\n",(uint32_t) profile_id);
+		        // save time string into the temporary local string - Mai - Nov 18, 2021
+		        sprintf("daq,start,ack,%lu\r\n",(uint32_t) profile_id);
 
 			  }else{
 			      mod_som_io_print_f("daq,start,nak,%lu",status);
+		        // save time string into the temporary local string - Mai - Nov 18, 2021
+		        sprintf(apf_reply_str,"daq,start,nak,%lu",status);
 			  }
 			}
 		} else if (!Str_Cmp(argv[i], "stop")) {
 			status = mod_som_apf_daq_stop_f();
 			//ALB display msg
 			  if (status==MOD_SOM_APF_STATUS_OK){
-			      mod_som_io_print_f("daq,stop,ack");
+			      mod_som_io_print_f("daq,stop,ack\r\n");
+            // save time string into the temporary local string - Mai - Nov 18, 2021
+            sprintf(apf_reply_str,"daq,stop,ack\r\n");
 			  }else{
-			      mod_som_io_print_f("daq,stop,nak,%lu",status);
+			      mod_som_io_print_f("daq,stop,nak,%lu\r\n",status);
+            // save time string into the temporary local string - Mai - Nov 18, 2021
+            sprintf(apf_reply_str,"daq,start,nak,%lu\r\n",status);
 			  }
 
 		} else {
 	        mod_som_io_print_f("daq,nak,%s.\r\n","invalid daq cmd");
+          // save time string into the temporary local string - Mai - Nov 18, 2021
+          sprintf(apf_reply_str,"daq,nak,%s.\r\n","invalid daq cmd");
+          // sending the above string to the APF port - Mai - Nov 18, 2021
+          status = mod_som_apf_send_line_f(apf_leuart_ptr,apf_reply_str, reply_str_len);
 			return MOD_SOM_APF_STATUS_ERR;
 		}
 	}
+
+  // save time string into the temporary local string - Mai - Nov 18, 2021
+  sprintf(apf_reply_str,"time,ak,%lu\r\n",argv[1]);
+  reply_str_len = strlen(apf_reply_str);
+
+  // sending the above string to the APF port - Mai - Nov 18, 2021
+  status = mod_som_apf_send_line_f(apf_leuart_ptr,apf_reply_str, reply_str_len);
 
 	if(status != MOD_SOM_APF_STATUS_OK)
 		return MOD_SOM_APF_STATUS_ERR;
