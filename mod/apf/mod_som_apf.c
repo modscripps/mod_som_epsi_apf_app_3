@@ -2139,7 +2139,7 @@ mod_som_apf_status_t mod_som_apf_fwrev_status_f(){
  *   MOD_SOM_APF_STATUS_OK if function execute nicely
  ******************************************************************************/
 mod_som_apf_status_t mod_som_apf_ok_status_f(){
-  mod_som_status_t status;
+  mod_som_apf_status_t status = 0;
   char apf_reply_str[MOD_SOM_SHELL_INPUT_BUF_SIZE]="\0";
   size_t reply_str_len = 0;
   LEUART_TypeDef* apf_leuart_ptr;
@@ -2147,8 +2147,20 @@ mod_som_apf_status_t mod_som_apf_ok_status_f(){
   apf_leuart_ptr = (LEUART_TypeDef *)mod_som_apf_ptr->com_prf_ptr->handle_port;
 
 	// Wake up sensor's interface.
-	//
+	// mod_som_apf_status_t status mod_som_apf_io_send_line_f(char* buf)
+  // 1. sprint
+  // 2. io_print
+  // 3. send_line
+  // 4. use ret_val from send_line() to update status and return status
+  // ie:
+  // sprintf(str,"ok?,ack,%s\r\n","status report");
+  // called: mod_som_apf_io_send_line_f(str)
+  //
+  // mod_som_io_xfer_item_ptr->printf_str_ptr
+
 	mod_som_io_print_f("ok?,ack,%s\r\n","status report");
+
+	// can it see this string: mod_som_io_xfer_item_ptr->printf_str_ptr
 
   // save time string into the temporary local string - Mai - Nov 18, 2021
   sprintf(apf_reply_str,"ok?,ack,%s\r\n","status report");
