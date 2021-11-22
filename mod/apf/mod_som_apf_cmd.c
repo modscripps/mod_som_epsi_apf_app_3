@@ -247,7 +247,7 @@ CPU_INT16S mod_som_apf_cmd_daq_status_f(CPU_INT16U argc,
     if (status!=MOD_SOM_APF_STATUS_OK){
         mod_som_io_print_f("daq?,nak,%lu",status);
         sprintf(apf_reply_str,"daq,nak,%s.\r\n","invalid daq cmd");
-       reply_str_len = strlen(apf_reply_str);
+        reply_str_len = strlen(apf_reply_str);
         // sending the above string to the APF port - Mai - Nov 18, 2021
         status = mod_som_apf_send_line_f(apf_leuart_ptr,apf_reply_str, reply_str_len);
     }
@@ -548,6 +548,7 @@ CPU_INT16S mod_som_apf_cmd_time_status_f(CPU_INT16U argc,
         CPU_CHAR *argv[],
         SHELL_OUT_FNCT out_put_f,
         SHELL_CMD_PARAM *cmd_param){
+
 
     mod_som_apf_status_t status = mod_som_apf_time_status_f();
 

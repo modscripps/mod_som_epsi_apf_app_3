@@ -809,6 +809,15 @@ void mod_som_apf_producer_task_f(void  *p_arg){
   float * curr_epsi_fom_ptr;
   float * curr_chi_fom_ptr;
 
+  // parameters for send commands out to APF - mai - Nov 22, 2021
+  mod_som_apf_status_t status=0;
+  uint32_t bytes_send;
+  char apf_reply_str[MOD_SOM_SHELL_INPUT_BUF_SIZE]="\0";
+  uint32_t reply_str_len = 0;
+  LEUART_TypeDef* apf_leuart_ptr;
+  // get the port's fd
+  apf_leuart_ptr = (LEUART_TypeDef *)mod_som_apf_ptr->com_prf_ptr->handle_port;
+
 
   int padding = 1; // the padding should be big enough to include the time variance.
 
@@ -855,6 +864,16 @@ void mod_som_apf_producer_task_f(void  *p_arg){
                       (uint32_t)mod_som_efe_obp_ptr->sample_count, \
                       (uint32_t)mod_som_apf_ptr->producer_ptr->dissrates_cnt, \
                       (uint32_t)mod_som_apf_ptr->producer_ptr->dissrate_skipped);
+
+                  // save time string into the temporary local string - Mai - Nov 18, 2021
+                  sprintf(apf_reply_str,"\n apf obp prod task: CB overflow: sample count = %lu,"
+                          "cnsmr_cnt = %lu,skipped %lu elements \r\n ", \
+                          (uint32_t)mod_som_efe_obp_ptr->sample_count, \
+                          (uint32_t)mod_som_apf_ptr->producer_ptr->dissrates_cnt, \
+                          (uint32_t)mod_som_apf_ptr->producer_ptr->dissrate_skipped);
+                  reply_str_len = strlen(apf_reply_str);
+                  // sending the above string to the APF port - Mai - Nov 18, 2021
+                  bytes_send = mod_som_apf_send_line_f(apf_leuart_ptr,apf_reply_str, reply_str_len);
 
                   mod_som_apf_ptr->producer_ptr->dissrates_cnt = reset_dissrate_cnt;
               }
@@ -1032,6 +1051,14 @@ void mod_som_apf_consumer_task_f(void  *p_arg){
   float * curr_epsi_fom_ptr;
   float * curr_chi_fom_ptr;
 
+  // parameters for send commands out to APF - mai - Nov 22, 2021
+  mod_som_apf_status_t status=0;
+  uint32_t bytes_send;
+  char apf_reply_str[MOD_SOM_SHELL_INPUT_BUF_SIZE]="\0";
+  uint32_t reply_str_len = 0;
+  LEUART_TypeDef* apf_leuart_ptr;
+  // get the port's fd
+  apf_leuart_ptr = (LEUART_TypeDef *)mod_som_apf_ptr->com_prf_ptr->handle_port;
 
   int padding = 1; // the padding should be big enough to include the time variance.
 
@@ -1076,6 +1103,17 @@ void mod_som_apf_consumer_task_f(void  *p_arg){
                           (uint32_t)mod_som_efe_obp_ptr->sample_count, \
                           (uint32_t)mod_som_apf_ptr->consumer_ptr->dissrates_cnt, \
                           (uint32_t)mod_som_apf_ptr->consumer_ptr->dissrate_skipped);
+
+                      // save time string into the temporary local string - Mai - Nov 18, 2021
+                      sprintf(apf_reply_str,"\n apf obp consumer task: CB overflow: sample count = %lu,"
+                              "cnsmr_cnt = %lu,skipped %lu elements \r\n ", \
+                              (uint32_t)mod_som_efe_obp_ptr->sample_count, \
+                              (uint32_t)mod_som_apf_ptr->consumer_ptr->dissrates_cnt, \
+                              (uint32_t)mod_som_apf_ptr->consumer_ptr->dissrate_skipped);
+                      reply_str_len = strlen(apf_reply_str);
+                      // sending the above string to the APF port - Mai - Nov 18, 2021
+                      bytes_send = mod_som_apf_send_line_f(apf_leuart_ptr,apf_reply_str, reply_str_len);
+
 
                       mod_som_apf_ptr->consumer_ptr->dissrates_cnt = reset_dissrate_cnt;
                   }
@@ -2183,7 +2221,7 @@ mod_som_apf_status_t mod_som_apf_ok_status_f(){
  *   MOD_SOM_APF_STATUS_OK if function execute nicely
  ******************************************************************************/
 mod_som_apf_status_t mod_som_apf_poweroff_f(){
-  mod_som_status_t status;
+  mod_som_apf_status_t status;
   char apf_reply_str[MOD_SOM_SHELL_INPUT_BUF_SIZE]="\0";
   size_t reply_str_len = 0;
   LEUART_TypeDef* apf_leuart_ptr;
@@ -2843,7 +2881,11 @@ mod_som_apf_status_t mod_som_apf_upload_f(){
 
       //ALB upload cmd received
       //ALB send msg back
-      mod_som_io_print_f("upload,ack,start");
+      mod_som_io_print_f("upload,ack,start\r\n");
+      // save to the local string for sending out - Mai-Nov 18, 2021
+      sprintf(apf_reply_str,"upload,ack,start\r\n");
+      // sending the above string to the APF port - Mai - Nov 18, 2021
+      status = mod_som_apf_send_line_f(apf_leuart_ptr,apf_reply_str, reply_str_len);
 
       //ALB wait 500 ms
       while (delay>0){
