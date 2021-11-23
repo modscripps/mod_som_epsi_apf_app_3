@@ -146,6 +146,7 @@ CPU_INT16S mod_som_apf_cmd_daq_f(CPU_INT16U argc,
   LEUART_TypeDef* apf_leuart_ptr;
   apf_leuart_ptr =(LEUART_TypeDef *) mod_som_apf_get_port_ptr_f();
   // get the port's fd
+  uint32_t bytes_sent = 0;
 
 
 	for (int i = 1; i < argc; i++) {
@@ -156,7 +157,7 @@ CPU_INT16S mod_som_apf_cmd_daq_f(CPU_INT16U argc,
 		        sprintf(apf_reply_str,"daq,nak,%s.\r\n","Missing Profile ID.");
 		        reply_str_len = strlen(apf_reply_str);
 		        // sending the above string to the APF port - Mai - Nov 18, 2021
-		        status = mod_som_apf_send_line_f(apf_leuart_ptr,apf_reply_str, reply_str_len);
+		        bytes_sent = mod_som_apf_send_line_f(apf_leuart_ptr,apf_reply_str, reply_str_len);
 			}else{
 				//ALB I do not display error if there is more than 1 profile id.
 				//ALB it will the last argument as profile id
@@ -174,7 +175,7 @@ CPU_INT16S mod_som_apf_cmd_daq_f(CPU_INT16U argc,
 			  } // end of (status ==0)
 			  reply_str_len = strlen(apf_reply_str);
 			  // sending the above string to the APF port - Mai - Nov 18, 2021
-			  status = mod_som_apf_send_line_f(apf_leuart_ptr,apf_reply_str, reply_str_len);
+			  bytes_sent = mod_som_apf_send_line_f(apf_leuart_ptr,apf_reply_str, reply_str_len);
 			}// end of (argc<3)
 		} else if (!Str_Cmp(argv[i], "stop")) {
 			status = mod_som_apf_daq_stop_f();
@@ -190,13 +191,13 @@ CPU_INT16S mod_som_apf_cmd_daq_f(CPU_INT16U argc,
 			  }
         reply_str_len = strlen(apf_reply_str);
         // sending the above string to the APF port - Mai - Nov 18, 2021
-        status = mod_som_apf_send_line_f(apf_leuart_ptr,apf_reply_str, reply_str_len);
+        bytes_sent = mod_som_apf_send_line_f(apf_leuart_ptr,apf_reply_str, reply_str_len);
 		} else {
 	        mod_som_io_print_f("daq,nak,%s.\r\n","invalid daq cmd");
           // save time string into the temporary local string - Mai - Nov 18, 2021
           sprintf(apf_reply_str,"daq,nak,%s.\r\n","invalid daq cmd");
           // sending the above string to the APF port - Mai - Nov 18, 2021
-          status = mod_som_apf_send_line_f(apf_leuart_ptr,apf_reply_str, reply_str_len);
+          bytes_sent = mod_som_apf_send_line_f(apf_leuart_ptr,apf_reply_str, reply_str_len);
 			return MOD_SOM_APF_STATUS_ERR;
 		}
 	}
@@ -236,6 +237,7 @@ CPU_INT16S mod_som_apf_cmd_daq_status_f(CPU_INT16U argc,
     size_t reply_str_len = 0;
     LEUART_TypeDef* apf_leuart_ptr;
     apf_leuart_ptr =(LEUART_TypeDef *) mod_som_apf_get_port_ptr_f();
+    uint32_t bytes_sent = 0;
 
 //    if(mod_som_apf_ptr->daq){
 //        status=mod_som_io_print_f("daq?,ack,%s","enabled");
@@ -249,7 +251,7 @@ CPU_INT16S mod_som_apf_cmd_daq_status_f(CPU_INT16U argc,
         sprintf(apf_reply_str,"daq,nak,%s.\r\n","invalid daq cmd");
         reply_str_len = strlen(apf_reply_str);
         // sending the above string to the APF port - Mai - Nov 18, 2021
-        status = mod_som_apf_send_line_f(apf_leuart_ptr,apf_reply_str, reply_str_len);
+        bytes_sent = mod_som_apf_send_line_f(apf_leuart_ptr,apf_reply_str, reply_str_len);
     }
 
     if(status != MOD_SOM_APF_STATUS_OK)
