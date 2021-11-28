@@ -55,10 +55,9 @@ mod_som_efe_obp_calc_vals_t, *mod_som_efe_obp_calc_vals_ptr_t;
 typedef struct{
   float * shear_filter;
   float * fp07_filter;
-  float * elect_shear;
   float * ca_shear;
   float * oakey_shear;
-  float * elect_fp07;
+  float * adc_tf;
   float * magsq;
 }
 mod_som_efe_obp_calc_filters_t, *mod_som_efe_obp_calc_filters_ptr_t;
@@ -72,9 +71,13 @@ mod_som_efe_obp_calc_theospec_t, *mod_som_efe_obp_calc_theospec_ptr_t;
 
 typedef struct{
   float * detrended_data;
-  float * hamming_window;
   float * windowed_data;
+  float * averaged_data;
+  float * y;
+  float * x;
   float * fft_data;
+  float * fp07_smoothed;
+  float * epsi_spectrum_buffer;
 }
 mod_som_efe_obp_calc_fft_t, *mod_som_efe_obp_calc_fft_ptr_t;
 

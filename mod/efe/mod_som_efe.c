@@ -110,9 +110,10 @@ sensor_spec_t ch7  = {"a3","000",0, MOD_AD7124_ACCELL, 0x4080};
 //MHA This is a kluge.  ch3 and ch4 must be set to the correct pins for efe and FCTD
 
 #ifdef MOD_SOM_EFE_REV4
-sensor_spec_t ch1  = {"t1","000",0, MOD_AD7124_TEMP, 0x7080};
+//ALB I am putting default Sv, dTdV values
+sensor_spec_t ch1  = {"t1","000",30, MOD_AD7124_TEMP, 0x7080};
 sensor_spec_t ch2  = {"t2","000",0, MOD_AD7124_TEMP, 0x3080};
-sensor_spec_t ch3  = {"s1","000",0, MOD_AD7124_SHEAR, 0x5080};//epsi
+sensor_spec_t ch3  = {"s1","000",40, MOD_AD7124_SHEAR, 0x5080};//epsi
 sensor_spec_t ch4  = {"s2","000",0, MOD_AD7124_SHEAR, 0x1080};//epsi
 //sensor_spec_t ch3  = {"s1","000",0, MOD_AD7124_FLUO, 0x5080};//FCTD
 //sensor_spec_t ch4  = {"s2","000",0, MOD_AD7124_UCOND, 0x1080};//FCTD
@@ -1113,12 +1114,12 @@ mod_som_status_t mod_som_efe_default_settings_f(mod_som_efe_settings_ptr_t setti
 	settings_ptr->spi_baudrate         = MOD_SOM_EFE_SPI_BAUDRATE;
 	//ALB this not factorized. We need a solution to select the number of channels easily.
 	settings_ptr->sensors[0]=ch1; //t1
-	settings_ptr->sensors[1]=ch2; //t2
-	settings_ptr->sensors[2]=ch3; //s1
-	settings_ptr->sensors[3]=ch4; //s2
-	settings_ptr->sensors[4]=ch5; //a1
-	settings_ptr->sensors[5]=ch6; //a2
-	settings_ptr->sensors[6]=ch7; //a3
+  settings_ptr->sensors[1]=ch3; //s1
+  settings_ptr->sensors[2]=ch7; //a3
+  settings_ptr->sensors[3]=ch5; //a1
+  settings_ptr->sensors[4]=ch6; //a2
+	settings_ptr->sensors[5]=ch2; //t2
+	settings_ptr->sensors[6]=ch4; //s2
 
 	strncpy(settings_ptr->header,MOD_SOM_EFE_HEADER,MOD_SOM_EFE_SETTINGS_STR_lENGTH );
 	settings_ptr->initialize_flag=true;

@@ -2,19 +2,6 @@
 //  * @brief
 //  *   Structure managing the production of EFE OBP data (epsi, chi, accel, spectra)
 //  ******************************************************************************/
-// typedef struct{
-//   float    * shear_sv;
-//   float    * fp07_dTdV;
-//   uint16_t   Tdiff_size;
-//   float    * Tdiff_freq;
-//   float    * Tdiff_coeff;
-//   uint16_t   cafilter_size;
-//   float    * cafilter_freq;
-//   float    * cafilter_coeff;
-//   float      fp07_noise[4];
-//
-// }
-// mod_som_efe_obp_calibration_t, *mod_som_efe_obp_calibration_ptr_t;
 
 /****************************************************************************
  Module
@@ -93,13 +80,6 @@ static const float g = 9.807; // m/s^2
 
 // USER INPUTS
 
-// INPUT DATA
-//static float *shear_data; // This is a placeholder for the buffer where the shear data are stored.
-//static float *fp07_data;
-
-//static uint16_t num_samples; // number of data points from a single sensor being passed in
-//static uint8_t num_blocks; // number of non-overlapping windowed blocks averaged in spectra-calculating functions
-//static uint16_t scan_length; // number of data points being used to calculate spectra/values
 
 static uint8_t spectrum_counter; // counter for number of spectra up to dof
 static uint16_t master_counter; //counter of how many values we have processed.
@@ -115,7 +95,7 @@ uint16_t mod_som_epsiobp_fp07_cutoff_f(float *fp07_spectrum, uint16_t size);
 //static void mod_som_epsiobp_pwelch_f(float *data, float *spectrum, uint16_t size, uint16_t sampling_frequency);
 static void power_spectrum_f(float *data, float *spectrum, uint32_t size, float sampling_frequency);
 //static void average_spectra_f(uint16_t size, uint8_t num_blocks, float *spectra_in, float *spectrum_out);
-static void hamming_window_f(uint16_t size, float sampling_frequency, float *hamming_window, float normalization);
+static void hamming_window_f(uint16_t size, float sampling_frequency, float *hamming_window, float* normalization);
 static float sinc_f(float x);
 static void interp1_f(float *x, float *v, uint32_t size, float *xq, float *vq, uint32_t sizeq);
 static void smooth_movingmean_f(float *data, float *smoothed, uint16_t size, uint16_t window);
@@ -241,19 +221,13 @@ void mod_som_epsiobp_init_f(mod_som_efe_obp_config_ptr_t config_ptr_in, mod_som_
           &err);
   APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
 
-  filters_ptr->elect_fp07 =
+  filters_ptr->adc_tf =
       (float *)Mem_SegAlloc(
-          "MOD SOM EFE OBP filt elecfpo7.",DEF_NULL,
+          "MOD SOM EFE OBP filt adc tf.",DEF_NULL,
           sizeof(float)*settings->nfft/2,
           &err);
   APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
 
-  filters_ptr->elect_shear =
-      (float *)Mem_SegAlloc(
-          "MOD SOM EFE OBP filt elecshe.",DEF_NULL,
-          sizeof(float)*settings->nfft/2,
-          &err);
-  APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
   filters_ptr->fp07_filter =
       (float *)Mem_SegAlloc(
           "MOD SOM EFE OBP filt fpo7.",DEF_NULL,
@@ -320,43 +294,80 @@ void mod_som_epsiobp_init_f(mod_som_efe_obp_config_ptr_t config_ptr_in, mod_som_
   fft_ptr->detrended_data =
       (float *)Mem_SegAlloc(
           "MOD SOM EFE OBP fft detre.",DEF_NULL,
-          sizeof(float)*settings->nfft/2,
+          sizeof(float)*settings->nfft,
           &err);
   APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
   fft_ptr->fft_data =
       (float *)Mem_SegAlloc(
           "MOD SOM EFE OBP fft data.",DEF_NULL,
-          sizeof(float)*settings->nfft/2,
-          &err);
-  APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
-  fft_ptr->hamming_window =
-      (float *)Mem_SegAlloc(
-          "MOD SOM EFE OBP fft hamming.",DEF_NULL,
-          sizeof(float)*settings->nfft/2,
+          sizeof(float)*settings->nfft,
           &err);
   APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
   fft_ptr->windowed_data =
       (float *)Mem_SegAlloc(
           "MOD SOM EFE OBP fft windata.",DEF_NULL,
-          sizeof(float)*settings->nfft/2,
+          sizeof(float)*settings->nfft,
+          &err);
+  APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
+  fft_ptr->averaged_data =
+      (float *)Mem_SegAlloc(
+          "MOD SOM EFE OBP fft avgdata.",DEF_NULL,
+          sizeof(float)*settings->nfft,
+          &err);
+  APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
+  fft_ptr->fp07_smoothed =
+      (float *)Mem_SegAlloc(
+          "MOD SOM EFE OBP fft fpo7sm.",DEF_NULL,
+          sizeof(float)*settings->nfft,
+          &err);
+  APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
+  fft_ptr->x =
+      (float *)Mem_SegAlloc(
+          "MOD SOM EFE OBP fft x.",DEF_NULL,
+          sizeof(float)*settings->nfft,
+          &err);
+  APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
+  fft_ptr->y =
+      (float *)Mem_SegAlloc(
+          "MOD SOM EFE OBP fft y.",DEF_NULL,
+          sizeof(float)*settings->nfft,
+          &err);
+  APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
+  fft_ptr->epsi_spectrum_buffer =
+      (float *)Mem_SegAlloc(
+          "MOD SOM EFE OBP fft spec.",DEF_NULL,
+          sizeof(float)*settings->nfft,
           &err);
   APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
 
 
-
-//  vals->freq = (float*) calloc(settings->nfft/2, sizeof(float)); // freq vector, zero freq NOT included
-//  vals->kvec = (float*) calloc(settings->nfft/2, sizeof(float)); // wavenumber vector
-//  vals->fp07_noise = (float*) calloc(settings->nfft/2, sizeof(float)); // fp07 noise vector
-//  vals->hamming_window = (float*) calloc(settings->nfft, sizeof(float)); // hamming window weights vector
-//  vals->epsi_averaged_spectrum = (float*) calloc(settings->nfft/2, sizeof(float)); // buffer for averaged spectrum
-//  vals->chi_averaged_spectrum = (float*) calloc(settings->nfft, sizeof(float));
-//  spectrum_buffer = (float*) calloc(settings->nfft/2, sizeof(float));
-  // calculate the frequency vector
+  //ALB calculate the frequency vector
+  //ALB make a fake cafilter_coeff
   for (uint16_t i = 0; i < settings->nfft/2; i++) {
     vals->freq[i] = (float) (i + 1)/(settings->nfft)*config->f_samp;
+    cals->cafilter_freq[i]=vals->freq[i];
+    cals->cafilter_coeff[i]=1;
   }
+
+  //ALB TODO create cafilter_coeff like the FPO7 noise
+
+  //ALB compute elect shear, it is use in shear_filter_f
+  float denom = 2*vals->freq[settings->nfft/2 - 1];
+  // interpolate to get proper cafilter given freq
+  interp1_f(cals->cafilter_freq, cals->cafilter_coeff,
+            cals->cafilter_size, vals->freq,
+            filters_ptr->ca_shear, settings->nfft/2);
+
+  // loop to find values for other elements of the filter
+  for (uint16_t i = 0; i < settings->nfft/2; i++) {
+    // elect_shear is the ADC filter, in this case a sinc4 function, will eventually need to change to allow for user input
+      // elect_fp07 is the ADC filter, in this case a sinc4 function, will eventually need to change to allow for user input
+      filters_ptr->adc_tf[i] = pow(sinc_f(vals->freq[i]/denom), 4.0);
+
+  }
+
   // calculate hamming window and normalization
-  hamming_window_f(settings->nfft, config->f_samp, vals->hamming_window, vals->normalization);
+  hamming_window_f(settings->nfft, config->f_samp, vals->hamming_window, &vals->normalization);
   // initialize spectrum_counter
   spectrum_counter = 0;
   //initialize master counter
@@ -395,39 +406,9 @@ void mod_som_efe_obp_shear_spectrum_f(float *seg_buffer, int spectra_offset, mod
       // run spectrum through filter
       spectrum_buffer[i] = spectrum_buffer[i]/filters_ptr->shear_filter[i];
       // stuff spectrum into output
-      *(mod_som_efe_obp_ptr->cpt_spectra_ptr->spec_shear_ptr+spectra_offset) = spectrum_buffer[i];
+      *(mod_som_efe_obp_ptr->cpt_spectra_ptr->spec_shear_ptr+spectra_offset+i) = spectrum_buffer[i];
   }
 
-// DEPRECATED CODE
-//  // loop over all shear channels
-//  for (uint8_t j = 0; j < config->num_shear; j++) {
-//      // calculate spectrum from shear data for channel j
-//      power_spectrum_f(*(&(shear_ptr) + j*settings->nfft/2), spectrum_buffer, settings->nfft, config->f_samp);
-//      // convert spectra from V^2/Hz to (m/s)^2/Hz
-//      for (uint16_t i = 0; i < settings->nfft/2; i++) {
-//        spectrum_buffer[i] = spectrum_buffer[i]*pow(2*g/(cals->shear_sv[j]*w), 2);
-////        // Make the k vector from the freq vector with the appropriate fall speed
-////        vals->kvec[i] = vals->freq[i]/w;
-//        // run spectrum through filter and convert to wavenumber space
-//        // run through filter
-//        spectrum_buffer[i] = spectrum_buffer[i]/shear_filter[i];
-////        // change to wavenumber space
-////        spectrum_buffer[i] = spectrum_buffer[i]*w*pow((2*M_PI*vals->kvec[i]), 2.0);
-///
-//      }
-//      // stuff spectrum into output
-//
-//      // NOTE: this addressing mechanism should work, but there are some questions around it
-//      for (uint16_t i = 0; i < settings->nfft/2; i++) {
-//          if (producer->dof == 0) {
-//              *(&(producer->s1_spectrum_ptr[i]) + j*settings->nfft/2) = spectrum_buffer[i];
-//          } else {
-//              *(&(producer->s1_spectrum_ptr[i]) + j*settings->nfft/2) = *(&(producer->s1_spectrum_ptr[i]) + j*settings->nfft/2)*producer->dof/(producer->dof + 1) + spectrum_buffer[i]/producer->dof;
-//          }
-//      // spec is now the shear spectrum, corrected for the antialias and probe response filters,
-//      //in units of (s^-2)/Hz.
-//   }
-// }
 }
 
 void mod_som_efe_obp_temp_spectrum_f(float *seg_buffer, int spectra_offset, mod_som_efe_obp_ptr_t mod_som_efe_obp_ptr)
@@ -444,7 +425,7 @@ void mod_som_efe_obp_temp_spectrum_f(float *seg_buffer, int spectra_offset, mod_
  *   the relevant input CTD data
  ******************************************************************************/
 {
-  // SHEAR
+  // TEMP
   // pull in fall rate
   float w = mod_som_efe_obp_ptr->cpt_spectra_ptr->avg_ctd_dpdt;
   //  pull in fp07 filter function and calculate using fall speed as input
@@ -462,51 +443,19 @@ void mod_som_efe_obp_temp_spectrum_f(float *seg_buffer, int spectra_offset, mod_
   for (uint16_t i = 0; i < settings->nfft/2; i++) {
     spectrum_buffer[i] = spectrum_buffer[i]*pow(cals->fp07_dTdV, 2);
   }
-  // find cutoff before filtering
-  *(vals->fp07_cutoff) = mod_som_epsiobp_fp07_cutoff_f(spectrum_buffer, settings->nfft/2);
+
+  //ALB Finding the cutoff should be done with avg_spectrum with the right number of dof.
+  //ALB i.e., inside cpt_dissrate.
+  //TODO move the line below to the right spot.
+  //ALB  *(vals->fp07_cutoff) = mod_som_epsiobp_fp07_cutoff_f(spectrum_buffer, settings->nfft/2);
+
+
   for (uint16_t i = 0; i < settings->nfft/2; i++) {
     // correct spectrum using filter, divide by filter to get temp spectrum vs. freq
     spectrum_buffer[i] = spectrum_buffer[i]/filters_ptr->fp07_filter[i];
     // stuff spectrum into output
-   *(mod_som_efe_obp_ptr->cpt_spectra_ptr->spec_temp_ptr+spectra_offset) = spectrum_buffer[i];
+   *(mod_som_efe_obp_ptr->cpt_spectra_ptr->spec_temp_ptr+spectra_offset+i) = spectrum_buffer[i];
   }
-
-// DEPRECATED CODE
-//  //  for (uint16_t i = 0; i < settings->nfft/2; i++) {
-//  //    //Make the k vector from the freq vector with the appropriate fall speed
-//  //    vals->kvec[i] = vals->freq[i]/w;
-//  //  }
-//    //  pull in fp07 filter function and calculate using fall speed as input
-//    float fp07_filter[settings->nfft/2];
-//    mod_som_epsiobp_fp07_filters_f(fp07_filter, w);
-//    // loop over all temp channels
-//    for (uint8_t j = 0; j < config->num_fp07; j++) {
-//        // init cutoff to end so no funny business
-//        vals->fp07_cutoff[j] = settings->nfft/2;
-//        // calculate spectrum from temperature data for channel j
-//        power_spectrum_f(*(&(producer->t1_volt_ptr) + j*settings->nfft/2), spectrum_buffer, settings->nfft, config->f_samp);
-//        // convert spectra from V^2/Hz to (degC)^2/Hz
-//        for (uint16_t i = 0; i < settings->nfft/2; i++) {
-//          spectrum_buffer[i] = spectrum_buffer[i]*pow(cals->fp07_dTdV[j], 2);
-//        }
-//        // find cutoff before filtering
-//        vals->fp07_cutoff[j] = mod_som_epsiobp_fp07_cutoff_f(spectrum_buffer, settings->nfft/2);
-//        // correct spectrum using filter and convert to wavenumber space
-//        for (uint16_t i = 0; i < settings->nfft/2; i++) {
-//          //  divide by filter to get temp spectrum vs freq
-//          spectrum_buffer[i] = spectrum_buffer[i]/fp07_filter[i];
-//  //        //  multiply by fall rate and (2*pi*k)^2 to get temp gradient spectrum vs wavenumber
-//  //        spectrum_buffer[i] = spectrum_buffer[i]*w*pow((2*M_PI*vals->kvec[i]), 2);
-//        }
-//        // stuff spectrum into output with correction for current dof
-//        for (uint16_t i = 0; i < settings->nfft/2; i++) {
-//            if (producer->dof == 1) {
-//                *(&(producer->t1_volt_ptr[i]) + j*settings->nfft/2) = spectrum_buffer[i];
-//            } else {
-//                *(&(producer->t1_volt_ptr[i]) + j*settings->nfft/2) = *(&(producer->t1_volt_ptr[i]) + j*settings->nfft/2)*(producer->dof)/(producer->dof + 1) + spectrum_buffer[i]/producer->dof;
-//            }
-//        }
-//    }
 }
 
 void mod_som_efe_obp_accel_spectrum_f(float *seg_buffer, int spectra_offset, mod_som_efe_obp_ptr_t mod_som_efe_obp_ptr)
@@ -515,7 +464,7 @@ void mod_som_efe_obp_accel_spectrum_f(float *seg_buffer, int spectra_offset, mod
  *   function to calculate power density spectra in appropriate units vs frequency
  *   for a single acceleration channel and stuff into an output location
  * @param shear_ptr
- *   input - the ptr to temp data from which to calculate spectra
+ *   input - the ptr to accel data from which to calculate spectra
  * @param spectra_offset
  *   input - offset to determine correct output location
  * @param mod_som_efe_obp_ptr
@@ -536,28 +485,6 @@ void mod_som_efe_obp_accel_spectrum_f(float *seg_buffer, int spectra_offset, mod
   }
 
 
-
-// DEPRECATED CODE
-//
-//  // loop over all acceleration channels
-//  uint8_t axes = 3;
-//  for (uint8_t j = 0; j < axes; j++) {
-//      // calculate spectrum from acceleration data for channel j
-//      power_spectrum_f(*(&(producer->a1_volt_ptr) + j*settings->nfft/2), spectrum_buffer, settings->nfft, config->f_samp);
-//      // convert spectra from V^2/Hz to (g)^2/Hz, recall g is ~9.81 m/s^2
-//      // NOTE: this should be double checked (linear offsets in space should not affect psd)
-//      for (uint16_t i = 0; i < settings->nfft/2; i++) {
-//        spectrum_buffer[i] = 4*spectrum_buffer[i];
-//      }
-//      // stuff spectrum into output with correction for current dof
-//      for (uint16_t i = 0; i < settings->nfft/2; i++) {
-//          if (producer->dof == 1) {
-//              *(&(producer->a1_volt_ptr[i]) + j*settings->nfft/2) = spectrum_buffer[i];
-//          } else {
-//              *(&(producer->a1_volt_ptr[i]) + j*settings->nfft/2) = *(&(producer->a1_volt_ptr[i]) + j*settings->nfft/2)*(producer->dof)/(producer->dof + 1) + spectrum_buffer[i]/producer->dof;
-//          }
-//      }
-//  }
 }
 
 
@@ -778,20 +705,20 @@ void mod_som_epsiobp_shear_filters_f(float *shear_filter, float fall_rate)
 //  float ca_shear[settings->nfft/2];
 //  float oakey_shear[settings->nfft/2];
 
-  uint16_t end = settings->nfft/2;
-  float denom = 2*vals->freq[end - 1];
+//  uint16_t end = settings->nfft/2;
+//  float denom = 2*vals->freq[end - 1];
   // interpolate to get proper cafilter given freq
-  float *ca_freq = cals->cafilter_freq, *ca_coeff = cals->cafilter_coeff, *v_freq = vals->freq;
-  interp1_f(ca_freq, ca_coeff, cals->cafilter_size, v_freq, filters_ptr->ca_shear, settings->nfft/2);
+//  float *ca_freq = cals->cafilter_freq, *ca_coeff = cals->cafilter_coeff, *v_freq = vals->freq;
+//  interp1_f(ca_freq, ca_coeff, cals->cafilter_size, v_freq, filters_ptr->ca_shear, settings->nfft/2);
   // loop to find values for other elements of the filter
   for (uint16_t i = 0; i < settings->nfft/2; i++) {
     // elect_shear is the ADC filter, in this case a sinc4 function, will eventually need to change to allow for user input
-      filters_ptr->elect_shear[i] = pow(sinc_f(vals->freq[i]/denom), 4.0);
+//      filters_ptr->elect_shear[i] = pow(sinc_f(vals->freq[i]/denom), 4.0);
     // oakey filter comes from airfoil probe response
       filters_ptr->oakey_shear[i] = oakey_filter_f(vals->freq[i], fall_rate);
     // calculate single filter array
     shear_filter[i] = pow((filters_ptr->ca_shear[i]*
-                           filters_ptr->elect_shear[i]), 2.0)*
+                           filters_ptr->adc_tf[i]), 2.0)*
                            filters_ptr->oakey_shear[i];
   }
 }
@@ -822,21 +749,14 @@ void mod_som_epsiobp_fp07_filters_f(float *fp07_filter, float fall_rate)
  *   input - average fall rate of the instrument over the scan under study in m/s
  ******************************************************************************/
 {
-  // define arrays and variables
-  //ALB modify
-//  float elect_fp07[settings->nfft/2], magsq[settings->nfft/2];
-  uint16_t end = settings->nfft/2;
-  float denom = 2*vals->freq[end - 1];
   // interpolate to get proper Tdiff filter given freq
 //  interp1_f(cals->Tdiff_freq, cals->Tdiff_coeff, cals->Tdiff_size, vals->freq, Tdiff, settings->nfft/2);
   // loop to find values for other elements of the filter
   for (uint16_t i = 0; i < settings->nfft/2; i++) {
-    // elect_fp07 is the ADC filter, in this case a sinc4 function, will eventually need to change to allow for user input
-      filters_ptr->elect_fp07[i] = pow(sinc_f(vals->freq[i]/denom), 4.0);
     // magsq filter comes from... where? but it's function is constant and shouldn't ever change
       filters_ptr->magsq[i] = 1/(1 + pow((2*M_PI*0.005*pow(fall_rate, -0.32)*vals->freq[i]), 2.0));
     // calculate single filter array
-    fp07_filter[i] = pow(filters_ptr->elect_fp07[i], 2)*filters_ptr->magsq[i];
+    fp07_filter[i] = pow(filters_ptr->adc_tf[i], 2)*filters_ptr->magsq[i];
   }
 }
 
@@ -869,14 +789,14 @@ uint16_t mod_som_epsiobp_fp07_cutoff_f(float *fp07_spectrum, uint16_t size)
   uint16_t window = 15; //this is arbitrary, determined in processing before this
   float threshold;
   uint16_t cutoff = size;
-  float fp07_smoothed[size];
+//  float fp07_smoothed[size];
   mod_som_epsiobp_fp07_noise_f();
   // smooth data
-  smooth_movingmean_f(fp07_spectrum, fp07_smoothed, size, window);
+  smooth_movingmean_f(fp07_spectrum, fft_ptr->fp07_smoothed, size, window);
   // loop to find cutoff
   for (uint16_t i = 0; i < size; i++) {
     threshold = signal_noise_ratio*pow(10, vals->fp07_noise[i]);
-    if (fp07_smoothed[i] < threshold) {
+    if (fft_ptr->fp07_smoothed[i] < threshold) {
       cutoff = i;
       break;
     }
@@ -917,27 +837,27 @@ void power_spectrum_f(float *data, float *spectrum, uint32_t size, float samplin
   arm_rfft_fast_instance_f32 rfft_instance_1; //a fast RFFT instance for the real FFT
   arm_status status_1 = arm_rfft_fast_init_f32(&rfft_instance_1, size);
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-  float epsi_spectrum_buffer[size/2]; // for reasons that I don't understand, this array must be defined down here in order to have a valid pointer
+//  float epsi_spectrum_buffer[size/2]; // for reasons that I don't understand, this array must be defined down here in order to have a valid pointer
   // detrend the input data
   detrend_f(data, size, fft_ptr->detrended_data);
   /////////////////////////////////////////////////////////////////
   // CAP TODO can now change this to array multiplication using DSP library functions
   // apply a hamming window to the current data block
   for (j = 0; j < size; j++) {
-      fft_ptr->windowed_data[j] = fft_ptr->detrended_data[j]*fft_ptr->hamming_window[j];
+      fft_ptr->windowed_data[j] = fft_ptr->detrended_data[j]*vals->hamming_window[j];
   };
   // fft the windowed data
   arm_rfft_fast_f32(&rfft_instance_1, fft_ptr->windowed_data, fft_ptr->fft_data, fft_direction);
   // store the correct value for power at the nyquist frequency
   nyquist_power = fft_ptr->fft_data[1];
   // compute the square magnitude of the complex fft values
-  arm_cmplx_mag_squared_f32(fft_ptr->fft_data, epsi_spectrum_buffer, size);
+  arm_cmplx_mag_squared_f32(fft_ptr->fft_data, fft_ptr->epsi_spectrum_buffer, size);
   // plug the power at the nyquist frequency into the spectrum vector in the correct location
   spectrum[end] = pow(nyquist_power, 2) / vals->normalization;
   ///////////////////////////////////////////////////////////////////////////////////
   // correct for symmetry and normalization and place values in the correct spectrum vector location
   for (j = 0; j < end; j++) {
-    spectrum[j] = 2*epsi_spectrum_buffer[j + 1] / vals->normalization;
+    spectrum[j] = 2*fft_ptr->epsi_spectrum_buffer[j + 1] / vals->normalization;
   }
 }
 //
@@ -965,7 +885,7 @@ void power_spectrum_f(float *data, float *spectrum, uint32_t size, float samplin
 //  }
 //}
 
-void hamming_window_f(uint16_t size, float sampling_frequency, float *window, float normal)
+void hamming_window_f(uint16_t size, float sampling_frequency, float *window, float* normal)
 /*******************************************************************************
  * @brief
  *   function to calculate hamming window weights and normalization for a given
@@ -982,9 +902,9 @@ void hamming_window_f(uint16_t size, float sampling_frequency, float *window, fl
 {
   for (uint16_t j = 0; j < size; j++) {
     window[j] = 0.54 - 0.46*cos(2*M_PI*j/(size - 1));
-    normal += pow(window[j], 2);
+    *normal += pow(window[j], 2);
   }
-  normal = normal*((float) sampling_frequency);
+  *normal = *normal*((float) sampling_frequency);
 }
 
 float sinc_f(float x)
@@ -1078,7 +998,7 @@ void smooth_movingmean_f(float *data, float *smoothed, uint16_t size, uint16_t w
 {
   // if size of data vector is smaller than window size, leave data vector as is
   if (size > window) {
-    float averaged_data[size];
+//    float averaged_data[size];
     // import data vector, initialize constants
     uint16_t left, right, i, k, numpoints;
     float average = 0;
@@ -1117,11 +1037,11 @@ void smooth_movingmean_f(float *data, float *smoothed, uint16_t size, uint16_t w
         }
       }
       // set data to average and reset average
-      averaged_data[i] = average;
+      fft_ptr->averaged_data[i] = average;
       average = 0;
     }
     for (i = 0; i < size; i++) {
-      smoothed[i] = averaged_data[i];
+      smoothed[i] = fft_ptr->averaged_data[i];
     }
   }
 }
@@ -1141,18 +1061,18 @@ void detrend_f(float *data, uint32_t size, float *detrended_data)
  ******************************************************************************/
 {
   // define variables and arrays
-  float x[size], y[size];
+//  float x[size], y[size];
   double slope, intercept;
   double sum_x = 0, sum_y = 0, sum_x2 = 0, sum_y2 = 0, sum_xy = 0;
   // calculate sums
   for (uint16_t i = 0; i < size; i++) {
-    x[i] = i + 1;
-    y[i] = data[i];
-    sum_x += x[i];
-    sum_y += y[i];
-    sum_x2 += pow(x[i], 2);
-    sum_y2 += pow(y[i], 2);
-    sum_xy += x[i]*y[i];
+    fft_ptr->x[i] = i + 1;
+    fft_ptr->y[i] = data[i];
+    sum_x += fft_ptr->x[i];
+    sum_y += fft_ptr->y[i];
+    sum_x2 += pow(fft_ptr->x[i], 2);
+    sum_y2 += pow(fft_ptr->y[i], 2);
+    sum_xy += fft_ptr->x[i]*fft_ptr->y[i];
   }
   // use least squares to find slope and intercept of best fit line
   slope = (size*sum_xy - sum_x*sum_y)/(size*sum_x2 - pow(sum_x, 2.0));

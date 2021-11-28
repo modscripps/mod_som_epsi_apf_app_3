@@ -52,7 +52,7 @@
 #define MOD_SOM_EFE_OBP_LENGTH_HEADER_CHECKSUM               3
 
 //ALB data consumer
-#define MOD_SOM_EFE_OBP_CONSUMER_TASK_PRIO           17u
+#define MOD_SOM_EFE_OBP_CONSUMER_TASK_PRIO           18u
 #define MOD_SOM_EFE_OBP_CONSUMER_TASK_STK_SIZE       512u
 #define MOD_SOM_EFE_OBP_CONSUMER_DELAY               10          // delay for consumer 2 (ex: 4000 = 1 time / 4 secs).
 #define MOD_SOM_EFE_OBP_CONSUMER_PADDING             5          // number of elements for padding for data consumer.
@@ -129,9 +129,9 @@
 typedef struct{
     uint32_t  initialized_flag;
     uint32_t  header_length;
-    uint32_t  nb_sample_per_segment;
-    uint8_t   num_shear;
-    uint8_t   num_fp07;
+//    uint32_t  nb_sample_per_segment;
+//    uint8_t   num_shear;
+//    uint8_t   num_fp07;
     float     f_samp;
     float     f_CTD_pump;
 

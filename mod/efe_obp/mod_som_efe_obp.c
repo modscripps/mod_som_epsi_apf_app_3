@@ -366,6 +366,11 @@ mod_som_status_t mod_som_efe_obp_construct_config_ptr_f(){
                                  MOD_SOM_EFE_OBP_PAYLOAD_LENGTH         +
                                  MOD_SOM_EFE_OBP_LENGTH_HEADER_CHECKSUM;
 
+  config_ptr->f_samp=320;
+  config_ptr->f_CTD_pump=45;
+//  config_ptr->nb_sample_per_segment
+//  config_ptr->num_fp07=
+//  config_ptr->num_shear=
 
   config_ptr->initialized_flag = true;
   return mod_som_efe_obp_encode_status_f(MOD_SOM_STATUS_OK);
@@ -414,15 +419,15 @@ mod_som_status_t mod_som_efe_obp_construct_calibration_ptr_f(){
         &err);
   APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
 
-//  calib_ptr->cafilter_coeff={0,0,0,0};
-//  calib_ptr->cafilter_freq={0,0,0,0};
-  calib_ptr->cafilter_size=4;
-  calib_ptr->fp07_dTdV=20;
-  calib_ptr->fp07_noise[0]=0;
-  calib_ptr->fp07_noise[1]=0;
-  calib_ptr->fp07_noise[2]=0;
-  calib_ptr->fp07_noise[3]=0;
-  calib_ptr->shear_sv=20;
+  //ALB so far I use a fake cafilter
+  //ALB change to use a polynomial.
+  calib_ptr->cafilter_size=mod_som_efe_obp_ptr->settings_ptr->nfft/2;
+  calib_ptr->fp07_dTdV=mod_som_efe_obp_ptr->efe_settings_ptr->sensors[0].cal;
+  calib_ptr->fp07_noise[0]=1;
+  calib_ptr->fp07_noise[1]=1;
+  calib_ptr->fp07_noise[2]=1;
+  calib_ptr->fp07_noise[3]=1;
+  calib_ptr->shear_sv=mod_som_efe_obp_ptr->efe_settings_ptr->sensors[1].cal;;
 
 
   return mod_som_efe_obp_encode_status_f(MOD_SOM_STATUS_OK);
@@ -1153,16 +1158,16 @@ void mod_som_efe_obp_fill_segment_task_f(void  *p_arg){
 //                                         local_efeobp_efe_temp_ptr,
 //                                         local_efeobp_efe_shear_ptr,
 //                                         local_efeobp_efe_accel_ptr);
-
+              float efe_element_float=(float)mod_som_efe_obp_ptr->fill_segment_ptr->efe_element_cnt;
               memcpy( local_efeobp_efe_temp_ptr,
-                      (uint32_t*) &mod_som_efe_obp_ptr->fill_segment_ptr->efe_element_cnt,
-                      sizeof(uint32_t));
+                      &efe_element_float,
+                      sizeof(float));
               memcpy( local_efeobp_efe_shear_ptr,
-                      (uint32_t*) &mod_som_efe_obp_ptr->fill_segment_ptr->efe_element_cnt,
-                      sizeof(uint32_t));
+                      &efe_element_float,
+                      sizeof(float));
               memcpy( local_efeobp_efe_accel_ptr,
-                      (uint32_t*) &mod_som_efe_obp_ptr->fill_segment_ptr->efe_element_cnt,
-                      sizeof(uint32_t));
+                      &efe_element_float,
+                      sizeof(float));
 
 
 
@@ -1259,7 +1264,6 @@ void mod_som_efe_obp_cpt_spectra_task_f(void  *p_arg){
   (void)p_arg; // Deliberately unused argument
 
 
-  int i;
   int segment_avail=0,reset_spectra_cnt=0;
   int segment_offset=0;int spectra_offset=0;
   int padding = 0; // the padding should be big enough to include the time variance.
@@ -1348,7 +1352,8 @@ void mod_som_efe_obp_cpt_spectra_task_f(void  *p_arg){
               mod_som_efe_obp_ptr->cpt_spectra_ptr->avg_ctd_dpdt  =
                   mod_som_efe_obp_ptr->fill_segment_ptr->avg_ctd_dpdt;
 
-
+              //ALB fake speed
+              mod_som_efe_obp_ptr->cpt_spectra_ptr->avg_ctd_dpdt=0.5;
 
 
           tick=sl_sleeptimer_get_tick_count64();
@@ -1398,7 +1403,7 @@ void mod_som_efe_obp_cpt_spectra_task_f(void  *p_arg){
                  * mod_som_efe_obp_ptr->settings_ptr->nfft/2],
                    mod_som_efe_obp_ptr->settings_ptr->nfft/2*sizeof(float));
             // call temperature spectrum function
-//            mod_som_efe_obp_temp_spectrum_f(mod_som_efe_obp_ptr->fill_segment_ptr->segment_buffer_ptr, spectra_offset, mod_som_efe_obp_ptr);
+            mod_som_efe_obp_temp_spectrum_f(mod_som_efe_obp_ptr->fill_segment_ptr->segment_buffer_ptr, spectra_offset, mod_som_efe_obp_ptr);
             // last do acceleration
             indx = 0;
             memcpy(&mod_som_efe_obp_ptr->fill_segment_ptr->segment_buffer_ptr[indx],
@@ -1416,7 +1421,7 @@ void mod_som_efe_obp_cpt_spectra_task_f(void  *p_arg){
                   * mod_som_efe_obp_ptr->settings_ptr->nfft/2],
                     mod_som_efe_obp_ptr->settings_ptr->nfft/2*sizeof(float));
             // call accel spectrum function
-//            mod_som_efe_obp_accel_spectrum_f(mod_som_efe_obp_ptr->fill_segment_ptr->segment_buffer_ptr, spectra_offset, mod_som_efe_obp_ptr);
+            mod_som_efe_obp_accel_spectrum_f(mod_som_efe_obp_ptr->fill_segment_ptr->segment_buffer_ptr, spectra_offset, mod_som_efe_obp_ptr);
 
 //          mod_som_efe_obp_compute_spectra_data_f(curr_temp_seg_ptr,
 //                                                 curr_shear_seg_ptr,
@@ -1427,15 +1432,15 @@ void mod_som_efe_obp_cpt_spectra_task_f(void  *p_arg){
 //
           //ALB Make fake spectra in order to build the consumer while CAP
           //ALB is merging the obp functions.
-          for (i=0;i<mod_som_efe_obp_ptr->settings_ptr->nfft/2;i++){
-              mod_som_efe_obp_ptr->cpt_spectra_ptr->spec_temp_ptr[i+spectra_offset]=
-                    mod_som_efe_obp_ptr->fill_segment_ptr->seg_temp_volt_ptr[i];
-              mod_som_efe_obp_ptr->cpt_spectra_ptr->spec_shear_ptr[i+spectra_offset]=
-                  mod_som_efe_obp_ptr->fill_segment_ptr->seg_shear_volt_ptr[i];
-              mod_som_efe_obp_ptr->cpt_spectra_ptr->spec_accel_ptr[i+spectra_offset]=
-                  mod_som_efe_obp_ptr->fill_segment_ptr->seg_accel_volt_ptr[i];
-          }
-
+//          for (i=0;i<mod_som_efe_obp_ptr->settings_ptr->nfft/2;i++){
+//              mod_som_efe_obp_ptr->cpt_spectra_ptr->spec_temp_ptr[i+spectra_offset]=
+//                    mod_som_efe_obp_ptr->fill_segment_ptr->seg_temp_volt_ptr[i];
+//              mod_som_efe_obp_ptr->cpt_spectra_ptr->spec_shear_ptr[i+spectra_offset]=
+//                  mod_som_efe_obp_ptr->fill_segment_ptr->seg_shear_volt_ptr[i];
+//              mod_som_efe_obp_ptr->cpt_spectra_ptr->spec_accel_ptr[i+spectra_offset]=
+//                  mod_som_efe_obp_ptr->fill_segment_ptr->seg_accel_volt_ptr[i];
+//          }
+//
           //ALB update mod_som_efe_obp_ptr->producer_ptr->volt_read_index
           //ALB to get a new segment with a 50% overlap.
           mod_som_efe_obp_ptr->cpt_spectra_ptr->spectrum_cnt++;
@@ -2239,6 +2244,19 @@ void mod_som_efe_obp_consumer_task_f(void  *p_arg){
 
           }//end switch efe_obp mode
           payload_length=0;
+          //ALB small code to switch between spectrum and shear output
+          switch(mod_som_efe_obp_ptr->settings_ptr->format){
+            case segment:
+              mod_som_efe_obp_ptr->settings_ptr->format=spectra;
+              break;
+            case spectra:
+              mod_som_efe_obp_ptr->settings_ptr->format=segment;
+              break;
+            default:
+              mod_som_efe_obp_ptr->settings_ptr->format=segment;
+              break;
+
+          }
           }// end if payload length =0
   }//end if mod_som_efe_obp_ptr->consumer_ptr->started_flg
   // Delay Start Task execution for
