@@ -2625,19 +2625,19 @@ mod_som_apf_status_t mod_som_apf_time_status_f(){
   time= sl_sleeptimer_get_time();
 
   // send out "time,ak,time\r\n"
-  status|=mod_som_io_print_f("time,ak,%lu\r\n",time);
+  status|=mod_som_io_print_f("time?,ak,%lu\r\n",time);
 
   // save time string into the temporary local string - Mai - Nov 18, 2021
-  sprintf(apf_reply_str,"time,ak,%lu\r\n",(unsigned long)time);
+  sprintf(apf_reply_str,"time?,ak,%lu\r\n",(unsigned long)time);
   reply_str_len = strlen(apf_reply_str);
 
   // sending the above string to the APF port - Mai - Nov 18, 2021
   bytes_sent = mod_som_apf_send_line_f(apf_leuart_ptr,apf_reply_str, reply_str_len);
 
    if (status==MOD_SOM_APF_STATUS_OK){
-	    mod_som_io_print_f("time,nak,%lu\r\n",status);
+	    mod_som_io_print_f("time?,nak,%lu\r\n",status);
       // save to the local string for sending out - Mai-Nov 18, 2021
-      sprintf(apf_reply_str,"time,nak,%lu\r\n",status);
+      sprintf(apf_reply_str,"time?,nak,%lu\r\n",status);
       // sending the above string to the APF port - Mai - Nov 18, 2021
       bytes_sent = mod_som_apf_send_line_f(apf_leuart_ptr,apf_reply_str, reply_str_len);
 	}
