@@ -172,7 +172,8 @@ CPU_INT16S mod_som_apf_cmd_daq_f(CPU_INT16U argc,
 				//ALB I do not display error if there is more than 1 profile id.
 				//ALB it will the last argument as profile id
 				profile_id = shellStrtol(argv[++i], &err); // Convert argument to int
-				status = mod_som_apf_daq_start_f((uint64_t)profile_id);
+//				status = mod_som_apf_daq_start_f((uint64_t)profile_id);
+				status = 0; // just for debug to test with daq - mnbui Nov30,2021
 
 			  if (status==0){
 			      mod_som_io_print_f("daq,start,ack,%lu\r\n",(uint32_t) profile_id);
