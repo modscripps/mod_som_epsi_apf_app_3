@@ -148,7 +148,17 @@ CPU_INT16S mod_som_apf_cmd_daq_f(CPU_INT16U argc,
   // get the port's fd
   uint32_t bytes_sent = 0;
 
-
+  if (argc<2) // if command does not enough information
+    {
+      mod_som_io_print_f("daq,nak,%s.\r\n","missing \"stop/start id\"");
+      // save time string into the temporary local string - Mai - Nov 18, 2021
+      sprintf(apf_reply_str,"daq,nak,%s.\r\n","missing \"stop/start id\"");
+      reply_str_len = strlen(apf_reply_str);
+      // sending the above string to the APF port - Mai - Nov 18, 2021
+      bytes_sent = mod_som_apf_send_line_f(apf_leuart_ptr,apf_reply_str, reply_str_len);
+      status = MOD_SOM_APF_STATUS_ERR;
+    }
+  else{
 	for (int i = 1; i < argc; i++) {
 		if (!Str_Cmp(argv[i], "start")) {
 			if (argc<3){
@@ -201,7 +211,7 @@ CPU_INT16S mod_som_apf_cmd_daq_f(CPU_INT16U argc,
 			return MOD_SOM_APF_STATUS_ERR;
 		}
 	}
-
+  }
 	if(status != MOD_SOM_APF_STATUS_OK)
 		return MOD_SOM_APF_STATUS_ERR;
 	return status;
@@ -239,11 +249,16 @@ CPU_INT16S mod_som_apf_cmd_daq_status_f(CPU_INT16U argc,
     apf_leuart_ptr =(LEUART_TypeDef *) mod_som_apf_get_port_ptr_f();
     uint32_t bytes_sent = 0;
 
-//    if(mod_som_apf_ptr->daq){
-//        status=mod_som_io_print_f("daq?,ack,%s","enabled");
-//    }else{
-//        status=mod_som_io_print_f("daq?,ack,%s","disabled");
-//    }
+    if(mod_som_apf_get_daq_f()){ // I comment out this block - mnbui Nov 29, 2021
+        status=mod_som_io_print_f("daq?,ack,%s","enabled");
+        sprintf(apf_reply_str,"daq?,ack,%s","enabled");
+    }else{
+        status=mod_som_io_print_f("daq?,ack,%s","disabled");
+        sprintf(apf_reply_str,"daq?,ack,%s","disabled");
+   }  // mnbui Nov 29, 2021
+    reply_str_len = strlen(apf_reply_str);
+    // sending the above string to the APF port - Mai - Nov 18, 2021
+    bytes_sent = mod_som_apf_send_line_f(apf_leuart_ptr,apf_reply_str, reply_str_len);
 
     //ALB Dana want an error message here but I do not think there is a situation
     if (status!=MOD_SOM_APF_STATUS_OK){

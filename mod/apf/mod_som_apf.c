@@ -233,6 +233,17 @@ mod_som_apf_settings_t mod_som_apf_get_settings_f(){
 
 /*******************************************************************************
  * @brief
+ *   get the daq's value
+ *
+ * @param
+ *   return daq's value
+ ******************************************************************************/
+bool mod_som_apf_get_daq_f(){
+  return mod_som_apf_ptr->daq;
+}
+
+/*******************************************************************************
+ * @brief
  *   get the setup struct ptr
  *
  * @param config_ptr
@@ -2613,14 +2624,8 @@ mod_som_apf_status_t mod_som_apf_time_status_f(){
 
   time= sl_sleeptimer_get_time();
 
+  // send out "time,ak,time\r\n"
   status|=mod_som_io_print_f("time,ak,%lu\r\n",time);
-
-
-  //char apf_reply_str[MOD_SOM_SHELL_INPUT_BUF_SIZE]="\0";
-  //size_t reply_str_len = 0;
-  //LEUART_TypeDef* apf_leuart_ptr;
-  // get the port's fd
-  //apf_leuart_ptr = (LEUART_TypeDef *)mod_som_apf_ptr->com_prf_ptr->handle_port;
 
   // save time string into the temporary local string - Mai - Nov 18, 2021
   sprintf(apf_reply_str,"time,ak,%lu\r\n",(unsigned long)time);

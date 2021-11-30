@@ -481,6 +481,8 @@ mod_som_status_t mod_som_apf_default_settings_f(
  ******************************************************************************/
 mod_som_apf_settings_t mod_som_apf_get_settings_f();
 
+bool mod_som_apf_get_daq_f(); // mnbui Nov 29, 2021
+
 /*******************************************************************************
  * @brief
  *   construct config_ptr
