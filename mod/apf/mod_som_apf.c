@@ -2490,10 +2490,10 @@ mod_som_apf_status_t mod_som_apf_sleep_f(){
       //ALB we are in Daq mode. Do nothing.
       // send some ack
         status|=mod_som_io_print_f("sleep,ack,%lu\r\n",status);
-       // save to the local string for sending out - Mai-Nov 18, 2021
+       // save to the local string for sending out - Mai- Dec1, 2021
        sprintf(apf_reply_str,"sleep,ack,%lu\r\n",status);
 
-       // sending the above string to the APF port - Mai - Nov 18, 2021
+       // sending the above string to the APF port - Mai - Dec 1, 2021
        bytes_sent = mod_som_apf_send_line_f(apf_leuart_ptr,apf_reply_str, reply_str_len);
   }else{
       //ALB we are not in daq mode make sure
@@ -2523,7 +2523,7 @@ mod_som_apf_status_t mod_som_apf_sleep_f(){
 // comment out for testing sleep - mai Nov 30, 2021
 */
       if (status==0){
-          status|=mod_som_io_print_f("sleep,ak\r\n");
+          status|=mod_som_io_print_f("sleep,ack\r\n");
           // save to the local string for sending out - Mai-Nov 18, 2021
           sprintf(apf_reply_str,"sleep,ak\r\n");
       }else{
