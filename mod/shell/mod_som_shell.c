@@ -133,6 +133,7 @@ mod_som_status_t mod_som_shell_encode_status_f(uint16_t status){
  ******************************************************************************/
 mod_som_status_t mod_som_shell_execute_input_f(char* input,uint32_t input_len){
     RTOS_ERR err;
+    mod_som_status_t status=MOD_SOM_STATUS_OK;
 
     //contruct command parameters to pass in
     SHELL_CMD_PARAM  p_cmd_param = {
@@ -146,26 +147,33 @@ mod_som_status_t mod_som_shell_execute_input_f(char* input,uint32_t input_len){
     switch (RTOS_ERR_CODE_GET(err)) {
     case RTOS_ERR_NULL_PTR:
         shellPrint(mod_som_shell_output_f, "Error, NULL pointer passed.\n");
+        status=MOD_SOM_STATUS_NOT_OK;
         break;
     case RTOS_ERR_NOT_FOUND:
         shellPrintf(mod_som_shell_output_f, "Error, command not found: %s\n", input);
+        status=MOD_SOM_STATUS_NOT_OK;
         break;
     case RTOS_ERR_NOT_SUPPORTED:
         shellPrint(mod_som_shell_output_f, "Error, command not supported.\n");
+        status=MOD_SOM_STATUS_NOT_OK;
         break;
     case RTOS_ERR_INVALID_ARG:
         shellPrint(mod_som_shell_output_f, "Error, invalid arguments\n");
+        status=MOD_SOM_STATUS_NOT_OK;
         break;
     case RTOS_ERR_SHELL_CMD_EXEC:
         shellPrint(mod_som_shell_output_f, "Error, command failed to execute.\n");
+        status=MOD_SOM_STATUS_NOT_OK;
         break;
     case RTOS_ERR_NONE: /* No errors. */
         break;
     default:
         shellPrint(mod_som_shell_output_f, "Error, unknown error\n");
+        status=MOD_SOM_STATUS_NOT_OK;
+
         break;
     }
-    return mod_som_shell_encode_status_f(MOD_SOM_STATUS_OK);
+    return status;
 }
 
 /*******************************************************************************

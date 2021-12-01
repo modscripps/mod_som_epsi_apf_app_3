@@ -1261,12 +1261,18 @@ void mod_som_apf_shell_task_f(void  *p_arg){
   RTOS_ERR err;
   char     input_buf[MOD_SOM_SHELL_INPUT_BUF_SIZE];
   char     output_buf[MOD_SOM_SHELL_INPUT_BUF_SIZE];
+  char     apf_reply_str[MOD_SOM_SHELL_INPUT_BUF_SIZE];
+  uint32_t bytes_sent;
+  uint32_t reply_str_len;
   uint32_t input_buf_len;
 
-  uint32_t status;
+  mod_som_status_t status=0;
   //TODO This is very hardware dependent
   //TODO Be careful if you want to change serial port
   //TODO This will
+  LEUART_TypeDef* apf_leuart_ptr;
+  apf_leuart_ptr =(LEUART_TypeDef *) mod_som_apf_get_port_ptr_f();
+
 
   while (DEF_ON) {
       OSTimeDly(
@@ -1275,6 +1281,11 @@ void mod_som_apf_shell_task_f(void  *p_arg){
               &err);
       APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
       // get the whole string from the port
+      for (int i=0;i<MOD_SOM_SHELL_INPUT_BUF_SIZE;i++){
+          input_buf[i]='\0';
+          output_buf[i]='\0';
+          apf_reply_str[i]='\0';
+      }
       status = mod_som_apf_shell_get_line_f(input_buf,&input_buf_len); // get the whole string from the port (i.e LEUART)
 
       // send "NAK,<expression>\r\n"
@@ -1292,9 +1303,12 @@ void mod_som_apf_shell_task_f(void  *p_arg){
       status = mod_som_apf_convert_string_f(input_buf, output_buf);   // convert the input string to the right format: cap -> uncap, coma -> space
       status = mod_som_shell_execute_input_f(output_buf,input_buf_len);   // execute the appropriate routine base on the command. Return the mod_som_status
 
-//       status = mod_som_apf_send_line_f(mod_som_apf_ptr->com_prf_ptr->handle_port,
-//                                        output_buf,input_buf_len);  // test send the string
-
+      if (status>0){
+          sprintf(apf_reply_str,"nak,%s.\r\n",output_buf);
+          reply_str_len = strlen(apf_reply_str);
+          // sending the above string to the APF port - Mai - Nov 18, 2021
+          bytes_sent = mod_som_apf_send_line_f(apf_leuart_ptr,apf_reply_str, reply_str_len);
+      }
   }
 }
 
@@ -1379,14 +1393,22 @@ mod_som_status_t mod_som_apf_shell_get_line_f(char *buf, uint32_t * bytes_read){
     // get the fd of LEUART port
     apf_leuart_ptr = (LEUART_TypeDef *)mod_som_apf_ptr->com_prf_ptr->handle_port;
 
+    //ALB Clear RX buffer
+    //TODO this hardware dependent.
+    //TODO make it not hardware dependent
+    apf_leuart_ptr->CMD = LEUART_CMD_CLEARRX | LEUART_CMD_CLEARTX;
+
+
     // use for to read input from APF until geting '\r' character
     // it would be ended either reach the max characters need to read or '\r'
+
     for (i=0;i<MOD_SOM_SHELL_INPUT_BUF_SIZE;i++)
     {
         status = mod_som_apf_get_char_f(apf_leuart_ptr, &read_char); // call for getting char from LEUART
         buf[i] = read_char;// save the read character into the buffer
         if (read_char == '\r')
         {
+            //MN We do not save \r and \n in the output str
             buf[i] = '\0';
             break;
         }
