@@ -148,6 +148,8 @@ CPU_INT16S mod_som_apf_cmd_daq_f(CPU_INT16U argc,
   // get the port's fd
   uint32_t bytes_sent = 0;
 
+
+
   if (argc<2) // if command does not enough information
     {
       mod_som_io_print_f("daq,nak,%s.\r\n","missing \"stop/start id\"");

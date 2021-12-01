@@ -2492,7 +2492,7 @@ mod_som_apf_status_t mod_som_apf_sleep_f(){
       //ALB we are not in daq mode make sure
       //ALB efe,sdio,efe obp,sbe-sniffer are asleep
       // stop ADC master clock timer
-      status|= mod_som_efe_stop_sampling_f();
+ /*     status|= mod_som_efe_stop_sampling_f();
 
 
 
@@ -2513,7 +2513,8 @@ mod_som_apf_status_t mod_som_apf_sleep_f(){
 
       //ALB disable SDIO hardware
       mod_som_sdio_disable_hardware_f();
-
+// comment out for testing sleep - mai Nov 30, 2021
+*/
       if (status==0){
           status|=mod_som_io_print_f("sleep,ak\r\n");
           // save to the local string for sending out - Mai-Nov 18, 2021
