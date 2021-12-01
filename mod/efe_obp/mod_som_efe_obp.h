@@ -109,6 +109,8 @@
 #define MOD_SOM_EFE_OBP_FULL_RANGE 2.5 //2.5 Volt
 #define MOD_SOM_EFE_OBP_GAIN       1
 #define MOD_SOM_EFE_OBP_ADC_BIT    24
+#define MOD_SOM_EFE_OBP_ACCELL_OFFSET 0.9 //1.8 fullrange/2
+#define MOD_SOM_EFE_OBP_ACCELL_FACTOR 0.4 //400 mV/g
 
 //------------------------------------------------------------------------------
 // TYPEDEFS
@@ -219,6 +221,8 @@ typedef struct{
   float avg_ctd_salinity;
   float avg_ctd_dpdt;
 
+  uint32_t nb_ctd_samples;
+
   bool  started_flg;        //ALB ???
 
   uint32_t segment_skipped;
@@ -305,6 +309,8 @@ typedef struct{
   float    * cafilter_freq;
   float    * cafilter_coeff;
   float      fp07_noise[4];
+  float      acc_offset;
+  float      acc_factor;
 
 }
 mod_som_efe_obp_calibration_t, *mod_som_efe_obp_calibration_ptr_t;

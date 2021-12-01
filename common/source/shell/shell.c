@@ -60,16 +60,13 @@
     .MemSegPtr = DEF_NULL                     \
 }
 
-//#define SHELL_ERR_STR_CMD_EMPTY             "Shell_Exec: shell command is empty."
-#define SHELL_ERR_STR_CMD_EMPTY             "nak,"
+#define SHELL_ERR_STR_CMD_EMPTY             "Shell_Exec: shell command is empty."
 #define SHELL_ERR_STR_CMD_EMPTY_LEN          sizeof(SHELL_ERR_STR_CMD_EMPTY)-1
 
-//#define SHELL_ERR_STR_CMD_NOT_FOUND         "Shell_Exec: command not found."
-#define SHELL_ERR_STR_CMD_NOT_FOUND         "nak,"
+#define SHELL_ERR_STR_CMD_NOT_FOUND         "Shell_Exec: command not found."
 #define SHELL_ERR_STR_CMD_NOT_FOUND_LEN      sizeof(SHELL_ERR_STR_CMD_NOT_FOUND)-1
 
-//#define SHELL_ERR_STR_CMD_EXEC              "Shell_Exec: shell command failed to execute"
-#define SHELL_ERR_STR_CMD_EXEC              "nak,"
+#define SHELL_ERR_STR_CMD_EXEC              "Shell_Exec: shell command failed to execute"
 #define SHELL_ERR_STR_CMD_EXEC_LEN           sizeof(SHELL_ERR_STR_CMD_EXEC)-1
 
 /********************************************************************************************************

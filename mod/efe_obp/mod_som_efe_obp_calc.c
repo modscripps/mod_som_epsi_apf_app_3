@@ -341,13 +341,20 @@ void mod_som_epsiobp_init_f(mod_som_efe_obp_config_ptr_t config_ptr_in, mod_som_
   APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
 
 
+
   //ALB calculate the frequency vector
   //ALB make a fake cafilter_coeff
+//  float kvec_start=2.0;
   for (uint16_t i = 0; i < settings->nfft/2; i++) {
     vals->freq[i] = (float) (i + 1)/(settings->nfft)*config->f_samp;
     cals->cafilter_freq[i]=vals->freq[i];
     cals->cafilter_coeff[i]=1;
+//    fft_ptr->kvec[i] = kvec_start + i*dk_interp;
   }
+
+
+  //  for (uint16_t i = 0; i < kvec_interp_size; i++) {
+  //  }
 
   //ALB TODO create cafilter_coeff like the FPO7 noise
 
@@ -391,20 +398,29 @@ void mod_som_efe_obp_shear_spectrum_f(float *seg_buffer, int spectra_offset, mod
 {
   // SHEAR
   // pull in fall rate
-  float w = mod_som_efe_obp_ptr->cpt_spectra_ptr->avg_ctd_dpdt;
+  //ALB no need for w  at that stage.
+  //ALB I'll do it with the avg_spectrum
+
+//  float w = mod_som_efe_obp_ptr->cpt_spectra_ptr->avg_ctd_dpdt;
   // Get the electronics transfer functions.
 
   //ALB modify
 //  float shear_filter[settings->nfft/2];
-  mod_som_epsiobp_shear_filters_f(filters_ptr->shear_filter, w);
+  //ALB no filter correction at that stage.
+  //ALB I'll do it with the avg_spectrum
+//  mod_som_epsiobp_shear_filters_f(filters_ptr->shear_filter, w);
   // removed looping over all shear channels, now just doing 1
   // calculate spectrum from shear data
   power_spectrum_f(seg_buffer, spectrum_buffer, settings->nfft, config->f_samp);
-  // convert spectra from V^2/Hz to (m/s)^2/Hz
+  //CAP convert spectra from V^2/Hz to (m/s)^2/Hz
+  //ALB no conversion at that stage.
+  //ALB I'll do it with the avg_spectrum
   for (uint16_t i = 0; i < settings->nfft/2; i++) {
-      spectrum_buffer[i] = spectrum_buffer[i]*pow(2*g/(cals->shear_sv*w), 2);
-      // run spectrum through filter
-      spectrum_buffer[i] = spectrum_buffer[i]/filters_ptr->shear_filter[i];
+//      spectrum_buffer[i] = spectrum_buffer[i]*pow(2*g/(cals->shear_sv*w), 2);
+      //CAP run spectrum through filter
+      //ALB no filter correction at that stage.
+      //ALB I'll do it with the avg_spectrum
+//      spectrum_buffer[i] = spectrum_buffer[i]/filters_ptr->shear_filter[i];
       // stuff spectrum into output
       *(mod_som_efe_obp_ptr->cpt_spectra_ptr->spec_shear_ptr+spectra_offset+i) = spectrum_buffer[i];
   }
@@ -427,22 +443,27 @@ void mod_som_efe_obp_temp_spectrum_f(float *seg_buffer, int spectra_offset, mod_
 {
   // TEMP
   // pull in fall rate
-  float w = mod_som_efe_obp_ptr->cpt_spectra_ptr->avg_ctd_dpdt;
+  //ALB no need for w at that stage.
+  //ALB I'll do it with the avg_spectrum
+
+//  float w = mod_som_efe_obp_ptr->cpt_spectra_ptr->avg_ctd_dpdt;
   //  pull in fp07 filter function and calculate using fall speed as input
 
   //ALB modify
 //  float fp07_filter[settings->nfft/2];
 
-  mod_som_epsiobp_fp07_filters_f(filters_ptr->fp07_filter, w);
+//  mod_som_epsiobp_fp07_filters_f(filters_ptr->fp07_filter, w);
   // removed looping over all temp channels, now just doing 1
   //init cutoff to end so no funny business
-  *(vals->fp07_cutoff) = settings->nfft/2;
+//  *(vals->fp07_cutoff) = settings->nfft/2;
   // calculate spectrum from temp data
   power_spectrum_f(seg_buffer, spectrum_buffer, settings->nfft, config->f_samp);
-  // convert spectra from V^2/Hz to (degC)^2/Hz
-  for (uint16_t i = 0; i < settings->nfft/2; i++) {
-    spectrum_buffer[i] = spectrum_buffer[i]*pow(cals->fp07_dTdV, 2);
-  }
+  //CAP convert spectra from V^2/Hz to (degC)^2/Hz
+  //ALB no need for conversion at that stage.
+  //ALB I'll do it with the avg_spectrum
+//  for (uint16_t i = 0; i < settings->nfft/2; i++) {
+//    spectrum_buffer[i] = spectrum_buffer[i]*pow(cals->fp07_dTdV, 2);
+//  }
 
   //ALB Finding the cutoff should be done with avg_spectrum with the right number of dof.
   //ALB i.e., inside cpt_dissrate.
@@ -451,8 +472,10 @@ void mod_som_efe_obp_temp_spectrum_f(float *seg_buffer, int spectra_offset, mod_
 
 
   for (uint16_t i = 0; i < settings->nfft/2; i++) {
-    // correct spectrum using filter, divide by filter to get temp spectrum vs. freq
-    spectrum_buffer[i] = spectrum_buffer[i]/filters_ptr->fp07_filter[i];
+    //CAP correct spectrum using filter, divide by filter to get temp spectrum vs. freq
+    //ALB no need for conversion at that stage.
+    //ALB I'll do it with the avg_spectrum
+//    spectrum_buffer[i] = spectrum_buffer[i]/filters_ptr->fp07_filter[i];
     // stuff spectrum into output
    *(mod_som_efe_obp_ptr->cpt_spectra_ptr->spec_temp_ptr+spectra_offset+i) = spectrum_buffer[i];
   }
@@ -478,10 +501,10 @@ void mod_som_efe_obp_accel_spectrum_f(float *seg_buffer, int spectra_offset, mod
   power_spectrum_f(seg_buffer, spectrum_buffer, settings->nfft, config->f_samp);
   for (uint16_t i = 0; i < settings->nfft/2; i++) {
     // convert spectra from V^2/Hz to (g)^2/Hz, recalling g is ~9.81 m/s^2
+    // ALB no conversion to g. Do not know if this is necessary yet
     // NOTE: this should be double checked (linear offsets in space should not affect psd)
-    spectrum_buffer[i] = 4*spectrum_buffer[i];
     // stuff spectrum into output
-    *(mod_som_efe_obp_ptr->cpt_spectra_ptr->spec_accel_ptr+spectra_offset) = spectrum_buffer[i];
+    *(mod_som_efe_obp_ptr->cpt_spectra_ptr->spec_accel_ptr+spectra_offset+i) = spectrum_buffer[i];
   }
 
 
@@ -504,16 +527,16 @@ void mod_som_efe_obp_calc_epsilon_f(float *local_epsilon, float *nu, float *fom,
 
   // pull in CTD values
   static float w, P, T, S;
-  w = mod_som_efe_obp_ptr->cpt_spectra_ptr->avg_ctd_dpdt;
-  P = mod_som_efe_obp_ptr->cpt_spectra_ptr->avg_ctd_pressure;
-  T = mod_som_efe_obp_ptr->cpt_spectra_ptr->avg_ctd_temperature;
-  S = mod_som_efe_obp_ptr->cpt_spectra_ptr->avg_ctd_salinity;
+  w = mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_ctd_dpdt;
+  P = mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_ctd_pressure;
+  T = mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_ctd_temperature;
+  S = mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_ctd_salinity;
 
   // calculate wavenumber vector
-  for (uint16_t i = 0; i < settings->nfft/2; i++) {
-    //Make the k vector from the freq vector with the appropriate fall speed
-    vals->kvec[i] = vals->freq[i]/w;
-  }
+//  for (uint16_t i = 0; i < settings->nfft/2; i++) {
+//    //Make the k vector from the freq vector with the appropriate fall speed
+//    vals->kvec[i] = vals->freq[i]/w;
+//  }
 
   //lookup tables for epsilon from the spectral integrals (shear10) from 2-10 cpm, these come from eps1_mmp/Mike Gregg's work and are (apparently) empirically determined
   static const float eps_fit_shear10[5] = {8.6819e-04, -3.4473e-03, -1.3373e-03, 1.5248, -3.1607};
@@ -526,6 +549,7 @@ void mod_som_efe_obp_calc_epsilon_f(float *local_epsilon, float *nu, float *fom,
   float k_max = config->f_CTD_pump/w;
   float kvec_limits_1[] = {kvec_min_1, kvec_max_1};
 
+  float dk = config->f_samp/settings->nfft/w;
 
   // start loop here
   // removed multiple channel handling for the time being
@@ -536,41 +560,64 @@ void mod_som_efe_obp_calc_epsilon_f(float *local_epsilon, float *nu, float *fom,
   static uint16_t kvec_indices_1[2];
   find_vector_indices_f(vals->kvec, settings->nfft/2, kvec_limits_1, kvec_indices_1);
   uint16_t kvec_1_size = kvec_indices_1[1] - kvec_indices_1[0] + 1;
-  float kvec_1[kvec_1_size], spectrum_kvec_1[kvec_1_size];
+//  float kvec_1[kvec_1_size];
+//  float spectrum_kvec_1[kvec_1_size];
   // calculate wavenumber vector and convert spectrum from freq to wavenumber space
-  for (uint16_t i = 0; i < kvec_1_size; i++) {
-    kvec_1[i] = vals->kvec[kvec_indices_1[0] + i];
-    spectrum_kvec_1[i] = (mod_som_efe_obp_ptr->cpt_spectra_ptr->spec_shear_ptr[kvec_indices_1[0] + i]);
-    // multiply by fall rate and (2*pi*k)^2 to get spectrum vs wavenumber
-    spectrum_kvec_1[i] = spectrum_kvec_1[i]*w*pow((2*M_PI*vals->kvec[i]), 2.0);
-  }
-  static const float dk_interp = 0.2;
-  uint16_t kvec_interp_size = (uint16_t) ((kvec_1[kvec_1_size - 1] - kvec_1[0])/dk_interp);
-  float spectrum_interp[kvec_interp_size];
-  float kvec_interp[kvec_interp_size];
-  float kvec_interp_start;
-  for (uint16_t i = 0; i < 41; i++) { // i know this is a magic number... might handle it at some point
-    kvec_interp_start = 2 + i*dk_interp;
-    if (kvec_interp_start > kvec_1[0]) {break;}
-  }
-  for (uint16_t i = 0; i < kvec_interp_size; i++) {
-    kvec_interp[i] = kvec_interp_start + i*dk_interp;
-  }
-  interp1_f(kvec_1, spectrum_kvec_1, kvec_1_size, kvec_interp, spectrum_interp, kvec_interp_size);
-  static float spectrum_interp_integral = 0;
+//  for (uint16_t i = 0; i < kvec_1_size; i++) {
+//    fft_ptr->kvec[i] = vals->kvec[kvec_indices_1[0] + i];
+//    fft_ptr->spectrum_k[i] = (mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_spec_shear_ptr[kvec_indices_1[0] + i]);
+//    // multiply by fall rate and (2*pi*k)^2 to get spectrum vs wavenumber
+//    fft_ptr->spectrum_k[i] = fft_ptr->spectrum_k[i]*w*pow((2*M_PI*vals->kvec[i]), 2.0);
+//  }
+//ALB removing the interp
+//  static const float dk_interp = 0.2;
+//  uint16_t kvec_interp_size = (uint16_t) ((fft_ptr->kvec[kvec_1_size - 1] - fft_ptr->kvec[0])/dk_interp);
+//  float spectrum_interp[kvec_interp_size];
+//  float kvec_interp[kvec_interp_size];
+//  float kvec_interp_start;
+
+//  for (uint16_t i = 0; i < 41; i++) { // i know this is a magic number... might handle it at some point
+//    kvec_interp_start = 2 + i*dk_interp;
+//    if (kvec_interp_start > kvec_1[0]) {break;}
+//  }
+
+  //ALB always start at cpm k=2;
+//  kvec_start=2.0;
+//  kvec_interp_start=2.0;
+
+//  for (uint16_t i = 0; i < kvec_interp_size; i++) {
+//      fft_ptr->kvec[i] = kvec_interp_start + i*dk_interp;
+//  }
+//  interp1_f(kvec_1, spectrum_kvec_1, kvec_1_size, kvec_interp, spectrum_interp, kvec_interp_size);
+  float * local_avg_spec_shear_ptr=
+      &mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_spec_shear_ptr[kvec_indices_1[0]];
+
+  static float spectrum_integral = 0;
   //Compute the integral of the spectrum from 2-10 cpm
-  for (uint16_t i = 0; i < kvec_interp_size; i++) {
-    spectrum_interp_integral += spectrum_interp[i]*dk_interp;
+  for (uint16_t i = 0; i < kvec_1_size; i++) {
+    spectrum_integral += (local_avg_spec_shear_ptr[i]*w*pow((2*M_PI*vals->kvec[i]), 2.0))*dk;
   }
-  float log10_spectrum_integral = log10(spectrum_interp_integral), threshold = -3.0;
+  float log10_spectrum_integral = log10(spectrum_integral), threshold = -3.0;
+
   static float eps_1, log10_eps;
+
   if (log10_spectrum_integral > threshold) {
-    log10_eps = eps_fit_shear10[0]*pow(log10_spectrum_integral, 4.0) + eps_fit_shear10[1]*pow(log10_spectrum_integral, 3.0) + eps_fit_shear10[2]*pow(log10_spectrum_integral, 2.0) + eps_fit_shear10[3]*log10_spectrum_integral + eps_fit_shear10[4];
+    log10_eps = eps_fit_shear10[0]*pow(log10_spectrum_integral, 4.0) +
+                eps_fit_shear10[1]*pow(log10_spectrum_integral, 3.0) +
+                eps_fit_shear10[2]*pow(log10_spectrum_integral, 2.0) +
+                eps_fit_shear10[3]*log10_spectrum_integral +
+                eps_fit_shear10[4];
     eps_1 = pow(10.0, log10_eps);
   } else {
-    log10_eps = shtotal_fit_shear10[0]*pow(log10_spectrum_integral, 4.0) + shtotal_fit_shear10[1]*pow(log10_spectrum_integral, 3.0) + shtotal_fit_shear10[2]*pow(log10_spectrum_integral, 2.0) + shtotal_fit_shear10[3]*log10_spectrum_integral + shtotal_fit_shear10[4];
+    log10_eps = shtotal_fit_shear10[0]*pow(log10_spectrum_integral, 4.0) +
+                shtotal_fit_shear10[1]*pow(log10_spectrum_integral, 3.0) +
+                shtotal_fit_shear10[2]*pow(log10_spectrum_integral, 2.0) +
+                shtotal_fit_shear10[3]*log10_spectrum_integral +
+                shtotal_fit_shear10[4];
     eps_1 = 7.5*kvis*pow(10.0, log10_eps);
   };
+
+
   //STAGE 2 - Second estimate
   float k_cutoff = 0.0816*pow(eps_1, 0.25)/pow(kvis, 0.75);  // k for 90% variance of Panchev spectrum
   if (k_cutoff > k_max) {k_cutoff = k_max;} // limit set by noise spectrum (or in this case the pump freq).  May need to fix that.
@@ -579,17 +626,22 @@ void mod_som_efe_obp_calc_epsilon_f(float *local_epsilon, float *nu, float *fom,
   //find this k range, 2 cpm out to k_cutoff
   find_vector_indices_f(vals->kvec, settings->nfft/2, kvec_limits_2, kvec_indices_2);
   uint16_t kvec_2_size = kvec_indices_2[1] - kvec_indices_2[0] + 1;
-  float spectrum_kvec_2[kvec_2_size];
+//  float spectrum_kvec_2[kvec_2_size];
   float eps_2;
-  float dk = vals->kvec[1] - vals->kvec[0];
+//  float dk = vals->kvec[1] - vals->kvec[0];
+
   //Compute the integral of the spectrum over this range
-  static float spectrum_integral = 0;
+  spectrum_integral = 0;
   for (uint16_t i = 0; i < kvec_2_size; i++) {
-    spectrum_kvec_2[i] = (mod_som_efe_obp_ptr->cpt_spectra_ptr->spec_shear_ptr[kvec_indices_2[0] + i]);
-    spectrum_integral += spectrum_kvec_2[i]*dk;
+//    spectrum_kvec_2[i] = (mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_spec_shear_ptr[kvec_indices_2[0] + i]);
+    spectrum_integral += (local_avg_spec_shear_ptr[i]*w*pow((2*M_PI*vals->kvec[i]), 2.0))*dk;
+//
+//    spectrum_integral += spectrum_kvec_2[i]*dk;
   }
   //Compute eps from this and divide by 0.9 to account for the excess over 90%
   eps_2 = 7.5*kvis*spectrum_integral/0.9;
+
+
   // THIRD STAGE
   k_cutoff = 0.0816*pow(eps_2, 0.25)/pow(kvis, 0.75);
   if (k_cutoff > k_max) {k_cutoff = k_max;} // limit set by noise spectrum (or in this case the pump freq).  May need to fix that.
@@ -600,13 +652,14 @@ void mod_som_efe_obp_calc_epsilon_f(float *local_epsilon, float *nu, float *fom,
   //find this k range, 2 cpm out to k_cutoff
   find_vector_indices_f(vals->kvec, settings->nfft/2, kvec_limits_3, kvec_indices_3);
   uint16_t kvec_3_size = kvec_indices_3[1] - kvec_indices_3[0] + 1;
-  float spectrum_kvec_3[kvec_3_size];
+//  float spectrum_kvec_3[kvec_3_size];
   static float eps_3;
   //Compute the integral of the spectrum
   spectrum_integral = 0;
   for (uint16_t i = 0; i < kvec_3_size; i++) {
-    spectrum_kvec_3[i] = (mod_som_efe_obp_ptr->cpt_spectra_ptr->spec_shear_ptr[kvec_indices_3[0] + i]);
-    spectrum_integral += spectrum_kvec_3[i]*dk;
+//    spectrum_kvec_3[i] = (mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_spec_shear_ptr[kvec_indices_3[0] + i]);
+    spectrum_integral += (local_avg_spec_shear_ptr[i]*w*pow((2*M_PI*vals->kvec[i]), 2.0))*dk;
+//    spectrum_integral += spectrum_kvec_3[i]*dk;
   } //Compute eps from this and divide by 0.9 to account for the excess over 90%
   eps_3 = 7.5*kvis*spectrum_integral;
   if (eps_3 < 1e-10 || kvec_3_size < 4) {
@@ -631,7 +684,9 @@ void mod_som_efe_obp_calc_epsilon_f(float *local_epsilon, float *nu, float *fom,
 //  float panchev_spec[settings->nfft/2];
   float panchev_integral;
   panchev_integral = panchev_f(eps_3, kvis, kvec_3_size, theospec_ptr->panchev_spec);
-  *fom = spectrum_integral/panchev_integral;
+
+  //TODO compute fom
+//  *fom = spectrum_integral/panchev_integral;
 //    }
 }
 
@@ -651,33 +706,42 @@ void mod_som_efe_obp_calc_chi_f(float *local_epsilon, float *local_chi, float *k
 {
     // pull in CTD values
     static float w, P, T, S;
-    w = mod_som_efe_obp_ptr->cpt_spectra_ptr->avg_ctd_dpdt;
-    P = mod_som_efe_obp_ptr->cpt_spectra_ptr->avg_ctd_pressure;
-    T = mod_som_efe_obp_ptr->cpt_spectra_ptr->avg_ctd_temperature;
-    S = mod_som_efe_obp_ptr->cpt_spectra_ptr->avg_ctd_salinity;
+    w = mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_ctd_dpdt;
+    P = mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_ctd_pressure;
+    T = mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_ctd_temperature;
+    S = mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_ctd_salinity;
 
-    // calculate wavenumber vector
-    for (uint16_t i = 0; i < settings->nfft/2; i++) {
-      //Make the k vector from the freq vector with the appropriate fall speed
-      vals->kvec[i] = vals->freq[i]/w;
-    }
+//    // calculate wavenumber vector
+//    for (uint16_t i = 0; i < settings->nfft/2; i++) {
+//      //Make the k vector from the freq vector with the appropriate fall speed
+//      vals->kvec[i] = vals->freq[i]/w;
+//    }
     // start loop here
     // changed for one channel only (for right now)
 //    for (uint8_t j = 0; config->num_shear; j++) {
     //  redefine spectrum and wavenumbers only up to cutoff
-    float k_fp07[*(vals->fp07_cutoff)];
-    float chi_spectrum[*(vals->fp07_cutoff)];
+    //ALB get cut off
+    *(vals->fp07_cutoff) = mod_som_epsiobp_fp07_cutoff_f(
+        mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_spec_temp_ptr,
+        settings->nfft/2);
+
+    float * local_avg_spec_temp_ptr=
+        mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_spec_temp_ptr;
+
+//    float k_fp07[*(vals->fp07_cutoff)];
+//    float chi_spectrum[*(vals->fp07_cutoff)];
     float chi_sum = 0;
+
     for (uint16_t i = 0; i < *(vals->fp07_cutoff); i++) {
-      k_fp07[i] = vals->kvec[i];
-      chi_spectrum[i] = (mod_som_efe_obp_ptr->cpt_spectra_ptr->spec_temp_ptr[i]);
+//      k_fp07[i] = vals->kvec[i];
+//      chi_spectrum[i] = (mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_spec_temp_ptr[i]);
       // multiply by fall rate and (2*pi*k)^2 to get spectrum vs wavenumber
-      chi_spectrum[i] = chi_spectrum[i]*w*pow((2*M_PI*vals->kvec[i]), 2.0);
-      chi_sum += chi_spectrum[i];
+        chi_sum += local_avg_spec_temp_ptr[i]*w*pow((2*M_PI*vals->kvec[i]), 2.0);
     }
     //  compute chi
     float kappa_t = seawater_thermal_diffusivity_f(S, T, P);
-    float dk = k_fp07[1] - k_fp07[0];
+//    float dk = k_fp07[1] - k_fp07[0];
+    float dk = config->f_samp/settings->nfft/w;
     float chi = 6*kappa_t*dk*chi_sum;
     *local_chi = chi;
     float batchelor_integral;
@@ -685,9 +749,34 @@ void mod_som_efe_obp_calc_chi_f(float *local_epsilon, float *local_chi, float *k
 //    float batchelor_spec[settings->nfft/2];
     float kvis = seawater_kinematic_viscosity_f(S, T, P);
     batchelor_integral = batchelor_f(*local_epsilon, chi, kvis, kappa_t, *(vals->fp07_cutoff), theospec_ptr->batchelor_spec);
-    *fom = chi_sum/batchelor_integral;
+
+    //ALB TODO compute FOM
+//    *fom = chi_sum/batchelor_integral;
 //  }
 }
+
+void mod_som_efe_obp_correct_convert_avg_spectra_f(float * temp_spectrum,
+                                               float * shear_spectrum,
+                                               float * accel_spectrum,
+                                               float   fall_rate){
+
+  mod_som_epsiobp_shear_filters_f(filters_ptr->shear_filter, fall_rate);
+  mod_som_epsiobp_fp07_filters_f(filters_ptr->fp07_filter, fall_rate);
+  //init cutoff to end so no funny business
+  *(vals->fp07_cutoff) = settings->nfft/2;
+
+  for (uint16_t i = 0; i < settings->nfft/2; i++) {
+      //Make the k vector from the freq vector with the appropriate fall speed
+      vals->kvec[i] = vals->freq[i]/fall_rate;
+
+      shear_spectrum[i] = shear_spectrum[i]*pow(2*g/(cals->shear_sv*fall_rate), 2);
+      temp_spectrum[i]  = temp_spectrum[i]*pow(cals->fp07_dTdV, 2);
+      shear_spectrum[i] = shear_spectrum[i]/filters_ptr->shear_filter[i];
+      temp_spectrum[i]  = temp_spectrum[i]/filters_ptr->fp07_filter[i];
+
+  }
+}
+
 
 void mod_som_epsiobp_shear_filters_f(float *shear_filter, float fall_rate)
 /*******************************************************************************

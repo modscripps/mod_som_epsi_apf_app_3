@@ -101,7 +101,6 @@ CPU_INT16S mod_som_shell_output_f(CPU_CHAR *pbuf,
     return buf_len;
 }
 
-
 //------------------------------------------------------------------------------
 // FUNCTIONS NOT FOR USER, only for implementation
 //------------------------------------------------------------------------------
@@ -142,35 +141,28 @@ mod_som_status_t mod_som_shell_execute_input_f(char* input,uint32_t input_len){
             .SessionActiveFlagsPtr = DEF_NULL
     };
     //execute the commands
-//    Shell_Exec(input, mod_som_shell_output_f, &p_cmd_param, &err);
     Shell_Exec(input, mod_som_shell_output_f, &p_cmd_param, &err);
 
     switch (RTOS_ERR_CODE_GET(err)) {
     case RTOS_ERR_NULL_PTR:
-//        shellPrint(mod_som_shell_output_f, "Error, NULL pointer passed.\n");
-        shellPrintf(mod_som_shell_output_f,"%s, NULL pointer passed",input);
+        shellPrint(mod_som_shell_output_f, "Error, NULL pointer passed.\n");
         break;
     case RTOS_ERR_NOT_FOUND:
-//        shellPrintf(mod_som_shell_output_f, "Error, command not found: %s\n", input);
-        shellPrintf(mod_som_shell_output_f,"%s", input);
+        shellPrintf(mod_som_shell_output_f, "Error, command not found: %s\n", input);
         break;
     case RTOS_ERR_NOT_SUPPORTED:
-//        shellPrint(mod_som_shell_output_f, "Error, command not supported.\n");
-        shellPrintf(mod_som_shell_output_f,"%s, command not supported", input);
+        shellPrint(mod_som_shell_output_f, "Error, command not supported.\n");
         break;
     case RTOS_ERR_INVALID_ARG:
-//        shellPrint(mod_som_shell_output_f, "Error, invalid arguments\n");
-        shellPrintf(mod_som_shell_output_f,"%s, invalid arguments", input);
+        shellPrint(mod_som_shell_output_f, "Error, invalid arguments\n");
         break;
     case RTOS_ERR_SHELL_CMD_EXEC:
-//        shellPrint(mod_som_shell_output_f, "Error, command failed to execute.\n");
-        shellPrintf(mod_som_shell_output_f,"%s, command failed to execute", input);
+        shellPrint(mod_som_shell_output_f, "Error, command failed to execute.\n");
         break;
     case RTOS_ERR_NONE: /* No errors. */
         break;
     default:
-//        shellPrint(mod_som_shell_output_f, "Error, unknown error\n");
-        shellPrintf(mod_som_shell_output_f,"%s, unknown error", input);
+        shellPrint(mod_som_shell_output_f, "Error, unknown error\n");
         break;
     }
     return mod_som_shell_encode_status_f(MOD_SOM_STATUS_OK);
@@ -179,8 +171,6 @@ mod_som_status_t mod_som_shell_execute_input_f(char* input,uint32_t input_len){
 /*******************************************************************************
  * @brief
  *   Get text input from user.
- *
- *   /MG
  *
  * @param buf
  *   Buffer to hold the input string.
@@ -203,13 +193,6 @@ mod_som_status_t mod_som_shell_get_input_f(char *buf, uint32_t * buf_len){
                     &err);
             APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
             c = RETARGET_ReadChar();
-
-            //TODO Put a watch dog here.
-            //TODO We want to put a timer of about 30s
-            //TODO So if the SOM hang we'd reset the SOM
-            //TODO integrate a watch dog cnt and status in the settings
-            //TODO so it is saved in the UserPage.
-            //TODO Food for thought an actual log would be a good thing.
         }
 
         if (c == ASCII_CHAR_DELETE || c == 0x08) { // User inputed backspace
@@ -224,7 +207,7 @@ mod_som_status_t mod_som_shell_get_input_f(char *buf, uint32_t * buf_len){
                 mod_som_io_print_f("\r\n");
                 break;
             } else {
-                mod_som_io_print_f("\r\n");
+                mod_som_io_print_f("\r\n$ ");
                 i--;
                 continue;
             }
@@ -290,7 +273,7 @@ void mod_som_shell_task_f(void *p_arg){
                 (OS_OPT      )OS_OPT_TIME_DLY,
                 &err);
         APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
-//        shellPrint(mod_som_shell_output_f, "\r ");
+        shellPrint(mod_som_shell_output_f, "\r$ ");
         mod_som_shell_get_input_f(input_buf,&input_buf_len);
 
         if (!Str_Cmp(input_buf, "exit")) {
