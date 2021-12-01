@@ -2488,6 +2488,13 @@ mod_som_apf_status_t mod_som_apf_sleep_f(){
   //ALB check if in Daq mode
   if(mod_som_apf_ptr->daq){
       //ALB we are in Daq mode. Do nothing.
+      // send some ack
+        status|=mod_som_io_print_f("sleep,ack,%lu\r\n",status);
+       // save to the local string for sending out - Mai-Nov 18, 2021
+       sprintf(apf_reply_str,"sleep,ack,%lu\r\n",status);
+
+       // sending the above string to the APF port - Mai - Nov 18, 2021
+       bytes_sent = mod_som_apf_send_line_f(apf_leuart_ptr,apf_reply_str, reply_str_len);
   }else{
       //ALB we are not in daq mode make sure
       //ALB efe,sdio,efe obp,sbe-sniffer are asleep
