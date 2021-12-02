@@ -364,6 +364,12 @@ CPU_INT16S mod_som_apf_cmd_comm_packet_format_f(CPU_INT16U argc,
         SHELL_OUT_FNCT out_put_f,
         SHELL_CMD_PARAM *cmd_param);
 
+CPU_INT16S mod_som_apf_cmd_comm_packet_format_status_f(CPU_INT16U argc,
+        CPU_CHAR *argv[],
+        SHELL_OUT_FNCT out_put_f,
+        SHELL_CMD_PARAM *cmd_param);
+
+
 /*******************************************************************************
  * @brief
  *   command shell for mod_som_apf_cmd_process_nfft_f
@@ -403,6 +409,11 @@ CPU_INT16S mod_som_apf_cmd_process_nfft_f(CPU_INT16U argc,
  *   apf Command Status
  ******************************************************************************/
 CPU_INT16S mod_som_apf_cmd_sd_format_f(CPU_INT16U argc,
+        CPU_CHAR *argv[],
+        SHELL_OUT_FNCT out_put_f,
+        SHELL_CMD_PARAM *cmd_param);
+
+CPU_INT16S mod_som_apf_cmd_sd_format_status_f(CPU_INT16U argc,
         CPU_CHAR *argv[],
         SHELL_OUT_FNCT out_put_f,
         SHELL_CMD_PARAM *cmd_param);

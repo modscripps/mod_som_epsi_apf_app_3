@@ -723,7 +723,7 @@ mod_som_apf_status_t mod_som_apf_time_status_f();
  ******************************************************************************/
 mod_som_apf_status_t mod_som_apf_comm_packet_format_f(CPU_INT16U argc,
                                                       CPU_CHAR *argv[]);
-mod_som_apf_status_t mod_som_apf_mm_packet_format_status_f();
+mod_som_apf_status_t mod_som_apf_comm_packet_format_status_f();
 /*******************************************************************************
  * @brief
  *   command shell for mod_som_apf_cmd_sd_format_f

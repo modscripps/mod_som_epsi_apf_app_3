@@ -38,7 +38,7 @@ static SHELL_CMD  mod_som_apf_cmd_tbl[] =
         { "probeno",      mod_som_apf_cmd_probe_id_f },
         { "probeno?",     mod_som_apf_cmd_probe_id_status_f },
         { "poweroff",     mod_som_apf_cmd_poweroff_f },
- //       { "sd_format?",   mod_som_apf_cmd_sd_format_status_f },
+       { "sd_format?",    mod_som_apf_cmd_sd_format_status_f },
         { "sd_format",    mod_som_apf_cmd_sd_format_f },
         { "process_nfft", mod_som_apf_cmd_process_nfft_f },
  //       { "comm_packet_format?", mod_som_apf_cmd_comm_packet_format_status_f },
@@ -610,6 +610,18 @@ CPU_INT16S mod_som_apf_cmd_comm_packet_format_f(CPU_INT16U argc,
     return SHELL_EXEC_ERR_NONE;
 }
 
+CPU_INT16S mod_som_apf_cmd_comm_packet_format_status_f(CPU_INT16U argc,
+        CPU_CHAR *argv[],
+        SHELL_OUT_FNCT out_put_f,
+        SHELL_CMD_PARAM *cmd_param){
+
+    mod_som_apf_status_t status = mod_som_apf_comm_packet_format_status_f(argc,argv);
+
+    if(status != MOD_SOM_APF_STATUS_OK)
+        return SHELL_EXEC_ERR;
+    return SHELL_EXEC_ERR_NONE;
+}
+
 /*******************************************************************************
  * @brief
  *   command shell for mod_som_apf_cmd_process_nfft_f
@@ -667,6 +679,17 @@ CPU_INT16S mod_som_apf_cmd_sd_format_f(CPU_INT16U argc,
     return SHELL_EXEC_ERR_NONE;
 }
 
+CPU_INT16S mod_som_apf_cmd_sd_format_status_f(CPU_INT16U argc,
+        CPU_CHAR *argv[],
+        SHELL_OUT_FNCT out_put_f,
+        SHELL_CMD_PARAM *cmd_param){
+
+    mod_som_apf_status_t status = mod_som_apf_sd_format_status_f(argc,argv);
+
+    if(status != MOD_SOM_APF_STATUS_OK)
+        return SHELL_EXEC_ERR;
+    return SHELL_EXEC_ERR_NONE;
+}
 
 
 

@@ -2793,7 +2793,7 @@ mod_som_apf_status_t mod_som_apf_comm_packet_format_f(CPU_INT16U argc,
  * @return
  *   MOD_SOM_APF_STATUS_OK if function execute nicely
  ******************************************************************************/
-mod_som_apf_status_t mod_som_apf_mm_packet_format_status_f(){
+mod_som_apf_status_t mod_som_apf_packet_format_status_f(){
 
   mod_som_apf_status_t status=0;
   uint32_t bytes_sent = 0;
