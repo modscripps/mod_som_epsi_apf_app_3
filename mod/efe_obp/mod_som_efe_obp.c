@@ -2458,25 +2458,27 @@ uint32_t mod_som_efe_obp_copy_producer_segment_f()
                       (mod_som_efe_obp_ptr->consumer_ptr->avgspec_cnt%
                        MOD_SOM_EFE_OBP_CPT_SPECTRA_NB_SPECTRA_PER_RECORD)
                        * mod_som_efe_obp_ptr->settings_ptr->nfft/2],
-           mod_som_efe_obp_ptr->settings_ptr->nfft/2);
+           mod_som_efe_obp_ptr->settings_ptr->nfft/2*sizeof(float));
 
-    indx+=mod_som_efe_obp_ptr->settings_ptr->nfft/2;
+    indx+=mod_som_efe_obp_ptr->settings_ptr->nfft/2*sizeof(float);
+
     memcpy(&mod_som_efe_obp_ptr->consumer_ptr->record_ptr[indx],
            &mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_spec_shear_ptr[
                       (mod_som_efe_obp_ptr->consumer_ptr->avgspec_cnt%
                        MOD_SOM_EFE_OBP_CPT_SPECTRA_NB_SPECTRA_PER_RECORD)
                        * mod_som_efe_obp_ptr->settings_ptr->nfft/2],
-           mod_som_efe_obp_ptr->settings_ptr->nfft/2);
+           mod_som_efe_obp_ptr->settings_ptr->nfft/2*sizeof(float));
 
-    indx+=mod_som_efe_obp_ptr->settings_ptr->nfft/2;
+    indx+=mod_som_efe_obp_ptr->settings_ptr->nfft/2*sizeof(float);
+
     memcpy(&mod_som_efe_obp_ptr->consumer_ptr->record_ptr[indx],
            &mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_spec_accel_ptr[
                       (mod_som_efe_obp_ptr->consumer_ptr->avgspec_cnt%
                        MOD_SOM_EFE_OBP_CPT_SPECTRA_NB_SPECTRA_PER_RECORD)
                        * mod_som_efe_obp_ptr->settings_ptr->nfft/2],
-           mod_som_efe_obp_ptr->settings_ptr->nfft/2);
+           mod_som_efe_obp_ptr->settings_ptr->nfft/2*sizeof(float));
 
-    indx+=mod_som_efe_obp_ptr->settings_ptr->nfft/2;
+    indx+=mod_som_efe_obp_ptr->settings_ptr->nfft/2*sizeof(float);
     indx-=mod_som_efe_obp_ptr->config_ptr->header_length;
     //ALB return the length of the payload
      return indx;
@@ -2499,8 +2501,10 @@ uint32_t mod_som_efe_obp_copy_producer_segment_f()
 
     //copy the prdcr spectra inside cnsmr spectra buffer.
     memcpy((void *) &mod_som_efe_obp_ptr->consumer_ptr->record_ptr[indx],
-           (void *) &mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_timestamp,
-                    sizeof(uint64_t));
+           (void *) &mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_timestamp[
+                     (mod_som_efe_obp_ptr->consumer_ptr->rates_cnt%
+                      MOD_SOM_EFE_OBP_CPT_DISSRATE_NB_RATES_PER_RECORD)
+                     ],sizeof(uint64_t));
 
     indx+=sizeof(uint64_t);
 
@@ -2521,27 +2525,27 @@ uint32_t mod_som_efe_obp_copy_producer_segment_f()
     memcpy(&mod_som_efe_obp_ptr->consumer_ptr->record_ptr[indx],
            &mod_som_efe_obp_ptr->cpt_dissrate_ptr->chi[
                       (mod_som_efe_obp_ptr->consumer_ptr->rates_cnt%
-                       MOD_SOM_EFE_OBP_CPT_SPECTRA_NB_SPECTRA_PER_RECORD)
+                          MOD_SOM_EFE_OBP_CPT_DISSRATE_NB_RATES_PER_RECORD)
                        ],sizeof(float));
     indx+=sizeof(float);
     memcpy(&mod_som_efe_obp_ptr->consumer_ptr->record_ptr[indx],
            &mod_som_efe_obp_ptr->cpt_dissrate_ptr->epsilon[
                       (mod_som_efe_obp_ptr->consumer_ptr->rates_cnt%
-                       MOD_SOM_EFE_OBP_CPT_SPECTRA_NB_SPECTRA_PER_RECORD)
+                          MOD_SOM_EFE_OBP_CPT_DISSRATE_NB_RATES_PER_RECORD)
                        ],sizeof(float));
 
     indx+=sizeof(float);
     memcpy(&mod_som_efe_obp_ptr->consumer_ptr->record_ptr[indx],
            &mod_som_efe_obp_ptr->cpt_dissrate_ptr->nu[
                       (mod_som_efe_obp_ptr->consumer_ptr->rates_cnt%
-                       MOD_SOM_EFE_OBP_CPT_SPECTRA_NB_SPECTRA_PER_RECORD)
+                          MOD_SOM_EFE_OBP_CPT_DISSRATE_NB_RATES_PER_RECORD)
                        ],sizeof(float));
 
     indx+=sizeof(float);
     memcpy(&mod_som_efe_obp_ptr->consumer_ptr->record_ptr[indx],
            &mod_som_efe_obp_ptr->cpt_dissrate_ptr->kappa[
                       (mod_som_efe_obp_ptr->consumer_ptr->rates_cnt%
-                       MOD_SOM_EFE_OBP_CPT_SPECTRA_NB_SPECTRA_PER_RECORD)
+                          MOD_SOM_EFE_OBP_CPT_DISSRATE_NB_RATES_PER_RECORD)
                        ],sizeof(float));
 
     indx+=sizeof(float);

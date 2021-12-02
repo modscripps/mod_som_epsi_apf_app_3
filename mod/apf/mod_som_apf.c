@@ -2936,6 +2936,29 @@ mod_som_apf_status_t mod_som_apf_sd_format_f(CPU_INT16U argc,
   return mod_som_apf_encode_status_f(MOD_SOM_APF_STATUS_OK);
 }
 
+/*******************************************************************************
+ * @brief
+ *   command shell to check mod_som_apf_cmd_sd_format_f
+ *   set the format of the data stored in the SD card
+ *   0 = no sd storage format (latter on called SD0)
+ *   1 = raw store everything on the SD card
+ *   2 = time pressure epsilon chi fom dpdt kvis avg_t avg_s decimated spectra
+ *   3 = time pressure epsilon chi fom dpdt kvis avg_t avg_s full avg spectra
+ *
+ * @param argc
+ *   argument count
+ * @param argv
+ *   argument values
+ * @param out_put_f
+ *   out_put_f (print function)
+ * @param cmd_param
+ *   command parameters (passing along)
+ * @return
+ *   apf Command Status
+ ******************************************************************************/
+
+
+
 mod_som_apf_status_t mod_som_apf_sd_format_status_f(CPU_INT16U argc,
                                                       CPU_CHAR *argv[])
 {
@@ -2949,9 +2972,10 @@ mod_som_apf_status_t mod_som_apf_sd_format_status_f(CPU_INT16U argc,
   apf_leuart_ptr = (LEUART_TypeDef *)mod_som_apf_ptr->com_prf_ptr->handle_port;
 
 
-      status = mod_som_io_print_f("sd_format,ack\r\n");
+
+      status = mod_som_io_print_f("sd_format,ack,%lu\r\n",mod_som_apf_ptr->settings_ptr->sd_packet_format);
       // save to the local string for sending out - Mai-Nov 18, 2021
-      sprintf(apf_reply_str,"sd_format,ack\r\n");
+      sprintf(apf_reply_str,"sd_format,ack,%lu\r\n",mod_som_apf_ptr->settings_ptr->sd_packet_format);
       reply_str_len = strlen(apf_reply_str);
       // sending the above string to the APF port - Mai - Nov 18, 2021
       bytes_sent = mod_som_apf_send_line_f(apf_leuart_ptr,apf_reply_str, reply_str_len);
