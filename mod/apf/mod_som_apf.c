@@ -2949,9 +2949,9 @@ mod_som_apf_status_t mod_som_apf_sd_format_status_f(CPU_INT16U argc,
   apf_leuart_ptr = (LEUART_TypeDef *)mod_som_apf_ptr->com_prf_ptr->handle_port;
 
 
-      status = mod_som_io_print_f("sd_format,ak\r\n");
+      status = mod_som_io_print_f("sd_format,ack\r\n");
       // save to the local string for sending out - Mai-Nov 18, 2021
-      sprintf(apf_reply_str,"sd_format,ak\r\n");
+      sprintf(apf_reply_str,"sd_format,ack\r\n");
       reply_str_len = strlen(apf_reply_str);
       // sending the above string to the APF port - Mai - Nov 18, 2021
       bytes_sent = mod_som_apf_send_line_f(apf_leuart_ptr,apf_reply_str, reply_str_len);
