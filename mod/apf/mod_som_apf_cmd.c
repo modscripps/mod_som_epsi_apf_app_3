@@ -152,7 +152,7 @@ CPU_INT16S mod_som_apf_cmd_daq_f(CPU_INT16U argc,
 
   switch(argc)
   {
-    case 1: // unvalid parameters, not enough information
+    case 1: // invalid command, not enough information
       mod_som_io_print_f("daq,nak,%s.\r\n","missing \"stop/start id\"");
       // save time string into the temporary local string - Mai - Nov 18, 2021
       sprintf(apf_reply_str,"daq,nak,%s.\r\n","missing \"stop/start id\"");
@@ -161,32 +161,18 @@ CPU_INT16S mod_som_apf_cmd_daq_f(CPU_INT16U argc,
       bytes_sent = mod_som_apf_send_line_f(apf_leuart_ptr,apf_reply_str, reply_str_len);
       status = MOD_SOM_APF_STATUS_ERR;
       break;
-    case 2:
+    case 2: // command: "daq,stop", if "daq,start" or "daq,somethingelse" -> error
       i = 1; // get the second argument
       if (!Str_Cmp(argv[i], "start"))
       {
-          //ALB I do not display error if there is more than 1 profile id.
-          //ALB it will the last argument as profile id
-          profile_id = shellStrtol(argv[++i], &err); // Convert argument to int
-  //        status = mod_som_apf_daq_start_f((uint64_t)profile_id);
-          status = MOD_SOM_APF_STATUS_OK; // just for debug to test with daq - mnbui Nov30,2021
-
-          if (status==MOD_SOM_APF_STATUS_OK)
-          {
-             mod_som_io_print_f("daq,start,ack,%lu\r\n",(uint32_t) profile_id);
-             // save time string into the temporary local string - Mai - Nov 18, 2021
-             sprintf("daq,start,ack,%lu\r\n",(uint32_t) profile_id);
-          }
-          else
-          {
-              mod_som_io_print_f("daq,start,nak,%lu",status);
-              // save time string into the temporary local string - Mai - Nov 18, 2021
-              sprintf(apf_reply_str,"daq,start,nak,%lu",status);
-          } // end of else (status !=0)
+          mod_som_io_print_f("daq,start,nak,%s","missing proid");
+          // save time string into the temporary local string - Mai - Dec 3, 2021
+          sprintf(apf_reply_str,"daq,start,nak,%s","missing proid");
           reply_str_len = strlen(apf_reply_str);
-          // sending the above string to the APF port - Mai - Nov 18, 2021
+          // sending the above string to the APF port - Mai - Dec 3, 2021
           bytes_sent = mod_som_apf_send_line_f(apf_leuart_ptr,apf_reply_str, reply_str_len);
-       } // if (!Str_Cmp(argv[argc], "start"))
+
+       } // if (!Str_Cmp(argv[i], "start"))
        else if (!Str_Cmp(argv[i], "stop"))
        {
           status = mod_som_apf_daq_stop_f();
@@ -207,109 +193,52 @@ CPU_INT16S mod_som_apf_cmd_daq_f(CPU_INT16U argc,
           // sending the above string to the APF port - Mai - Nov 18, 2021
           bytes_sent = mod_som_apf_send_line_f(apf_leuart_ptr,apf_reply_str, reply_str_len);
       } // end of (!Str_Cmp(argv[i], "stop"))
-      else  // not valid command
+      else  // not valid command: not "start" or "stop"
       {
-          mod_som_io_print_f("daq,nak,%s.\r\n",argv[i]);
+          mod_som_io_print_f("daq,nak,%s\r\n",argv[i]);
           // save time string into the temporary local string - Mai - Nov 18, 2021
-          sprintf(apf_reply_str,"daq,nak,%s.\r\n",argv[i]);
+          sprintf(apf_reply_str,"daq,nak,%s\r\n",argv[i]);
           reply_str_len = strlen(apf_reply_str);
           // sending the above string to the APF port - Mai - Nov 18, 2021
           bytes_sent = mod_som_apf_send_line_f(apf_leuart_ptr,apf_reply_str, reply_str_len);
       }
       break;
-    default:
-      mod_som_io_print_f("daq,nak,%s.\r\n","Missing Profile ID.");
+    case 3: // command: "daq,start,proid"
+      i = 1; // get the second argument
+      if (!Str_Cmp(argv[i], "start"))
+      {
+          profile_id = shellStrtol(argv[i+1], &err); // Convert the third argument to int to get proid
+  //        status = mod_som_apf_daq_start_f((uint64_t)profile_id);
+          status = MOD_SOM_APF_STATUS_OK; // just for debug to test with daq - mnbui Nov30,2021
+
+          if (status==MOD_SOM_APF_STATUS_OK)
+          {
+             mod_som_io_print_f("daq,start,ack,%lu\r\n",(uint32_t) profile_id);
+             // save time string into the temporary local string - Mai - Nov 18, 2021
+             sprintf(apf_reply_str,"daq,start,ack,%lu\r\n",(uint32_t) profile_id);
+          }
+          else
+          {
+              mod_som_io_print_f("daq,start,nak,%lu",status);
+              // save time string into the temporary local string - Mai - Nov 18, 2021
+              sprintf(apf_reply_str,"daq,start,nak,%lu",status);
+          } // end of else (status !=0)
+          reply_str_len = strlen(apf_reply_str);
+          // sending the above string to the APF port - Mai - Nov 18, 2021
+          bytes_sent = mod_som_apf_send_line_f(apf_leuart_ptr,apf_reply_str, reply_str_len);
+       } // if (!Str_Cmp(argv[argc], "start"))
+
+      break;
+    default:  // more than 3 argc
+      mod_som_io_print_f("daq,nak,%s\r\n","invalid command, should be: \"dag stop\" or \"dag start proid\"");
       // save time string into the temporary local string - Mai - Nov 18, 2021
-      sprintf(apf_reply_str,"daq,nak,%s.\r\n","Missing Profile ID.");
+      sprintf(apf_reply_str,"daq,nak,%s\r\n","invalid command, should be: \"dag stop\" or \"dag start proid\"");
       reply_str_len = strlen(apf_reply_str);
       // sending the above string to the APF port - Mai - Nov 18, 2021
       bytes_sent = mod_som_apf_send_line_f(apf_leuart_ptr,apf_reply_str, reply_str_len);
       break;
   }
-/*
-  if (argc<2) // if command does not enough information
-    {
-      mod_som_io_print_f("daq,nak,%s.\r\n","missing \"stop/start id\"");
-      // save time string into the temporary local string - Mai - Nov 18, 2021
-      sprintf(apf_reply_str,"daq,nak,%s.\r\n","missing \"stop/start id\"");
-      reply_str_len = strlen(apf_reply_str);
-      // sending the above string to the APF port - Mai - Nov 18, 2021
-      bytes_sent = mod_som_apf_send_line_f(apf_leuart_ptr,apf_reply_str, reply_str_len);
-      status = MOD_SOM_APF_STATUS_ERR;
-    }
-  else{
-	for (int i = 1; i < argc; i++)
-	{
-		if (!Str_Cmp(argv[i], "start"))
-		{
-			if (argc<3){
-		        mod_som_io_print_f("daq,nak,%s.\r\n","Missing Profile ID.");
-		        // save time string into the temporary local string - Mai - Nov 18, 2021
-		        sprintf(apf_reply_str,"daq,nak,%s.\r\n","Missing Profile ID.");
-		        reply_str_len = strlen(apf_reply_str);
-		        // sending the above string to the APF port - Mai - Nov 18, 2021
-		        bytes_sent = mod_som_apf_send_line_f(apf_leuart_ptr,apf_reply_str, reply_str_len);
-			}
-			else
-			{
-				//ALB I do not display error if there is more than 1 profile id.
-				//ALB it will the last argument as profile id
-				profile_id = shellStrtol(argv[++i], &err); // Convert argument to int
-//				status = mod_som_apf_daq_start_f((uint64_t)profile_id);
-				status = 0; // just for debug to test with daq - mnbui Nov30,2021
 
-			  if (status==0)
-			  {
-            if (status==MOD_SOM_APF_STATUS_OK)
-            {
-                mod_som_io_print_f("daq,start,ack,%lu\r\n",(uint32_t) profile_id);
-                // save time string into the temporary local string - Mai - Nov 18, 2021
-                sprintf("daq,start,ack,%lu\r\n",(uint32_t) profile_id);
-            }
-			  }
-			  else
-			  {
-		        mod_som_io_print_f("daq,start,nak,%lu",status);
-		        // save time string into the temporary local string - Mai - Nov 18, 2021
-		        sprintf(apf_reply_str,"daq,start,nak,%lu",status);
-			  } // end of else (status !=0)
-			  reply_str_len = strlen(apf_reply_str);
-			  // sending the above string to the APF port - Mai - Nov 18, 2021
-			  bytes_sent = mod_som_apf_send_line_f(apf_leuart_ptr,apf_reply_str, reply_str_len);
-			}// end of (argc<3)
-		} // if (!Str_Cmp(argv[i], "start"))
-		else if (!Str_Cmp(argv[i], "stop"))
-		{
-			status = mod_som_apf_daq_stop_f();
-			//ALB display msg
-			  if (status==MOD_SOM_APF_STATUS_OK)
-			  {
-			      mod_som_io_print_f("daq,stop,ack\r\n");
-            // save time string into the temporary local string - Mai - Nov 18, 2021
-            sprintf(apf_reply_str,"daq,stop,ack\r\n");
-			  }
-			  else
-			  {
-			      mod_som_io_print_f("daq,stop,nak,%lu\r\n",status);
-            // save time string into the temporary local string - Mai - Nov 18, 2021
-            sprintf(apf_reply_str,"daq,start,nak,%lu\r\n",status);
-			  }
-        reply_str_len = strlen(apf_reply_str);
-        // sending the above string to the APF port - Mai - Nov 18, 2021
-        bytes_sent = mod_som_apf_send_line_f(apf_leuart_ptr,apf_reply_str, reply_str_len);
-		}
-		else
-		{
-	        mod_som_io_print_f("daq,nak,%s.\r\n","invalid daq cmd");
-          // save time string into the temporary local string - Mai - Nov 18, 2021
-          sprintf(apf_reply_str,"daq,nak,%s.\r\n","invalid daq cmd");
-          // sending the above string to the APF port - Mai - Nov 18, 2021
-          bytes_sent = mod_som_apf_send_line_f(apf_leuart_ptr,apf_reply_str, reply_str_len);
-          status =  MOD_SOM_APF_STATUS_ERR;
-		}
-	}
-  }
-  */
 	if(status != MOD_SOM_APF_STATUS_OK)
 		return MOD_SOM_APF_STATUS_ERR;
 	return status;
