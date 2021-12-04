@@ -2276,25 +2276,6 @@ mod_som_apf_status_t mod_som_apf_poweroff_f(){
 	return mod_som_apf_encode_status_f(MOD_SOM_APF_STATUS_OK);
 }
 
-///*******************************************************************************
-// * @brief
-// *   command shell for EpsiNo command
-// *   set the SOM and EFE SN
-// *   should return an apf status.
-// * @return
-// *   MOD_SOM_APF_STATUS_OK if function execute nicely
-// ******************************************************************************/
-//mod_som_apf_status_t mod_som_apf_epsi_id_f(CPU_CHAR *argv1,CPU_CHAR *argv2, \
-//		                                   CPU_CHAR *argv3,CPU_CHAR *argv4){
-//
-//	//	mod_som_io_print_f("EpsiNo,ack,%s,%s,%s.\r\n",argv1,argv2,argv3,,argv4);
-//
-//
-//	mod_som_io_print_f("EpsiNo,ack,%s,%s,%s,%s.\r\n","SOM","1","EFE","1");
-//	mod_som_io_print_f("EpsiNo,nak,%s\r\n","error message");
-//	return mod_som_apf_encode_status_f(MOD_SOM_APF_STATUS_OK);
-//}
-
 /*******************************************************************************
  * @brief
  *   command shell for EpsiNo? command

@@ -422,15 +422,57 @@ mod_som_status_t mod_som_efe_obp_construct_calibration_ptr_f(){
   //ALB so far I use a fake cafilter
   //ALB change to use a polynomial.
   calib_ptr->cafilter_size=mod_som_efe_obp_ptr->settings_ptr->nfft/2;
-  calib_ptr->fp07_dTdV=mod_som_efe_obp_ptr->efe_settings_ptr->sensors[0].cal;
-  calib_ptr->fp07_noise[0]=1;
-  calib_ptr->fp07_noise[1]=1;
-  calib_ptr->fp07_noise[2]=1;
-  calib_ptr->fp07_noise[3]=1;
+  //ALB hardcoded poly coef of the fpo7 noise
+  //ALB TODO update this coef after the stand alone test
+  calib_ptr->fp07_noise[0]=-12.2172;
+  calib_ptr->fp07_noise[1]=-0.9104;
+  calib_ptr->fp07_noise[2]= 1.3882;
+  calib_ptr->fp07_noise[3]=-0.5674;
+
   calib_ptr->shear_sv=mod_som_efe_obp_ptr->efe_settings_ptr->sensors[1].cal;;
+  calib_ptr->fp07_dTdV=mod_som_efe_obp_ptr->efe_settings_ptr->sensors[0].cal;
 
   calib_ptr->acc_offset=MOD_SOM_EFE_OBP_ACCELL_OFFSET;
   calib_ptr->acc_factor=MOD_SOM_EFE_OBP_ACCELL_FACTOR;
+
+
+  //ALB adding MHA code here.
+  //TODO Make it not hard coded.
+  for (int c=0;c<mod_som_efe_obp_ptr->settings_ptr->nfft/2;c++) {
+//    *(calib_ptr->cafilter_coeff+c)=0.837; // The value from ~10 - 1000 Hz of the H2_elec function
+    *(calib_ptr->cafilter_coeff+c)=0.9151; // The value from ~10 - 1000 Hz of the H_elec function
+    //Now add in the low-freq rolloffs.
+  };
+
+  switch (mod_som_efe_obp_ptr->settings_ptr->nfft/2) {
+  case 256: // not enough resolution for a low-freq correction.
+    break;
+  case 512:
+    *(calib_ptr->cafilter_coeff+1)=0.7995;
+    break;
+  case 1024:
+//    *(calib_ptr->cafilter_coeff)  = 0;
+//    *(calib_ptr->cafilter_coeff+1)= 0.6917;
+//    *(calib_ptr->cafilter_coeff+2)= 0.7995;
+//    *(calib_ptr->cafilter_coeff+3)= 0.8205;
+    *(calib_ptr->cafilter_coeff)  = 0;
+    *(calib_ptr->cafilter_coeff+1)= 0.8291;
+    *(calib_ptr->cafilter_coeff+2)= 0.8935;
+    *(calib_ptr->cafilter_coeff+3)= 0.9055;
+    *(calib_ptr->cafilter_coeff+4)= 0.9097;
+    *(calib_ptr->cafilter_coeff+5)= 0.9117;
+    *(calib_ptr->cafilter_coeff+6)= 0.9127;
+    *(calib_ptr->cafilter_coeff+7)= 0.9134;
+    break;
+  case 2048: //0.3487    0.6917    0.7706    0.7995    0.8130    0.8205    0.8250    0.8279    0.8299
+    //fill in the values above. NOT FINISHED
+    break;
+  case 4096:
+    //0.0672    0.3487    0.5896    0.6917    0.7423    0.7706    0.7880    0.7995    0.8074    0.8130    0.8173    0.8205    0.8230    0.8250    0.8266    0.8279
+    //          0.8290    0.8299    0.8307    0.8313    0.8319    0.8324    0.8328    0.8332    0.8336    0.8339    0.8341    0.8344    0.8346
+    break;
+    //default:
+  }
 
 
   return mod_som_efe_obp_encode_status_f(MOD_SOM_STATUS_OK);
@@ -1500,6 +1542,25 @@ void mod_som_efe_obp_cpt_dissrate_task_f(void  *p_arg){
           //ALB segment_avail >1 because I am incrementing segment_cnt every helf nfft to get a 50% overlap
           while (spectra_avail > 0)
             {
+              if ((mod_som_efe_obp_ptr->cpt_dissrate_ptr->spectrum_cnt %
+                  mod_som_efe_obp_ptr->settings_ptr->degrees_of_freedom)==0){
+                  //ALB reset avg ctd data
+                  mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_ctd_dpdt        = 0;
+                  mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_ctd_pressure    = 0;
+                  mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_ctd_temperature = 0;
+                  mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_ctd_salinity    = 0;
+
+                  //ALB reset avg spectra data
+                  for (int i=0; i<mod_som_efe_obp_ptr->settings_ptr->nfft/2;i++){
+                      mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_spec_temp_ptr [i]  = 0;
+                      mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_spec_shear_ptr[i]  = 0;
+                      mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_spec_accel_ptr[i]  = 0;
+                  }
+
+
+              }
+
+
               // When have circular buffer overflow: have produced data bigger than consumer data: 1 circular buffer (n_elmnts)
               // calculate new consumer count to skip ahead to the tail of the circular buffer (with optional padding),
               // calculate the number of data we skipped, report number of elements skipped.
@@ -1654,18 +1715,6 @@ void mod_som_efe_obp_cpt_dissrate_task_f(void  *p_arg){
              //ALB reset  dof_flag;
               mod_som_efe_obp_ptr->cpt_dissrate_ptr->dof_flag=false;
 
-              //ALB reset avg ctd data
-              mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_ctd_dpdt        = 0;
-              mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_ctd_pressure    = 0;
-              mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_ctd_temperature = 0;
-              mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_ctd_salinity    = 0;
-
-              for (int i=0; i<mod_som_efe_obp_ptr->settings_ptr->nfft/2;i++){
-                  mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_spec_temp_ptr [i]  = 0;
-                  mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_spec_shear_ptr[i]  = 0;
-                  mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_spec_accel_ptr[i]  = 0;
-              }
-
               //ALB increment dissrate_cnt
               mod_som_efe_obp_ptr->cpt_dissrate_ptr->dissrates_cnt++;
 
@@ -1768,6 +1817,9 @@ uint32_t index=0;
           memcpy( local_efeobp_efe_accel_ptr,
                  &adc_sample_volt,
                   sizeof(float));
+          *local_efeobp_efe_accel_ptr=((*local_efeobp_efe_accel_ptr)-
+                                      MOD_SOM_EFE_OBP_ACCELL_OFFSET)/
+                                      MOD_SOM_EFE_OBP_ACCELL_FACTOR;
       }
   }//end for loop nb_channel
 

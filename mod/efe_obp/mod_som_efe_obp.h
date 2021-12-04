@@ -265,7 +265,6 @@ mod_som_efe_obp_data_cpt_spectra_t, *mod_som_efe_obp_data_cpt_spectra_ptr_t;
 typedef struct{
 
   bool dof_flag;
-
   uint64_t dissrates_cnt;
   uint64_t spectrum_cnt;
   uint64_t avg_timestamp[MOD_SOM_EFE_OBP_CPT_DISSRATE_NB_RATES_PER_RECORD];

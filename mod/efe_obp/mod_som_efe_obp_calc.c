@@ -107,8 +107,8 @@ static float seawater_density_f(float salinity, float temperature, float pressur
 static float seawater_thermal_conductivity_f(float salinity, float temperature, float pressure);
 static float seawater_thermal_diffusivity_f(float salinity, float temperature, float pressure);
 static float seawater_kinematic_viscosity_f(float salinity, float temperature, float pressure);
-static float panchev_f(float epsilon, float kvis, uint16_t kvec_size, float *panchev_spec);
-static float batchelor_f(float epsilon, float chi, float kvis, float kappa, uint16_t cutoff, float *batchelor_spec);
+static float fom_panchev_f(float *shear_spec,float epsilon, float kvis, uint16_t kvec_size, float *panchev_spec);
+static float fom_batchelor_f(float *temp_spec,float epsilon, float chi, float kvis, float kappa, uint16_t cutoff, float *batchelor_spec);
 // end
 
 /*------------------------------ Module Code ----------------------------a---*/
@@ -347,9 +347,7 @@ void mod_som_epsiobp_init_f(mod_som_efe_obp_config_ptr_t config_ptr_in, mod_som_
 //  float kvec_start=2.0;
   for (uint16_t i = 0; i < settings->nfft/2; i++) {
     vals->freq[i] = (float) (i + 1)/(settings->nfft)*config->f_samp;
-    cals->cafilter_freq[i]=vals->freq[i];
-    cals->cafilter_coeff[i]=1;
-//    fft_ptr->kvec[i] = kvec_start + i*dk_interp;
+    filters_ptr->ca_shear[i]=cals->cafilter_coeff[i];
   }
 
 
@@ -361,9 +359,9 @@ void mod_som_epsiobp_init_f(mod_som_efe_obp_config_ptr_t config_ptr_in, mod_som_
   //ALB compute elect shear, it is use in shear_filter_f
   float denom = 2*vals->freq[settings->nfft/2 - 1];
   // interpolate to get proper cafilter given freq
-  interp1_f(cals->cafilter_freq, cals->cafilter_coeff,
-            cals->cafilter_size, vals->freq,
-            filters_ptr->ca_shear, settings->nfft/2);
+//  interp1_f(cals->cafilter_freq, cals->cafilter_coeff,
+//            cals->cafilter_size, vals->freq,
+//            filters_ptr->ca_shear, settings->nfft/2);
 
   // loop to find values for other elements of the filter
   for (uint16_t i = 0; i < settings->nfft/2; i++) {
@@ -372,6 +370,9 @@ void mod_som_epsiobp_init_f(mod_som_efe_obp_config_ptr_t config_ptr_in, mod_som_
       filters_ptr->adc_tf[i] = pow(sinc_f(vals->freq[i]/denom), 4.0);
 
   }
+
+  //ALB compute fpo7 noise spectrum
+  mod_som_epsiobp_fp07_noise_f();
 
   // calculate hamming window and normalization
   hamming_window_f(settings->nfft, config->f_samp, vals->hamming_window, &vals->normalization);
@@ -511,7 +512,7 @@ void mod_som_efe_obp_accel_spectrum_f(float *seg_buffer, int spectra_offset, mod
 }
 
 
-void mod_som_efe_obp_calc_epsilon_f(float *local_epsilon, float *nu, float *fom, mod_som_efe_obp_ptr_t mod_som_efe_obp_ptr)
+void mod_som_efe_obp_calc_epsilon_f(float *local_epsilon, float *nu, float *fom_ptr, mod_som_efe_obp_ptr_t mod_som_efe_obp_ptr)
 /*******************************************************************************
  * @brief
  *   function to calculate a value for dissipation (i.e. epsilon) in W/kg for
@@ -680,17 +681,12 @@ void mod_som_efe_obp_calc_epsilon_f(float *local_epsilon, float *nu, float *fom,
   }
   *local_epsilon = eps_3;
   // calculate figure of merit
-  //ALB modify
-//  float panchev_spec[settings->nfft/2];
-  float panchev_integral;
-  panchev_integral = panchev_f(eps_3, kvis, kvec_3_size, theospec_ptr->panchev_spec);
+  *fom_ptr = fom_panchev_f(local_avg_spec_shear_ptr, eps_3, kvis, kvec_3_size, theospec_ptr->panchev_spec);
 
-  //TODO compute fom
-//  *fom = spectrum_integral/panchev_integral;
 //    }
 }
 
-void mod_som_efe_obp_calc_chi_f(float *local_epsilon, float *local_chi, float *kappa, float *fom, mod_som_efe_obp_ptr_t mod_som_efe_obp_ptr)
+void mod_som_efe_obp_calc_chi_f(float *local_epsilon, float *local_chi, float *kappa_t, float *fom, mod_som_efe_obp_ptr_t mod_som_efe_obp_ptr)
 /*******************************************************************************
  * @brief
  *   function to calculate a value for dissipation of thermal variance in K^2/s (chi)
@@ -739,19 +735,17 @@ void mod_som_efe_obp_calc_chi_f(float *local_epsilon, float *local_chi, float *k
         chi_sum += local_avg_spec_temp_ptr[i]*w*pow((2*M_PI*vals->kvec[i]), 2.0);
     }
     //  compute chi
-    float kappa_t = seawater_thermal_diffusivity_f(S, T, P);
+    *kappa_t = seawater_thermal_diffusivity_f(S, T, P);
 //    float dk = k_fp07[1] - k_fp07[0];
     float dk = config->f_samp/settings->nfft/w;
-    float chi = 6*kappa_t*dk*chi_sum;
+    float chi = 6*(*kappa_t)*dk*chi_sum;
     *local_chi = chi;
-    float batchelor_integral;
     //ALB modify
 //    float batchelor_spec[settings->nfft/2];
     float kvis = seawater_kinematic_viscosity_f(S, T, P);
-    batchelor_integral = batchelor_f(*local_epsilon, chi, kvis, kappa_t, *(vals->fp07_cutoff), theospec_ptr->batchelor_spec);
+    //ALB compute FOM
+    *fom = fom_batchelor_f(local_avg_spec_temp_ptr,*local_epsilon, chi, kvis, *kappa_t, *(vals->fp07_cutoff), theospec_ptr->batchelor_spec);
 
-    //ALB TODO compute FOM
-//    *fom = chi_sum/batchelor_integral;
 //  }
 }
 
@@ -879,7 +873,6 @@ uint16_t mod_som_epsiobp_fp07_cutoff_f(float *fp07_spectrum, uint16_t size)
   float threshold;
   uint16_t cutoff = size;
 //  float fp07_smoothed[size];
-  mod_som_epsiobp_fp07_noise_f();
   // smooth data
   smooth_movingmean_f(fp07_spectrum, fft_ptr->fp07_smoothed, size, window);
   // loop to find cutoff
@@ -1316,7 +1309,7 @@ float seawater_kinematic_viscosity_f(float salinity, float temperature, float pr
   return nu;
 }
 
-float panchev_f(float epsilon, float kvis, uint16_t kvec_size, float *panchev_spec)
+float fom_panchev_f(float *shear_spec, float epsilon, float kvis, uint16_t kvec_size, float *panchev_spec)
 /*******************************************************************************
  * @brief
  *   function to calculate the panchev spectrum for the current wavenumber vector
@@ -1346,6 +1339,12 @@ float panchev_f(float epsilon, float kvis, uint16_t kvec_size, float *panchev_sp
   float sum = 0;
   float dk = vals->kvec[1] - vals->kvec[0];
   float integral = 0;
+  float average  =0;
+
+  //ALB Figure of Merit buisness
+  float sig_lnS = 5/4 * settings->degrees_of_freedom^(-7/9);
+  float sum1;
+  float fom;
 
   // compute spectrum
   for (uint16_t i = 0; i < kvec_size; i++) {
@@ -1355,15 +1354,25 @@ float panchev_f(float epsilon, float kvis, uint16_t kvec_size, float *panchev_sp
           sum = sum + delta*(1 + pow(z, 2))*(a*pow(z, c23) + (sc32*ac32)*pow(theospec_ptr->kn[i], c23))*exp(-c32*a*pow((theospec_ptr->kn[i]/z), c43) - (sc32*ac32*pow((theospec_ptr->kn[i]/z), 2)));
       }
       phi = 0.5*pow(theospec_ptr->kn[i], -5.0/3.0)*sum;
-      panchev_spec[i] = scale*pow((theospec_ptr->kn[i]/eta), 2)*phi;
-      integral = integral + panchev_spec[i]*dk;
+      panchev_spec[i] =log10(shear_spec[i]/( scale*pow((theospec_ptr->kn[i]/eta), 2)*phi));
+      //      *fom_ptr=log10(shear_spec[i]/panchev_spec[i]);
+      integral = integral + panchev_spec[i];
+  }
+  average = integral / (float) kvec_size;
+  /*  Compute  variance*/
+  for (uint16_t i = 0; i < kvec_size; i++) {
+      {
+        sum1 = sum1 + pow((panchev_spec[i] - average), 2);
+      }
+      fom = sum1 / (float)kvec_size;
+      fom = fom /sig_lnS;
   }
 
   // return integral value
-  return integral;
+  return fom;
 }
 
-float batchelor_f(float epsilon, float chi, float kvis, float kappa, uint16_t cutoff, float *batchelor_spec)
+float fom_batchelor_f(float *temp_spec, float epsilon, float chi, float kvis, float kappa, uint16_t cutoff, float *batchelor_spec)
 /*******************************************************************************
  * @brief
  *   function to calculate the batchelor spectrum for the current wavenumber vector
@@ -1385,24 +1394,44 @@ float batchelor_f(float epsilon, float chi, float kvis, float kappa, uint16_t cu
  ******************************************************************************/
 {
   // initialize constants and variables
-  float eta = pow(pow(kvis, 3)/epsilon, 1.0/4.0);
+//  float eta = pow(pow(kvis, 3)/epsilon, 1.0/4.0);
   static const float q = 3.7;
   float kb = pow((epsilon/kvis/pow(kappa, 2.0)), 1.0/4.0);
   float a, uppera, g_b;
   float dk = vals->kvec[1] - vals->kvec[0];
   float integral = 0;
+  float average  =0;
+
+  //ALB Figure of Merit buisness
+  float sig_lnS = 5/4 * settings->degrees_of_freedom^(-7/9);
+  float sum1;
+  float fom;
+
 
   // calculate spectrum
   for (uint16_t i = 0; i < cutoff; i++) {
       a = sqrt(2*q)*2*M_PI*vals->kvec[i]/kb;
       uppera = erf(a/sqrt(2.0))*sqrt(M_PI/2);
       g_b = 2*M_PI*a*(exp(-pow(a, 2.0)/2) - a*uppera);
-      batchelor_spec[i] = sqrt(q/2)*(chi/kb/kappa)*g_b;
-      integral = integral + batchelor_spec[i]*dk;
+//      batchelor_spec[i] = sqrt(q/2)*(chi/kb/kappa)*g_b;
+      batchelor_spec[i] =log10(temp_spec[i]/(sqrt(q/2)*(chi/kb/kappa)*g_b));
+
+//      integral = integral + batchelor_spec[i]*dk;
+      integral = integral + batchelor_spec[i];
+  }
+
+  average = integral / (float) cutoff;
+  /*  Compute  variance*/
+  for (uint16_t i = 0; i < cutoff; i++) {
+      {
+        sum1 = sum1 + pow((batchelor_spec[i] - average), 2);
+      }
+      fom = sum1 / (float)cutoff;
+      fom = fom /sig_lnS;
   }
 
   // return integral value
-  return integral;
+  return fom;
 
 }
 /*----------------------------- Test Harness -------------------------------*/
