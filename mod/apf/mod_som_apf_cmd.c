@@ -208,7 +208,7 @@ CPU_INT16S mod_som_apf_cmd_daq_f(CPU_INT16U argc,
       if (!Str_Cmp(argv[i], "start"))
       {
           profile_id = shellStrtol(argv[i+1], &err); // Convert the third argument to int to get proid
-  //        status = mod_som_apf_daq_start_f((uint64_t)profile_id);
+          status = mod_som_apf_daq_start_f((uint64_t)profile_id);
           status = MOD_SOM_APF_STATUS_OK; // just for debug to test with daq - mnbui Nov30,2021
 
           if (status==MOD_SOM_APF_STATUS_OK)
