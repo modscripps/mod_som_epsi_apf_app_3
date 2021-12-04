@@ -1817,6 +1817,7 @@ uint32_t index=0;
           memcpy( local_efeobp_efe_accel_ptr,
                  &adc_sample_volt,
                   sizeof(float));
+          //ALB conve
           *local_efeobp_efe_accel_ptr=((*local_efeobp_efe_accel_ptr)-
                                       MOD_SOM_EFE_OBP_ACCELL_OFFSET)/
                                       MOD_SOM_EFE_OBP_ACCELL_FACTOR;
