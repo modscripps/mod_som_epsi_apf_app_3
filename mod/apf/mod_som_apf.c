@@ -56,7 +56,7 @@ mod_som_apf_status_t mod_som_apf_init_f(){
     mod_som_apf_status_t status;
     RTOS_ERR  err;
 
-    //ALB gittest1
+    //ALB gittest#2
 
 #ifdef  RTOS_MODULE_COMMON_SHELL_AVAIL
     status = mod_som_apf_init_cmd_f();
