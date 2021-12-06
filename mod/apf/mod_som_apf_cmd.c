@@ -364,6 +364,13 @@ CPU_INT16S mod_som_apf_cmd_ok_status_f(CPU_INT16U argc,
  * @brief
  *   command shell for PowerOff command
  *   prepare SOM to futur power off
+ *    stop efe sampling
+ *    stop sbe41 communication
+ *    stop efeobp fill segment task
+ *    stop efeobp compute spectra task
+ *    stop efeobp compute dissrate task
+ *    stop afp    producer task
+ *    stop afp    consumer task
  *   should return an apf status.
  *   Power will turn off after reception of this status
  *

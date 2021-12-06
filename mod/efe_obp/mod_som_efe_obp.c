@@ -211,10 +211,10 @@ mod_som_status_t mod_som_efe_obp_init_f(){
 
 
     //ALB temporary for debug so I do not type the command
-    mod_som_efe_obp_start_fill_segment_task_f();
-    mod_som_efe_obp_start_cpt_spectra_task_f();
-    mod_som_efe_obp_start_cpt_dissrate_task_f();
-    mod_som_efe_obp_start_consumer_task_f();
+//    mod_som_efe_obp_start_fill_segment_task_f();
+//    mod_som_efe_obp_start_cpt_spectra_task_f();
+//    mod_som_efe_obp_start_cpt_dissrate_task_f();
+//    mod_som_efe_obp_start_consumer_task_f();
 
     mod_som_efe_obp_ptr->sample_count                = 0;
     mod_som_efe_obp_ptr->sampling_flag               = 0;

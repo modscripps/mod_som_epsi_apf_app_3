@@ -1507,7 +1507,7 @@ void mod_som_apf_copy_F1_element_f(  uint64_t * curr_avg_timestamp_ptr,
                                     float * curr_epsilon_ptr,
                                     float * curr_chi_ptr,
                                     float * curr_fom_epsi_ptr,
-                                    float * curr_fom_temp_ptr,
+                                    float * curr_fom_chi_ptr,
                                     uint8_t * dacq_ptr)
 {
 
@@ -1519,8 +1519,8 @@ void mod_som_apf_copy_F1_element_f(  uint64_t * curr_avg_timestamp_ptr,
 
   float local_epsilon   = log10(*curr_epsilon_ptr);
   float local_chi       = log10(*curr_chi_ptr);
-  float local_epsi_fom  = *curr_epsilon_ptr;
-  float local_chi_fom   = *curr_chi_ptr;
+  float local_epsi_fom  = *curr_fom_epsi_ptr;
+  float local_chi_fom   = *curr_fom_chi_ptr;
 
 
   uint8_t  mod_bit_dissrates[MOD_SOM_APF_PRODUCER_DISSRATE_RES] = {0};
@@ -1542,29 +1542,33 @@ void mod_som_apf_copy_F1_element_f(  uint64_t * curr_avg_timestamp_ptr,
                               *curr_avg_timestamp_ptr;
 
 
+  //ALB min out the local epsilon and chi to -12
   local_epsilon = MAX(local_epsilon,min_dissrate);
   local_chi     = MAX(local_chi,min_dissrate);
 
+  //ALB max out the local epsilon and chi to -3
   local_epsilon = MIN(local_epsilon,max_dissrate);
   local_chi     = MIN(local_chi,max_dissrate);
 
-
-
+  //ALB min out the local fom to 0
   local_epsi_fom     = MAX(local_epsi_fom,min_fom);
   local_chi_fom      = MAX(local_chi_fom,min_fom);
 
+  //ALB max out the local fom to 10
   local_epsi_fom     = MIN(local_epsi_fom,max_fom);
   local_chi_fom      = MIN(local_chi_fom,max_fom);
 
-
+  //ALB decimate log10 epsilon with 12 bits (3 bytes)
   mod_epsilon  = (uint32_t) ceil(local_epsilon*
            mod_som_apf_ptr->producer_ptr->decim_coef.dissrate_per_bit+
            mod_som_apf_ptr->producer_ptr->decim_coef.dissrate_counts_at_origin);
 
+  //ALB decimate log10 chi with 12 bits (3 bytes)
   mod_chi      = (uint32_t) ceil(local_chi*
            mod_som_apf_ptr->producer_ptr->decim_coef.dissrate_per_bit+
            mod_som_apf_ptr->producer_ptr->decim_coef.dissrate_counts_at_origin);
 
+  //ALB decimate fom with 8 bits (1 bytes)
   mod_epsi_fom  = (uint8_t) ceil(local_epsi_fom*
                      mod_som_apf_ptr->producer_ptr->decim_coef.fom_per_bit+
                      mod_som_apf_ptr->producer_ptr->decim_coef.fom_counts_at_origin) ;
@@ -1572,10 +1576,10 @@ void mod_som_apf_copy_F1_element_f(  uint64_t * curr_avg_timestamp_ptr,
                        mod_som_apf_ptr->producer_ptr->decim_coef.fom_per_bit+
                        mod_som_apf_ptr->producer_ptr->decim_coef.fom_counts_at_origin) ;
 
-  //ALB bit shifting to build mod_bit_fom. TODO make sure it right.
+  //ALB bit shifting to build mod_bit_fom.
   mod_bit_fom = (mod_epsi_fom<<4) + mod_chi_fom;
 
-  //ALB bit shifting to mod_bit_dissrates. TODO make sure it right.
+  //ALB bit shifting to mod_bit_dissrates.
   mod_bit_dissrates[0]= (uint8_t) (mod_epsilon>>4);
   mod_bit_dissrates[1]= (uint8_t) (mod_epsilon<<4);
   mod_bit_dissrates[1]= (uint8_t) (mod_bit_dissrates[1] & (mod_chi>>8));
@@ -1985,7 +1989,7 @@ mod_som_apf_status_t mod_som_apf_daq_start_f(uint64_t profile_id){
   sprintf(filename, "Profile%lu",(uint32_t) mod_som_apf_ptr->profile_id);
   mod_som_sdio_define_filename_f(filename);
   //ALB write MODSOM settings on the SD file
-  mod_som_settings_sd_settings_f();
+//  mod_som_settings_sd_settings_f();
   //ALB initialize Meta_Data Structure, TODO
   mod_som_apf_init_meta_data(mod_som_apf_ptr->producer_ptr->
                              acq_profile.mod_som_apf_meta_data);
@@ -1997,7 +2001,7 @@ mod_som_apf_status_t mod_som_apf_daq_start_f(uint64_t profile_id){
 	//ALB start turbulence processing task
  status|= mod_som_efe_obp_start_fill_segment_task_f();
  status|= mod_som_efe_obp_start_cpt_spectra_task_f();
-  status|= mod_som_efe_obp_start_cpt_dissrate_task_f();
+ status|= mod_som_efe_obp_start_cpt_dissrate_task_f();
 
 
   // Delay Start Task execution for
@@ -2167,7 +2171,8 @@ void mod_som_apf_init_meta_data(mod_som_apf_meta_data_t mod_som_apf_meta_data)
   mod_som_apf_meta_data.profile_id=mod_som_apf_ptr->profile_id;
 
   //ALB get some values
-  mod_som_apf_meta_data.daq_timestamp=sl_sleeptimer_get_time();
+  sl_sleeptimer_timestamp_t toto =sl_sleeptimer_get_time();
+  mod_som_apf_meta_data.daq_timestamp=toto;
 
   mod_som_apf_meta_data.sample_cnt=0;
   mod_som_apf_meta_data.end_metadata=0xFFFF;

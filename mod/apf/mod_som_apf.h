@@ -901,7 +901,7 @@ void mod_som_apf_copy_F1_element_f( uint64_t * curr_avg_timestamp_ptr,
                                     float * curr_epsilon_ptr,
                                     float * curr_chi_ptr,
                                     float * curr_fom_epsi_ptr,
-                                    float * curr_fom_temp_ptr,
+                                    float * curr_fom_chi_ptr,
                                     uint8_t * dacq_ptr);
 
 
