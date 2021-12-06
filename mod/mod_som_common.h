@@ -54,7 +54,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include <common/include/lib_mem.h>
+//#include <common/include/lib_mem.h>
 #include <common/include/lib_def.h>
 #include <common/include/lib_ascii.h>
 

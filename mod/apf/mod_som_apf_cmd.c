@@ -38,10 +38,9 @@ static SHELL_CMD  mod_som_apf_cmd_tbl[] =
         { "probeno",      mod_som_apf_cmd_probe_id_f },
         { "probeno?",     mod_som_apf_cmd_probe_id_status_f },
         { "poweroff",     mod_som_apf_cmd_poweroff_f },
-       { "sd_format?",    mod_som_apf_cmd_sd_format_status_f },
+        { "sd_format?",    mod_som_apf_cmd_sd_format_status_f },
         { "sd_format",    mod_som_apf_cmd_sd_format_f },
-        { "process_nfft", mod_som_apf_cmd_process_nfft_f },
- //       { "comm_packet_format?", mod_som_apf_cmd_comm_packet_format_status_f },
+        { "comm_packet_format?", mod_som_apf_cmd_comm_packet_format_status_f },
         { "comm_packet_format", mod_som_apf_cmd_comm_packet_format_f },
         { 0, 0 }
 };
