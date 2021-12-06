@@ -52,7 +52,7 @@ mod_som_status_t mod_som_settings_init_f(){
 
 	//ALB Work around until I am sure re-using previous settings is safe.
 	//ALB right now I am ALWAYS starting from the default settings
-	mod_som_settings_struct.size=0xFFFFFFFF;
+//	mod_som_settings_struct.size=0xFFFFFFFF;
 
 	if(mod_som_settings_struct.size==0xFFFFFFFF){
 		//ALB case where the UserData page is already empty
