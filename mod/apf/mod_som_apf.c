@@ -2341,7 +2341,7 @@ mod_som_apf_status_t mod_som_apf_epsi_id_status_f(){
   // sending the above string to the APF port - Mai - Nov 18, 2021
   status = mod_som_apf_send_line_f(apf_leuart_ptr,apf_reply_str, reply_str_len);
 
-if (status>0)
+if (status!=0)
 {
     mod_som_io_print_f("EpsiNo?,nak,%lu\r\n",status);
 
@@ -2390,6 +2390,16 @@ mod_som_apf_status_t mod_som_apf_probe_id_f(CPU_INT16U argc,
       mod_som_efe_get_settings_ptr_f();
 
   switch (argc){
+    case 1:
+    case 2:
+    case 3:
+      mod_som_io_print_f("ProbeNo,nak,%s\r\n","missing arguments");
+      // save to the local string for sending out - Mai- Dec 6, 2021
+      sprintf(apf_reply_str,"ProbeNo,nak,%s\r\n","missing arguments");
+      reply_str_len = strlen(apf_reply_str);
+      // sending the above string to the APF port - Mai - Dec 6, 2021
+      bytes_sent = mod_som_apf_send_line_f(apf_leuart_ptr,apf_reply_str, reply_str_len);
+    break;
     case 4:
       cal= strtol(argv[3], &endptr, 10);
       length_argument2=strlen(argv[2]);
@@ -2440,7 +2450,7 @@ mod_som_apf_status_t mod_som_apf_probe_id_f(CPU_INT16U argc,
     default:
       status|=MOD_SOM_APF_STATUS_FAIL_WRONG_ARGUMENTS;
   }
-  if(status>0){
+  if(status!=0){
       mod_som_io_print_f("ProbeNo,nak,%lu\r\n",status);
       // save to the local string for sending out - Mai-Nov 18, 2021
       sprintf(apf_reply_str,"ProbeNo,nak,%lu\r\n",status);
@@ -2458,6 +2468,14 @@ mod_som_apf_status_t mod_som_apf_probe_id_f(CPU_INT16U argc,
  *   should return an apf status.
  * @return
  *   MOD_SOM_APF_STATUS_OK if function execute nicely
+ *   according to in pdf file:
+ *   "probeNo?\r"
+ *   "proNo?,ack,type1,serno1,coef1,type2,serno2,coef2\r\n"
+ *   "probe_no?,nak,error-description\r\n"
+ *
+ *   'S' = shear (sensor 2)
+ *   'F' = FP07 (sensor 1)
+ *
  ******************************************************************************/
 mod_som_apf_status_t mod_som_apf_probe_id_status_f(){
 
@@ -2484,11 +2502,11 @@ mod_som_apf_status_t mod_som_apf_probe_id_status_f(){
   // sending the above string to the APF port - Mai - Nov 18, 2021
   bytes_sent = mod_som_apf_send_line_f(apf_leuart_ptr,apf_reply_str, reply_str_len);
 
-  status|= mod_som_io_print_f("ProbeNo,ack,%s,%s,%lu\r\n","S",
+  status|= mod_som_io_print_f("ProbeNo,ack,%s,%s,%lu\r\n","F",
                               local_efe_settings_ptr->sensors[0].sn,
                               (uint32_t)local_efe_settings_ptr->sensors[0].cal);
   // save to the local string for sending out - Mai-Nov 18, 2021
-  sprintf(apf_reply_str,"ProbeNo,ack,%s,%s,%lu\r\n","S",
+  sprintf(apf_reply_str,"ProbeNo,ack,%s,%s,%lu\r\n","F",
           local_efe_settings_ptr->sensors[0].sn,
           (uint32_t)local_efe_settings_ptr->sensors[0].cal);
   reply_str_len = strlen(apf_reply_str);
@@ -2500,7 +2518,8 @@ mod_som_apf_status_t mod_som_apf_probe_id_status_f(){
   }
 
 
-  if(status>0){
+  if(status!=0) // error
+    {
       mod_som_io_print_f("ProbeNo,nak,%lu\r\n",status);
       // save to the local string for sending out - Mai-Nov 18, 2021
       sprintf(apf_reply_str,"ProbeNo,nak,%lu\r\n",status);
@@ -2717,7 +2736,7 @@ mod_som_apf_status_t mod_som_apf_time_status_f(){
   // sending the above string to the APF port - Mai - Nov 18, 2021
   bytes_sent = mod_som_apf_send_line_f(apf_leuart_ptr,apf_reply_str, reply_str_len);
 
-   if (status==MOD_SOM_APF_STATUS_OK){
+   if (status!=MOD_SOM_APF_STATUS_OK){
 	    mod_som_io_print_f("time?,nak,%lu\r\n",status);
       // save to the local string for sending out - Mai-Nov 18, 2021
       sprintf(apf_reply_str,"time?,nak,%lu\r\n",status);
@@ -2901,7 +2920,7 @@ mod_som_apf_status_t mod_som_apf_sd_format_f(CPU_INT16U argc,
 
   mod_som_apf_status_t status=0;
   char *endptr;
-  uint8_t mode;
+  uint8_t mode = 0;
   bool good_argument=false;
   CPU_INT16U argc_sbe41 = 2;
   CPU_CHAR   *argv_sbe41_sd[2]={"sbe.mode" ,"1"};
@@ -2973,9 +2992,9 @@ mod_som_apf_status_t mod_som_apf_sd_format_f(CPU_INT16U argc,
   status|=mod_som_settings_save_settings_f();
 
   if(good_argument){
-      mod_som_io_print_f("sd_format,ak\r\n");
+      mod_som_io_print_f("sd_format,ack,%lu\r\n",mode);
       // save to the local string for sending out - Mai-Nov 18, 2021
-      sprintf(apf_reply_str,"sd_format,ak\r\n");
+      sprintf(apf_reply_str,"sd_format,ack,%lu\r\n",mode);
   }else{
       mod_som_io_print_f("sd_format,nak,%s\r\n","wrong arguments");
       // save to the local string for sending out - Mai-Nov 18, 2021
@@ -3027,27 +3046,21 @@ mod_som_apf_status_t mod_som_apf_sd_format_status_f(CPU_INT16U argc,
   // get the port's fd
   apf_leuart_ptr = (LEUART_TypeDef *)mod_som_apf_ptr->com_prf_ptr->handle_port;
 
-
-
-      status = mod_som_io_print_f("sd_format,ack,%i\r\n",mod_som_apf_ptr->settings_ptr->sd_packet_format);
+      status = mod_som_io_print_f("sd_format?,ack,%i\r\n",mod_som_apf_ptr->settings_ptr->sd_packet_format);
       // save to the local string for sending out - Mai-Nov 18, 2021
-      sprintf(apf_reply_str,"sd_format,ack,%i\r\n",mod_som_apf_ptr->settings_ptr->sd_packet_format);
+      sprintf(apf_reply_str,"sd_format?,ack,%i\r\n",mod_som_apf_ptr->settings_ptr->sd_packet_format);
       reply_str_len = strlen(apf_reply_str);
       // sending the above string to the APF port - Mai - Nov 18, 2021
       bytes_sent = mod_som_apf_send_line_f(apf_leuart_ptr,apf_reply_str, reply_str_len);
 
-  if (status){
-      mod_som_io_print_f("sd_format,nak,%lu\r\n",status);
+  if (status!=0){
+      mod_som_io_print_f("sd_format?,nak,%lu\r\n",status);
       // save to the local string for sending out - Mai-Nov 18, 2021
-      sprintf(apf_reply_str,"sd_format,nak,%lu\r\n",status);
+      sprintf(apf_reply_str,"sd_format?,nak,%lu\r\n",status);
       reply_str_len = strlen(apf_reply_str);
       // sending the above string to the APF port - Mai - Nov 18, 2021
       bytes_sent = mod_som_apf_send_line_f(apf_leuart_ptr,apf_reply_str, reply_str_len);
  }
-  reply_str_len = strlen(apf_reply_str);
-  // sending the above string to the APF port - Mai - Nov 18, 2021
-  bytes_sent = mod_som_apf_send_line_f(apf_leuart_ptr,apf_reply_str, reply_str_len);
-
   if(bytes_sent==0){
       //TODO handle the error
   }
