@@ -436,7 +436,7 @@ mod_som_status_t mod_som_settings_save_settings_f(){
 	    // copy data from dataPage to the temp
 
 	 	if ((msc_ret_val = MSC_ErasePage(userDataPage_ptr)) == mscReturnOk)
-	  	{
+	  {
 //	 		printf("Success for erasing before writing ...\r\n");//MHA
 	 		// 2. success erasing data, now write data in the upper half page at the address: from base adding 2048: 0x0FE00800UL
 	 		// 2a. write back the copy data to lower half:
@@ -445,7 +445,7 @@ mod_som_status_t mod_som_settings_save_settings_f(){
 	 		if (msc_ret_val == mscReturnOk)
 	 		{
 //	 			printf("Success writing the copy in the lower half\r\n");//MHA
-}
+	 		}
 	 		// 2b. write the settings data in the upper half: later write the settings into this up half
 	 		msc_ret_val = MSC_WriteWord(uphalf_userDataPage, &mod_som_settings_struct, mod_som_settings_struct.size);
 	 		if (msc_ret_val == mscReturnOk)
@@ -456,13 +456,16 @@ mod_som_status_t mod_som_settings_save_settings_f(){
 	 			//Read_PrintSetupData(w_userDataInfo_addr, settingsData, sizeof(settingsData));
 	 		}
 	 		else
+	 		{
 	 			printf("MSC: Failed to write\n\r");
-	 		status|=MOD_SOM_SETTINGS_STATUS_FAIL_WRITING_USERPAGE_CMD;
-	   	}
-	 	else
+	 			status|=MOD_SOM_SETTINGS_STATUS_FAIL_WRITING_USERPAGE_CMD;
+	 		}  // endof if ((msc_ret_val = MSC_ErasePage(userDataPage_ptr)) == mscReturnOk)
+	  }
+	  else
+	  {
 //	  		printf("Failed to erase the page in msc\r\n");//MHA
-    status|=MOD_SOM_SETTINGS_STATUS_FAIL_WRITING_USERPAGE_CMD;
-
+	      status|=MOD_SOM_SETTINGS_STATUS_FAIL_WRITING_USERPAGE_CMD;
+	  }
 		// 4. disable the flash controller
 		MSC_Deinit();
     return mod_som_settings_encode_status_f(status);
@@ -742,7 +745,7 @@ uint8_t mod_som_settings_decode_status_f(mod_som_status_t mod_som_status){
  * @return
  *     MOD SOM status code
  ******************************************************************************/
-mod_som_status_t mod_som_settings_encode_status_f(uint8_t mod_som_io_status){
+mod_som_status_t  (uint8_t mod_som_io_status){
     if(mod_som_io_status==MOD_SOM_STATUS_OK)
         return MOD_SOM_STATUS_OK;
     return MOD_SOM_ENCODE_STATUS(MOD_SOM_SETTINGS_STATUS_PREFIX, mod_som_io_status);
