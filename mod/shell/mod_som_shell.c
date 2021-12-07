@@ -203,6 +203,9 @@ mod_som_status_t mod_som_shell_get_input_f(char *buf, uint32_t * buf_len){
             c = RETARGET_ReadChar();
         }
 
+        //ALB   add the watch clock.
+        //TODO
+
         if (c == ASCII_CHAR_DELETE || c == 0x08) { // User inputed backspace
             if (i) {
                 mod_som_io_print_f("\b \b");

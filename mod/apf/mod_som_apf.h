@@ -36,7 +36,9 @@
 #define MOD_SOM_APF_PAYLOAD_LENGTH          8
 #define MOD_SOM_APF_PAYLOAD_CHECKSUM_LENGTH 5
 
-#define MOD_SOM_APF_DACQ_STRUCT_SIZE         25000
+//#define MOD_SOM_APF_DACQ_STRUCT_SIZE         25000
+//ALB test with a smaller payload
+#define MOD_SOM_APF_DACQ_STRUCT_SIZE         2500
 #define MOD_SOM_APF_DACQ_TIMESTAMP_SIZE      2
 #define MOD_SOM_APF_DACQ_DISSRATE_SIZE       3
 #define MOD_SOM_APF_DACQ_PRESSURE_SIZE       4
@@ -896,7 +898,7 @@ uint32_t mod_som_apf_send_line_f(LEUART_TypeDef *leuart, char * buf, uint32_t nb
  *   MOD_SOM_STATUS_OK if initialization goes well
  *   or otherwise
  ******************************************************************************/
-void mod_som_apf_copy_F1_element_f( uint64_t * curr_avg_timestamp_ptr,
+uint32_t mod_som_apf_copy_F1_element_f( uint64_t * curr_avg_timestamp_ptr,
                                     float * curr_pressure_ptr,
                                     float * curr_epsilon_ptr,
                                     float * curr_chi_ptr,

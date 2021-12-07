@@ -213,7 +213,7 @@ mod_som_apf_status_t mod_som_apf_default_settings_f(
   strncpy(settings_ptr->header,
           MOD_SOM_APF_HEADER,MOD_SOM_APF_SETTINGS_STR_lENGTH);
 
-  settings_ptr->comm_telemetry_packet_format=F1;
+  settings_ptr->comm_telemetry_packet_format=F2;
   settings_ptr->sd_packet_format=SD0;
 
   settings_ptr->initialize_flag=true;
@@ -958,7 +958,8 @@ void mod_som_apf_producer_task_f(void  *p_arg){
                     case F1:
                       //ALB convert and store the current dissrate into the MOD format
                       // log10(epsi) log10(chi):  3bytes (12 bits for each epsi and chi sample)
-                      mod_som_apf_copy_F1_element_f( curr_avg_timestamp_ptr,
+                      mod_som_apf_ptr->producer_ptr->dacq_size=
+                          mod_som_apf_copy_F1_element_f( curr_avg_timestamp_ptr,
                                                      curr_avg_pressure_ptr,
                                                      curr_epsilon_ptr,
                                                      curr_chi_ptr,
@@ -985,9 +986,9 @@ void mod_som_apf_producer_task_f(void  *p_arg){
                   }//end switch format
 
                   //ALB update dacq_size
-                  mod_som_apf_ptr->producer_ptr->dacq_size=
-                               mod_som_apf_ptr->producer_ptr->dacq_ptr-
-                              &mod_som_apf_ptr->producer_ptr->acq_profile.data_acq[0];
+                  mod_som_apf_ptr->producer_ptr->dacq_ptr=
+                      &mod_som_apf_ptr->producer_ptr->acq_profile.data_acq[0]+
+                       mod_som_apf_ptr->producer_ptr->dacq_size;
 
                   mod_som_apf_ptr->producer_ptr->stored_dissrates_cnt++;
               }//end if current P<previous P +dz
@@ -1504,7 +1505,7 @@ uint32_t mod_som_apf_send_line_f(LEUART_TypeDef *leuart_ptr,char * buf, uint32_t
  *   MOD_SOM_STATUS_OK if initialization goes well
  *   or otherwise
  ******************************************************************************/
-void mod_som_apf_copy_F1_element_f(  uint64_t * curr_avg_timestamp_ptr,
+uint32_t mod_som_apf_copy_F1_element_f(  uint64_t * curr_avg_timestamp_ptr,
                                     float * curr_avg_pressure_ptr,
                                     float * curr_epsilon_ptr,
                                     float * curr_chi_ptr,
@@ -1514,6 +1515,7 @@ void mod_som_apf_copy_F1_element_f(  uint64_t * curr_avg_timestamp_ptr,
 {
 
 
+  uint32_t dacq_size=0;
   uint32_t mod_epsilon, mod_chi;
   uint8_t mod_epsi_fom,mod_chi_fom;
   uint16_t local_avg_dissrate_timestamp; //ALB nb of sec since dacq
@@ -1606,6 +1608,10 @@ void mod_som_apf_copy_F1_element_f(  uint64_t * curr_avg_timestamp_ptr,
   memcpy(dacq_ptr,
          &mod_bit_fom,
          MOD_SOM_APF_PRODUCER_FOM_RES);
+
+  dacq_size=dacq_ptr-&mod_som_apf_ptr->producer_ptr->acq_profile.data_acq[0];
+
+  return dacq_size;
 }
 
 
