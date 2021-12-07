@@ -745,7 +745,7 @@ uint8_t mod_som_settings_decode_status_f(mod_som_status_t mod_som_status){
  * @return
  *     MOD SOM status code
  ******************************************************************************/
-mod_som_status_t  (uint8_t mod_som_io_status){
+mod_som_status_t mod_som_settings_encode_status_f (uint8_t mod_som_io_status){
     if(mod_som_io_status==MOD_SOM_STATUS_OK)
         return MOD_SOM_STATUS_OK;
     return MOD_SOM_ENCODE_STATUS(MOD_SOM_SETTINGS_STATUS_PREFIX, mod_som_io_status);
