@@ -2422,14 +2422,14 @@ mod_som_apf_status_t mod_som_apf_probe_id_f(CPU_INT16U argc,
       // make sure the serno has 3 digits and coef has 2 digits and cal not 0
       // if command: "probeno,S,123,12,F,123,12"
       // sensor 1: "S", length(123) = 3, length(12) = 2
-      if(!strcmp(argv[1],"shear") && (length_argument3==3) && (length_argument4==2) && (cal1>0)){
+      if(!strcmp(argv[1],"s") && (length_argument3==3) && (length_argument4==2) && (cal1>0)){
           channel_id = 0;
           memcpy(&local_efe_settings_ptr->sensors[channel_id].sn,argv[2],3);
           local_efe_settings_ptr->sensors[0].cal = cal1;
           argument_flag1 = true;
       }
       // sensor 2: "F", length(123) = 3, length(12) = 2
-      if(!strcmp(argv[4],"FP07") && (length_argument6==3) && (length_argument7==2) && (cal2>0))
+      if(!strcmp(argv[4],"f") && (length_argument6==3) && (length_argument7==2) && (cal2>0))
       {
           channel_id = 1;
           memcpy(&local_efe_settings_ptr->sensors[0].sn,
@@ -2442,12 +2442,12 @@ mod_som_apf_status_t mod_som_apf_probe_id_f(CPU_INT16U argc,
       if (argument_flag1 && argument_flag2)
       {
           status|= mod_som_settings_save_settings_f();
-          status|= mod_som_io_print_f("Probe_No,ack,%s,%s,%lu,%s,%s,%lu\r\n",argv[1],
+          status|= mod_som_io_print_f("probe_no,ack,%s,%s,%lu,%s,%s,%lu\r\n",argv[1],
                                       local_efe_settings_ptr->sensors[0].sn,
                                       (uint32_t)local_efe_settings_ptr->sensors[0].cal,argv[4],
                                       local_efe_settings_ptr->sensors[1].sn,
                                       (uint32_t)local_efe_settings_ptr->sensors[1].cal);
-          sprintf(apf_reply_str,"Probe_No,ack,%s,%s,%lu,%s,%s,%lu\r\n",argv[1],
+          sprintf(apf_reply_str,"probe_no,ack,%s,%s,%lu,%s,%s,%lu\r\n",argv[1],
                   local_efe_settings_ptr->sensors[0].sn,
                   (uint32_t)local_efe_settings_ptr->sensors[0].cal,argv[4],
                   local_efe_settings_ptr->sensors[1].sn,
@@ -2471,19 +2471,21 @@ mod_som_apf_status_t mod_som_apf_probe_id_f(CPU_INT16U argc,
 
   if(status!=0) // print out "ProbeNo,nak,status\r\n" and the right command format should input
   {
-      mod_som_io_print_f("Probe_No,nak,%lu\r\n",status);
+      mod_som_io_print_f("probe_no,nak,%lu\r\n",status);
       // save to the local string for sending out - Mai-Nov 18, 2021
-      sprintf(apf_reply_str,"Probe_No,nak,%lu\r\n",status);
+      sprintf(apf_reply_str,"probe_no,nak,%lu\r\n",status);
       reply_str_len = strlen(apf_reply_str);
       // sending the above string to the APF port - Mai - Nov 18, 2021
       bytes_sent = mod_som_apf_send_line_f(apf_leuart_ptr,apf_reply_str, reply_str_len);
+/*
       // send the right format command
-      mod_som_io_print_f("Right command: Probe_No,Type1(\"shear\"),SerNo1(3digits),Coef1(2digits),Type2(FP07),SerNo2(3digits),Coef2(2digits)\r\n");
+      mod_som_io_print_f("Right command: probe_no,Type1(\"s\"),SerNo1(3digits),Coef1(2digits),Type2(f),SerNo2(3digits),Coef2(2digits)\r\n");
       // save to the local string for sending out - Mai-Nov 18, 2021
-      sprintf(apf_reply_str,"Right command: Probe_No,Type1(\"shear\"),SerNo1(3digits),Coef1(2digits),Type2(FP07),SerNo2(3digits),Coef2(2digits)\r\n");
+      sprintf(apf_reply_str,"Right command: probe_no,Type1(\"s\"),SerNo1(3digits),Coef1(2digits),Type2(f),SerNo2(3digits),Coef2(2digits)\r\n");
       reply_str_len = strlen(apf_reply_str);
       // sending the above string to the APF port - Mai - Nov 18, 2021
       bytes_sent = mod_som_apf_send_line_f(apf_leuart_ptr,apf_reply_str, reply_str_len);
+*/
   }
 	return mod_som_apf_encode_status_f(MOD_SOM_APF_STATUS_OK);
 }
@@ -2518,22 +2520,22 @@ mod_som_apf_status_t mod_som_apf_probe_id_status_f(){
   mod_som_efe_settings_ptr_t local_efe_settings_ptr=
       mod_som_efe_get_settings_ptr_f();
 
-  status|= mod_som_io_print_f("ProbeNo?,ack,%s,%s,%lu\r\n","S",
+  status|= mod_som_io_print_f("probe_no?,ack,%s,%s,%lu\r\n","S",
                               local_efe_settings_ptr->sensors[1].sn,
                               (uint32_t)local_efe_settings_ptr->sensors[1].cal);
   // save to the local string for sending out - Mai-Nov 18, 2021
-  sprintf(apf_reply_str,"ProbeNo?,ack,%s,%s,%lu\r\n","S",
+  sprintf(apf_reply_str,"probe_no?,ack,%s,%s,%lu\r\n","S",
           local_efe_settings_ptr->sensors[1].sn,
           (uint32_t)local_efe_settings_ptr->sensors[1].cal);
   reply_str_len = strlen(apf_reply_str);
   // sending the above string to the APF port - Mai - Nov 18, 2021
   bytes_sent = mod_som_apf_send_line_f(apf_leuart_ptr,apf_reply_str, reply_str_len);
 
-  status|= mod_som_io_print_f("ProbeNo?,ack,%s,%s,%lu\r\n","F",
+  status|= mod_som_io_print_f("probe_no?,ack,%s,%s,%lu\r\n","F",
                               local_efe_settings_ptr->sensors[0].sn,
                               (uint32_t)local_efe_settings_ptr->sensors[0].cal);
   // save to the local string for sending out - Mai-Nov 18, 2021
-  sprintf(apf_reply_str,"ProbeNo?,ack,%s,%s,%lu\r\n","F",
+  sprintf(apf_reply_str,"probe_no?,ack,%s,%s,%lu\r\n","F",
           local_efe_settings_ptr->sensors[0].sn,
           (uint32_t)local_efe_settings_ptr->sensors[0].cal);
   reply_str_len = strlen(apf_reply_str);
@@ -2547,9 +2549,9 @@ mod_som_apf_status_t mod_som_apf_probe_id_status_f(){
 
   if(status!=0) // error
     {
-      mod_som_io_print_f("ProbeNo?,nak,%lu\r\n",status);
+      mod_som_io_print_f("probe_no?,nak,%lu\r\n",status);
       // save to the local string for sending out - Mai-Nov 18, 2021
-      sprintf(apf_reply_str,"ProbeNo?,nak,%lu\r\n",status);
+      sprintf(apf_reply_str,"probe_no?,nak,%lu\r\n",status);
       reply_str_len = strlen(apf_reply_str);
       // sending the above string to the APF port - Mai - Nov 18, 2021
       bytes_sent = mod_som_apf_send_line_f(apf_leuart_ptr,apf_reply_str, reply_str_len);
