@@ -36,13 +36,14 @@
 #define MOD_SOM_APF_PAYLOAD_LENGTH          8
 #define MOD_SOM_APF_PAYLOAD_CHECKSUM_LENGTH 5
 
-//#define MOD_SOM_APF_DACQ_STRUCT_SIZE         25000
+#define MOD_SOM_APF_DACQ_STRUCT_SIZE         25000
 //ALB test with a smaller payload
-#define MOD_SOM_APF_DACQ_STRUCT_SIZE         2500
+//#define MOD_SOM_APF_DACQ_STRUCT_SIZE         2500
 #define MOD_SOM_APF_DACQ_TIMESTAMP_SIZE      2
 #define MOD_SOM_APF_DACQ_DISSRATE_SIZE       3
 #define MOD_SOM_APF_DACQ_PRESSURE_SIZE       4
 #define MOD_SOM_APF_DACQ_DPDT_SIZE           4
+#define MOD_SOM_APF_DACQ_FOCO_SIZE           4
 #define MOD_SOM_APF_DACQ_SEAWATER_SPEED_SIZE 4
 #define MOD_SOM_APF_DACQ_FLAG_SIZE           1
 #define MOD_SOM_APF_DACQ_FOM_SIZE            1
@@ -68,7 +69,7 @@
 #define MOD_SOM_APF_PRODUCER_MIN_FOCO               1e-11   // min Fourier coef,
 #define MOD_SOM_APF_PRODUCER_MAX_FOCO               1       // max Fourier coef
 #define MOD_SOM_APF_PRODUCER_FOCO_RANGE             0xFFFF     // mod fourier coef resolution 16 bits
-#define MOD_SOM_APF_PRODUCER_FOCO_RES               2       // mod fom resolution 1 bytes
+#define MOD_SOM_APF_PRODUCER_FOCO_RES               2       // mod foco resolution 2 bytes
 
 
 #define MOD_SOM_APF_CONSUMER_TASK_PRIO              18u
@@ -916,7 +917,7 @@ uint32_t mod_som_apf_copy_F1_element_f( uint64_t * curr_avg_timestamp_ptr,
  *   MOD_SOM_STATUS_OK if initialization goes well
  *   or otherwise
  ******************************************************************************/
-void mod_som_apf_copy_F2_element_f(  uint64_t * curr_avg_timestamp_ptr,
+uint32_t mod_som_apf_copy_F2_element_f(  uint64_t * curr_avg_timestamp_ptr,
                                 float * curr_avg_pressure_ptr,
                                 float * curr_avg_dpdt_ptr,
                                 float * curr_epsilon_ptr,

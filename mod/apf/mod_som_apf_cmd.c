@@ -11,6 +11,7 @@
 //------------------------------------------------------------------------------
 #include <apf/mod_som_apf.h>
 
+
 #ifdef RTOS_MODULE_COMMON_SHELL_AVAIL
 #include <apf/mod_som_apf_cmd.h>
 #include "mod_som_io.h"

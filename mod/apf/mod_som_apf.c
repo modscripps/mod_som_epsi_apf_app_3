@@ -27,7 +27,8 @@
 
 #include <efe_obp/mod_som_efe_obp.h>
 
-
+//ALB add crc16bit functions to compute the crc checksum
+#include <crc16bit.h>
 
 mod_som_apf_ptr_t mod_som_apf_ptr;
 
@@ -215,6 +216,7 @@ mod_som_apf_status_t mod_som_apf_default_settings_f(
 
   settings_ptr->comm_telemetry_packet_format=F2;
   settings_ptr->sd_packet_format=SD0;
+
 
   settings_ptr->initialize_flag=true;
   settings_ptr->size=sizeof(*settings_ptr);
@@ -666,6 +668,30 @@ mod_som_apf_status_t mod_som_apf_start_producer_task_f(){
 
   mod_som_apf_ptr->producer_ptr->started_flg      = true;
 
+  switch (mod_som_apf_ptr->settings_ptr->comm_telemetry_packet_format){
+    case F0:
+      mod_som_apf_ptr->producer_ptr->dacq_element_size=0;
+      break;
+    case F1:
+      mod_som_apf_ptr->producer_ptr->dacq_element_size=
+          MOD_SOM_APF_DACQ_TIMESTAMP_SIZE+
+          MOD_SOM_APF_DACQ_PRESSURE_SIZE+
+          MOD_SOM_APF_DACQ_DISSRATE_SIZE+
+          MOD_SOM_APF_DACQ_FOM_SIZE;
+      break;
+    case F2:
+      mod_som_apf_ptr->producer_ptr->dacq_element_size=
+          MOD_SOM_APF_DACQ_TIMESTAMP_SIZE+
+          MOD_SOM_APF_DACQ_PRESSURE_SIZE+
+          MOD_SOM_APF_DACQ_DISSRATE_SIZE+
+          MOD_SOM_APF_DACQ_SEAWATER_SPEED_SIZE+
+         (MOD_SOM_EFE_OBP_CHANNEL_NUMBER*
+          mod_som_apf_ptr->producer_ptr->nfft_diag*
+          MOD_SOM_APF_PRODUCER_FOCO_RES);
+
+      break;
+  }
+
 
 
    OSTaskCreate(&mod_som_apf_producer_task_tcb,
@@ -972,7 +998,8 @@ void mod_som_apf_producer_task_f(void  *p_arg){
                       //ALB convert and store the current dissrate and FFT into the MOD format
                       // log10(epsi) log10(chi):  3bytes (12 bits for each epsi and chi sample)
                       //  log10(FFT_shear),log10(FFT_temp),log10(FFT_accel)
-                      mod_som_apf_copy_F2_element_f( curr_avg_timestamp_ptr,
+                      mod_som_apf_ptr->producer_ptr->dacq_size =
+                          mod_som_apf_copy_F2_element_f( curr_avg_timestamp_ptr,
                                                      curr_avg_pressure_ptr,
                                                      curr_avg_dpdt_ptr,
                                                      curr_epsilon_ptr,
@@ -1024,8 +1051,7 @@ void mod_som_apf_producer_task_f(void  *p_arg){
                  &err);
       //   Check error code.
       APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), ;);
-//      printf("EFEOBP efe: %lu\r\n",(uint32_t) mod_som_efe_obp_ptr->fill_segment_ptr->efe_element_cnt);
-//      printf("EFEOBP seg: %lu\r\n",(uint32_t) mod_som_efe_obp_ptr->fill_segment_ptr->segment_cnt);
+
   } // end of while (DEF_ON)
 
   PP_UNUSED_PARAM(p_arg);                                     // Prevent config warning.
@@ -1627,7 +1653,7 @@ uint32_t mod_som_apf_copy_F1_element_f(  uint64_t * curr_avg_timestamp_ptr,
  *   MOD_SOM_STATUS_OK if initialization goes well
  *   or otherwise
  ******************************************************************************/
-void mod_som_apf_copy_F2_element_f(  uint64_t * curr_avg_timestamp_ptr,
+uint32_t mod_som_apf_copy_F2_element_f(  uint64_t * curr_avg_timestamp_ptr,
                                 float * curr_avg_pressure_ptr,
                                 float * curr_avg_dpdt_ptr,
                                 float * curr_epsilon_ptr,
@@ -1643,6 +1669,7 @@ void mod_som_apf_copy_F2_element_f(  uint64_t * curr_avg_timestamp_ptr,
   uint16_t mod_shear_foco, mod_temp_foco, mod_accel_foco;
   uint16_t local_avg_dissrate_timestamp; //ALB nb of sec since dacq
   uint8_t  mod_bit_dissrates[MOD_SOM_APF_PRODUCER_DISSRATE_RES] = {0};
+  uint32_t dacq_size=0;
 
   //ALB store the dissrate and foco values in local params.
   float local_epsilon        = log10(*curr_epsilon_ptr);
@@ -1754,8 +1781,10 @@ void mod_som_apf_copy_F2_element_f(  uint64_t * curr_avg_timestamp_ptr,
       local_temp_avg_fft    = log10(*(curr_temp_avg_spectra_ptr+i));
       local_accel_avg_fft   = log10(*(curr_accel_avg_spectra_ptr+i));
 
-
   }
+  dacq_size=dacq_ptr-&mod_som_apf_ptr->producer_ptr->acq_profile.data_acq[0];
+
+  return dacq_size;
 
 }
 
@@ -2865,7 +2894,8 @@ mod_som_apf_status_t mod_som_apf_comm_packet_format_f(CPU_INT16U argc,
           MOD_SOM_APF_DACQ_DISSRATE_SIZE+
           MOD_SOM_APF_DACQ_SEAWATER_SPEED_SIZE+
          (MOD_SOM_EFE_OBP_CHANNEL_NUMBER*
-          mod_som_apf_ptr->producer_ptr->nfft_diag);
+          mod_som_apf_ptr->producer_ptr->nfft_diag*
+          MOD_SOM_APF_PRODUCER_FOCO_RES);
 
       break;
   }
