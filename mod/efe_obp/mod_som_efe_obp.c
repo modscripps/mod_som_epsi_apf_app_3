@@ -552,7 +552,7 @@ mod_som_status_t mod_som_efe_obp_construct_consumer_ptr_f(){
   mod_som_efe_obp_ptr->consumer_ptr->segment_cnt  = 0;
   mod_som_efe_obp_ptr->consumer_ptr->spectrum_cnt = 0;
   mod_som_efe_obp_ptr->consumer_ptr->rates_cnt    = 0;
-  mod_som_efe_obp_ptr->consumer_ptr->avgspec_cnt    = 0;
+  mod_som_efe_obp_ptr->consumer_ptr->avgspec_cnt  = 0;
 
   mod_som_efe_obp_ptr->consumer_ptr->started_flg  = false;
 
@@ -1995,7 +1995,6 @@ void mod_som_efe_obp_consumer_task_f(void  *p_arg){
             case segment:
               memcpy(mod_som_efe_obp_ptr->consumer_ptr->tag,
                       MOD_SOM_EFE_OBP_CONSUMER_SEGMENT_TAG,
-
                       MOD_SOM_EFE_OBP_TAG_LENGTH);
               break;
             case spectra:

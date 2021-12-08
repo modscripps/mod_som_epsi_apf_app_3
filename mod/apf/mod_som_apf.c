@@ -13,7 +13,7 @@
 
 #include "mod_som_io.h"
 #include "math.h"
-
+#include "mod_som_priv.h"
 
 #ifdef  RTOS_MODULE_COMMON_SHELL_AVAIL
 #include <apf/mod_som_apf_cmd.h>
@@ -26,6 +26,10 @@
 
 
 #include <efe_obp/mod_som_efe_obp.h>
+
+//MHA calendar
+mod_som_calendar_settings_t mod_som_calendar_settings;
+
 
 //ALB add crc16bit functions to compute the crc checksum
 #include <crc16bit.h>
@@ -44,6 +48,8 @@ static OS_TCB  mod_som_apf_consumer_task_tcb;
 static CPU_STK mod_som_apf_shell_task_stk[MOD_SOM_APF_PRODUCER_TASK_STK_SIZE];
 static OS_TCB  mod_som_apf_shell_task_tcb;
 
+
+sl_status_t mystatus;
 
 /*******************************************************************************
  * @brief
@@ -431,6 +437,14 @@ mod_som_apf_status_t mod_som_apf_construct_consumer_ptr_f(){
   mod_som_apf_ptr->consumer_ptr->initialized_flag = false;
   mod_som_apf_ptr->consumer_ptr->dacq_size=0;
   mod_som_apf_ptr->consumer_ptr->stored_dissrates_cnt = 0;
+
+  mod_som_apf_ptr->consumer_ptr->length_header=
+                                             MOD_SOM_APF_SYNC_TAG_LENGTH+
+                                             MOD_SOM_APF_HEADER_TAG_LENGTH+
+                                             MOD_SOM_APF_HEXTIMESTAMP_LENGTH +
+                                             MOD_SOM_APF_SETTINGS_STR_lENGTH+
+                                             MOD_SOM_APF_LENGTH_HEADER_CHECKSUM;
+
 
   mod_som_apf_ptr->consumer_ptr->dacq_ptr =
       (uint8_t*)Mem_SegAlloc(
@@ -1097,6 +1111,9 @@ void mod_som_apf_consumer_task_f(void  *p_arg){
   float * curr_chi_ptr;
 //  float * curr_epsi_fom_ptr;
 //  float * curr_chi_fom_ptr;
+  uint64_t tick;
+  uint8_t * curr_consumer_record_ptr;
+
 
   // parameters for send commands out to APF - mai - Nov 22, 2021
   uint32_t bytes_send;
@@ -1258,6 +1275,63 @@ void mod_som_apf_consumer_task_f(void  *p_arg){
                       mod_som_apf_ptr->consumer_ptr->dissrates_cnt; //elements available have been produced
 
 
+                  if(mod_som_apf_ptr->producer_ptr->dacq_full){
+                      //get the timestamp for the record header
+                      tick=sl_sleeptimer_get_tick_count64();
+                      mystatus = sl_sleeptimer_tick64_to_ms(tick,\
+                                       &mod_som_apf_ptr->consumer_ptr->record_timestamp);
+
+                      //MHA: Now augment timestamp by poweron_offset_ms
+                      mod_som_calendar_settings=mod_som_calendar_get_settings_f(); //get the calendar settings pointer
+                      mod_som_apf_ptr->consumer_ptr->record_timestamp +=
+                                                mod_som_calendar_settings.poweron_offset_ms;
+
+
+                      mod_som_apf_ptr->consumer_ptr->payload_length=
+                                       mod_som_apf_ptr->producer_ptr->dacq_size;
+
+                      //ALB create header
+                      mod_som_apf_header_f(mod_som_apf_ptr->consumer_ptr);
+
+
+                      //ALB compute checksum
+                      curr_consumer_record_ptr=mod_som_apf_ptr->producer_ptr->dacq_ptr;
+
+                      mod_som_apf_ptr->consumer_ptr->chksum=0;
+                      for(int i=0;i<mod_som_apf_ptr->consumer_ptr->payload_length;i++)
+                        {
+                          mod_som_apf_ptr->consumer_ptr->chksum ^=\
+                              curr_consumer_record_ptr[i];
+                        }
+
+                      //ALB stream
+                      mod_som_apf_ptr->consumer_ptr->consumed_flag=false;
+                      mod_som_io_stream_data_f(
+                          mod_som_apf_ptr->consumer_ptr->header,
+                          mod_som_apf_ptr->consumer_ptr->length_header,
+                          &mod_som_apf_ptr->consumer_ptr->consumed_flag);
+                      mod_som_io_stream_data_f(
+                          mod_som_apf_ptr->producer_ptr->dacq_ptr,
+                          mod_som_apf_ptr->producer_ptr->dacq_size,
+                          &mod_som_apf_ptr->consumer_ptr->consumed_flag);
+                      mod_som_io_stream_data_f(
+                          &mod_som_apf_ptr->consumer_ptr->chksum,
+                          3,
+                          &mod_som_apf_ptr->consumer_ptr->consumed_flag);
+
+                  } //endif full true
+
+
+
+
+
+
+
+
+
+
+
+
 //                  //ALB raise flag and stop producer if profile is full (size(dacq)>=25kB)
 //                  //ALB update the number of sample
 //                  //ALB I should also update mod_som_apf_meta_data.sample_cnt in stop producer task i.e. after
@@ -1286,6 +1360,58 @@ void mod_som_apf_consumer_task_f(void  *p_arg){
   PP_UNUSED_PARAM(p_arg);                                     // Prevent config warning.
 
 }
+
+/***************************************************************************//**
+ * @brief
+ *   build header data
+ *   TODO add different flag as parameters like
+ *        - data overlap
+ *        -
+ *   TODO
+ ******************************************************************************/
+void mod_som_apf_header_f(mod_som_apf_consumer_ptr_t consumer_ptr)
+{
+
+  //time stamp
+  uint32_t t_hex[2];
+  uint8_t * local_header;
+
+
+  t_hex[0] = (uint32_t) (consumer_ptr->record_timestamp>>32);
+  t_hex[1] = (uint32_t) consumer_ptr->record_timestamp;
+
+  //header  contains $EFE,flags. Currently flags are hard coded to 0x1e
+  //time stamp will come at the end of header
+  memcpy(consumer_ptr->tag,
+          MOD_SOM_APF_HEADER,
+          MOD_SOM_APF_TAG_LENGTH);
+
+  sprintf((char*) consumer_ptr->header,  \
+      "$%.4s%08x%08x%08x*FF", \
+      consumer_ptr->tag, \
+      (int) t_hex[0],\
+      (int) t_hex[1],\
+      (int) consumer_ptr->payload_length);
+
+  consumer_ptr->header_chksum=0;
+  for(int i=0;i<consumer_ptr->length_header-
+               MOD_SOM_EFE_OBP_LENGTH_HEADER_CHECKSUM;i++) // 29 = sync char(1)+ tag (4) + hextimestamp (16) + payload size (8).
+    {
+      consumer_ptr->header_chksum ^=\
+          consumer_ptr->header[i];
+    }
+
+
+  // the curr_consumer_element_ptr should be at the right place to
+  // write the checksum already
+  //write checksum at the end of the steam block (record).
+  local_header = &consumer_ptr->header[consumer_ptr->length_header-
+                                       MOD_SOM_APF_LENGTH_HEADER_CHECKSUM+1];
+  *((uint16_t*)local_header) = \
+      mod_som_int8_2hex_f(consumer_ptr->header_chksum);
+
+}
+
 
 /*******************************************************************************
  * @brief
@@ -3051,9 +3177,9 @@ mod_som_apf_status_t mod_som_apf_sd_format_f(CPU_INT16U argc,
   status|=mod_som_settings_save_settings_f();
 
   if(good_argument){
-      mod_som_io_print_f("sd_format,ack,%lu\r\n",mode);
+      mod_som_io_print_f("sd_format,ack,%i\r\n",mode);
       // save to the local string for sending out - Mai-Nov 18, 2021
-      sprintf(apf_reply_str,"sd_format,ack,%lu\r\n",mode);
+      sprintf(apf_reply_str,"sd_format,ack,%i\r\n",mode);
   }else{
       mod_som_io_print_f("sd_format,nak,%s\r\n","wrong arguments");
       // save to the local string for sending out - Mai-Nov 18, 2021

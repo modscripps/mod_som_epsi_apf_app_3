@@ -30,11 +30,19 @@
 
 #define MOD_SOM_APF_SYNC_LENGTH             1
 #define MOD_SOM_APF_TAG_LENGTH              4
+#define MOD_SOM_APF_MAX_HEADER_SIZE         100
+#define MOD_SOM_APF_LENGTH_HEADER_CHECKSUM  3
 #define MOD_SOM_APF_HEXTIMESTAMP_LENGTH     16
 #define MOD_SOM_APF_PAYLOAD_LENGTH          8
 #define MOD_SOM_APF_HEADER_CHECKSUM_LENGTH  3
 #define MOD_SOM_APF_PAYLOAD_LENGTH          8
 #define MOD_SOM_APF_PAYLOAD_CHECKSUM_LENGTH 5
+
+#define MOD_SOM_APF_SYNC_TAG_LENGTH         1
+#define MOD_SOM_APF_HEADER_TAG_LENGTH       4
+#define MOD_SOM_APF_SETTINGS_STR_lENGTH     8
+
+
 
 #define MOD_SOM_APF_DACQ_STRUCT_SIZE         25000
 //ALB test with a smaller payload
@@ -300,12 +308,22 @@ typedef struct{
   uint32_t  dacq_size;
   uint8_t * dacq_ptr;
   uint64_t dissrates_cnt;
+  uint64_t record_timestamp;
   uint32_t dissrate_skipped;
   uint32_t stored_dissrates_cnt;
+  uint32_t payload_length;
 
   bool      consumed_flag;
   uint8_t   send_packet_tries;
   uint32_t  nb_packet_sent;
+
+  uint8_t    header[MOD_SOM_APF_MAX_HEADER_SIZE];
+  char       tag[MOD_SOM_APF_TAG_LENGTH];
+  uint8_t    header_chksum;
+  uint8_t    chksum;
+  uint32_t   length_header;
+
+
 
   mod_som_apf_upload_packet_t packet;
 
@@ -818,6 +836,17 @@ void mod_som_apf_producer_task_f(void  *p_arg);
  *   or otherwise
  ******************************************************************************/
 void mod_som_apf_consumer_task_f(void  *p_arg);
+
+/***************************************************************************//**
+ * @brief
+ *   build header data
+ *   TODO add different flag as parameters like
+ *        - data overlap
+ *        -
+ *   TODO
+ ******************************************************************************/
+void mod_som_apf_header_f(mod_som_apf_consumer_ptr_t consumer_ptr);
+
 
 /*******************************************************************************
  * @brief
