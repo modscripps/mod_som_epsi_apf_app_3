@@ -481,7 +481,6 @@ CPU_INT16S mod_som_apf_cmd_probe_id_f(CPU_INT16U argc,
         SHELL_OUT_FNCT out_put_f,
         SHELL_CMD_PARAM *cmd_param){
 
-//    mod_som_apf_status_t status = mod_som_apf_fwrev_f();
     mod_som_apf_status_t status = mod_som_apf_probe_id_f(argc,argv);
 
     if(status != MOD_SOM_APF_STATUS_OK)
