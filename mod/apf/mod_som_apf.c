@@ -2582,15 +2582,15 @@ mod_som_apf_status_t mod_som_apf_probe_id_f(CPU_INT16U argc,
         }
 
       // make sure the serno has 3 digits and coef has 2 digits and cal not 0
-      // if command: "probeno,S,123,12,F,123,12"
-      // sensor 1: "S", length(123) = 3, length(12) = 2
+      // if command: "probeno,s,123,12,f,123,12"
+      // sensor 1: "s", length(123) = 3, length(12) = 2
       if(!strcmp(argv[1],"s") && (length_argument3==3) && (length_argument4==2) && (cal1>0)){
           channel_id = 1;
           memcpy(&local_efe_settings_ptr->sensors[channel_id].sn,argv[2],3);
           local_efe_settings_ptr->sensors[channel_id].cal = cal1;
           argument_flag1 = true;
       }
-      // sensor 2: "F", length(123) = 3, length(12) = 2
+      // sensor 2: "f", length(123) = 3, length(12) = 2
       if(!strcmp(argv[4],"f") && (length_argument6==3) && (length_argument7==2) && (cal2>0))
       {
           channel_id = 0;
@@ -2843,42 +2843,65 @@ mod_som_apf_status_t mod_som_apf_time_f(CPU_INT16U argc,
   mod_som_apf_status_t status = 0;
 
   time_zone=0;
-  time= shellStrtol(argv[1],&p_err);
+  // calculate the seconds from
 
-  sl_sleeptimer_convert_time_to_date((uint32_t) time,time_zone,&date);
+  // need to detect if command does not have the second argument
+  // if (argc<2)
+  // invalid command -> break out
+  // if argv[1] <= 0 -> bad command -> break out
+  // note: argv[1] is the
 
-  year=date.year;
-  month=date.month;
-  month_day=date.month_day;
-  hour=date.hour;
-  min=date.min;
-  sec=date.sec;
+  if (argc == 2) // valid command: "time,1234567\r"
+  {
 
-  status|=mod_som_calendar_set_time_f(year,month,month_day,hour,min,sec,time_zone);
-  status|=mod_som_settings_save_settings_f();
-  status|=mod_som_io_print_f("time,ack,%s\r\n",argv[1]);
+      time= shellStrtol(argv[1],&p_err);
 
+      sl_sleeptimer_convert_time_to_date((uint32_t) time,time_zone,&date);
 
-  // save time string into the temporary local string - Mai - Nov 18, 2021
-  sprintf(apf_reply_str,"time,ack,%s\r\n",argv[1]);
-  reply_str_len = strlen(apf_reply_str);
+      year=date.year;
+      month=date.month+1; // we just try to add 1 for getting the right month, but we need to find out the reason - Arnaud&Mai Dec 9, 2021
+      month_day=date.month_day;
+      hour=date.hour;
+      min=date.min;
+      sec=date.sec;
 
-  // sending the above string to the APF port - Mai - Nov 18, 2021
-  bytes_sent = mod_som_apf_send_line_f(apf_leuart_ptr,apf_reply_str, reply_str_len);
+      // calculate the seconds from
 
-  if (status==MOD_SOM_APF_STATUS_OK){
+      status|=mod_som_calendar_set_time_f(year,month,month_day,hour,min,sec,time_zone);
+      status|=mod_som_settings_save_settings_f();
+      status|=mod_som_io_print_f("time,ack,%s\r\n",argv[1]);
+
+      // save time string into the temporary local string - Mai - Nov 18, 2021
+      sprintf(apf_reply_str,"time,ack,%s\r\n",argv[1]);
+      reply_str_len = strlen(apf_reply_str);
+      // sending the above string to the APF port - Mai - Nov 18, 2021
+      bytes_sent = mod_som_apf_send_line_f(apf_leuart_ptr,apf_reply_str, reply_str_len);
+
+      if (status!=MOD_SOM_APF_STATUS_OK)
+      {
+          mod_som_io_print_f("time,nak,%lu\r\n",status);
+          // save to the local string for sending out - Mai-Nov 18, 2021
+          sprintf(apf_reply_str,"time,nak,%lu\r\n",status);
+          // sending the above string to the APF port - Mai - Nov 18, 2021
+          bytes_sent = mod_som_apf_send_line_f(apf_leuart_ptr,apf_reply_str, reply_str_len);
+      }
+      if(bytes_sent==0){
+      //TODO handle the error
+          status = MOD_SOM_APF_STATUS_ERR;
+      }
+      status = MOD_SOM_APF_STATUS_OK;
+  } // end of if(argc==2)
+  else  // argc != 2
+  {
       mod_som_io_print_f("time,nak,%lu\r\n",status);
       // save to the local string for sending out - Mai-Nov 18, 2021
       sprintf(apf_reply_str,"time,nak,%lu\r\n",status);
       // sending the above string to the APF port - Mai - Nov 18, 2021
       bytes_sent = mod_som_apf_send_line_f(apf_leuart_ptr,apf_reply_str, reply_str_len);
-
- }
-  if(bytes_sent==0){
-      //TODO handle the error
+      status = MOD_SOM_APF_STATUS_ERR;
   }
-
-	return mod_som_apf_encode_status_f(MOD_SOM_APF_STATUS_OK);
+  return status;
+  //  return mod_som_apf_encode_status_f(MOD_SOM_APF_STATUS_OK);
 }
 
 /*******************************************************************************
