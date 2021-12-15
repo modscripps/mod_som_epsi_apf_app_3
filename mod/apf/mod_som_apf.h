@@ -103,6 +103,7 @@
 #define MOD_SOM_APF_STATUS_DAQ_IS_RUNNING                       0x9u
 #define MOD_SOM_APF_STATUS_FAIL_TO_ALLOCATE_MEMORY              0x10U
 #define MOD_SOM_APF_STATUS_FAIL_SEND_MS                         0x11U
+#define MOD_SOM_APF_STATUS_DAQ_ALREADY_STARTED                  0x12U
 
 
 #define MOD_SOM_APF_UPLOAD_DELAY                  25000000      // 0.5 delay upon reception of the upload cmd
@@ -147,8 +148,8 @@ typedef struct{
    uint32_t size;
    char header[MOD_SOM_APF_SETTINGS_STR_lENGTH];
 
-   enum {F0,F1,F2}comm_telemetry_packet_format; //L0 p,t
-   enum {SD0,SD1,SD2}sd_packet_format; //L0 p,t
+   uint32_t comm_telemetry_packet_format; //L0 p,t
+   uint32_t sd_packet_format; //L0 p,t
 
    uint32_t initialize_flag;
 }
@@ -596,7 +597,7 @@ mod_som_apf_status_t mod_som_apf_daq_stop_f();
  * @return
  *   MOD_SOM_APF_STATUS_OK if function execute nicely
  ******************************************************************************/
-void mod_som_apf_init_meta_data(mod_som_apf_meta_data_t mod_som_apf_meta_data);
+void mod_som_apf_init_meta_data(mod_som_apf_meta_data_ptr_t mod_som_apf_meta_data);
 
 /*******************************************************************************
  * @brief

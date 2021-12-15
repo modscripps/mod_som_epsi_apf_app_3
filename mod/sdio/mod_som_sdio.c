@@ -9,6 +9,7 @@
 #include "diskio.h"
 #include "mod_som_sdio.h"
 #include "mod_som_sdio_priv.h"
+#include <sl_sleeptimer.h>
 
 
 #ifdef  RTOS_MODULE_COMMON_SHELL_AVAIL
@@ -104,7 +105,8 @@ mod_som_status_t mod_som_sdio_init_f(){
     //mount fatFS memory.
     // ALB the SDIO software does not have a disk_initialization working correctly.
     // ALB consequently we can mount a volume but not check if an physical SD is in the slot.
-    mod_som_sdio_mount_fatfs_f();
+    //ALB I am moving mount fatfs inside enable hardware
+//    mod_som_sdio_mount_fatfs_f();
 
     //ALB initialize runtime param initialized flag
     mod_som_sdio_struct.initialized_flag = true;
@@ -131,7 +133,7 @@ mod_som_status_t mod_som_sdio_init_f(){
 
 mod_som_status_t mod_som_sdio_enable_hardware_f(){
 //  int delay=833333; //ALB 60s at 50e6 Hz
-  int delay=0xFFFF; //ALB 60s at 50e6 Hz
+  int delay=1000; //ALB 1sec
 
   if(!mod_som_sdio_struct.enable_flag){
       mod_som_sdio_struct.enable_flag=true;
@@ -142,7 +144,7 @@ mod_som_status_t mod_som_sdio_enable_hardware_f(){
     GPIO_PinModeSet(gpioPortD, 6u, gpioModePushPull, 1); //SD_EN
     GPIO_PinOutSet(gpioPortD, 6u);
 
-//    GPIO_PinModeSet(gpioPortB, 10, gpioModeInput, 0);             // SDIO_CD
+    GPIO_PinModeSet(gpioPortB, 10, gpioModeInput, 1);             // SDIO_CD
     GPIO_PinModeSet(gpioPortE, 15, gpioModePushPullAlternate, 0); // SDIO_CMD
     GPIO_PinModeSet(gpioPortE, 14, gpioModePushPullAlternate, 1); // SDIO_CLK
     GPIO_PinModeSet(gpioPortA, 0, gpioModePushPullAlternate, 1);  // SDIO_DAT0
@@ -150,10 +152,10 @@ mod_som_status_t mod_som_sdio_enable_hardware_f(){
     GPIO_PinModeSet(gpioPortA, 2, gpioModePushPullAlternate, 1);  // SDIO_DAT2
     GPIO_PinModeSet(gpioPortA, 3, gpioModePushPullAlternate, 1);  // SDIO_DAT3
 
-    while (delay>0){
-        delay--;
-    }
+    sl_sleeptimer_delay_millisecond(delay);
 
+
+    mod_som_sdio_mount_fatfs_f();
 
   }
 
@@ -172,11 +174,18 @@ mod_som_status_t mod_som_sdio_enable_hardware_f(){
  ******************************************************************************/
 
 mod_som_status_t mod_som_sdio_disable_hardware_f(){
-//int delay=833333; //ALB 60s at 50e6 Hz
-int delay=0xFFFF; //ALB 60s at 50e6 Hz
+int delay=1000; //ALB 60s at 50e6 Hz
+FRESULT res;
 
   if(mod_som_sdio_struct.enable_flag){
       mod_som_sdio_struct.enable_flag=false;
+
+      //ALB if loop insde to check if the file is open
+      mod_som_sdio_close_file_f(mod_som_sdio_struct.data_file_ptr);
+
+      //ALB unmount fatfs
+      res=f_mount(NULL,(TCHAR *) "" ,1);
+
     //TODO use bsp_som variables to initialize the SD card.
     // Soldered sdCard slot
     GPIO_PinModeSet(gpioPortD, 6u, gpioModePushPull, 0); //SD_EN
@@ -188,9 +197,9 @@ int delay=0xFFFF; //ALB 60s at 50e6 Hz
     GPIO_PinModeSet(gpioPortA, 2, gpioModePushPullAlternate, 0);  // SDIO_DAT2
     GPIO_PinModeSet(gpioPortA, 3, gpioModePushPullAlternate, 0);  // SDIO_DAT3
 
-    while (delay>0){
-        delay--;
-    }
+
+    sl_sleeptimer_delay_millisecond(delay);
+
   }
     // return default mod som OK.
     // TODO handle error from the previous calls.
@@ -388,7 +397,9 @@ mod_som_status_t mod_som_sdio_define_filename_f(CPU_CHAR* filename){
 
 	CPU_CHAR data_file_buf[100];   //ALB with this version of ff.c the filename can *not* be more than 8
 
-  mod_som_sdio_enable_hardware_f();
+	if(!mod_som_sdio_struct.enable_flag){
+	    mod_som_sdio_enable_hardware_f();
+	}
 
 	//ALB store file prefix
 	memcpy(mod_som_sdio_struct.mod_som_sdio_settings_ptr->prefix_file, filename,strlen(filename));
@@ -540,6 +551,11 @@ mod_som_status_t mod_som_sdio_close_file_f(mod_som_sdio_file_ptr_t mod_som_sdio_
 	    //ALB because (i think) the file close while trying to write in the writing task
 	    // close the file
 	    res=f_close(mod_som_sdio_file_ptr->fp);
+	    //ALB clear fp
+//	    for (int i=1;i<sizeof(FIL);i++){
+//	        mod_som_sdio_file_ptr->fp[i]=0;
+//	    }
+
 		mod_som_sdio_file_ptr->is_open_flag=0;
 		if (res == FR_OK)
 		{

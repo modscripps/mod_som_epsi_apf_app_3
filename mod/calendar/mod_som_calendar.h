@@ -95,8 +95,7 @@ char * mod_som_calendar_get_datetime_f();
  *   MOD_SOM_STATUS_OK if initialization goes well
  *   or otherwise
  ******************************************************************************/
-sl_status_t mod_som_calendar_set_time_f(uint16_t year, uint8_t month, uint8_t month_day, uint8_t hour, \
-		                         uint8_t min, uint8_t sec, uint8_t tz_offset);
+sl_status_t mod_som_calendar_set_time_f(sl_sleeptimer_timestamp_t time);
 
 
 /*******************************************************************************

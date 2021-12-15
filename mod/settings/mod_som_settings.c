@@ -106,7 +106,7 @@ mod_som_status_t mod_som_settings_init_f(){
 #if defined(MOD_SOM_APF_EN)
 		mod_som_settings_struct.mod_som_apf_settings.initialize_flag=false;
 #endif
-#if defined(MOD_SOM_OBP_EN)
+#if defined(MOD_SOM_EFE_OBP_EN)
 		mod_som_settings_struct.mod_som_efe_obp_settings.initialize_flag=false;
 #endif
 
@@ -265,7 +265,7 @@ mod_som_status_t mod_som_settings_init_f(){
 	        (mod_som_settings_struct.mod_som_apf_settings.size % sizeof(uint32_t))-1;
 
 #endif
-#if defined(MOD_SOM_OBP_EN)
+#if defined(MOD_SOM_EFE_OBP_EN)
 
 	    memcpy(&mod_som_settings_struct.mod_som_efe_obp_settings.size,\
 	           (uint32_t*) &userDataPage_ptr[user_page_offset],\
@@ -278,7 +278,6 @@ mod_som_status_t mod_som_settings_init_f(){
 
 	    user_page_offset+=mod_som_settings_struct.mod_som_efe_obp_settings.size/sizeof(uint32_t)+ \
 	        (mod_som_settings_struct.mod_som_efe_obp_settings.size % sizeof(uint32_t))-1;
-
 
 #endif
 
@@ -407,7 +406,7 @@ mod_som_status_t mod_som_settings_save_settings_f(){
 #if defined(MOD_SOM_APF_EN)
 		mod_som_settings_struct.mod_som_apf_settings=mod_som_apf_get_settings_f();
 #endif
-#if defined(MOD_SOM_OBP_EN)
+#if defined(MOD_SOM_EFE_OBP_EN)
 		mod_som_settings_struct.mod_som_efe_obp_settings=mod_som_efe_obp_get_settings_f();
 #endif
 #if defined(MOD_SOM_VOLTAGE_EN)

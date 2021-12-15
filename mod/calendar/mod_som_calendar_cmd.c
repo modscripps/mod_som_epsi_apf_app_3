@@ -74,46 +74,46 @@ CPU_INT16S mod_som_calendar_set_time_cmd_f(CPU_INT16U argc,
 	RTOS_ERR  p_err;
     mod_som_status_t status = 0;
 
-    uint16_t year;
-    uint8_t month;
-    uint8_t month_day;
-    uint8_t hour;
-    uint8_t min;
-    uint8_t sec;
+//    uint16_t year;
+//    uint8_t month;
+//    uint8_t month_day;
+//    uint8_t hour;
+//    uint8_t min;
+//    uint8_t sec;
 
     sl_sleeptimer_timestamp_t time;
-    sl_sleeptimer_time_zone_offset_t time_zone;
-    sl_sleeptimer_date_t date;
+//    sl_sleeptimer_time_zone_offset_t time_zone;
+//    sl_sleeptimer_date_t date;
     switch (argc){
     case 2:
     	time= shellStrtol(argv[1],&p_err);
 
-        time_zone=0;
-
-    	sl_sleeptimer_convert_time_to_date((uint32_t) time,time_zone,&date);
-
-    	  year=date.year;
-    	  month=date.month;
-    	  month_day=date.month_day;
-    	  hour=date.hour;
-    	  min=date.min;
-    	  sec=date.sec;
-
-    	break;
-    case 7:
-    	year=shellStrtol(argv[1],&p_err);
-    	month=shellStrtol(argv[2],&p_err)-1;//month is defined as zero upward
-    	month_day=shellStrtol(argv[3],&p_err);
-    	hour=shellStrtol(argv[4],&p_err);
-    	min=shellStrtol(argv[5],&p_err);
-    	sec=shellStrtol(argv[6],&p_err);
+//        time_zone=0;
+//
+//    	sl_sleeptimer_convert_time_to_date((uint32_t) time,time_zone,&date);
+//
+//    	  year=date.year;
+//    	  month=date.month;
+//    	  month_day=date.month_day;
+//    	  hour=date.hour;
+//    	  min=date.min;
+//    	  sec=date.sec;
 
     	break;
+//    case 7:
+//    	year=shellStrtol(argv[1],&p_err);
+//    	month=shellStrtol(argv[2],&p_err)-1;//month is defined as zero upward
+//    	month_day=shellStrtol(argv[3],&p_err);
+//    	hour=shellStrtol(argv[4],&p_err);
+//    	min=shellStrtol(argv[5],&p_err);
+//    	sec=shellStrtol(argv[6],&p_err);
+//
+//    	break;
     default:
-    	printf("..\Wrong format either posix time (second since 1970) or year month day hour min sec time_zone\r");
+    	printf("..Wrong format either posix time (second since 1970)\r");
     	break;
     }
-    mod_som_calendar_set_time_f(year,month,month_day,hour,min,sec,0);
+    mod_som_calendar_set_time_f(time);
 
     if(status != MOD_SOM_STATUS_OK)
         return SHELL_EXEC_ERR;

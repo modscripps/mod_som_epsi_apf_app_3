@@ -166,6 +166,10 @@ mod_som_status_t mod_som_efe_obp_init_f(){
         }
       }
 
+           //ALB get efe_settings: Nb of channels, record length, ...
+              mod_som_efe_obp_ptr->efe_settings_ptr=mod_som_efe_get_settings_ptr_f();
+
+
       //ALB Allocate memory for the config pointer,
       //ALB using the settings_ptr variable
       status |= mod_som_efe_obp_construct_config_ptr_f();
@@ -291,9 +295,9 @@ mod_som_status_t mod_som_efe_obp_default_settings_f(
   settings_ptr->channels_id[1]     = 1 ; //select channel s1
   settings_ptr->channels_id[2]     = 2 ; //select channel a3
 
-  settings_ptr->mode=stream;
-  settings_ptr->format=segment;
-  settings_ptr->channel=shear;
+  settings_ptr->mode=0;
+  settings_ptr->format=3;
+  settings_ptr->channel=0;
 
   strncpy(settings_ptr->header,
           MOD_SOM_EFE_OBP_HEADER,MOD_SOM_EFE_OBP_SETTINGS_STR_lENGTH);
@@ -1361,7 +1365,7 @@ void mod_som_efe_obp_cpt_spectra_task_f(void  *p_arg){
               //ALB Get the avg CTD data
               mod_som_efe_obp_ptr->cpt_spectra_ptr->avg_timestamp=
                   (uint64_t) *(mod_som_efe_obp_ptr->fill_segment_ptr->timestamp_segment_ptr+
-                      (mod_som_efe_obp_ptr->fill_segment_ptr->half_segment_cnt%
+                      (mod_som_efe_obp_ptr->fill_segment_ptr->segment_cnt%
                   (2*MOD_SOM_EFE_OBP_FILL_SEGMENT_NB_SEGMENT_PER_RECORD)));
 
               mod_som_efe_obp_ptr->cpt_spectra_ptr->avg_ctd_pressure=
@@ -1992,22 +1996,26 @@ void mod_som_efe_obp_consumer_task_f(void  *p_arg){
           (mod_som_efe_obp_ptr->fill_segment_ptr->segment_cnt>=1)){
 
           switch(mod_som_efe_obp_ptr->settings_ptr->format){
-            case segment:
+            case 1:
+              //spit out segment
               memcpy(mod_som_efe_obp_ptr->consumer_ptr->tag,
                       MOD_SOM_EFE_OBP_CONSUMER_SEGMENT_TAG,
                       MOD_SOM_EFE_OBP_TAG_LENGTH);
               break;
-            case spectra:
+            case 2:
+              //spit out freq spectrum
               memcpy(mod_som_efe_obp_ptr->consumer_ptr->tag,
                       MOD_SOM_EFE_OBP_CONSUMER_SPECTRA_TAG,
                       MOD_SOM_EFE_OBP_TAG_LENGTH);
               break;
-            case avgspec:
+            case 3:
+              //spit out avg spectrum
               memcpy(mod_som_efe_obp_ptr->consumer_ptr->tag,
                       MOD_SOM_EFE_OBP_CONSUMER_AVGSPEC_TAG,
                       MOD_SOM_EFE_OBP_TAG_LENGTH);
               break;
-            case none:
+            case 0:
+              //spit out dissrate
               memcpy(mod_som_efe_obp_ptr->consumer_ptr->tag,
                       MOD_SOM_EFE_OBP_CONSUMER_RATE_TAG,
                       MOD_SOM_EFE_OBP_TAG_LENGTH);
@@ -2015,7 +2023,7 @@ void mod_som_efe_obp_consumer_task_f(void  *p_arg){
           }
 
           switch(mod_som_efe_obp_ptr->settings_ptr->format){
-            case segment:
+            case 1:
 //              memcpy(mod_som_efe_obp_ptr->consumer_ptr->tag,
 //                     MOD_SOM_EFE_OBP_CONSUMER_SEGMENT_TAG,
 //                     MOD_SOM_EFE_OBP_TAG_LENGTH);
@@ -2057,7 +2065,7 @@ void mod_som_efe_obp_consumer_task_f(void  *p_arg){
             }
               break;
 
-            case spectra:
+            case 2:
               //ALB phase 1: check elements available and copy them in the cnsmr buffer
               spectrum_avail=mod_som_efe_obp_ptr->cpt_spectra_ptr->spectrum_cnt-
                                 mod_som_efe_obp_ptr->consumer_ptr->spectrum_cnt;
@@ -2092,7 +2100,7 @@ void mod_som_efe_obp_consumer_task_f(void  *p_arg){
               }
               break;
 
-            case avgspec:
+            case 3:
               //ALB phase 1: check elements available and copy them in the cnsmr buffer
               avgspec_avail=mod_som_efe_obp_ptr->cpt_dissrate_ptr->dissrates_cnt-
                                 mod_som_efe_obp_ptr->consumer_ptr->avgspec_cnt;
@@ -2128,7 +2136,7 @@ void mod_som_efe_obp_consumer_task_f(void  *p_arg){
 
               }
               break;
-            case none:
+            case 0:
               break;
 
           }
@@ -2252,22 +2260,22 @@ void mod_som_efe_obp_consumer_task_f(void  *p_arg){
           payload_length=0;
           //ALB small code to switch between spectrum and shear output
           switch(mod_som_efe_obp_ptr->settings_ptr->format){
-            case segment:
-              mod_som_efe_obp_ptr->settings_ptr->format=spectra;
+            case 1:
+              mod_som_efe_obp_ptr->settings_ptr->format=2;
               break;
-            case spectra:
+            case 2:
               if(mod_som_efe_obp_ptr->cpt_dissrate_ptr->dissrates_cnt-
               mod_som_efe_obp_ptr->consumer_ptr->avgspec_cnt){
-                  mod_som_efe_obp_ptr->settings_ptr->format=avgspec;
+                  mod_som_efe_obp_ptr->settings_ptr->format=3;
               }else{
-                  mod_som_efe_obp_ptr->settings_ptr->format=segment;
+                  mod_som_efe_obp_ptr->settings_ptr->format=1;
               }
               break;
-            case avgspec:
-              mod_som_efe_obp_ptr->settings_ptr->format=segment;
+            case 3:
+              mod_som_efe_obp_ptr->settings_ptr->format=3;
               break;
             default:
-              mod_som_efe_obp_ptr->settings_ptr->format=segment;
+              mod_som_efe_obp_ptr->settings_ptr->format=1;
               break;
 
           }
@@ -2652,7 +2660,7 @@ mod_som_status_t mod_som_efe_obp_mode_f(CPU_INT16U argc,CPU_CHAR *argv[])
   uint8_t mode;
 
   if (argc==1){
-      printf("efeobp.mode %u\r\n.", mod_som_efe_obp_ptr->settings_ptr->mode);
+      printf("efeobp.mode %lu\r\n.", mod_som_efe_obp_ptr->settings_ptr->mode);
   }
   else{
     //ALB switch statement easy to handle all user input cases.

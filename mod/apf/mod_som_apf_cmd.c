@@ -161,6 +161,7 @@ CPU_INT16S mod_som_apf_cmd_daq_f(CPU_INT16U argc,
       bytes_sent = mod_som_apf_send_line_f(apf_leuart_ptr,apf_reply_str, reply_str_len);
       status = MOD_SOM_APF_STATUS_ERR;
       break;
+
     case 2: // command: "daq,stop", if "daq,start" or "daq,somethingelse" -> error
       i = 1; // get the second argument
       if (!Str_Cmp(argv[i], "start"))
@@ -180,36 +181,36 @@ CPU_INT16S mod_som_apf_cmd_daq_f(CPU_INT16U argc,
           if (status == MOD_SOM_APF_STATUS_OK)
           {
               mod_som_io_print_f("daq,stop,ack\r\n");
-              // save time string into the temporary local string - Mai - Nov 18, 2021
+              //MNB save time string into the temporary local string - Mai - Nov 18, 2021
               sprintf(apf_reply_str,"daq,stop,ack\r\n");
           }
           else
           {
               mod_som_io_print_f("daq,stop,nak,%lu\r\n",status);
-              // save time string into the temporary local string - Mai - Nov 18, 2021
+              //MNB save time string into the temporary local string - Mai - Nov 18, 2021
               sprintf(apf_reply_str,"daq,start,nak,%lu\r\n",status);
           }
           reply_str_len = strlen(apf_reply_str);
-          // sending the above string to the APF port - Mai - Nov 18, 2021
+          //MNB sending the above string to the APF port - Mai - Nov 18, 2021
           bytes_sent = mod_som_apf_send_line_f(apf_leuart_ptr,apf_reply_str, reply_str_len);
-      } // end of (!Str_Cmp(argv[i], "stop"))
-      else  // not valid command: not "start" or "stop"
+      } //MNB end of (!Str_Cmp(argv[i], "stop"))
+      else  //MNB not valid command: not "start" or "stop"
       {
           mod_som_io_print_f("daq,nak,%s\r\n",argv[i]);
-          // save time string into the temporary local string - Mai - Nov 18, 2021
+          //MNB save time string into the temporary local string - Mai - Nov 18, 2021
           sprintf(apf_reply_str,"daq,nak,%s\r\n",argv[i]);
           reply_str_len = strlen(apf_reply_str);
-          // sending the above string to the APF port - Mai - Nov 18, 2021
+          //MNB sending the above string to the APF port - Mai - Nov 18, 2021
           bytes_sent = mod_som_apf_send_line_f(apf_leuart_ptr,apf_reply_str, reply_str_len);
       }
       break;
-    case 3: // command: "daq,start,proid"
-      i = 1; // get the second argument
+    case 3: //MNB command: "daq,start,proid"
+      i = 1; //MNB get the second argument
       if (!Str_Cmp(argv[i], "start"))
       {
-          profile_id = shellStrtol(argv[i+1], &err); // Convert the third argument to int to get proid
+          profile_id = shellStrtol(argv[i+1], &err); //MNB Convert the third argument to int to get proid
           status = mod_som_apf_daq_start_f((uint64_t)profile_id);
-          status = MOD_SOM_APF_STATUS_OK; // just for debug to test with daq - mnbui Nov30,2021
+          status = MOD_SOM_APF_STATUS_OK; //MNB just for debug to test with daq - mnbui Nov30,2021
 
           if (status==MOD_SOM_APF_STATUS_OK)
           {

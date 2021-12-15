@@ -67,7 +67,7 @@
 
 //ALB Fill segment
 #define MOD_SOM_EFE_OBP_FILL_SEGMENT_TASK_PRIO              18u
-#define MOD_SOM_EFE_OBP_FILL_SEGMENT_TASK_STK_SIZE          512u
+#define MOD_SOM_EFE_OBP_FILL_SEGMENT_TASK_STK_SIZE          1024u
 #define MOD_SOM_EFE_OBP_FILL_SEGMENT_DELAY                  10      // delay for fill segment task
 #define MOD_SOM_EFE_OBP_FILL_SEGMENT_NB_SEGMENT_PER_RECORD  2       // this number wants to be as low as possible it can creates huge arrrays
 
@@ -152,10 +152,10 @@ typedef struct{
     uint32_t degrees_of_freedom; // suggested number is 4
     uint32_t record_format;
     uint32_t telemetry_format;
-    uint32_t channels_id[MOD_SOM_EFE_OBP_CHANNEL_NUMBER];     //
-    enum       {stream,store,other}mode;
-    enum       {segment,spectra,avgspec,none}format;
-    enum       {temp,shear,accel}channel;
+    uint32_t channels_id[MOD_SOM_EFE_OBP_CHANNEL_NUMBER+1];     //
+    uint32_t mode;    //ALB 0:stream, 1:store, 2: other
+    uint32_t format;  //ALB 0: dissrate, 1: segment, 2:spectra, 3:avg spectra
+    uint32_t channel; //ALB 0: temp, 1: shear
 
 
     uint32_t initialize_flag;
