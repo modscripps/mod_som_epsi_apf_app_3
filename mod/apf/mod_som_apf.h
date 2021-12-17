@@ -26,7 +26,10 @@
 
 #define MOD_SOM_APF_SETTINGS_STR_lENGTH 8
 #define MOD_SOM_APF_VIBRATION_CUT_OFF   50
-#define MOD_SOM_APF_HEADER              "APF0"
+#define MOD_SOM_APF_HEADER0              "APF0"
+#define MOD_SOM_APF_HEADER1              "APF1"
+#define MOD_SOM_APF_HEADER2              "APF2"
+
 
 #define MOD_SOM_APF_SYNC_LENGTH             1
 #define MOD_SOM_APF_TAG_LENGTH              4
@@ -52,6 +55,7 @@
 #define MOD_SOM_APF_DACQ_PRESSURE_SIZE       4
 #define MOD_SOM_APF_DACQ_DPDT_SIZE           4
 #define MOD_SOM_APF_DACQ_FOCO_SIZE           4
+#define MOD_SOM_APF_DACQ_FLOAT_SIZE          4
 #define MOD_SOM_APF_DACQ_SEAWATER_SPEED_SIZE 4
 #define MOD_SOM_APF_DACQ_FLAG_SIZE           1
 #define MOD_SOM_APF_DACQ_FOM_SIZE            1
@@ -74,8 +78,8 @@
 #define MOD_SOM_APF_PRODUCER_DISSRATE_RANGE         0xFFF   // mod dissrate range 12 bits
 #define MOD_SOM_APF_PRODUCER_FOM_RES                1       // mod fom resolution 1 bytes
 #define MOD_SOM_APF_PRODUCER_FOM_RANGE              0xF     // mod fomte range 1 bytes
-#define MOD_SOM_APF_PRODUCER_MIN_FOCO               1e-11   // min Fourier coef,
-#define MOD_SOM_APF_PRODUCER_MAX_FOCO               1       // max Fourier coef
+#define MOD_SOM_APF_PRODUCER_MIN_FOCO               1e-13   // min Fourier coef,
+#define MOD_SOM_APF_PRODUCER_MAX_FOCO               1e-2       // max Fourier coef
 #define MOD_SOM_APF_PRODUCER_FOCO_RANGE             0xFFFF     // mod fourier coef resolution 16 bits
 #define MOD_SOM_APF_PRODUCER_FOCO_RES               2       // mod foco resolution 2 bytes
 
@@ -83,7 +87,8 @@
 #define MOD_SOM_APF_CONSUMER_TASK_PRIO              18u
 #define MOD_SOM_APF_CONSUMER_TASK_STK_SIZE          512u
 #define MOD_SOM_APF_CONSUMER_DELAY                  10      // delay for fill segment task
-
+#define MOD_SOM_APF_CONSUMER_TIMESTAMP_SIZE         8
+#define MOD_SOM_APF_CONSUMER_CHECKSUM_SIZE          5
 
 #define MOD_SOM_APF_SHELL_TASK_PRIO              21u
 #define MOD_SOM_APF_SHELL_TASK_STK_SIZE          512u
@@ -103,10 +108,11 @@
 #define MOD_SOM_APF_STATUS_DAQ_IS_RUNNING                       0x9u
 #define MOD_SOM_APF_STATUS_FAIL_TO_ALLOCATE_MEMORY              0x10U
 #define MOD_SOM_APF_STATUS_FAIL_SEND_MS                         0x11U
-#define MOD_SOM_APF_STATUS_DAQ_ALREADY_STARTED                  0x12U
+#define MOD_SOM_APF_STATUS_FAIL_SEND_PACKET                     0x12U
+#define MOD_SOM_APF_STATUS_DAQ_ALREADY_STARTED                  0x13U
 
 
-#define MOD_SOM_APF_UPLOAD_DELAY                  25000000      // 0.5 delay upon reception of the upload cmd
+#define MOD_SOM_APF_UPLOAD_DELAY                  500      // 500 ms delay upon reception of the upload cmd
 #define MOD_SOM_APF_UPLOAD_PACKET_CRC_SIZE        2
 #define MOD_SOM_APF_UPLOAD_PACKET_CNT_SIZE        2
 #define MOD_SOM_APF_UPLOAD_PACKET_LOAD_SIZE       986
@@ -114,7 +120,7 @@
 #define MOD_SOM_APF_UPLOAD_APF11_ACK              0x06
 #define MOD_SOM_APF_UPLOAD_APF11_NACK             0x15
 #define MOD_SOM_APF_UPLOAD_EOT_BYTE               0x04
-#define MOD_SOM_APF_UPLOAD_APF11_TIMEOUT          250000000   // 5 second timeout
+#define MOD_SOM_APF_UPLOAD_APF11_TIMEOUT          5           // 5 second timeout
 #define MOD_SOM_APF_UPLOAD_MAX_TRY_PACKET         3           // 3 tries to send a packet
 
 
@@ -148,8 +154,16 @@ typedef struct{
    uint32_t size;
    char header[MOD_SOM_APF_SETTINGS_STR_lENGTH];
 
-   uint32_t comm_telemetry_packet_format; //L0 p,t
-   uint32_t sd_packet_format; //L0 p,t
+   //ALB comm_telemetry_packet_format:
+   //ALB 0: time,pr,epsi,chi,nu,kappa,fomepsi,fomchi,
+   //ALB 1:  time,pr,epsi,chi,avg_spectra,
+   uint32_t comm_telemetry_packet_format;
+
+   //ALB sd_packet_format:
+   //0: no SD write
+   //1: SD store full time,pr,temp,salinity,epsi,chi,avg_spectra,
+   //2: SD store each full dissrate time,pr,temp,salinity,epsi,chi,avg_spectra + stream daq profile
+   uint32_t sd_packet_format;
 
    uint32_t initialize_flag;
 }
@@ -251,21 +265,21 @@ typedef struct{
   uint64_t dissrates_cnt;
   uint64_t stored_dissrates_cnt;
 
-  uint64_t avg_timestamp;
+//  uint64_t avg_timestamp;
 
-  float * avg_spec_temp_ptr;         //ALB pointer to spectrum
-  float * avg_spec_shear_ptr;        //ALB pointer to spectrum
-  float * avg_spec_accel_ptr;        //ALB pointer to spectrum
+//  float * avg_spec_temp_ptr;         //ALB pointer to spectrum
+//  float * avg_spec_shear_ptr;        //ALB pointer to spectrum
+//  float * avg_spec_accel_ptr;        //ALB pointer to spectrum
 
-  float * avg_ctd_pressure;
-  float * avg_ctd_temperature;
-  float * avg_ctd_salinity;
-  float * avg_ctd_dpdt;
+//  float * avg_ctd_pressure;
+//  float * avg_ctd_temperature;
+//  float * avg_ctd_salinity;
+//  float * avg_ctd_dpdt;
 
-  float * nu;
-  float * kappa;
-  float * epsilon;
-  float * chi;
+//  float * nu;
+//  float * kappa;
+//  float * epsilon;
+//  float * chi;
 
   mod_som_apf_dacq_t acq_profile;
   uint8_t * dacq_ptr;
@@ -289,8 +303,8 @@ mod_som_apf_producer_t, *mod_som_apf_producer_ptr_t;
 *   Profile Data structure
 ******************************************************************************/
 typedef struct{
-  uint8_t  CRC[MOD_SOM_APF_UPLOAD_PACKET_CRC_SIZE];
-  uint8_t  counters[MOD_SOM_APF_UPLOAD_PACKET_CNT_SIZE];
+  uint16_t  CRC;
+  uint16_t  counters;
   uint8_t  payload[MOD_SOM_APF_UPLOAD_PACKET_LOAD_SIZE];
 }
 mod_som_apf_upload_packet_t, *mod_som_apf_upload_packet_ptr_t;
@@ -311,12 +325,13 @@ typedef struct{
   uint64_t dissrates_cnt;
   uint64_t record_timestamp;
   uint32_t dissrate_skipped;
-  uint32_t stored_dissrates_cnt;
+//  uint32_t stored_dissrates_cnt;
   uint32_t payload_length;
 
   bool      consumed_flag;
   uint8_t   send_packet_tries;
   uint32_t  nb_packet_sent;
+  uint32_t  daq_remaining_bytes;
 
   uint8_t    header[MOD_SOM_APF_MAX_HEADER_SIZE];
   char       tag[MOD_SOM_APF_TAG_LENGTH];
@@ -846,7 +861,7 @@ void mod_som_apf_consumer_task_f(void  *p_arg);
  *        -
  *   TODO
  ******************************************************************************/
-void mod_som_apf_header_f(mod_som_apf_consumer_ptr_t consumer_ptr);
+void mod_som_apf_header_f(mod_som_apf_consumer_ptr_t consumer_ptr, uint8_t tag_id);
 
 
 /*******************************************************************************
@@ -958,15 +973,15 @@ uint32_t mod_som_apf_copy_F2_element_f(  uint64_t * curr_avg_timestamp_ptr,
                                 uint8_t * dacq_ptr);
 
 void mod_som_apf_copy_sd_element_f(  uint64_t * curr_avg_timestamp_ptr,
-                                float * curr_avg_pressure_ptr,
-                                float * curr_avg_dpdt_ptr,
-                                float * curr_epsilon_ptr,
-                                float * curr_chi_ptr,
-                                float * curr_temp_avg_spectra_ptr,
-                                float * curr_shear_avg_spectra_ptr,
-                                float * curr_accel_avg_spectra_ptr,
-                                uint8_t * dacq_ptr);
-
+                                     float * curr_avg_pressure_ptr,
+                                     float * curr_avg_temperature_ptr,
+                                     float * curr_avg_salinity_ptr,
+                                     float * curr_avg_dpdt_ptr,
+                                     float * curr_epsilon_ptr,
+                                     float * curr_chi_ptr,
+                                     float * curr_temp_avg_spectra_ptr,
+                                     float * curr_shear_avg_spectra_ptr,
+                                     float * curr_accel_avg_spectra_ptr);
 /*******************************************************************************
  * @function
  *     mod_som_apf_encode_status_f

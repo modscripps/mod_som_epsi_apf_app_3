@@ -262,22 +262,6 @@ void mod_som_shell_task_f(void *p_arg){
     uint32_t input_buf_len;
 
 
-//    SHELL_CMD  main_cmd_table[] =
-//    {
-//            { "collect_data", main_collect_data_f },
-//            { "send_text", main_send_text_f },
-//            { "stream_data", main_stream_data_f },
-//            { "connect", main_connect_sbe_f },
-//            //          { "sleep", sleepCmd },
-//            { 0, 0 }
-//    };
-
-//    Shell_CmdTblAdd("CMDs", main_cmd_table, &err);
-
-    // Run startup commands
-    //  initCmd(2, (char *[]){"init", "-chip" }, output_f, NULL);
-    //  selftestCmd(1, (char *[]){"selftest" }, output_f, NULL);
-
     while (DEF_ON) {
         OSTimeDly(
                 (OS_TICK     )MOD_SOM_CFG_LOOP_TICK_DELAY,

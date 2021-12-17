@@ -30,16 +30,15 @@ static SHELL_CMD  mod_som_apf_cmd_tbl[] =
         { "daq?",         mod_som_apf_cmd_daq_status_f },
         { "time",         mod_som_apf_cmd_time_f },
         { "time?",        mod_som_apf_cmd_time_status_f },
-        { "$menu",        mod_som_apf_cmd_menu_f },
         { "--ok?",        mod_som_apf_cmd_ok_status_f },
         { "sleep",        mod_som_apf_cmd_sleep_f },
         { "fwrev?",       mod_som_apf_cmd_fwrev_status_f },
         { "upload",       mod_som_apf_cmd_upload_f },
         { "epsino?",      mod_som_apf_cmd_epsi_id_status_f },
-        { "probe_no",      mod_som_apf_cmd_probe_id_f },
-        { "probe_no?",     mod_som_apf_cmd_probe_id_status_f },
+        { "probe_no",     mod_som_apf_cmd_probe_id_f },
+        { "probe_no?",    mod_som_apf_cmd_probe_id_status_f },
         { "poweroff",     mod_som_apf_cmd_poweroff_f },
-        { "sd_format?",    mod_som_apf_cmd_sd_format_status_f },
+        { "sd_format?",   mod_som_apf_cmd_sd_format_status_f },
         { "sd_format",    mod_som_apf_cmd_sd_format_f },
         { "comm_packet_format?", mod_som_apf_cmd_comm_packet_format_status_f },
         { "comm_packet_format", mod_som_apf_cmd_comm_packet_format_f },
@@ -63,54 +62,7 @@ mod_som_apf_status_t mod_som_apf_init_cmd_f(){
     }
     return mod_som_apf_encode_status_f(MOD_SOM_APF_STATUS_OK);
 }
-/*******************************************************************************
- * @brief
- *   command shell for hello world command
- * @param argc
- *   argument count
- * @param argv
- *   argument values
- * @param out_put_f
- *   out_put_f (print function)
- * @param cmd_param
- *   command parameters (passing along)
- * @return
- *   Micrium Command Shell Status
- ******************************************************************************/
-CPU_INT16S mod_som_apf_cmd_hello_world_f(CPU_INT16U argc,
-        CPU_CHAR *argv[],
-        SHELL_OUT_FNCT out_put_f,
-        SHELL_CMD_PARAM *cmd_param){
-    mod_som_apf_status_t status = mod_som_apf_say_hello_world_f();
-    if(status != MOD_SOM_APF_STATUS_OK)
-        return SHELL_EXEC_ERR;
-    return SHELL_EXEC_ERR_NONE;
-}
 
-/*******************************************************************************
- * @brief
- *   command shell for $menu command
- *   it will output all the cmd in the cmd table
- * @param argc
- *   argument count
- * @param argv
- *   argument values
- * @param out_put_f
- *   out_put_f (print function)
- * @param cmd_param
- *   command parameters (passing along)
- * @return
- *   apf Command Status
- ******************************************************************************/
-CPU_INT16S mod_som_apf_cmd_menu_f(CPU_INT16U argc,
-        CPU_CHAR *argv[],
-        SHELL_OUT_FNCT out_put_f,
-        SHELL_CMD_PARAM *cmd_param){
-
-	Shell_ListCmdOutput(out_put_f,cmd_param);
-
-	return mod_som_apf_encode_status_f(MOD_SOM_APF_STATUS_OK);
-}
 
 /*******************************************************************************
  * @brief

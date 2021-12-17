@@ -26,63 +26,7 @@
  *   or otherwise
  ******************************************************************************/
 mod_som_status_t mod_som_apf_init_cmd_f();
-/*******************************************************************************
- * @brief
- *   command shell for hello world command
- * @param argc
- *   argument count
- * @param argv
- *   argument values
- * @param out_put_f
- *   out_put_f (print function)
- * @param cmd_param
- *   command parameters (passing along)
- * @return
- *   Micrium Command Shell Status
- ******************************************************************************/
-CPU_INT16S mod_som_apf_cmd_hello_world_f(CPU_INT16U argc,
-        CPU_CHAR *argv[],
-        SHELL_OUT_FNCT out_put_f,
-        SHELL_CMD_PARAM *cmd_param);
 
-/*******************************************************************************
- * @brief
- *   command shell for $menu command
- * @param argc
- *   argument count
- * @param argv
- *   argument values
- * @param out_put_f
- *   out_put_f (print function)
- * @param cmd_param
- *   command parameters (passing along)
- * @return
- *   Micrium Command Shell Status
- ******************************************************************************/
-CPU_INT16S mod_som_apf_cmd_menu_f(CPU_INT16U argc,
-        CPU_CHAR *argv[],
-        SHELL_OUT_FNCT out_put_f,
-        SHELL_CMD_PARAM *cmd_param);
-
-/*******************************************************************************
- * @brief
- *   command shell for $menu command
- *   it will output all the cmd in the cmd table
- * @param argc
- *   argument count
- * @param argv
- *   argument values
- * @param out_put_f
- *   out_put_f (print function)
- * @param cmd_param
- *   command parameters (passing along)
- * @return
- *   apf Command Status
- ******************************************************************************/
-CPU_INT16S mod_som_apf_cmd_menu_f(CPU_INT16U argc,
-        CPU_CHAR *argv[],
-        SHELL_OUT_FNCT out_put_f,
-        SHELL_CMD_PARAM *cmd_param);
 /*******************************************************************************
  * @brief
  *   command shell for Daq  command

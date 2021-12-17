@@ -225,10 +225,10 @@ mod_som_apf_status_t mod_som_apf_default_settings_f(
   // TODO I do not know how to check if everything is fine here.
 
   strncpy(settings_ptr->header,
-          MOD_SOM_APF_HEADER,MOD_SOM_APF_SETTINGS_STR_lENGTH);
+          MOD_SOM_APF_HEADER0,MOD_SOM_APF_SETTINGS_STR_lENGTH);
 
   settings_ptr->comm_telemetry_packet_format=2;
-  settings_ptr->sd_packet_format=0;
+  settings_ptr->sd_packet_format=1;
 
 
   settings_ptr->initialize_flag=true;
@@ -307,7 +307,7 @@ mod_som_apf_status_t mod_som_apf_construct_config_ptr_f(){
                                  MOD_SOM_APF_PAYLOAD_LENGTH         +
                                  MOD_SOM_APF_HEADER_CHECKSUM_LENGTH;
 
-  config_ptr->vibration_cut_off=MOD_SOM_APF_VIBRATION_CUT_OFF;
+  config_ptr->vibration_cut_off= MOD_SOM_APF_VIBRATION_CUT_OFF;
 
   config_ptr->port.com_port   = (void *)MOD_SOM_APF_USART;
   config_ptr->port.route      = MOD_SOM_APF_TX_LOC;
@@ -443,7 +443,7 @@ mod_som_apf_status_t mod_som_apf_construct_consumer_ptr_f(){
 
   mod_som_apf_ptr->consumer_ptr->initialized_flag = false;
   mod_som_apf_ptr->consumer_ptr->dacq_size=0;
-  mod_som_apf_ptr->consumer_ptr->stored_dissrates_cnt = 0;
+  mod_som_apf_ptr->consumer_ptr->dissrates_cnt = 0;
 
   mod_som_apf_ptr->consumer_ptr->length_header=
                                              MOD_SOM_APF_SYNC_TAG_LENGTH+
@@ -453,10 +453,11 @@ mod_som_apf_status_t mod_som_apf_construct_consumer_ptr_f(){
                                              MOD_SOM_APF_LENGTH_HEADER_CHECKSUM;
 
 
+  //ALB a smallish array to store data in the consumer strucutre before writting them on the SD card or spitting them out
   mod_som_apf_ptr->consumer_ptr->dacq_ptr =
       (uint8_t*)Mem_SegAlloc(
           "MOD SOM APF consumer dacq.",DEF_NULL,
-          sizeof(uint8_t)*MOD_SOM_EFE_OBP_DEFAULT_NFFT,
+          sizeof(float) * MOD_SOM_EFE_OBP_DEFAULT_NFFT,
           &err);
   // Check error code
   APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
@@ -671,7 +672,7 @@ mod_som_apf_status_t mod_som_apf_start_producer_task_f(){
   // Consumer Task 2
   //ALB initialize all parameters. They should be reset right before
   //ALB fill_segment task is starts running.
-  mod_som_apf_ptr->producer_ptr->avg_timestamp        = 0;
+//  mod_som_apf_ptr->producer_ptr->avg_timestamp        = 0;
   mod_som_apf_ptr->producer_ptr->dissrate_skipped     = 0;
   mod_som_apf_ptr->producer_ptr->dissrates_cnt        = 0;
   mod_som_apf_ptr->producer_ptr->stored_dissrates_cnt = 0;
@@ -782,7 +783,7 @@ mod_som_apf_status_t mod_som_apf_start_consumer_task_f(){
   // Consumer Task
 
   mod_som_apf_ptr->consumer_ptr->dacq_size=0;
-  mod_som_apf_ptr->consumer_ptr->stored_dissrates_cnt = 0;
+  mod_som_apf_ptr->consumer_ptr->dissrates_cnt = 0;
 
   mod_som_apf_ptr->consumer_ptr->initialized_flag = true;
   mod_som_apf_ptr->consumer_ptr->started_flg=true;
@@ -937,7 +938,6 @@ void mod_som_apf_producer_task_f(void  *p_arg){
                   if (bytes_sent==0){
                       //TODO handle error
                   }
-
                   mod_som_apf_ptr->producer_ptr->dissrates_cnt = reset_dissrate_cnt;
               }
 
@@ -951,8 +951,8 @@ void mod_som_apf_producer_task_f(void  *p_arg){
 
               //ALB check if the updated avg pressure is lower than
               //ALB the previous pressure + dz.
-//              if (*curr_avg_pressure_ptr<
-//                   mod_som_apf_ptr->dacq_pressure+mod_som_apf_ptr->dacq_dz)
+//              if (*curr_avg_pressure_ptr<=
+//                   mod_som_apf_ptr->dacq_pressure-mod_som_apf_ptr->dacq_dz)
 //                {
               //ALB fake if loop to test the dacq
               if (dissrate_avail>0)
@@ -961,7 +961,7 @@ void mod_som_apf_producer_task_f(void  *p_arg){
                   mod_som_apf_ptr->dacq_pressure=*curr_avg_pressure_ptr;
 
                   avg_spectra_offset     = (mod_som_apf_ptr->producer_ptr->dissrates_cnt %
-                      MOD_SOM_EFE_OBP_FILL_SEGMENT_NB_SEGMENT_PER_RECORD)*
+                      MOD_SOM_EFE_OBP_CPT_DISSRATE_NB_AVG_SPECTRA_PER_RECORD)*
                       mod_som_efe_obp_ptr->settings_ptr->nfft/2;
 
                   //ALB update the current avg_spectra pointers
@@ -977,13 +977,11 @@ void mod_som_apf_producer_task_f(void  *p_arg){
 
                   //ALB update avg timestamp
                   curr_avg_timestamp_ptr =
-                      (uint64_t *) (&mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_timestamp+
-                         dissrate_elmnts_offset);
+                      (uint64_t *) &mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_timestamp;
 
                   //ALB update avg pressure
                   curr_avg_dpdt_ptr =
-                      &mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_ctd_dpdt+
-                      dissrate_elmnts_offset;
+                      &mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_ctd_dpdt;
 
                   //ALB update the dissrate pointers
                   curr_epsilon_ptr =mod_som_efe_obp_ptr->cpt_dissrate_ptr->epsilon+
@@ -1017,7 +1015,7 @@ void mod_som_apf_producer_task_f(void  *p_arg){
                       // log10(epsi) log10(chi):  3bytes (12 bits for each epsi and chi sample)
                       //  log10(FFT_shear),log10(FFT_temp),log10(FFT_accel)
                       mod_som_apf_ptr->producer_ptr->dacq_size =
-                          mod_som_apf_copy_F2_element_f( curr_avg_timestamp_ptr,
+                      mod_som_apf_copy_F2_element_f( curr_avg_timestamp_ptr,
                                                      curr_avg_pressure_ptr,
                                                      curr_avg_dpdt_ptr,
                                                      curr_epsilon_ptr,
@@ -1101,7 +1099,7 @@ void mod_som_apf_consumer_task_f(void  *p_arg){
 
   (void)p_arg; // Deliberately unused argument
 
-  uint8_t * curr_dacq_ptr;
+//  uint8_t * curr_dacq_ptr;
 
   int dissrate_avail=0, reset_dissrate_cnt=0;
   int dissrate_elmnts_offset=0;
@@ -1112,6 +1110,8 @@ void mod_som_apf_consumer_task_f(void  *p_arg){
   float * curr_shear_avg_spectra_ptr;
   float * curr_accel_avg_spectra_ptr;
   float * curr_avg_pressure_ptr;
+  float * curr_avg_temperature_ptr;
+  float * curr_avg_salinity_ptr;
   float * curr_avg_dpdt_ptr;
   float * curr_epsilon_ptr;
   float * curr_chi_ptr;
@@ -1131,19 +1131,23 @@ void mod_som_apf_consumer_task_f(void  *p_arg){
 
   int padding = 1; // the padding should be big enough to include the time variance.
 
+  char chksum_str[5];
+
   mod_som_efe_obp_ptr_t mod_som_efe_obp_ptr=
                                           mod_som_efe_obp_get_runtime_ptr_f();
 
+  //MHA: Now augment timestamp by poweron_offset_ms
+  mod_som_calendar_settings=mod_som_calendar_get_settings_f(); //get the calendar settings pointer
 
 
   while (DEF_ON) {
 
-      if (mod_som_apf_ptr->consumer_ptr->started_flg){
+      if (mod_som_apf_ptr->consumer_ptr->started_flg & (mod_som_apf_ptr->settings_ptr->sd_packet_format>=1)){
           /************************************************************************/
           //ALB APF producer phase 1
           //ALB check if producer is started, and if the dacp_profile is NOT full
-              dissrate_avail = mod_som_efe_obp_ptr->sample_count -
-                  mod_som_apf_ptr->consumer_ptr->dissrates_cnt;  //calculate number of elements available have been produced
+          dissrate_avail =  mod_som_apf_ptr->producer_ptr->dissrates_cnt -
+                            mod_som_apf_ptr->consumer_ptr->dissrates_cnt;  //calculate number of elements available have been produced
 
               //ALB User stopped efe. I need to reset the obp producers count
               if(dissrate_avail<0){
@@ -1152,7 +1156,7 @@ void mod_som_apf_consumer_task_f(void  *p_arg){
               // LOOP without delay until caught up to latest produced element
               while (dissrate_avail > 0)
                 {
-                  curr_dacq_ptr=mod_som_apf_ptr->consumer_ptr->dacq_ptr;
+//                  curr_dacq_ptr=mod_som_apf_ptr->consumer_ptr->dacq_ptr;
                   // When have circular buffer overflow: have produced data bigger than consumer data: 1 circular buffer (n_elmnts)
                   // calculate new consumer count to skip ahead to the tail of the circular buffer (with optional padding),
                   // calculate the number of data we skipped, report number of elements skipped.
@@ -1196,23 +1200,22 @@ void mod_som_apf_consumer_task_f(void  *p_arg){
 
                   //ALB update avg pressure
                   curr_avg_pressure_ptr =
-                      &mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_ctd_pressure+
-                      dissrate_elmnts_offset;
+                      &mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_ctd_pressure;
+                  //ALB update avg temperature
+                  curr_avg_temperature_ptr =
+                      &mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_ctd_temperature;
+                  //ALB update avg salinity
+                  curr_avg_salinity_ptr =
+                      &mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_ctd_salinity;
+                  //ALB update avg dpdt
+                  curr_avg_dpdt_ptr =
+                      &mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_ctd_dpdt;
 
-                  //ALB check if the updated avg pressure is lower than
-                  //ALB the previous pressure + dz.
-                  //ALB
-//                  if (*curr_avg_pressure_ptr>
-//                       mod_som_apf_ptr->dacq_pressure+mod_som_apf_ptr->dacq_dz)
-//                    {
-                  //ALB fake if loop to test apf sdwrite
-                      if(dissrate_avail>0)
-                        {
-                      mod_som_apf_ptr->dacq_pressure=*curr_avg_pressure_ptr;
 
-                      avg_spectra_offset     = (mod_som_apf_ptr->producer_ptr->dissrates_cnt %
-                          MOD_SOM_EFE_OBP_FILL_SEGMENT_NB_SEGMENT_PER_RECORD)*
+                  avg_spectra_offset     = (mod_som_apf_ptr->producer_ptr->dissrates_cnt %
+                      MOD_SOM_EFE_OBP_CPT_DISSRATE_NB_AVG_SPECTRA_PER_RECORD)*
                           mod_som_efe_obp_ptr->settings_ptr->nfft/2;
+
 
                       //ALB update the current avg_spectra pointers
                       curr_temp_avg_spectra_ptr   =
@@ -1227,69 +1230,74 @@ void mod_som_apf_consumer_task_f(void  *p_arg){
 
                       //ALB update avg timestamp
                       curr_avg_timestamp_ptr =
-                          (uint64_t *) (&mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_timestamp+
-                             dissrate_elmnts_offset);
+                          (uint64_t *) &mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_timestamp;
 
-                      //ALB update avg pressure
-                      curr_avg_dpdt_ptr =
-                          &mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_ctd_dpdt+
-                          dissrate_elmnts_offset;
 
                       //ALB update the dissrate pointers
                       curr_epsilon_ptr =mod_som_efe_obp_ptr->cpt_dissrate_ptr->epsilon+
                                         dissrate_elmnts_offset;
                       curr_chi_ptr     =mod_som_efe_obp_ptr->cpt_dissrate_ptr->chi+
                                         dissrate_elmnts_offset;
-//                      curr_epsi_fom_ptr     =mod_som_efe_obp_ptr->cpt_dissrate_ptr->epsi_fom+
-//                                        dissrate_elmnts_offset;
-//                      curr_chi_fom_ptr     =mod_som_efe_obp_ptr->cpt_dissrate_ptr->chi_fom+
-//                                        dissrate_elmnts_offset;
+
+                      tick=sl_sleeptimer_get_tick_count64();
+                      mystatus = sl_sleeptimer_tick64_to_ms(tick,\
+                                       &mod_som_apf_ptr->consumer_ptr->record_timestamp);
+
+                      mod_som_apf_ptr->consumer_ptr->record_timestamp +=
+                                                mod_som_calendar_settings.poweron_offset_ms;
+
+
+                      mod_som_apf_ptr->consumer_ptr->payload_length=
+                          MOD_SOM_APF_CONSUMER_TIMESTAMP_SIZE+
+                          (6*MOD_SOM_APF_DACQ_FLOAT_SIZE)+
+                          (3*sizeof(float)*mod_som_apf_ptr->producer_ptr->
+                                acq_profile.mod_som_apf_meta_data.nfft);
+
+                      //ALB create header
+                      mod_som_apf_header_f(mod_som_apf_ptr->consumer_ptr,1);
+
+                      mod_som_apf_ptr->consumer_ptr->consumed_flag=false;
+                      mod_som_sdio_write_data_f(
+                          mod_som_apf_ptr->consumer_ptr->header,
+                          mod_som_apf_ptr->consumer_ptr->length_header,
+                          &mod_som_apf_ptr->consumer_ptr->consumed_flag);
+
 
                       //ALB convert and store the current dissrate and FFT into the MOD format
                       // log10(epsi) log10(chi):  3bytes (12 bits for each epsi and chi sample)
                       //  log10(FFT_shear),log10(FFT_temp),log10(FFT_accel)
                       mod_som_apf_copy_sd_element_f( curr_avg_timestamp_ptr,
                                                      curr_avg_pressure_ptr,
+                                                     curr_avg_temperature_ptr,
+                                                     curr_avg_salinity_ptr,
                                                      curr_avg_dpdt_ptr,
                                                      curr_epsilon_ptr,
                                                      curr_chi_ptr,
                                                      curr_temp_avg_spectra_ptr,
                                                      curr_shear_avg_spectra_ptr,
-                                                     curr_accel_avg_spectra_ptr,
-                                                     curr_dacq_ptr
-                      );
+                                                     curr_accel_avg_spectra_ptr
+                                                     );
 
-                      //ALB update dacq_size
-                      mod_som_apf_ptr->consumer_ptr->dacq_size=
-                          curr_dacq_ptr-mod_som_apf_ptr->consumer_ptr->dacq_ptr;
+//                      mod_som_apf_ptr->consumer_ptr->stored_dissrates_cnt++;
 
-                      mod_som_apf_ptr->consumer_ptr->stored_dissrates_cnt++;
+                      //ALB increment cnsmr count
+                      mod_som_apf_ptr->consumer_ptr->dissrates_cnt++;
 
-                      mod_som_apf_ptr->consumer_ptr->consumed_flag=false;
-                      mod_som_sdio_write_data_f(
-                          mod_som_apf_ptr->consumer_ptr->dacq_ptr,
-                          mod_som_apf_ptr->consumer_ptr->dacq_size,
-                          &mod_som_apf_ptr->consumer_ptr->consumed_flag);
-
-                  }//end if current P<previous P +dz
-
-                  //ALB increment cnsmr count
-                  mod_som_apf_ptr->consumer_ptr->dissrates_cnt++;
-
-                  //ALB update dissrate available
-                  dissrate_avail = mod_som_efe_obp_ptr->sample_count -
-                      mod_som_apf_ptr->consumer_ptr->dissrates_cnt; //elements available have been produced
+                      //ALB update dissrate available
+                      dissrate_avail =  mod_som_apf_ptr->producer_ptr->dissrates_cnt -
+                                        mod_som_apf_ptr->consumer_ptr->dissrates_cnt;  //calculate number of elements available have been produced
+                  }//end  while dissrate available
 
 
-                  if(mod_som_apf_ptr->producer_ptr->dacq_full){
-                      char chksum_str[5];
+
+                  if(mod_som_apf_ptr->producer_ptr->dacq_full & (mod_som_apf_ptr->settings_ptr->sd_packet_format==2)){
                       //get the timestamp for the record header
                       tick=sl_sleeptimer_get_tick_count64();
                       mystatus = sl_sleeptimer_tick64_to_ms(tick,\
                                        &mod_som_apf_ptr->consumer_ptr->record_timestamp);
 
                       //MHA: Now augment timestamp by poweron_offset_ms
-                      mod_som_calendar_settings=mod_som_calendar_get_settings_f(); //get the calendar settings pointer
+//                      mod_som_calendar_settings=mod_som_calendar_get_settings_f(); //get the calendar settings pointer
                       mod_som_apf_ptr->consumer_ptr->record_timestamp +=
                                                 mod_som_calendar_settings.poweron_offset_ms;
 
@@ -1299,7 +1307,11 @@ void mod_som_apf_consumer_task_f(void  *p_arg){
                                        sizeof(mod_som_apf_ptr->producer_ptr->acq_profile.mod_som_apf_meta_data);
 
                       //ALB create header
-                      mod_som_apf_header_f(mod_som_apf_ptr->consumer_ptr);
+                      if (mod_som_apf_ptr->settings_ptr->comm_telemetry_packet_format==1){
+                          mod_som_apf_header_f(mod_som_apf_ptr->consumer_ptr,0);
+                      }else{
+                          mod_som_apf_header_f(mod_som_apf_ptr->consumer_ptr,1);
+                      }
 
 
                       //ALB compute checksum
@@ -1327,7 +1339,7 @@ void mod_som_apf_consumer_task_f(void  *p_arg){
                       mod_som_apf_ptr->consumer_ptr->consumed_flag=false;
                       mod_som_io_stream_data_f(
                           (uint8_t * )chksum_str,
-                          5,
+                          MOD_SOM_APF_CONSUMER_CHECKSUM_SIZE,
                           &mod_som_apf_ptr->consumer_ptr->consumed_flag);
 
                       mod_som_apf_ptr->producer_ptr->dacq_full=false;
@@ -1337,30 +1349,6 @@ void mod_som_apf_consumer_task_f(void  *p_arg){
 
                   } //endif full true
 
-
-
-
-
-
-
-
-
-
-
-
-//                  //ALB raise flag and stop producer if profile is full (size(dacq)>=25kB)
-//                  //ALB update the number of sample
-//                  //ALB I should also update mod_som_apf_meta_data.sample_cnt in stop producer task i.e. after
-//                  if (mod_som_apf_ptr->producer_ptr->dacq_size+
-//                      mod_som_apf_ptr->producer_ptr->dacq_element_size>=
-//                      MOD_SOM_APF_DACQ_STRUCT_SIZE)
-//                    {
-//                      mod_som_apf_ptr->producer_ptr->dacq_full=true;
-//                      mod_som_apf_ptr->producer_ptr->
-//                      acq_profile.mod_som_apf_meta_data.sample_cnt=
-//                          mod_som_apf_ptr->producer_ptr->stored_dissrates_cnt;
-//                    }
-                }  // end of while (dissrate_avail > 0)
               // ALB done with segment storing.
               mod_som_apf_ptr->consumer_ptr->dissrate_skipped = 0;
           } //end if started
@@ -1385,7 +1373,7 @@ void mod_som_apf_consumer_task_f(void  *p_arg){
  *        -
  *   TODO
  ******************************************************************************/
-void mod_som_apf_header_f(mod_som_apf_consumer_ptr_t consumer_ptr)
+void mod_som_apf_header_f(mod_som_apf_consumer_ptr_t consumer_ptr, uint8_t tag_id)
 {
 
   //time stamp
@@ -1398,9 +1386,18 @@ void mod_som_apf_header_f(mod_som_apf_consumer_ptr_t consumer_ptr)
 
   //header  contains $EFE,flags. Currently flags are hard coded to 0x1e
   //time stamp will come at the end of header
-  memcpy(consumer_ptr->tag,
-          MOD_SOM_APF_HEADER,
-          MOD_SOM_APF_TAG_LENGTH);
+  switch (tag_id){
+    case 0:
+      memcpy(consumer_ptr->tag,
+              MOD_SOM_APF_HEADER0,
+              MOD_SOM_APF_TAG_LENGTH);
+      break;
+    case 1:
+      memcpy(consumer_ptr->tag,
+              MOD_SOM_APF_HEADER1,
+              MOD_SOM_APF_TAG_LENGTH);
+      break;
+  }
 
   sprintf((char*) consumer_ptr->header,  \
       "$%.4s%08x%08x%08x*FF", \
@@ -1416,7 +1413,6 @@ void mod_som_apf_header_f(mod_som_apf_consumer_ptr_t consumer_ptr)
       consumer_ptr->header_chksum ^=\
           consumer_ptr->header[i];
     }
-
 
   // the curr_consumer_element_ptr should be at the right place to
   // write the checksum already
@@ -1708,10 +1704,9 @@ uint32_t mod_som_apf_copy_F1_element_f(  uint64_t * curr_avg_timestamp_ptr,
 
   //ALB decimate timestamps and store it
   // dissrate timestamp - dacq start timestamp -> 2bytes (65000 sec)
-  local_avg_dissrate_timestamp =(uint16_t)
-                  (uint64_t)(mod_som_apf_ptr->producer_ptr->acq_profile.
-                             mod_som_apf_meta_data.daq_timestamp) -
-                              *curr_avg_timestamp_ptr;
+  local_avg_dissrate_timestamp =(uint16_t)((*curr_avg_timestamp_ptr -
+      (uint64_t)(mod_som_apf_ptr->producer_ptr->acq_profile.
+                                   mod_som_apf_meta_data.daq_timestamp)*1000)/1000);
 
 
   //ALB min out the local epsilon and chi to -12
@@ -1829,10 +1824,9 @@ uint32_t mod_som_apf_copy_F2_element_f(  uint64_t * curr_avg_timestamp_ptr,
 
   //ALB decimate timestamps and store it
   //ALB dissrate timestamp - dacq start timestamp -> 2bytes (65000 sec)
-  local_avg_dissrate_timestamp =(uint16_t)
-                  (uint64_t)(mod_som_apf_ptr->producer_ptr->acq_profile.
-                             mod_som_apf_meta_data.daq_timestamp) -
-                              *curr_avg_timestamp_ptr;
+  local_avg_dissrate_timestamp =(uint16_t)((*curr_avg_timestamp_ptr -
+      (uint64_t)(mod_som_apf_ptr->producer_ptr->acq_profile.
+                                   mod_som_apf_meta_data.daq_timestamp)*1000)/1000);
 
   //ALB decimate dissrates,
   //ALB first make sure it is above the min values
@@ -1843,8 +1837,8 @@ uint32_t mod_som_apf_copy_F2_element_f(  uint64_t * curr_avg_timestamp_ptr,
   local_epsilon = MIN(local_epsilon,max_dissrate);
   local_chi     = MIN(local_chi,max_dissrate);
 
-  local_epsilon = -3.4;
-  local_chi     = -6.4;
+//  local_epsilon = -3.4;
+//  local_chi     = -6.4;
 
   //ALB then digitize on a 12bits number
   mod_epsilon  = (uint32_t) ceil(local_epsilon*
@@ -1887,7 +1881,7 @@ uint32_t mod_som_apf_copy_F2_element_f(  uint64_t * curr_avg_timestamp_ptr,
       local_shear_avg_fft = MAX(local_shear_avg_fft,min_foco);
       local_shear_avg_fft = MIN(local_shear_avg_fft,max_foco);
 
-      local_shear_avg_fft = -5.1;
+//      local_shear_avg_fft = -5.1;
       //ALB then digitize on a 16bits number
       mod_shear_foco  = (uint16_t) ceil(local_shear_avg_fft*
                mod_som_apf_ptr->producer_ptr->decim_coef.foco_per_bit+
@@ -1896,7 +1890,7 @@ uint32_t mod_som_apf_copy_F2_element_f(  uint64_t * curr_avg_timestamp_ptr,
       //ALB first make sure it is above the min/max values
       local_temp_avg_fft = MAX(local_temp_avg_fft,min_foco);
       local_temp_avg_fft = MIN(local_temp_avg_fft,max_foco);
-      local_temp_avg_fft = -6.2;
+//      local_temp_avg_fft = -6.2;
       //ALB then digitize on a 16bits number
       mod_temp_foco  = (uint16_t) ceil(local_temp_avg_fft*
                mod_som_apf_ptr->producer_ptr->decim_coef.foco_per_bit+
@@ -1905,7 +1899,7 @@ uint32_t mod_som_apf_copy_F2_element_f(  uint64_t * curr_avg_timestamp_ptr,
       //ALB first make sure it is above the min/max values
       local_accel_avg_fft = MAX(local_accel_avg_fft,min_foco);
       local_accel_avg_fft = MIN(local_accel_avg_fft,max_foco);
-      local_accel_avg_fft = -7.3;
+//      local_accel_avg_fft = -7.3;
       //ALB then digitize on a 16bits number
       mod_accel_foco  = (uint16_t) ceil(local_accel_avg_fft*
                mod_som_apf_ptr->producer_ptr->decim_coef.foco_per_bit+
@@ -1950,133 +1944,118 @@ uint32_t mod_som_apf_copy_F2_element_f(  uint64_t * curr_avg_timestamp_ptr,
  *   or otherwise
  ******************************************************************************/
 void mod_som_apf_copy_sd_element_f(  uint64_t * curr_avg_timestamp_ptr,
-                                float * curr_avg_pressure_ptr,
-                                float * curr_avg_dpdt_ptr,
-                                float * curr_epsilon_ptr,
-                                float * curr_chi_ptr,
-                                float * curr_temp_avg_spectra_ptr,
-                                float * curr_shear_avg_spectra_ptr,
-                                float * curr_accel_avg_spectra_ptr,
-                                uint8_t * dacq_ptr)
+                                     float * curr_avg_pressure_ptr,
+                                     float * curr_avg_temperature_ptr,
+                                     float * curr_avg_salinity_ptr,
+                                     float * curr_avg_dpdt_ptr,
+                                     float * curr_epsilon_ptr,
+                                     float * curr_chi_ptr,
+                                     float * curr_temp_avg_spectra_ptr,
+                                     float * curr_shear_avg_spectra_ptr,
+                                     float * curr_accel_avg_spectra_ptr)
 {
 
+  uint8_t * dacq_ptr=mod_som_apf_ptr->consumer_ptr->dacq_ptr;
+  uint32_t payload_length=0;
+//  char chksum_str[5];
+
   //ALB declare the local parameters
-  uint32_t mod_epsilon, mod_chi;
-  uint16_t mod_shear_foco, mod_temp_foco, mod_accel_foco;
-  uint16_t local_avg_dissrate_timestamp; //ALB nb of sec since dacq
-  uint8_t  mod_bit_dissrates[MOD_SOM_APF_PRODUCER_DISSRATE_RES] = {0};
-
-  //ALB store the dissrate and foco values in local params.
-  float local_epsilon        = log10(*curr_epsilon_ptr);
-  float local_chi            = log10(*curr_chi_ptr);
-  float local_shear_avg_fft  = log10(*curr_shear_avg_spectra_ptr);
-  float local_temp_avg_fft   = log10(*curr_temp_avg_spectra_ptr);
-  float local_accel_avg_fft  = log10(*curr_accel_avg_spectra_ptr);
-
-  //ALB store the max min dissrate and foco values in local params.
-  //ALB TODO this could be done with macro and not waste CPU time
-  float min_dissrate = log10(MOD_SOM_APF_PRODUCER_MIN_DISSRATE);
-  float max_dissrate = log10(MOD_SOM_APF_PRODUCER_MAX_DISSRATE);
-  float min_foco     = log10(MOD_SOM_APF_PRODUCER_MIN_FOCO);
-  float max_foco     = log10(MOD_SOM_APF_PRODUCER_MAX_FOCO);
+  uint64_t local_avg_dissrate_timestamp; //ALB nb of sec since dacq
 
   //ALB decimate timestamps and store it
   //ALB dissrate timestamp - dacq start timestamp -> 2bytes (65000 sec)
-  local_avg_dissrate_timestamp =(uint16_t)(*curr_avg_timestamp_ptr -
+  local_avg_dissrate_timestamp =(uint16_t)((*curr_avg_timestamp_ptr -
       (uint64_t)(mod_som_apf_ptr->producer_ptr->acq_profile.
-                                   mod_som_apf_meta_data.daq_timestamp*1000));
-
-  //ALB decimate dissrates,
-  //ALB first make sure it is above the min values
-  local_epsilon = MAX(local_epsilon,min_dissrate);
-  local_chi     = MAX(local_chi,min_dissrate);
-
-  //ALB then make sure it is below the max values
-  local_epsilon = MIN(local_epsilon,max_dissrate);
-  local_chi     = MIN(local_chi,max_dissrate);
-
-  //ALB then digitize on a 12bits number
-  mod_epsilon  = (uint32_t) ceil(local_epsilon*
-           mod_som_apf_ptr->producer_ptr->decim_coef.dissrate_per_bit+
-           mod_som_apf_ptr->producer_ptr->decim_coef.dissrate_counts_at_origin);
-
-  mod_chi      = (uint32_t) ceil(local_chi*
-           mod_som_apf_ptr->producer_ptr->decim_coef.dissrate_per_bit+
-           mod_som_apf_ptr->producer_ptr->decim_coef.dissrate_counts_at_origin);
-
-  //ALB then store epsi and chi in a 3 bytes array
-  mod_bit_dissrates[0]= (uint8_t) (mod_epsilon>>4);
-  mod_bit_dissrates[1]= (uint8_t) (mod_epsilon<<4);
-  mod_bit_dissrates[1]= (uint8_t) (mod_bit_dissrates[1] & (mod_chi>>8));
-  mod_bit_dissrates[2]= (uint8_t) mod_chi;
+                                   mod_som_apf_meta_data.daq_timestamp)*1000)/1000);
 
   //ALB copy the data in the acq profile structure
   //ALB TODO check the dacq_ptr update and its value when out of that function
   memcpy(dacq_ptr,
          &local_avg_dissrate_timestamp,
-         MOD_SOM_APF_DACQ_TIMESTAMP_SIZE);
-  dacq_ptr+=MOD_SOM_APF_DACQ_TIMESTAMP_SIZE;
+         MOD_SOM_APF_CONSUMER_TIMESTAMP_SIZE);
+  dacq_ptr+=MOD_SOM_APF_CONSUMER_TIMESTAMP_SIZE;
   memcpy(dacq_ptr,
          curr_avg_pressure_ptr,
-         MOD_SOM_APF_DACQ_PRESSURE_SIZE);
-  dacq_ptr+=MOD_SOM_APF_DACQ_PRESSURE_SIZE;
+         MOD_SOM_APF_DACQ_FLOAT_SIZE);
+  dacq_ptr+=MOD_SOM_APF_DACQ_FLOAT_SIZE;
   memcpy(dacq_ptr,
-         &mod_bit_dissrates,
-         MOD_SOM_APF_PRODUCER_DISSRATE_RES);
-  dacq_ptr+=MOD_SOM_APF_PRODUCER_DISSRATE_RES;
+         &curr_avg_temperature_ptr,
+         MOD_SOM_APF_DACQ_FLOAT_SIZE);
+  dacq_ptr+=MOD_SOM_APF_DACQ_FLOAT_SIZE;
+  memcpy(dacq_ptr,
+         &curr_avg_salinity_ptr,
+         MOD_SOM_APF_DACQ_FLOAT_SIZE);
+  dacq_ptr+=MOD_SOM_APF_DACQ_FLOAT_SIZE;
   memcpy(dacq_ptr,
          curr_avg_dpdt_ptr,
-         MOD_SOM_APF_DACQ_DPDT_SIZE);
-  dacq_ptr+=MOD_SOM_APF_DACQ_DPDT_SIZE;
+         MOD_SOM_APF_DACQ_FLOAT_SIZE);
+  dacq_ptr+=MOD_SOM_APF_DACQ_FLOAT_SIZE;
+  memcpy(dacq_ptr,
+         curr_epsilon_ptr,
+         MOD_SOM_APF_DACQ_FLOAT_SIZE);
+  dacq_ptr+=MOD_SOM_APF_DACQ_FLOAT_SIZE;
+  memcpy(dacq_ptr,
+         curr_chi_ptr,
+         MOD_SOM_APF_DACQ_FLOAT_SIZE);
+  dacq_ptr+=MOD_SOM_APF_DACQ_FLOAT_SIZE;
 
-  //ALB decimate fourier coef (foco),
-  for (int i=0;i<mod_som_apf_ptr->producer_ptr->nfft_diag;i++)
+  //ALB get the size of the data we just filled up.
+  payload_length= dacq_ptr - mod_som_apf_ptr->consumer_ptr->dacq_ptr;
+
+  mod_som_apf_ptr->consumer_ptr->chksum=0;
+  for(int i=0;i<payload_length;i++)
     {
-      //ALB first make sure it is above the min/max values
-      local_shear_avg_fft = MAX(local_shear_avg_fft,min_foco);
-      local_shear_avg_fft = MIN(local_shear_avg_fft,max_foco);
-      //ALB then digitize on a 16bits number
-      mod_shear_foco  = (uint16_t) ceil(local_shear_avg_fft*
-               mod_som_apf_ptr->producer_ptr->decim_coef.foco_per_bit+
-               mod_som_apf_ptr->producer_ptr->decim_coef.foco_counts_at_origin);
+      mod_som_apf_ptr->consumer_ptr->chksum ^=\
+          mod_som_apf_ptr->consumer_ptr->dacq_ptr[i];
+    }
 
-      //ALB first make sure it is above the min/max values
-      local_temp_avg_fft = MAX(local_temp_avg_fft,min_foco);
-      local_temp_avg_fft = MIN(local_temp_avg_fft,max_foco);
-      //ALB then digitize on a 16bits number
-      mod_temp_foco  = (uint16_t) ceil(local_temp_avg_fft*
-               mod_som_apf_ptr->producer_ptr->decim_coef.foco_per_bit+
-               mod_som_apf_ptr->producer_ptr->decim_coef.foco_counts_at_origin);
+  mod_som_apf_ptr->consumer_ptr->consumed_flag=false;
+  mod_som_sdio_write_data_f(
+      mod_som_apf_ptr->consumer_ptr->dacq_ptr,
+      payload_length,
+      &mod_som_apf_ptr->consumer_ptr->consumed_flag);
 
-      //ALB first make sure it is above the min/max values
-      local_accel_avg_fft = MAX(local_accel_avg_fft,min_foco);
-      local_accel_avg_fft = MIN(local_accel_avg_fft,max_foco);
-      //ALB then digitize on a 16bits number
-      mod_accel_foco  = (uint16_t) ceil(local_accel_avg_fft*
-               mod_som_apf_ptr->producer_ptr->decim_coef.foco_per_bit+
-               mod_som_apf_ptr->producer_ptr->decim_coef.foco_counts_at_origin);
+  dacq_ptr=mod_som_apf_ptr->consumer_ptr->dacq_ptr;
+  //ALB Now I am using payload_length just to get the size a 1 spectrum in uint8_t
+  payload_length=sizeof(float)*mod_som_apf_ptr->producer_ptr->
+      acq_profile.mod_som_apf_meta_data.nfft;
+
+  memcpy(dacq_ptr,
+         &curr_shear_avg_spectra_ptr,
+         payload_length);
+  dacq_ptr+=payload_length;
+  memcpy(dacq_ptr,
+         &curr_temp_avg_spectra_ptr,
+         payload_length);
+  dacq_ptr+=payload_length;
+  memcpy(dacq_ptr,
+         &curr_accel_avg_spectra_ptr,
+         payload_length);
+  dacq_ptr+=payload_length;
+
+  //ALB get the size of the data we just filled up.
+  payload_length= dacq_ptr - mod_som_apf_ptr->consumer_ptr->dacq_ptr;
+
+  for(int i=0;i<payload_length;i++)
+    {
+      mod_som_apf_ptr->consumer_ptr->chksum ^=\
+          mod_som_apf_ptr->consumer_ptr->dacq_ptr[i];
+    }
+
+  //ALB add checksum
+  sprintf((char *)dacq_ptr,"*%x\r\n",mod_som_apf_ptr->consumer_ptr->chksum);
+  dacq_ptr+=MOD_SOM_APF_CONSUMER_CHECKSUM_SIZE;
+  //ALB update the size of the data we just filled up.
+  payload_length= dacq_ptr - mod_som_apf_ptr->consumer_ptr->dacq_ptr;
 
 
-      memcpy(dacq_ptr,
-             &mod_shear_foco,
-             MOD_SOM_APF_PRODUCER_FOCO_RES);
-      dacq_ptr+=MOD_SOM_APF_PRODUCER_FOCO_RES;
-
-      memcpy(dacq_ptr,
-             &mod_temp_foco,
-             MOD_SOM_APF_PRODUCER_FOCO_RES);
-      dacq_ptr+=MOD_SOM_APF_PRODUCER_FOCO_RES;
-      memcpy(dacq_ptr,
-             &mod_accel_foco,
-             MOD_SOM_APF_PRODUCER_FOCO_RES);
-      dacq_ptr+=MOD_SOM_APF_PRODUCER_FOCO_RES;
-
-      local_shear_avg_fft   = log10(*(curr_shear_avg_spectra_ptr+i));
-      local_temp_avg_fft    = log10(*(curr_temp_avg_spectra_ptr+i));
-      local_accel_avg_fft   = log10(*(curr_accel_avg_spectra_ptr+i));
+  mod_som_apf_ptr->consumer_ptr->consumed_flag=false;
+  mod_som_sdio_write_data_f(
+      mod_som_apf_ptr->consumer_ptr->dacq_ptr,
+      payload_length,
+      &mod_som_apf_ptr->consumer_ptr->consumed_flag);
 
 
-  }
 }
 
 
@@ -2200,6 +2179,7 @@ mod_som_apf_status_t mod_som_apf_daq_start_f(uint64_t profile_id){
              OS_OPT_TIME_DLY,          //   from now.
              &err);
 
+  //ALB add a delay here
 
   //ALB get a P reading and define the dz to get 25kB in the producer->dacq_profile
   //ALB the dz will depends on the comm_packet_format.
@@ -2209,6 +2189,9 @@ mod_som_apf_status_t mod_som_apf_daq_start_f(uint64_t profile_id){
       floor(MOD_SOM_APF_DACQ_STRUCT_SIZE/
             (MOD_SOM_APF_METADATA_STRUCT_SIZE+
       mod_som_apf_ptr->producer_ptr->dacq_element_size));
+
+
+
 
   //ALB I should have a delay here. So the system has time to get a pressure sample
   //ALB I think OS_TIME_delay would the same and free the CPU for other tasks.
@@ -2254,6 +2237,7 @@ mod_som_apf_status_t mod_som_apf_daq_start_f(uint64_t profile_id){
  ******************************************************************************/
 
 mod_som_apf_status_t mod_som_apf_daq_stop_f(){
+  int delay =1000;
   mod_som_apf_status_t status;
   status=MOD_SOM_APF_STATUS_OK;
 
@@ -2277,6 +2261,7 @@ mod_som_apf_status_t mod_som_apf_daq_stop_f(){
   //ALB stop APF consumer task
   status |= mod_som_apf_stop_consumer_task_f();
 
+  sl_sleeptimer_delay_millisecond(delay);
   //ALB disable SDIO hardware
   mod_som_sdio_stop_store_f();
 //  mod_som_sdio_disable_hardware_f();
@@ -2364,6 +2349,16 @@ void mod_som_apf_init_meta_data(mod_som_apf_meta_data_ptr_t mod_som_apf_meta_dat
 
   mod_som_apf_meta_data_ptr->sample_cnt=0;
   mod_som_apf_meta_data_ptr->end_metadata=0xFFFF;
+
+
+//  if(mod_som_apf_ptr->config_ptr->storing_mode>0){
+//      mod_som_apf_ptr->consumer_ptr->consumed_flag=false;
+//      mod_som_sdio_write_data_f(
+//          mod_som_apf_meta_data_ptr,
+//          sizeof(mod_som_apf_meta_data_ptr),
+//          &mod_som_apf_ptr->consumer_ptr->consumed_flag);
+//  }
+
 }
 
 
@@ -2847,12 +2842,12 @@ mod_som_apf_status_t mod_som_apf_sleep_f(){
 mod_som_apf_status_t mod_som_apf_time_f(CPU_INT16U argc,
                                         CPU_CHAR *argv[]){
   RTOS_ERR  p_err;
-  uint16_t year;
-  uint8_t month;
-  uint8_t month_day;
-  uint8_t hour;
-  uint8_t min;
-  uint8_t sec;
+//  uint16_t year;
+//  uint8_t month;
+//  uint8_t month_day;
+//  uint8_t hour;
+//  uint8_t min;
+//  uint8_t sec;
 
   uint32_t bytes_sent = 0;
   // paramters for send_line_f()
@@ -2863,25 +2858,18 @@ mod_som_apf_status_t mod_som_apf_time_f(CPU_INT16U argc,
   apf_leuart_ptr = (LEUART_TypeDef *)mod_som_apf_ptr->com_prf_ptr->handle_port;
 
   sl_sleeptimer_timestamp_t time;
-  sl_sleeptimer_timestamp_t time_orig;
-  sl_sleeptimer_time_zone_offset_t time_zone;
-  sl_sleeptimer_date_t date;
-  sl_sleeptimer_date_t date_orig;
   mod_som_apf_status_t status = 0;
 
-  time_zone=0;
-  // calculate the seconds from
-
-  // need to detect if command does not have the second argument
-  // if (argc<2)
-  // invalid command -> break out
-  // if argv[1] <= 0 -> bad command -> break out
-  // note: argv[1] is the
 
   if (argc == 2) // valid command: "time,1234567\r"
   {
 
       time= shellStrtol(argv[1],&p_err);
+
+      //ALB maybe the real APEX with send directly time
+      //TODO check
+//      time = argv[1];
+
       //ALB for APEX time is UNIX time the number of sec since Jan 1 1970
       //ALB so we need to add time_orig to time
       //ALB The epoch of timestamps in the sleeptimer is 1970
@@ -2892,9 +2880,13 @@ mod_som_apf_status_t mod_som_apf_time_f(CPU_INT16U argc,
       status|=mod_som_settings_save_settings_f();
       status|=mod_som_io_print_f("time,ack,%s\r\n",argv[1]);
 
+      //TODO these lines need to be changed so APF module sends back "time,ack," long integer time "\r\n"
       // save time string into the temporary local string - Mai - Nov 18, 2021
       sprintf(apf_reply_str,"time,ack,%s\r\n",argv[1]);
       reply_str_len = strlen(apf_reply_str);
+
+      sprintf(apf_reply_str,"time,ack,%ld\r\n",argv[1]);
+//      reply_str_len = strlen(apf_reply_str);
       // sending the above string to the APF port - Mai - Nov 18, 2021
       bytes_sent = mod_som_apf_send_line_f(apf_leuart_ptr,apf_reply_str, reply_str_len);
 
@@ -3150,17 +3142,17 @@ mod_som_apf_status_t mod_som_apf_sd_format_f(CPU_INT16U argc,
   char *endptr;
   uint8_t mode = 0;
   bool good_argument=false;
-  CPU_INT16U argc_sbe41 = 2;
-  CPU_CHAR   *argv_sbe41_sd[2]={"sbe.mode" ,"1"};
-  CPU_CHAR   *argv_sbe41_off[2]={"sbe.mode" ,"2"};
-  CPU_INT16U argc_efe = 2;
-  CPU_CHAR   *argv_efe_sd[2]={"efe.mode" ,"1"};
-  CPU_CHAR   *argv_efe_off[2]={"efe.mode" ,"2"};
-  CPU_INT16U argc_efe_obp = 2;
-  CPU_CHAR   *argv_efe_obp_sd[2]={"efeobp.mode" ,"1"};
-  CPU_CHAR   *argv_efe_obp_off[2]={"efeobp.mode" ,"2"};
-  CPU_CHAR   *argv_efe_obp_avgspec_format[2]={"efeobp.format" ,"2"}; //spectra
-  CPU_CHAR   *argv_efe_obp_none_format[2]={"efeobp.format" ,"3"}; //only dissrates
+//  CPU_INT16U argc_sbe41 = 2;
+//  CPU_CHAR   *argv_sbe41_sd[2]={"sbe.mode" ,"1"};
+//  CPU_CHAR   *argv_sbe41_off[2]={"sbe.mode" ,"2"};
+//  CPU_INT16U argc_efe = 2;
+//  CPU_CHAR   *argv_efe_sd[2]={"efe.mode" ,"1"};
+//  CPU_CHAR   *argv_efe_off[2]={"efe.mode" ,"2"};
+//  CPU_INT16U argc_efe_obp = 2;
+//  CPU_CHAR   *argv_efe_obp_sd[2]={"efeobp.mode" ,"1"};
+//  CPU_CHAR   *argv_efe_obp_off[2]={"efeobp.mode" ,"2"};
+//  CPU_CHAR   *argv_efe_obp_avgspec_format[2]={"efeobp.format" ,"2"}; //spectra
+//  CPU_CHAR   *argv_efe_obp_none_format[2]={"efeobp.format" ,"3"}; //only dissrates
 
   uint32_t bytes_sent = 0;
   // for send_string to the port
@@ -3183,39 +3175,39 @@ mod_som_apf_status_t mod_som_apf_sd_format_f(CPU_INT16U argc,
       break;
     }
 
-    if(mod_som_apf_ptr->settings_ptr->sd_packet_format>1){
-        //ALB start writing data on the sd from the apf producers.
-        mod_som_apf_ptr->consumer_ptr->started_flg=true;
-        //ALB if sd_packet is "on" I ll always write the disrates on the SD card.
-        mod_som_efe_obp_consumer_format_f(argc_efe_obp,argv_efe_obp_none_format);
-        mod_som_efe_obp_mode_f(argc_efe_obp,argv_efe_obp_sd);
-    }else{
-        mod_som_efe_obp_mode_f(argc_efe_obp,argv_efe_obp_off);
-    }
-    if(mod_som_apf_ptr->settings_ptr->sd_packet_format==1){
-        //ALB write raw data in the Profile file
-        mod_som_sbe41_consumer_mode_f(argc_sbe41,argv_sbe41_sd);
-        mod_som_efe_consumer_mode_f(argc_efe,argv_efe_sd);
-    }else{
-        //ALB sd_mode will use apf producer data.
-        //ALB make sure I turn off raw data sd write.
-        mod_som_sbe41_consumer_mode_f(argc_sbe41,argv_sbe41_off);
-        mod_som_efe_consumer_mode_f(argc_efe,argv_efe_off);
-    }
+//    if(mod_som_apf_ptr->settings_ptr->sd_packet_format>1){
+//        //ALB start writing data on the sd from the apf producers.
+//        mod_som_apf_ptr->consumer_ptr->started_flg=true;
+//        //ALB if sd_packet is "on" I ll always write the disrates on the SD card.
+//        mod_som_efe_obp_consumer_format_f(argc_efe_obp,argv_efe_obp_none_format);
+//        mod_som_efe_obp_mode_f(argc_efe_obp,argv_efe_obp_sd);
+//    }else{
+//        mod_som_efe_obp_mode_f(argc_efe_obp,argv_efe_obp_off);
+//    }
+//    if(mod_som_apf_ptr->settings_ptr->sd_packet_format==1){
+//        //ALB write raw data in the Profile file
+//        mod_som_sbe41_consumer_mode_f(argc_sbe41,argv_sbe41_sd);
+//        mod_som_efe_consumer_mode_f(argc_efe,argv_efe_sd);
+//    }else{
+//        //ALB sd_mode will use apf producer data.
+//        //ALB make sure I turn off raw data sd write.
+//        mod_som_sbe41_consumer_mode_f(argc_sbe41,argv_sbe41_off);
+//        mod_som_efe_consumer_mode_f(argc_efe,argv_efe_off);
+//    }
 
 
-    if(mod_som_apf_ptr->settings_ptr->sd_packet_format==2){
-        //ALB write spectra from efeobp on the SD card
-        mod_som_efe_obp_consumer_format_f(argc_efe_obp,argv_efe_obp_avgspec_format);
-    }else{
-        mod_som_efe_obp_consumer_format_f(argc_efe_obp,argv_efe_obp_none_format);
-    }
+//    if(mod_som_apf_ptr->settings_ptr->sd_packet_format==2){
+//        //ALB write spectra from efeobp on the SD card
+//        mod_som_efe_obp_consumer_format_f(argc_efe_obp,argv_efe_obp_avgspec_format);
+//    }else{
+//        mod_som_efe_obp_consumer_format_f(argc_efe_obp,argv_efe_obp_none_format);
+//    }
 
-    if(mod_som_apf_ptr->settings_ptr->sd_packet_format==3){
-        //ALB write decimated spectra from apf on the SDcard.
-
-
-    }
+//    if(mod_som_apf_ptr->settings_ptr->sd_packet_format==3){
+//        //ALB write decimated spectra from apf on the SDcard.
+//
+//
+//    }
 
   status|=mod_som_settings_save_settings_f();
 
@@ -3274,9 +3266,9 @@ mod_som_apf_status_t mod_som_apf_sd_format_status_f(CPU_INT16U argc,
   // get the port's fd
   apf_leuart_ptr = (LEUART_TypeDef *)mod_som_apf_ptr->com_prf_ptr->handle_port;
 
-      status = mod_som_io_print_f("sd_format?,ack,%i\r\n",mod_som_apf_ptr->settings_ptr->sd_packet_format);
+      status = mod_som_io_print_f("sd_format?,ack,%lu\r\n",mod_som_apf_ptr->settings_ptr->sd_packet_format);
       // save to the local string for sending out - Mai-Nov 18, 2021
-      sprintf(apf_reply_str,"sd_format?,ack,%i\r\n",mod_som_apf_ptr->settings_ptr->sd_packet_format);
+      sprintf(apf_reply_str,"sd_format?,ack,%lu\r\n",mod_som_apf_ptr->settings_ptr->sd_packet_format);
       reply_str_len = strlen(apf_reply_str);
       // sending the above string to the APF port - Mai - Nov 18, 2021
       bytes_sent = mod_som_apf_send_line_f(apf_leuart_ptr,apf_reply_str, reply_str_len);
@@ -3328,7 +3320,11 @@ mod_som_apf_status_t mod_som_apf_upload_f(){
 
   int c;
 
+  unsigned int crc=0;
   uint32_t   timeout = 0;
+  uint32_t   timeout_flag = 0;
+  uint32_t   t1 = 0;
+  uint32_t   t0 = 0;
   uint32_t   dacq_bytes_available = 0;
   uint32_t   dacq_bytes_sent      = 0;
   uint32_t   dacq_bytes_to_sent   = 0;
@@ -3351,13 +3347,15 @@ mod_som_apf_status_t mod_som_apf_upload_f(){
       bytes_sent = mod_som_apf_send_line_f(apf_leuart_ptr,apf_reply_str, reply_str_len);
 
       //ALB wait 500 ms
-      while (delay>0){
-          delay--;
-      }
-
+      sl_sleeptimer_delay_millisecond(delay);
 
       //ALB initialize send_packet_tries.
-      mod_som_apf_ptr->consumer_ptr->send_packet_tries=0;
+      mod_som_apf_ptr->consumer_ptr->send_packet_tries   = 0;
+      mod_som_apf_ptr->consumer_ptr->nb_packet_sent      = 0;
+      mod_som_apf_ptr->consumer_ptr->packet.CRC          = 0;
+      mod_som_apf_ptr->consumer_ptr->packet.counters     = 0;
+      mod_som_apf_ptr->consumer_ptr->daq_remaining_bytes =
+                                    mod_som_apf_ptr->producer_ptr->dacq_size;
       //ALB split acq_profile into 990 bytes packets:
       //ALB count how bytes are left to send out.
       dacq_bytes_available=
@@ -3365,10 +3363,11 @@ mod_som_apf_status_t mod_som_apf_upload_f(){
 
       //ALB while bytes available > than 986 bytes
       //ALB I build a full packet and stream it.
-      while ((dacq_bytes_available>=0) &
+      while ((dacq_bytes_available>=0) &&
           (mod_som_apf_ptr->consumer_ptr->send_packet_tries<
               MOD_SOM_APF_UPLOAD_MAX_TRY_PACKET)){
 
+          status=MOD_SOM_APF_STATUS_OK;
           //ALB define how many byte to send
           //ALB i.e. min(dacq_bytes_available,
           //ALB          MOD_SOM_APF_UPLOAD_PACKET_LOAD_SIZE)
@@ -3387,28 +3386,27 @@ mod_som_apf_status_t mod_som_apf_upload_f(){
                  dacq_bytes_to_sent);
           //ALB compute the packet CRC
           //TODO
-          *((uint16_t *) &mod_som_apf_ptr->consumer_ptr->packet.CRC)=0;
+          crc=Crc16Bit((unsigned char *) mod_som_apf_ptr->consumer_ptr->packet.payload,
+                       dacq_bytes_to_sent);
+
+          mod_som_apf_ptr->consumer_ptr->packet.CRC=crc;
           //ALB compute the counters
           //TODO
-          *((uint16_t *) &mod_som_apf_ptr->consumer_ptr->packet.counters)=0;
+          mod_som_apf_ptr->consumer_ptr->packet.counters=
+              mod_som_apf_ptr->consumer_ptr->nb_packet_sent;
+
 
           //ALB packet should be ready. Now send it
           mod_som_apf_ptr->consumer_ptr->consumed_flag=false;
+
+          //TODO MNB send the packet to APEX-shell
           mod_som_io_stream_data_f(
               (uint8_t *)&mod_som_apf_ptr->consumer_ptr->packet,
               dacq_bytes_to_sent+MOD_SOM_APF_UPLOAD_PACKET_CRC_SIZE+
               MOD_SOM_APF_UPLOAD_PACKET_CNT_SIZE,
               &mod_som_apf_ptr->consumer_ptr->consumed_flag);
 
-          //ALB Wait for consumed_flag to be on before doing the following lines
-          //ALB I think the 5s timeout covers pretty much everything
-          while(mod_som_apf_ptr->consumer_ptr->consumed_flag){
-              timeout++;
-              if (timeout>MOD_SOM_APF_UPLOAD_APF11_TIMEOUT){
-                  status=MOD_SOM_APF_UPLOAD_APF11_TIMEOUT;
-                  mod_som_apf_ptr->consumer_ptr->consumed_flag=true;
-              }//end of timeout
-          }//while consumed flag
+          //ALB We need to send the packet to the APEX shell
 
           //ALB Wait for APF11 answer.
           //ALB APF sends ACK if fine.
@@ -3416,43 +3414,48 @@ mod_som_apf_status_t mod_som_apf_upload_f(){
           //ALB There is also a 5sec time out ~ NACK.
           //ALB If NACK or timeout, try 3 times to send the packet.
           //ALB If packet is NACK after 3 tries, go back to menu (i.e., exit the upload function).
-          if(timeout<MOD_SOM_APF_UPLOAD_APF11_TIMEOUT){
-              timeout=0;
-              c=0;
-              while (c < 0){ // Wait for valid input
-                  //Release for waiting tasks
-                  c = RETARGET_ReadChar();
 
-                  //ALB good transmit, go to next packet.
-                  if(c==MOD_SOM_APF_UPLOAD_APF11_ACK){
-                      //ALB update current_data_ptr to point to the next dacq data
-                      current_data_ptr+=dacq_bytes_to_sent;
-                      dacq_bytes_sent+=dacq_bytes_to_sent;
-                      mod_som_apf_ptr->consumer_ptr->send_packet_tries=0;
-                      status=MOD_SOM_APF_UPLOAD_APF11_ACK;
-                  }
-                  if(c==MOD_SOM_APF_UPLOAD_APF11_NACK){
-                      mod_som_apf_ptr->consumer_ptr->send_packet_tries++;
-                      status=MOD_SOM_APF_UPLOAD_APF11_NACK;
+          //ALB get a t0=timestamp right before the while
+          t0= mod_som_calendar_get_time_f();
+          c=0;
+          while (c < 0){ // Wait for valid input
+              //Release for waiting tasks
+              c = RETARGET_ReadChar();
+              //TODO MNB read the bytes from APEX-shell
 
-                  }
-                  //ALB timeout
-                  timeout++;
-                  if (timeout>MOD_SOM_APF_UPLOAD_APF11_TIMEOUT){
-                      mod_som_apf_ptr->consumer_ptr->send_packet_tries++;
-                      c=1;//ALB set c>0 to get out of the while loop
-                      status=MOD_SOM_APF_UPLOAD_APF11_TIMEOUT;
-                  }//ALB end of timeout
-              }//ALB end of while c
+              //ALB good transmit, go to next packet.
+              if(c==MOD_SOM_APF_UPLOAD_APF11_ACK){
+                  //ALB update current_data_ptr to point to the next dacq data
+                  current_data_ptr+=dacq_bytes_to_sent;
+                  dacq_bytes_sent+=dacq_bytes_to_sent;
+                  mod_som_apf_ptr->consumer_ptr->send_packet_tries=0;
+                  status=MOD_SOM_APF_STATUS_OK;
+              }
+              //ALB get current timestamp t1
+              t1= mod_som_calendar_get_time_f();
+              //ALB calculate time out if t1-t0>5sec
+              if ((t1-t0)>=MOD_SOM_APF_UPLOAD_APF11_TIMEOUT){
+                  //ALB timeout_flag=1
+                  timeout_flag=1;
+              }
+              //ALB error: either NACK of timeout.
+              //ALB Break the while loop and retry to send the packet
+              if((c==MOD_SOM_APF_UPLOAD_APF11_NACK) || (timeout_flag==1)){
+                  mod_som_apf_ptr->consumer_ptr->send_packet_tries++;
+                  status=MOD_SOM_APF_STATUS_FAIL_SEND_PACKET;
+                  dacq_bytes_sent=0;
+                  break; //Break the while loop to try again
+              }//ALB end of if
+          }//ALB end of while c
 
-          }//ALB end of packet stream time out
           //ALB update dacq_bytes_available.
           dacq_bytes_available=
               mod_som_apf_ptr->producer_ptr->dacq_size-dacq_bytes_sent;
+
       }//ALB end of while bytes available
 
-
-  }else{
+  }//ALB end if(!mod_som_apf_ptr->daq)
+  else{
       //ALB daq is still running
       status=MOD_SOM_APF_STATUS_DAQ_IS_RUNNING;
   }//ALB end if daq

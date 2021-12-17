@@ -210,8 +210,6 @@ mod_som_status_t mod_som_efe_obp_init_f(){
       return status;
     }
 
-    //ALB get runtime sbe41 for futur use.
-    local_sbe41_ptr=mod_som_sbe41_get_runtime_ptr_f();
 
 
     //ALB temporary for debug so I do not type the command
@@ -1113,6 +1111,15 @@ void mod_som_efe_obp_fill_segment_task_f(void  *p_arg){
   mod_som_efe_ptr_t local_mod_som_efe_ptr = mod_som_efe_get_runtime_ptr_f();
   uint8_t * curr_data_ptr   = local_mod_som_efe_ptr->rec_buff->efe_elements_buffer;
 
+  float local_fill_segment_ctd_temperature=0;
+  float local_fill_segment_ctd_pressure=0;
+  float local_fill_segment_ctd_salinity=0;
+  float local_fill_segment_ctd_dpdt=0;
+
+  //local_sbe41_ptr
+  //ALB get runtime sbe41 for futur use.
+  local_sbe41_ptr=mod_som_sbe41_get_runtime_ptr_f();
+
   while (DEF_ON) {
 
 
@@ -1123,6 +1130,7 @@ void mod_som_efe_obp_fill_segment_task_f(void  *p_arg){
       //ALB parse timestamp and efe data
       //ALB convert EFE samples into volts
       //ALB fill the volt-producer buffers
+
       if (mod_som_efe_obp_ptr->fill_segment_ptr->started_flg){
           elmnts_avail = local_mod_som_efe_ptr->sample_count -
               mod_som_efe_obp_ptr->fill_segment_ptr->efe_element_cnt;  //calculate number of elements available have been produced
@@ -1213,19 +1221,26 @@ void mod_som_efe_obp_fill_segment_task_f(void  *p_arg){
 //                      sizeof(float));
 
 
+              local_sbe41_ptr->collect_data_flag=1;
+              local_sbe41_ptr->consumer_ptr->record_pressure[0]=100;
+              local_sbe41_ptr->consumer_ptr->record_temp[0]=20;
+              local_sbe41_ptr->consumer_ptr->record_salinity[0]=30;
+              local_sbe41_ptr->consumer_ptr->dPdt=0.5;
+              local_sbe41_ptr->consumer_ptr->cnsmr_cnt=0;
 
               if(local_sbe41_ptr->collect_data_flag){
                   cnsmr_indx=local_sbe41_ptr->consumer_ptr->cnsmr_cnt % \
                               local_sbe41_ptr->consumer_ptr->max_element_per_record;
-                  mod_som_efe_obp_ptr->fill_segment_ptr->avg_ctd_pressure +=
+                  local_fill_segment_ctd_pressure +=
                           local_sbe41_ptr->consumer_ptr->record_pressure[cnsmr_indx];
-                  mod_som_efe_obp_ptr->fill_segment_ptr->avg_ctd_temperature +=
+
+                  local_fill_segment_ctd_temperature +=
                           local_sbe41_ptr->consumer_ptr->record_temp[cnsmr_indx];
-                  mod_som_efe_obp_ptr->fill_segment_ptr->avg_ctd_salinity +=
+
+                  local_fill_segment_ctd_salinity +=
                           local_sbe41_ptr->consumer_ptr->record_salinity[cnsmr_indx];
-                  mod_som_efe_obp_ptr->fill_segment_ptr->avg_ctd_pressure +=
-                          local_sbe41_ptr->consumer_ptr->record_pressure[cnsmr_indx];
-                  mod_som_efe_obp_ptr->fill_segment_ptr->avg_ctd_dpdt+=
+
+                  local_fill_segment_ctd_dpdt+=
                       local_sbe41_ptr->consumer_ptr->dPdt;
                   mod_som_efe_obp_ptr->fill_segment_ptr->ctd_element_cnt++;
               }
@@ -1255,14 +1270,24 @@ void mod_som_efe_obp_fill_segment_task_f(void  *p_arg){
                   (mod_som_efe_obp_ptr->fill_segment_ptr->efe_element_cnt>0)){
                   mod_som_efe_obp_ptr->fill_segment_ptr->segment_cnt++;
 
-                  mod_som_efe_obp_ptr->fill_segment_ptr->avg_ctd_pressure/=
-                      mod_som_efe_obp_ptr->fill_segment_ptr->ctd_element_cnt;
-                  mod_som_efe_obp_ptr->fill_segment_ptr->avg_ctd_pressure/=
-                      mod_som_efe_obp_ptr->fill_segment_ptr->ctd_element_cnt;
-                  mod_som_efe_obp_ptr->fill_segment_ptr->avg_ctd_pressure/=
-                      mod_som_efe_obp_ptr->fill_segment_ptr->ctd_element_cnt;
-                  mod_som_efe_obp_ptr->fill_segment_ptr->avg_ctd_dpdt/=
-                      mod_som_efe_obp_ptr->fill_segment_ptr->ctd_element_cnt;
+                  mod_som_efe_obp_ptr->fill_segment_ptr->avg_ctd_pressure=
+                      local_fill_segment_ctd_pressure/
+                      (float)mod_som_efe_obp_ptr->fill_segment_ptr->ctd_element_cnt;
+
+                  mod_som_efe_obp_ptr->fill_segment_ptr->avg_ctd_temperature=
+                      local_fill_segment_ctd_temperature/
+                      (float)mod_som_efe_obp_ptr->fill_segment_ptr->ctd_element_cnt;
+                  mod_som_efe_obp_ptr->fill_segment_ptr->avg_ctd_salinity=
+                      local_fill_segment_ctd_salinity/
+                      (float)mod_som_efe_obp_ptr->fill_segment_ptr->ctd_element_cnt;
+                  mod_som_efe_obp_ptr->fill_segment_ptr->avg_ctd_dpdt=
+                      local_fill_segment_ctd_dpdt/
+                      (float)mod_som_efe_obp_ptr->fill_segment_ptr->ctd_element_cnt;
+
+                  local_fill_segment_ctd_pressure=0;
+                  local_fill_segment_ctd_temperature=0;
+                  local_fill_segment_ctd_salinity=0;
+                  local_fill_segment_ctd_dpdt=0;
 
                   mod_som_efe_obp_ptr->fill_segment_ptr->ctd_element_cnt=0;
               }
@@ -1365,7 +1390,7 @@ void mod_som_efe_obp_cpt_spectra_task_f(void  *p_arg){
               //ALB Get the avg CTD data
               mod_som_efe_obp_ptr->cpt_spectra_ptr->avg_timestamp=
                   (uint64_t) *(mod_som_efe_obp_ptr->fill_segment_ptr->timestamp_segment_ptr+
-                      (mod_som_efe_obp_ptr->fill_segment_ptr->segment_cnt%
+                      ((mod_som_efe_obp_ptr->fill_segment_ptr->half_segment_cnt-1)%
                   (2*MOD_SOM_EFE_OBP_FILL_SEGMENT_NB_SEGMENT_PER_RECORD)));
 
               mod_som_efe_obp_ptr->cpt_spectra_ptr->avg_ctd_pressure=
@@ -1379,12 +1404,6 @@ void mod_som_efe_obp_cpt_spectra_task_f(void  *p_arg){
 
               mod_som_efe_obp_ptr->cpt_spectra_ptr->avg_ctd_dpdt  =
                   mod_som_efe_obp_ptr->fill_segment_ptr->avg_ctd_dpdt;
-
-              //ALB fake CTD avg
-              mod_som_efe_obp_ptr->cpt_spectra_ptr->avg_ctd_dpdt=0.5;
-              mod_som_efe_obp_ptr->cpt_spectra_ptr->avg_ctd_temperature=10;
-              mod_som_efe_obp_ptr->cpt_spectra_ptr->avg_ctd_pressure=100;
-              mod_som_efe_obp_ptr->cpt_spectra_ptr->avg_ctd_salinity=31;
 
 
           tick=sl_sleeptimer_get_tick_count64();
@@ -1553,6 +1572,7 @@ void mod_som_efe_obp_cpt_dissrate_task_f(void  *p_arg){
                   mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_ctd_pressure    = 0;
                   mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_ctd_temperature = 0;
                   mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_ctd_salinity    = 0;
+                  mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_timestamp       = 0;
 
                   //ALB reset avg spectra data
                   for (int i=0; i<mod_som_efe_obp_ptr->settings_ptr->nfft/2;i++){
@@ -1611,11 +1631,14 @@ void mod_som_efe_obp_cpt_dissrate_task_f(void  *p_arg){
                   spectra_offset;
 
               //ALB update the current spectra timestamp (middle segment timestamp )
-              mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_timestamp[
-                          mod_som_efe_obp_ptr->cpt_dissrate_ptr->dissrates_cnt%
-                           MOD_SOM_EFE_OBP_CPT_DISSRATE_NB_RATES_PER_RECORD]+=
+//              mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_timestamp[
+//                          mod_som_efe_obp_ptr->cpt_dissrate_ptr->dissrates_cnt%
+//                           MOD_SOM_EFE_OBP_CPT_DISSRATE_NB_RATES_PER_RECORD]+=
+//                  mod_som_efe_obp_ptr->cpt_spectra_ptr->avg_timestamp/
+//                  (float)mod_som_efe_obp_ptr->settings_ptr->degrees_of_freedom;
+              mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_timestamp+=
                   mod_som_efe_obp_ptr->cpt_spectra_ptr->avg_timestamp/
-                  (float)mod_som_efe_obp_ptr->settings_ptr->degrees_of_freedom;
+                  (uint64_t)mod_som_efe_obp_ptr->settings_ptr->degrees_of_freedom;
 
               //ALB sum ctd temp,pressure/salinty
               mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_ctd_pressure+=
@@ -2560,11 +2583,14 @@ uint32_t mod_som_efe_obp_copy_producer_segment_f()
 
 
     //copy the prdcr spectra inside cnsmr spectra buffer.
+//    memcpy((void *) &mod_som_efe_obp_ptr->consumer_ptr->record_ptr[indx],
+//           (void *) &mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_timestamp[
+//                     (mod_som_efe_obp_ptr->consumer_ptr->rates_cnt%
+//                      MOD_SOM_EFE_OBP_CPT_DISSRATE_NB_RATES_PER_RECORD)
+//                     ],sizeof(uint64_t));
     memcpy((void *) &mod_som_efe_obp_ptr->consumer_ptr->record_ptr[indx],
-           (void *) &mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_timestamp[
-                     (mod_som_efe_obp_ptr->consumer_ptr->rates_cnt%
-                      MOD_SOM_EFE_OBP_CPT_DISSRATE_NB_RATES_PER_RECORD)
-                     ],sizeof(uint64_t));
+           (void *) &mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_timestamp,
+           sizeof(uint64_t));
 
     indx+=sizeof(uint64_t);
 

@@ -10,6 +10,7 @@
 #include "mod_som_sdio.h"
 #include "mod_som_sdio_priv.h"
 #include <sl_sleeptimer.h>
+#include "mod_som_priv.h"
 
 
 #ifdef  RTOS_MODULE_COMMON_SHELL_AVAIL
@@ -19,6 +20,10 @@
 #ifdef MOD_SOM_CALENDAR_EN
 	#include "mod_som_calendar.h"
 #endif
+#ifdef MOD_SOM_SETTINGS_EN
+  #include <mod_som_settings.h>
+#endif
+
 
 // ALB Task related variables
 #define  MOD_SOM_SDIO_WRITE_TASK_PRIO             18u
@@ -27,6 +32,8 @@
 #define MOD_SOM_SDIO_WRITE_PADDING 1		// number of elements for padding for consumer 2
 
 mod_som_sdio_t mod_som_sdio_struct;
+sl_status_t mystatus;
+
 
 /***************************************************************************//**
  * @brief
@@ -176,15 +183,20 @@ mod_som_status_t mod_som_sdio_enable_hardware_f(){
 mod_som_status_t mod_som_sdio_disable_hardware_f(){
 int delay=1000; //ALB 60s at 50e6 Hz
 FRESULT res;
+mod_som_status_t status=0;
 
   if(mod_som_sdio_struct.enable_flag){
       mod_som_sdio_struct.enable_flag=false;
 
       //ALB if loop insde to check if the file is open
-      mod_som_sdio_close_file_f(mod_som_sdio_struct.data_file_ptr);
-
+      if(mod_som_sdio_struct.data_file_ptr->is_open_flag==1){
+          mod_som_sdio_close_file_f(mod_som_sdio_struct.data_file_ptr);
+      }
       //ALB unmount fatfs
       res=f_mount(NULL,(TCHAR *) "" ,1);
+      if (res!=FR_OK){
+        status=1;
+      }
 
     //TODO use bsp_som variables to initialize the SD card.
     // Soldered sdCard slot
@@ -203,7 +215,7 @@ FRESULT res;
   }
     // return default mod som OK.
     // TODO handle error from the previous calls.
-  return mod_som_sdio_encode_status_f(MOD_SOM_STATUS_OK);
+  return status;
 
 }
 
@@ -393,7 +405,7 @@ mod_som_status_t mod_som_sdio_define_filename_f(CPU_CHAR* filename){
 	mod_som_status_t status_data;
 //	mod_som_status_t status_config;
 	FRESULT res_sync;
-	char * time_buff;
+//	char * time_buff;
 
 	CPU_CHAR data_file_buf[100];   //ALB with this version of ff.c the filename can *not* be more than 8
 
@@ -404,7 +416,7 @@ mod_som_status_t mod_som_sdio_define_filename_f(CPU_CHAR* filename){
 	//ALB store file prefix
 	memcpy(mod_som_sdio_struct.mod_som_sdio_settings_ptr->prefix_file, filename,strlen(filename));
 
-	sprintf(data_file_buf, "%s_data%lu",filename,mod_som_sdio_struct.file_number);
+	sprintf(data_file_buf, "%s_%lu.modraw",filename,mod_som_sdio_struct.file_number);
 //	sprintf(config_file_buf, "%s_config",filename);
 
     mod_som_sdio_struct.data_file_ptr->len_filename=strlen(data_file_buf);
@@ -423,9 +435,12 @@ mod_som_status_t mod_som_sdio_define_filename_f(CPU_CHAR* filename){
 	status_data=mod_som_sdio_open_file_f(mod_som_sdio_struct.data_file_ptr);
 	mod_som_sdio_struct.open_file_time=mod_som_calendar_get_time_f();
 	//store the date time when we open the file
-	time_buff=mod_som_calendar_get_datetime_f();
-	status_data=mod_som_sdio_write_config_f((uint8_t *) time_buff,\
-												   strlen(time_buff),
+//	time_buff=mod_som_calendar_get_datetime_f();
+  mod_som_settings_struct_ptr_t local_settings_ptr=
+                                          mod_som_settings_get_settings_f();
+
+	status_data=mod_som_sdio_write_config_f((uint8_t *) local_settings_ptr,\
+	                                        local_settings_ptr->size,
 												   mod_som_sdio_struct.data_file_ptr);
 
 
@@ -458,7 +473,7 @@ mod_som_status_t mod_som_sdio_open_next_datafile(){
 	CPU_CHAR data_file_buf[100];   //ALB with this version of ff.c the filename can *not* be more than 8
 
 	mod_som_sdio_struct.file_number++;
-	sprintf(data_file_buf, "%s_data%lu",mod_som_sdio_struct.mod_som_sdio_settings_ptr->prefix_file,mod_som_sdio_struct.file_number);
+	sprintf(data_file_buf, "%s_%lu.modraw",mod_som_sdio_struct.mod_som_sdio_settings_ptr->prefix_file,mod_som_sdio_struct.file_number);
 
 
 
@@ -583,13 +598,25 @@ mod_som_status_t mod_som_sdio_close_file_f(mod_som_sdio_file_ptr_t mod_som_sdio_
  *   MOD_SOM_STATUS_OK if function execute nicely
  ******************************************************************************/
 mod_som_status_t mod_som_sdio_write_config_f(uint8_t *data_ptr,
-                                                  uint32_t data_length,
-                                                  mod_som_sdio_file_ptr_t file_ptr){
+                                             uint32_t data_length,
+                                             mod_som_sdio_file_ptr_t file_ptr){
 
 	FRESULT res;
 	UINT byteswritten=0;
     int remaining_bytes;
     int bytes_to_send=MOD_SOM_SDIO_BLOCK_LENGTH;
+
+    //time stamp
+    uint64_t tick;
+    uint64_t timestamp;
+    uint32_t t_hex[2];
+    uint8_t * local_header;
+    uint8_t header[100];
+    uint8_t header_chksum;
+    uint8_t payload_chksum;
+    uint8_t str_payload_chksum[MOD_SOM_SETTINGS_PAYLOAD_CHECKSUM_LENGTH];
+    uint8_t length_header=32;
+//    uint8_t * local_settings_ptr;
 
 
 	if(file_ptr->is_open_flag==0){
@@ -610,8 +637,54 @@ mod_som_status_t mod_som_sdio_write_config_f(uint8_t *data_ptr,
 		}
 	}
 
-    remaining_bytes=data_length;
+	//Header
+	tick=sl_sleeptimer_get_tick_count64();
+	mystatus = sl_sleeptimer_tick64_to_ms(tick,\
+	                                      &timestamp);
 
+	t_hex[0] = (uint32_t) (timestamp>>32);
+	t_hex[1] = (uint32_t) timestamp;
+
+	//header  contains SBE,flags. Currently flags are hard coded to 0x1e
+	//time stamp will come at the end of header
+	sprintf((char*) header,  \
+	        "$%s%08x%08x%08x*FF", \
+	        "SOM3", \
+	        (int) t_hex[0],\
+	        (int) t_hex[1],\
+	        (int) data_length);
+
+	header_chksum=0;
+	for(int i=0;i<length_header-
+	MOD_SOM_SETTINGS_HEADER_CHECKSUM_LENGTH;i++) // 29 = sync char(1)+ tag (4) + hextimestamp (16) + payload size (8).
+	  {
+	    header_chksum ^=header[i];
+	  }
+
+	// the curr_consumer_element_ptr should be at the right place to
+	// write the checksum already
+	//write checksum at the end of the steam block (record).
+	local_header = &header[length_header-
+	                       MOD_SOM_SETTINGS_HEADER_CHECKSUM_LENGTH+1];
+	*((uint16_t*)local_header) = \
+	    mod_som_int8_2hex_f(header_chksum);
+
+	// compute checksum on settings payload
+	payload_chksum=0;
+	for(int i=0;i<data_length;i++)
+	  {
+//	    payload_chksum ^=*(data_ptr++);
+      payload_chksum ^=data_ptr[i];
+	  }
+
+	sprintf((char*) str_payload_chksum,  \
+	        "*%02x\r\n",payload_chksum);
+
+    res = f_write(file_ptr->fp,(uint8_t*) header,length_header,&byteswritten);  /* buffptr = pointer to the data to be written */
+
+    //write the settings
+    byteswritten=0;
+	  remaining_bytes=data_length;
     while(remaining_bytes>0){
         if (remaining_bytes<MOD_SOM_SDIO_BLOCK_LENGTH){
             bytes_to_send=remaining_bytes;
@@ -621,8 +694,10 @@ mod_som_status_t mod_som_sdio_write_config_f(uint8_t *data_ptr,
         if (res != FR_OK){
             //TODO write an error code
         }
-        f_sync(mod_som_sdio_struct.data_file_ptr->fp);
     }
+    byteswritten=0;
+    res = f_write(file_ptr->fp,str_payload_chksum,5,&byteswritten);  /* buffptr = pointer to the data to be written */
+    f_sync(mod_som_sdio_struct.data_file_ptr->fp);
 
     if(file_ptr->is_open_flag==0){
         mod_som_sdio_close_file_f(file_ptr);
@@ -680,7 +755,7 @@ mod_som_status_t mod_som_sdio_read_config_sd_f(char * filename){
  ******************************************************************************/
 mod_som_status_t mod_som_sdio_read_data_sd_f(char * filename,uint32_t number_of_files){
 
-	mod_som_status_t status;
+	mod_som_status_t status=0;
 	CPU_CHAR data_file_buf[100];
 
 	//close the current file if open
@@ -697,7 +772,7 @@ mod_som_status_t mod_som_sdio_read_data_sd_f(char * filename,uint32_t number_of_
 	}
 
 
-    return mod_som_sdio_encode_status_f(MOD_SOM_STATUS_OK);
+    return status;
 }
 
 
@@ -1117,7 +1192,7 @@ static void mod_som_sdio_print_task_f(void *p_arg)
 
 //    CORE_DECLARE_IRQ_STATE;
 
-    uint32_t n_count = 0;
+//    uint32_t n_count = 0;
     while(DEF_ON){
         //necessary for every task
         tmp_mod_som_sdio_xfer_item_ptr =

@@ -267,7 +267,8 @@ typedef struct{
   bool dof_flag;
   uint64_t dissrates_cnt;
   uint64_t spectrum_cnt;
-  uint64_t avg_timestamp[MOD_SOM_EFE_OBP_CPT_DISSRATE_NB_RATES_PER_RECORD];
+//  uint64_t avg_timestamp[MOD_SOM_EFE_OBP_CPT_DISSRATE_NB_RATES_PER_RECORD];
+  uint64_t avg_timestamp;
 
   float * avg_spec_temp_ptr;        //ALB pointer to spectrum
   float * avg_spec_shear_ptr;        //ALB pointer to spectrum
