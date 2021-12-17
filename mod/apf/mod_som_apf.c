@@ -3391,7 +3391,7 @@ mod_som_apf_status_t mod_som_apf_upload_f(){
 
           mod_som_apf_ptr->consumer_ptr->packet.CRC=crc;
           //ALB compute the counters
-          //TODO
+          //TODO finalize the bitshifting to add the remaining number of bytes to send
           mod_som_apf_ptr->consumer_ptr->packet.counters=
               mod_som_apf_ptr->consumer_ptr->nb_packet_sent;
 
@@ -3418,7 +3418,8 @@ mod_som_apf_status_t mod_som_apf_upload_f(){
           //ALB get a t0=timestamp right before the while
           t0= mod_som_calendar_get_time_f();
           c=0;
-          while (c < 0){ // Wait for valid input
+          while (c <= 0){ // Wait for valid input
+              timeout_flag=0;
               //Release for waiting tasks
               c = RETARGET_ReadChar();
               //TODO MNB read the bytes from APEX-shell
@@ -3446,6 +3447,7 @@ mod_som_apf_status_t mod_som_apf_upload_f(){
                   dacq_bytes_sent=0;
                   break; //Break the while loop to try again
               }//ALB end of if
+              c=0;
           }//ALB end of while c
 
           //ALB update dacq_bytes_available.
@@ -3462,13 +3464,13 @@ mod_som_apf_status_t mod_som_apf_upload_f(){
 
   //ALB end of upload send the upload status
   if(status!=MOD_SOM_APF_STATUS_OK){
-      mod_som_io_print_f("upload,ak,success\r\n");
-      // save to the local string for sending out - Mai-Nov 18, 2021
-      sprintf(apf_reply_str,"upload,ak,success\r\n");
-  }else{
       mod_som_io_print_f("upload,nak,%lu\r\n",status);
       // save to the local string for sending out - Mai-Nov 18, 2021
       sprintf(apf_reply_str,"upload,nak,%lu\r\n", status);
+  }else{
+      mod_som_io_print_f("upload,ak,success\r\n");
+      // save to the local string for sending out - Mai-Nov 18, 2021
+      sprintf(apf_reply_str,"upload,ak,success\r\n");
   }
   reply_str_len = strlen(apf_reply_str);
   // sending the above string to the APF port - Mai - Nov 18, 2021
