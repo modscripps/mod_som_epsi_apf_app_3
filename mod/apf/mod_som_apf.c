@@ -3433,7 +3433,7 @@ mod_som_apf_status_t mod_som_apf_upload_f(){
               //Release for waiting tasks
               c = RETARGET_ReadChar();
               //TODO MNB read the bytes from APEX-shell
-              c=MOD_SOM_APF_UPLOAD_APF11_ACK;
+//              c=MOD_SOM_APF_UPLOAD_APF11_ACK;
               //ALB good transmit, go to next packet.
               if(c==MOD_SOM_APF_UPLOAD_APF11_ACK){
                   //ALB update current_data_ptr to point to the next dacq data
