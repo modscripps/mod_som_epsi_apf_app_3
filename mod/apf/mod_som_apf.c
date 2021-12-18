@@ -3393,8 +3393,16 @@ mod_som_apf_status_t mod_som_apf_upload_f(){
           //ALB compute the counters
           //TODO finalize the bitshifting to add the remaining number of bytes to send
           mod_som_apf_ptr->consumer_ptr->packet.counters=
-              mod_som_apf_ptr->consumer_ptr->nb_packet_sent;
+              (uint16_t) mod_som_apf_ptr->consumer_ptr->nb_packet_sent;
 
+          //ALB bitshift packet.counters
+          mod_som_apf_ptr->consumer_ptr->packet.counters=
+              mod_som_apf_ptr->consumer_ptr->packet.counters<<10;
+          //ALB update daq_remaining_bytes
+          mod_som_apf_ptr->consumer_ptr->daq_remaining_bytes-=dacq_bytes_to_sent;
+          //ALB update packet.counters
+          mod_som_apf_ptr->consumer_ptr->packet.counters|=
+                             mod_som_apf_ptr->consumer_ptr->daq_remaining_bytes;
 
           //ALB packet should be ready. Now send it
           mod_som_apf_ptr->consumer_ptr->consumed_flag=false;
@@ -3416,6 +3424,8 @@ mod_som_apf_status_t mod_som_apf_upload_f(){
           //ALB If packet is NACK after 3 tries, go back to menu (i.e., exit the upload function).
 
           //ALB get a t0=timestamp right before the while
+          mod_som_apf_ptr->consumer_ptr->nb_packet_sent++;
+          mod_som_apf_ptr->consumer_ptr->nb_packet_sent%=0x3FF;
           t0= mod_som_calendar_get_time_f();
           c=0;
           while (c <= 0){ // Wait for valid input
@@ -3423,7 +3433,7 @@ mod_som_apf_status_t mod_som_apf_upload_f(){
               //Release for waiting tasks
               c = RETARGET_ReadChar();
               //TODO MNB read the bytes from APEX-shell
-
+              c=MOD_SOM_APF_UPLOAD_APF11_ACK;
               //ALB good transmit, go to next packet.
               if(c==MOD_SOM_APF_UPLOAD_APF11_ACK){
                   //ALB update current_data_ptr to point to the next dacq data
@@ -3431,6 +3441,7 @@ mod_som_apf_status_t mod_som_apf_upload_f(){
                   dacq_bytes_sent+=dacq_bytes_to_sent;
                   mod_som_apf_ptr->consumer_ptr->send_packet_tries=0;
                   status=MOD_SOM_APF_STATUS_OK;
+                  break;
               }
               //ALB get current timestamp t1
               t1= mod_som_calendar_get_time_f();
