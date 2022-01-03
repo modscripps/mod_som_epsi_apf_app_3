@@ -509,7 +509,10 @@ mod_som_apf_status_t mod_som_apf_construct_com_prf_f(){
         /* Enable CORE LE clock in order to access LE modules */
         CMU_ClockEnable(cmuClock_HFLE, true);
         CMU_ClockSelectSet(cmuClock_LFB, cmuSelect_HFCLKLE);
-        CMU_ClockDivSet(MOD_SOM_APF_USART_CLK,cmuClkDiv_1);
+        //ALB cmuClkDiv_1 works with baudrate 115200. Only for testing
+//        CMU_ClockDivSet(MOD_SOM_APF_USART_CLK,cmuClkDiv_1);
+        //ALB cmuClkDiv_4 works with baudrate 9600. apex mode
+        CMU_ClockDivSet(MOD_SOM_APF_USART_CLK,cmuClkDiv_4);
         CMU_ClockEnable(MOD_SOM_APF_USART_CLK, true);    /* Enable device clock */
 
         //device communication peripheral pointer
