@@ -239,7 +239,7 @@ mod_som_status_t mod_som_efe_encode_status_f(uint8_t mod_som_io_status){
 mod_som_status_t mod_som_efe_init_f(){
 
 	mod_som_status_t status;
-	RTOS_ERR  err;
+	RTOS_ERR         err;
 
 	//ALB initialize EFE shell command
 
@@ -250,6 +250,7 @@ mod_som_status_t mod_som_efe_init_f(){
 	status = mod_som_efe_init_shellcmd_f();
 	//ALB checking if the shell comds are initalized. return a error if shell cmd initialization failed.
 	if(status != MOD_SOM_STATUS_OK){
+	    //ALB change the printf to a report status function.
 	    printf("%s not initialized\n",MOD_SOM_EFE_HEADER);
 		return mod_som_efe_encode_status_f(MOD_SOM_EFE_STATUS_FAIL_INIT_CMD);
 	}
@@ -271,6 +272,7 @@ mod_som_status_t mod_som_efe_init_f(){
 	//ALB TODO change return -1 to return the an appropriate error code.
 	APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
 	if(mod_som_efe_ptr==DEF_NULL){
+      //ALB change the printf to a report status function.
 	    printf("%s not initialized\n",MOD_SOM_EFE_HEADER);
 		return -1;
 	}
@@ -301,6 +303,7 @@ mod_som_status_t mod_som_efe_init_f(){
     	// initialize the setup structure.
     	status |= mod_som_efe_default_settings_f(mod_som_efe_ptr->settings_ptr);
     	if (status!=MOD_SOM_STATUS_OK){
+          //ALB change the printf to a report status function.
     	    printf("%s not initialized\n",MOD_SOM_EFE_HEADER);
     		return status;
     	}
@@ -309,6 +312,7 @@ mod_som_status_t mod_som_efe_init_f(){
     // ALB Allocate memory for the config pointer, using the settings_ptr variable
     status |= mod_som_efe_construct_config_ptr_f();
 	if (status!=MOD_SOM_STATUS_OK){
+      //ALB change the printf to a report status function.
 	    printf("%s not initialized\n",MOD_SOM_EFE_HEADER);
 		return status;
 	}
@@ -316,6 +320,7 @@ mod_som_status_t mod_som_efe_init_f(){
     // ALB Allocate memory for the com pointer,
     status |= mod_som_efe_allocate_communication_ptr_f();
 	if (status!=MOD_SOM_STATUS_OK){
+      //ALB change the printf to a report status function.
 	    printf("%s not initialized\n",MOD_SOM_EFE_HEADER);
 		return status;
 	}
@@ -324,6 +329,7 @@ mod_som_status_t mod_som_efe_init_f(){
 	// ALB It includes the circular buffer and read write indexes
     status |= mod_som_efe_allocate_record_ptr_f();
 	if (status!=MOD_SOM_STATUS_OK){
+      //ALB change the printf to a report status function.
 	    printf("%s not initialized\n",MOD_SOM_EFE_HEADER);
 		return status;
 	}
@@ -333,6 +339,7 @@ mod_som_status_t mod_som_efe_init_f(){
 	// ALB This pointer is also used to store the data on the SD card
     status |= mod_som_efe_allocate_consumer_ptr_f();
 	if (status!=MOD_SOM_STATUS_OK){
+      //ALB change the printf to a report status function.
 	    printf("%s not initialized\n",MOD_SOM_EFE_HEADER);
 		return status;
 	}
@@ -340,30 +347,35 @@ mod_som_status_t mod_som_efe_init_f(){
 	//turn on EFE hardware
 	status |= mod_som_efe_enable_hardware_f();
 	if (status!=MOD_SOM_STATUS_OK){
+      //ALB change the printf to a report status function.
 	    printf("%s not initialized\n",MOD_SOM_EFE_HEADER);
 		return status;
 	}
 	//ALB initialize EFE SPI port
 	status |= mod_som_efe_init_spi_f(&(mod_som_efe_ptr->config_ptr->communication));
 	if (status!=MOD_SOM_STATUS_OK){
+      //ALB change the printf to a report status function.
 	    printf("%s not initialized\n",MOD_SOM_EFE_HEADER);
 		return status;
 	}
 	//ALB initialize EFE timers
 	status |= mod_som_efe_init_mclock_f(mod_som_efe_ptr->config_ptr->mclock,mod_som_efe_ptr->config_ptr->sync);
 	if (status!=MOD_SOM_STATUS_OK){
+      //ALB change the printf to a report status function.
 	    printf("%s not initialized\n",MOD_SOM_EFE_HEADER);
 		return status;
 	}
 	//ALB initialize EFE LDMA sampling
 	status |= mod_som_efe_init_ldma_f(mod_som_efe_ptr);
 	if (status!=MOD_SOM_STATUS_OK){
+      //ALB change the printf to a report status function.
 	    printf("%s not initialized\n",MOD_SOM_EFE_HEADER);
 		return status;
 	}
 	//ALB configure the adc
 	status |= mod_som_efe_config_adc_f(mod_som_efe_ptr);
 	if (status!=MOD_SOM_STATUS_OK){
+      //ALB change the printf to a report status function.
 		printf("%s not initialized\n",MOD_SOM_EFE_HEADER);
 		return status;
 	}

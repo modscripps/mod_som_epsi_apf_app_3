@@ -78,8 +78,9 @@
 #include <sl_sleeptimer.h>
 #include "sl_sleeptimer_config.h"
 
-
+//SN TODO comment on the logic
 #define MOD_SOM_ENCODE_STATUS(status_pfix, status) (status_pfix<<24 | ((status & 0xffU)<<16))
+//SN TODO comment on the logic
 #define MOD_SOM_DECODE_STATUS(status_code,status_pfix_ptr, status_ptr) { \
     *(status_pfix_ptr) = status_code>>24; \
     *(status_ptr) = (status_code>>16) & 0xffU; \
