@@ -423,7 +423,9 @@ void mod_som_efe_obp_shear_spectrum_f(float *seg_buffer, int spectra_offset, mod
       //ALB I'll do it with the avg_spectrum
 //      spectrum_buffer[i] = spectrum_buffer[i]/filters_ptr->shear_filter[i];
       // stuff spectrum into output
-      *(mod_som_efe_obp_ptr->cpt_spectra_ptr->spec_shear_ptr+spectra_offset+i) = spectrum_buffer[i];
+      //ALB move the level up to be able to compute chi and epsilon
+//      *(mod_som_efe_obp_ptr->cpt_spectra_ptr->spec_shear_ptr+spectra_offset+i) = spectrum_buffer[i];
+      *(mod_som_efe_obp_ptr->cpt_spectra_ptr->spec_shear_ptr+spectra_offset+i) = 100000 * spectrum_buffer[i];
   }
 
 }
@@ -478,7 +480,9 @@ void mod_som_efe_obp_temp_spectrum_f(float *seg_buffer, int spectra_offset, mod_
     //ALB I'll do it with the avg_spectrum
 //    spectrum_buffer[i] = spectrum_buffer[i]/filters_ptr->fp07_filter[i];
     // stuff spectrum into output
-   *(mod_som_efe_obp_ptr->cpt_spectra_ptr->spec_temp_ptr+spectra_offset+i) = spectrum_buffer[i];
+      //ALB move the level up to be able to compute chi and epsilon
+//   *(mod_som_efe_obp_ptr->cpt_spectra_ptr->spec_temp_ptr+spectra_offset+i) = spectrum_buffer[i];
+   *(mod_som_efe_obp_ptr->cpt_spectra_ptr->spec_temp_ptr+spectra_offset+i) = 100000 * spectrum_buffer[i];
   }
 }
 

@@ -457,7 +457,7 @@ mod_som_apf_status_t mod_som_apf_construct_consumer_ptr_f(){
   mod_som_apf_ptr->consumer_ptr->dacq_ptr =
       (uint8_t*)Mem_SegAlloc(
           "MOD SOM APF consumer dacq.",DEF_NULL,
-          sizeof(float) * MOD_SOM_EFE_OBP_DEFAULT_NFFT,
+          2*sizeof(float) * MOD_SOM_EFE_OBP_DEFAULT_NFFT,
           &err);
   // Check error code
   APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
@@ -698,6 +698,7 @@ mod_som_apf_status_t mod_som_apf_start_producer_task_f(){
       mod_som_apf_ptr->producer_ptr->dacq_element_size=0;
       break;
     case 1:
+      //ALB element size = 1549 ~ 16 sample inside the 25kB
       mod_som_apf_ptr->producer_ptr->dacq_element_size=
           MOD_SOM_APF_DACQ_TIMESTAMP_SIZE+
           MOD_SOM_APF_DACQ_PRESSURE_SIZE+
@@ -705,6 +706,7 @@ mod_som_apf_status_t mod_som_apf_start_producer_task_f(){
           MOD_SOM_APF_DACQ_FOM_SIZE;
       break;
     case 2:
+      //ALB element size = 1549 ~ 16 sample inside the 25kB
       mod_som_apf_ptr->producer_ptr->dacq_element_size=
           MOD_SOM_APF_DACQ_TIMESTAMP_SIZE+
           MOD_SOM_APF_DACQ_PRESSURE_SIZE+
@@ -1254,10 +1256,10 @@ void mod_som_apf_consumer_task_f(void  *p_arg){
                           MOD_SOM_APF_CONSUMER_TIMESTAMP_SIZE+
                           (6*MOD_SOM_APF_DACQ_FLOAT_SIZE)+
                           (3*sizeof(float)*mod_som_apf_ptr->producer_ptr->
-                                acq_profile.mod_som_apf_meta_data.nfft);
+                                acq_profile.mod_som_apf_meta_data.nfft/2);
 
-                      //ALB create header
-                      mod_som_apf_header_f(mod_som_apf_ptr->consumer_ptr,1);
+                      //ALB create header APF2 (only for SD format)
+                      mod_som_apf_header_f(mod_som_apf_ptr->consumer_ptr,2);
 
                       mod_som_apf_ptr->consumer_ptr->consumed_flag=false;
                       mod_som_sdio_write_data_f(
@@ -1398,6 +1400,11 @@ void mod_som_apf_header_f(mod_som_apf_consumer_ptr_t consumer_ptr, uint8_t tag_i
     case 1:
       memcpy(consumer_ptr->tag,
               MOD_SOM_APF_HEADER1,
+              MOD_SOM_APF_TAG_LENGTH);
+      break;
+    case 2:
+      memcpy(consumer_ptr->tag,
+              MOD_SOM_APF_HEADER2,
               MOD_SOM_APF_TAG_LENGTH);
       break;
   }
@@ -1963,18 +1970,12 @@ void mod_som_apf_copy_sd_element_f(  uint64_t * curr_avg_timestamp_ptr,
 //  char chksum_str[5];
 
   //ALB declare the local parameters
-  uint64_t local_avg_dissrate_timestamp; //ALB nb of sec since dacq
-
-  //ALB decimate timestamps and store it
-  //ALB dissrate timestamp - dacq start timestamp -> 2bytes (65000 sec)
-  local_avg_dissrate_timestamp =(uint16_t)((*curr_avg_timestamp_ptr -
-      (uint64_t)(mod_som_apf_ptr->producer_ptr->acq_profile.
-                                   mod_som_apf_meta_data.daq_timestamp)*1000)/1000);
+//  uint64_t local_avg_dissrate_timestamp; //ALB nb of sec since dacq
 
   //ALB copy the data in the acq profile structure
   //ALB TODO check the dacq_ptr update and its value when out of that function
   memcpy(dacq_ptr,
-         &local_avg_dissrate_timestamp,
+         curr_avg_timestamp_ptr,
          MOD_SOM_APF_CONSUMER_TIMESTAMP_SIZE);
   dacq_ptr+=MOD_SOM_APF_CONSUMER_TIMESTAMP_SIZE;
   memcpy(dacq_ptr,
@@ -1982,11 +1983,11 @@ void mod_som_apf_copy_sd_element_f(  uint64_t * curr_avg_timestamp_ptr,
          MOD_SOM_APF_DACQ_FLOAT_SIZE);
   dacq_ptr+=MOD_SOM_APF_DACQ_FLOAT_SIZE;
   memcpy(dacq_ptr,
-         &curr_avg_temperature_ptr,
+         curr_avg_temperature_ptr,
          MOD_SOM_APF_DACQ_FLOAT_SIZE);
   dacq_ptr+=MOD_SOM_APF_DACQ_FLOAT_SIZE;
   memcpy(dacq_ptr,
-         &curr_avg_salinity_ptr,
+         curr_avg_salinity_ptr,
          MOD_SOM_APF_DACQ_FLOAT_SIZE);
   dacq_ptr+=MOD_SOM_APF_DACQ_FLOAT_SIZE;
   memcpy(dacq_ptr,
@@ -2012,6 +2013,10 @@ void mod_som_apf_copy_sd_element_f(  uint64_t * curr_avg_timestamp_ptr,
           mod_som_apf_ptr->consumer_ptr->dacq_ptr[i];
     }
 
+  while(!mod_som_apf_ptr->consumer_ptr->consumed_flag){
+      int moncul=0;
+  }
+
   mod_som_apf_ptr->consumer_ptr->consumed_flag=false;
   mod_som_sdio_write_data_f(
       mod_som_apf_ptr->consumer_ptr->dacq_ptr,
@@ -2021,20 +2026,32 @@ void mod_som_apf_copy_sd_element_f(  uint64_t * curr_avg_timestamp_ptr,
   dacq_ptr=mod_som_apf_ptr->consumer_ptr->dacq_ptr;
   //ALB Now I am using payload_length just to get the size a 1 spectrum in uint8_t
   payload_length=sizeof(float)*mod_som_apf_ptr->producer_ptr->
-      acq_profile.mod_som_apf_meta_data.nfft;
+      acq_profile.mod_som_apf_meta_data.nfft/2;
 
   memcpy(dacq_ptr,
-         &curr_shear_avg_spectra_ptr,
+         curr_shear_avg_spectra_ptr,
          payload_length);
   dacq_ptr+=payload_length;
+//  mod_som_io_stream_data_f(
+//      dacq_ptr-payload_length,
+//      20,
+//      &mod_som_apf_ptr->consumer_ptr->consumed_flag);
   memcpy(dacq_ptr,
-         &curr_temp_avg_spectra_ptr,
+         curr_temp_avg_spectra_ptr,
          payload_length);
   dacq_ptr+=payload_length;
+//  mod_som_io_stream_data_f(
+//      dacq_ptr-payload_length,
+//      payload_length,
+//      &mod_som_apf_ptr->consumer_ptr->consumed_flag);
   memcpy(dacq_ptr,
-         &curr_accel_avg_spectra_ptr,
+         curr_accel_avg_spectra_ptr,
          payload_length);
   dacq_ptr+=payload_length;
+//  mod_som_io_stream_data_f(
+//      dacq_ptr-payload_length,
+//      payload_length,
+//      &mod_som_apf_ptr->consumer_ptr->consumed_flag);
 
   //ALB get the size of the data we just filled up.
   payload_length= dacq_ptr - mod_som_apf_ptr->consumer_ptr->dacq_ptr;
@@ -2057,6 +2074,11 @@ void mod_som_apf_copy_sd_element_f(  uint64_t * curr_avg_timestamp_ptr,
       mod_som_apf_ptr->consumer_ptr->dacq_ptr,
       payload_length,
       &mod_som_apf_ptr->consumer_ptr->consumed_flag);
+//  mod_som_io_stream_data_f(
+//      mod_som_apf_ptr->consumer_ptr->dacq_ptr,
+//      payload_length,
+//      &mod_som_apf_ptr->consumer_ptr->consumed_flag);
+
 
 
 }
@@ -2178,8 +2200,8 @@ mod_som_apf_status_t mod_som_apf_daq_start_f(uint64_t profile_id){
 
 
   // Delay Start Task execution for
-  OSTimeDly( MOD_SOM_APF_DACQ_CTD_DELAY,             //   consumer delay is #define at the beginning OS Ticks
-             OS_OPT_TIME_DLY,          //   from now.
+  OSTimeDly( MOD_SOM_APF_DACQ_CTD_DELAY,   //   consumer delay is #define at the beginning OS Ticks
+             OS_OPT_TIME_DLY,              //   from now.
              &err);
 
   //ALB add a delay here

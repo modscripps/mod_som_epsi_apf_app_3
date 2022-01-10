@@ -2295,7 +2295,7 @@ void mod_som_efe_obp_consumer_task_f(void  *p_arg){
               }
               break;
             case 3:
-              mod_som_efe_obp_ptr->settings_ptr->format=3;
+              mod_som_efe_obp_ptr->settings_ptr->format=1;
               break;
             default:
               mod_som_efe_obp_ptr->settings_ptr->format=1;
