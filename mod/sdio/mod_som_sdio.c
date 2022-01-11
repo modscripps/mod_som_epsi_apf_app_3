@@ -719,6 +719,7 @@ mod_som_status_t mod_som_sdio_write_config_f(uint8_t *data_ptr,
  ******************************************************************************/
 mod_som_status_t mod_som_sdio_stop_store_f(){
 
+  //TODO Handle status update.
 	mod_som_sdio_close_file_f(mod_som_sdio_struct.data_file_ptr);
 	return mod_som_sdio_encode_status_f(MOD_SOM_STATUS_OK);
 }

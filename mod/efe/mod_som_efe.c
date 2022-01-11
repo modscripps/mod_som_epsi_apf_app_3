@@ -238,7 +238,7 @@ mod_som_status_t mod_som_efe_encode_status_f(uint8_t mod_som_io_status){
  ******************************************************************************/
 mod_som_status_t mod_som_efe_init_f(){
 
-	mod_som_status_t status;
+	mod_som_status_t status=MOD_SOM_STATUS_OK;
 	RTOS_ERR         err;
 
 	//ALB initialize EFE shell command
@@ -819,12 +819,16 @@ mod_som_status_t  mod_som_efe_start_consumer_task_f(){
 
 mod_som_status_t  mod_som_efe_stop_consumer_task_f(){
 
+  mod_som_status_t status=MOD_SOM_STATUS_OK;
   RTOS_ERR err;
 
   OSTaskDel(&efe_consumer_task_tcb,
             &err);
 
-  return mod_som_efe_encode_status_f(MOD_SOM_STATUS_OK);
+  if(RTOS_ERR_CODE_GET(err) != RTOS_ERR_NONE)
+    status=1;
+
+  return status;
 }
 
 
@@ -2235,8 +2239,11 @@ mod_som_status_t mod_som_efe_sampling_f()
 mod_som_status_t mod_som_efe_stop_sampling_f()
 {
 
+  mod_som_status_t status = MOD_SOM_STATUS_OK;
+  RTOS_ERR  err;
+
 	// Stop the timer drive the master clock controlling the ADCs
-  mod_som_efe_stop_consumer_task_f();
+  status = mod_som_efe_stop_consumer_task_f();
   mod_som_efe_stop_mclock_f(mod_som_efe_ptr);
 	// lower all the pertinent flags
 	mod_som_efe_ptr->sampling_flag = 0;
@@ -2251,7 +2258,10 @@ mod_som_status_t mod_som_efe_stop_sampling_f()
                     gpioModePushPull, 0);
 #endif
 
-	return mod_som_efe_encode_status_f(MOD_SOM_STATUS_OK);
+  if(RTOS_ERR_CODE_GET(err) != RTOS_ERR_NONE)
+    return mod_som_efe_encode_status_f(MOD_SOM_EFE_STATUS_FAIL_TOP_SAMPLING);
+
+	return status;
 }
 
 

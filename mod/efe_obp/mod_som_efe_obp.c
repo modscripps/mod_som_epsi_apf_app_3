@@ -1804,18 +1804,29 @@ uint32_t index=0;
       adc_sample=     (uint32_t) (efe_sample[index]<<16 |
                                  efe_sample[index+1]<<8 |
                                  efe_sample[index+2]);
+
       switch(mod_som_efe_obp_ptr->efe_settings_ptr->sensors[i].registers.CONFIG_0){
         case 0x1e0: //unipolar
           adc_sample_volt  = MOD_SOM_EFE_OBP_FULL_RANGE/
                              MOD_SOM_EFE_OBP_GAIN*
                              adc_sample/
                              pow(2,MOD_SOM_EFE_OBP_ADC_BIT);
+          //SN pow 2 could be improve timewise.
+          //SN We could have pow(2,MOD_SOM_EFE_OBP_ADC_BIT) as a pre-defined number.
+          //SN We could move the factors
+          //SN MOD_SOM_EFE_OBP_FULL_RANGE, MOD_SOM_EFE_OBP_GAIN etc to later.
+          //SN to reduce the conversion time.
           break;
         case 0x9e0: //bipolar
           adc_sample_volt  = MOD_SOM_EFE_OBP_FULL_RANGE/
                              MOD_SOM_EFE_OBP_GAIN*
                              (adc_sample/
                              pow(2,MOD_SOM_EFE_OBP_ADC_BIT-1)-1);
+          //SN pow 2 could be improve timewise.
+          //SN We could have pow(2,MOD_SOM_EFE_OBP_ADC_BIT) as a pre-defined number.
+          //SN We could move the factors
+          //SN MOD_SOM_EFE_OBP_FULL_RANGE, MOD_SOM_EFE_OBP_GAIN etc to later.
+          //SN to reduce the conversion time.
           break;
       }
 

@@ -77,6 +77,7 @@
 //SN status codes
 #define MOD_SOM_EFE_STATUS_FAIL_TO_ALLOCATE_MEMORY     0x01u
 #define MOD_SOM_EFE_STATUS_FAIL_TO_START_CONSUMER_TASK 0x02u
+#define MOD_SOM_EFE_STATUS_FAIL_TOP_SAMPLING           0x03u
 
 
 //------------------------------------------------------------------------------
