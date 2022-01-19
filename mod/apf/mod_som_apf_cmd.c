@@ -30,7 +30,7 @@ static SHELL_CMD  mod_som_apf_cmd_tbl[] =
         { "daq?",         mod_som_apf_cmd_daq_status_f },
         { "time",         mod_som_apf_cmd_time_f },
         { "time?",        mod_som_apf_cmd_time_status_f },
-        { "--ok?",        mod_som_apf_cmd_ok_status_f },
+        { "ok?",          mod_som_apf_cmd_ok_status_f },
         { "sleep",        mod_som_apf_cmd_sleep_f },
         { "fwrev?",       mod_som_apf_cmd_fwrev_status_f },
         { "upload",       mod_som_apf_cmd_upload_f },
@@ -233,11 +233,11 @@ CPU_INT16S mod_som_apf_cmd_daq_status_f(CPU_INT16U argc,
     uint32_t bytes_sent = 0;
 
     if(mod_som_apf_get_daq_f()){ // I comment out this block - mnbui Nov 29, 2021
-        status=mod_som_io_print_f("daq?,ack,%s","enabled");
-        sprintf(apf_reply_str,"daq?,ack,%s","enabled");
+        status=mod_som_io_print_f("daq?,ack,%s\r\n","enabled");
+        sprintf(apf_reply_str,"daq?,ack,%s\r\n","enabled");
     }else{
-        status=mod_som_io_print_f("daq?,ack,%s","disabled");
-        sprintf(apf_reply_str,"daq?,ack,%s","disabled");
+        status=mod_som_io_print_f("daq?,ack,%s\r\n","disabled");
+        sprintf(apf_reply_str,"daq?,ack,%s\r\n","disabled");
    }  // mnbui Nov 29, 2021
     reply_str_len = strlen(apf_reply_str);
     // sending the above string to the APF port - Mai - Nov 18, 2021
@@ -245,7 +245,7 @@ CPU_INT16S mod_som_apf_cmd_daq_status_f(CPU_INT16U argc,
 
     //ALB Dana want an error message here but I do not think there is a situation
     if (status!=MOD_SOM_APF_STATUS_OK){
-        mod_som_io_print_f("daq?,nak,%lu",status);
+        mod_som_io_print_f("daq?,nak,%lu\r\n",status);
         sprintf(apf_reply_str,"daq,nak,%lu.\r\n",status);
         reply_str_len = strlen(apf_reply_str);
         // sending the above string to the APF port - Mai - Nov 18, 2021

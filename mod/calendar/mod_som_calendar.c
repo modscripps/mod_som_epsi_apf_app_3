@@ -221,7 +221,7 @@ sl_sleeptimer_timestamp_t mod_som_calendar_get_time_f(){
  *   MOD_SOM_STATUS_OK if initialization goes well
  *   or otherwise
  ******************************************************************************/
-sl_status_t mod_som_calendar_set_time_f(sl_sleeptimer_timestamp_t time){
+sl_status_t  mod_som_calendar_set_time_f(sl_sleeptimer_timestamp_t time){
 
   sl_status_t status = SL_STATUS_OK;
 
@@ -245,6 +245,7 @@ sl_status_t mod_som_calendar_set_time_f(sl_sleeptimer_timestamp_t time){
   //MHA: offset_ms is the number of millisec of power on since 1/1/1970 (1000*unix time).
 //  sl_status_t mystatus;
   //&mod_som_calendar_ptr->poweron_offset_ms
+
 
   tick=sl_sleeptimer_get_tick_count64();
   status = sl_sleeptimer_tick64_to_ms(tick,\

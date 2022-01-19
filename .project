@@ -101,6 +101,11 @@
 			<locationURI>STUDIO_SDK_LOC/platform/emlib/src/em_usart.c</locationURI>
 		</link>
 		<link>
+			<name>emlib/em_wdog.c</name>
+			<type>1</type>
+			<locationURI>STUDIO_SDK_LOC/platform/emlib/src/em_wdog.c</locationURI>
+		</link>
+		<link>
 			<name>service/sl_sleeptimer.c</name>
 			<type>1</type>
 			<locationURI>STUDIO_SDK_LOC/platform/service/sleeptimer/src/sl_sleeptimer.c</locationURI>

@@ -156,6 +156,10 @@ mod_som_apf_status_t mod_som_apf_init_f(){
     if (status!=MOD_SOM_STATUS_OK){
         printf("APF not initialized\n");
         return status;
+
+    }
+    else{
+        printf("APF initialized\n");
     }
 
 
@@ -1494,7 +1498,7 @@ void mod_som_apf_shell_task_f(void  *p_arg){
       status = mod_som_shell_execute_input_f(output_buf,input_buf_len);   // execute the appropriate routine base on the command. Return the mod_som_status
 
       if (status>0){
-          sprintf(apf_reply_str,"nak,%s.\r\n",output_buf);
+          sprintf(apf_reply_str,"nak,%s\r\n",output_buf);
           reply_str_len = strlen(apf_reply_str);
           // sending the above string to the APF port - Mai - Nov 18, 2021
           bytes_sent = mod_som_apf_send_line_f(apf_leuart_ptr,apf_reply_str, reply_str_len);
@@ -2178,7 +2182,7 @@ mod_som_apf_status_t mod_som_apf_daq_start_f(uint64_t profile_id){
   status |= mod_som_sbe41_connect_f();
   status |= mod_som_sbe41_start_collect_data_f();
 
-  //ALB enable SDIO hardware
+//  //ALB enable SDIO hardware
 //  mod_som_sdio_enable_hardware_f();
 
   mod_som_apf_ptr->profile_id=profile_id;
@@ -2291,8 +2295,9 @@ mod_som_apf_status_t mod_som_apf_daq_stop_f(){
 
   sl_sleeptimer_delay_millisecond(delay);
   //ALB disable SDIO hardware
-  mod_som_sdio_stop_store_f();
-//  mod_som_sdio_disable_hardware_f();
+
+  status |=mod_som_sdio_stop_store_f();
+  mod_som_sdio_disable_hardware_f();
 
   //reset Daq flags
   mod_som_apf_ptr->daq=false;
@@ -2474,12 +2479,12 @@ mod_som_apf_status_t mod_som_apf_ok_status_f(){
   //
   // mod_som_io_xfer_item_ptr->printf_str_ptr
 
-  status|= mod_som_io_print_f("ok?,ack,%s\r\n","status report");
+  status|= mod_som_io_print_f("ok?,ack\r\n");
 
 	// can it see this string: mod_som_io_xfer_item_ptr->printf_str_ptr
 
   // save time string into the temporary local string - Mai - Nov 18, 2021
-  sprintf(apf_reply_str,"ok?,ack,%s\r\n","status report");
+  sprintf(apf_reply_str,"ok?,ack\r\n");
   reply_str_len = strlen(apf_reply_str);
   // sending the above string to the APF port - Mai - Nov 18, 2021
   bytes_sent = mod_som_apf_send_line_f(apf_leuart_ptr,apf_reply_str, reply_str_len);
@@ -2839,7 +2844,7 @@ mod_som_apf_status_t mod_som_apf_sleep_f(){
       //ALB we are not in daq mode make sure
       //ALB efe,sdio,efe obp,sbe-sniffer are asleep
       // stop ADC master clock timer
- /*     status|= mod_som_efe_stop_sampling_f();
+      status|= mod_som_efe_stop_sampling_f();
 
 
 
@@ -2861,11 +2866,11 @@ mod_som_apf_status_t mod_som_apf_sleep_f(){
       //ALB disable SDIO hardware
       mod_som_sdio_disable_hardware_f();
 // comment out for testing sleep - mai Nov 30, 2021
-*/
+
       if (status==0){
           status|=mod_som_io_print_f("sleep,ack\r\n");
           // save to the local string for sending out - Mai-Nov 18, 2021
-          sprintf(apf_reply_str,"sleep,ak\r\n");
+          sprintf(apf_reply_str,"sleep,ack\r\n");
       }else{
           status|=mod_som_io_print_f("sleep,nak,%lu\r\n",status);
           // save to the local string for sending out - Mai-Nov 18, 2021
@@ -2940,7 +2945,7 @@ mod_som_apf_status_t mod_som_apf_time_f(CPU_INT16U argc,
       sprintf(apf_reply_str,"time,ack,%s\r\n",argv[1]);
       reply_str_len = strlen(apf_reply_str);
 
-      sprintf(apf_reply_str,"time,ack,%ld\r\n",argv[1]);
+      sprintf(apf_reply_str,"time,ack,%s\r\n",argv[1]);
 //      reply_str_len = strlen(apf_reply_str);
       // sending the above string to the APF port - Mai - Nov 18, 2021
       bytes_sent = mod_som_apf_send_line_f(apf_leuart_ptr,apf_reply_str, reply_str_len);

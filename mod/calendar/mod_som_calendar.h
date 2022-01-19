@@ -16,8 +16,8 @@
  * exclusively with the user.
  ******************************************************************************/
 
-#ifndef MOD_SOM_FOO_BAR_H_
-#define MOD_SOM_FOO_BAR_H_
+#ifndef MOD_SOM_CALENDAR_H_
+#define MOD_SOM_CALENDAR_H_
 
 //------------------------------------------------------------------------------
 // INCLUDES

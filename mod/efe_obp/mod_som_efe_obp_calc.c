@@ -425,7 +425,7 @@ void mod_som_efe_obp_shear_spectrum_f(float *seg_buffer, int spectra_offset, mod
       // stuff spectrum into output
       //ALB move the level up to be able to compute chi and epsilon
 //      *(mod_som_efe_obp_ptr->cpt_spectra_ptr->spec_shear_ptr+spectra_offset+i) = spectrum_buffer[i];
-      *(mod_som_efe_obp_ptr->cpt_spectra_ptr->spec_shear_ptr+spectra_offset+i) = 100000 * spectrum_buffer[i];
+      *(mod_som_efe_obp_ptr->cpt_spectra_ptr->spec_shear_ptr+spectra_offset+i) += 100000 * spectrum_buffer[i];
   }
 
 }
@@ -482,7 +482,7 @@ void mod_som_efe_obp_temp_spectrum_f(float *seg_buffer, int spectra_offset, mod_
     // stuff spectrum into output
       //ALB move the level up to be able to compute chi and epsilon
 //   *(mod_som_efe_obp_ptr->cpt_spectra_ptr->spec_temp_ptr+spectra_offset+i) = spectrum_buffer[i];
-   *(mod_som_efe_obp_ptr->cpt_spectra_ptr->spec_temp_ptr+spectra_offset+i) = 100000 * spectrum_buffer[i];
+   *(mod_som_efe_obp_ptr->cpt_spectra_ptr->spec_temp_ptr+spectra_offset+i) += 100000 * spectrum_buffer[i];
   }
 }
 
@@ -509,7 +509,7 @@ void mod_som_efe_obp_accel_spectrum_f(float *seg_buffer, int spectra_offset, mod
     // ALB no conversion to g. Do not know if this is necessary yet
     // NOTE: this should be double checked (linear offsets in space should not affect psd)
     // stuff spectrum into output
-    *(mod_som_efe_obp_ptr->cpt_spectra_ptr->spec_accel_ptr+spectra_offset+i) = spectrum_buffer[i];
+    *(mod_som_efe_obp_ptr->cpt_spectra_ptr->spec_accel_ptr+spectra_offset+i) += spectrum_buffer[i];
   }
 
 
@@ -551,8 +551,8 @@ void mod_som_efe_obp_calc_epsilon_f(float *local_epsilon, float *nu, float *fom_
   float kvis = seawater_kinematic_viscosity_f(S, T, P);
   *nu = kvis;
   static const float kvec_min_1 = 2, kvec_max_1 = 10;
-  float k_max = config->f_CTD_pump/w;
   float kvec_limits_1[] = {kvec_min_1, kvec_max_1};
+  float k_max = config->f_CTD_pump/w;
 
   float dk = config->f_samp/settings->nfft/w;
 

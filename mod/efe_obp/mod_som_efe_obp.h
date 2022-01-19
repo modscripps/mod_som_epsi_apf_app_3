@@ -68,21 +68,21 @@
 //ALB Fill segment
 #define MOD_SOM_EFE_OBP_FILL_SEGMENT_TASK_PRIO              18u
 #define MOD_SOM_EFE_OBP_FILL_SEGMENT_TASK_STK_SIZE          1024u
-#define MOD_SOM_EFE_OBP_FILL_SEGMENT_DELAY                  10      // delay for fill segment task
+#define MOD_SOM_EFE_OBP_FILL_SEGMENT_DELAY                  1      // delay for fill segment task
 #define MOD_SOM_EFE_OBP_FILL_SEGMENT_NB_SEGMENT_PER_RECORD  2       // this number wants to be as low as possible it can creates huge arrrays
 
 //ALB compute spectra
 #define MOD_SOM_EFE_OBP_CPT_SPECTRA_TASK_PRIO              18u
 //#define MOD_SOM_EFE_OBP_CPT_SPECTRA_TASK_STK_SIZE          512u
 #define MOD_SOM_EFE_OBP_CPT_SPECTRA_TASK_STK_SIZE          1024u
-#define MOD_SOM_EFE_OBP_CPT_SPECTRA_DELAY                  10      // delay for compute spectra task
+#define MOD_SOM_EFE_OBP_CPT_SPECTRA_DELAY                  1      // delay for compute spectra task
 #define MOD_SOM_EFE_OBP_CPT_SPECTRA_NB_SPECTRA_PER_RECORD  1       // this number wants to be as low as possible it can creates huge arrrays
 #define MOD_SOM_EFE_OBP_CPT_SPECTRA_DEGREE_OF_FREEDOM      5       //
 
 //ALB compute dissrate
 #define MOD_SOM_EFE_OBP_CPT_DISSRATE_TASK_PRIO                    18u
 #define MOD_SOM_EFE_OBP_CPT_DISSRATE_TASK_STK_SIZE                512u
-#define MOD_SOM_EFE_OBP_CPT_DISSRATE_DELAY                        10      // delay for compute dissrate task.
+#define MOD_SOM_EFE_OBP_CPT_DISSRATE_DELAY                        1      // delay for compute dissrate task.
 #define MOD_SOM_EFE_OBP_CPT_DISSRATE_NB_AVG_SPECTRA_PER_RECORD    1
 #define MOD_SOM_EFE_OBP_CPT_DISSRATE_NB_RATES_PER_RECORD          10
 
@@ -219,10 +219,10 @@ typedef struct{
   float * seg_shear_volt_ptr;
   float * seg_accel_volt_ptr;
 
-  float avg_ctd_pressure;
-  float avg_ctd_temperature;
-  float avg_ctd_salinity;
-  float avg_ctd_dpdt;
+  float ctd_pressure;
+  float ctd_temperature;
+  float ctd_salinity;
+  float ctd_dpdt;
 
   uint32_t nb_ctd_samples;
 
@@ -241,14 +241,21 @@ mod_som_efe_obp_data_fill_segment_t, *mod_som_efe_obp_data_fill_segment_ptr_t;
 typedef struct{
 
   uint64_t spectrum_cnt;
+  uint64_t avg_spectrum_cnt;
 
   uint32_t volt_read_index;
   uint8_t  dof;
+  uint64_t timestamp;
   uint64_t avg_timestamp;
 
   float * spec_temp_ptr;        //ALB pointer to spectrum
   float * spec_shear_ptr;        //ALB pointer to spectrum
   float * spec_accel_ptr;        //ALB pointer to spectrum
+
+  float ctd_pressure;
+  float ctd_temperature;
+  float ctd_salinity;
+  float ctd_dpdt;
 
   float avg_ctd_pressure;
   float avg_ctd_temperature;
@@ -268,8 +275,8 @@ mod_som_efe_obp_data_cpt_spectra_t, *mod_som_efe_obp_data_cpt_spectra_ptr_t;
 typedef struct{
 
   bool dof_flag;
+  bool consumed_flag;
   uint64_t dissrates_cnt;
-  uint64_t spectrum_cnt;
 //  uint64_t avg_timestamp[MOD_SOM_EFE_OBP_CPT_DISSRATE_NB_RATES_PER_RECORD];
   uint64_t avg_timestamp;
 

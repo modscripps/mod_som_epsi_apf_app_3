@@ -195,6 +195,17 @@ void mod_som_main_task_f(void *p_arg)
                 &err);
         tick=sl_sleeptimer_get_tick_count64();
 
+        //ALB   feed (reset) the watchdog timer.
+        //ALB   Be aware that the priorities of the tasks
+        //ALB   can mess up the logic of the watch dog.
+        //ALB   I.e. if the shell hangs up the WDOG still get fed but the
+        //ALB   user loose the control on the shell and the SOM.
+
+        //ALB   Solution: Create a Feeder task with the right priority
+        //ALB   so we are not concerned by such faulty logic.
+        WDOG_Feed();
+
+
         if((tick >1000) & !mod_som_running_flag){
             //MHA do not start modules automatically
 //            mod_som_altimeter_start_task_f();

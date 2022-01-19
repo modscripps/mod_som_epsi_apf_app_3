@@ -45,6 +45,8 @@
 #include <em_rtc.h>
 #include <em_rtcc.h>
 #include <em_timer.h>
+#include <em_wdog.h>
+
 
 //ALB add msc to save User data in flash
 #include <em_msc.h>

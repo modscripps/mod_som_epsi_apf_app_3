@@ -193,6 +193,8 @@ mod_som_status_t mod_som_shell_get_input_f(char *buf, uint32_t * buf_len){
     Mem_Set(buf, '\0', MOD_SOM_SHELL_INPUT_BUF_SIZE); // Clear previous input
     for (i = 0; i < MOD_SOM_SHELL_INPUT_BUF_SIZE - 1; i++) {
         c = RETARGET_ReadChar();
+
+        //ALB read the input str.
         while (c < 0){ // Wait for valid input
             //Release for waiting tasks
             OSTimeDly(
@@ -203,8 +205,6 @@ mod_som_status_t mod_som_shell_get_input_f(char *buf, uint32_t * buf_len){
             c = RETARGET_ReadChar();
         }
 
-        //ALB   add the watch clock.
-        //TODO
 
         if (c == ASCII_CHAR_DELETE || c == 0x08) { // User inputed backspace
             if (i) {
@@ -268,6 +268,7 @@ void mod_som_shell_task_f(void *p_arg){
                 (OS_OPT      )OS_OPT_TIME_DLY,
                 &err);
         APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
+
         shellPrint(mod_som_shell_output_f, "\r$ ");
         mod_som_shell_get_input_f(input_buf,&input_buf_len);
 

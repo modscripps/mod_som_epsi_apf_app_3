@@ -237,11 +237,7 @@ MEM_DYN_POOL dyn_mem_pool;
 uint32_t max_size_of_complete_data_block;
 CPU_STK print_task_stack[MOD_SOM_SDIO_TASK_STK_SIZE];
 OS_TCB print_task_tcb;
-//    CPU_STK cir_buff_task_stack[MOD_SOM_SDIO_TASK_STK_SIZE];
-//    OS_TCB cir_buff_task_tcb;
-//bool allow_append = true;
 OS_Q msg_queue;
-//OS_SEM semaphore;
 
 }mod_som_sdio_t,*mod_som_sdio_ptr_t;
 

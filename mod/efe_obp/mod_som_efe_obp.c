@@ -294,7 +294,7 @@ mod_som_status_t mod_som_efe_obp_default_settings_f(
   settings_ptr->channels_id[2]     = 2 ; //select channel a3
 
   settings_ptr->mode=0;
-  settings_ptr->format=3;
+  settings_ptr->format=1;
   settings_ptr->channel=0;
 
   strncpy(settings_ptr->header,
@@ -638,10 +638,10 @@ mod_som_status_t mod_som_efe_obp_construct_fill_segment_ptr_f(){
 
 
   //ALB initialize field ctd data
-  mod_som_efe_obp_ptr->fill_segment_ptr->avg_ctd_pressure=0;
-  mod_som_efe_obp_ptr->fill_segment_ptr->avg_ctd_temperature=0;
-  mod_som_efe_obp_ptr->fill_segment_ptr->avg_ctd_salinity=0;
-  mod_som_efe_obp_ptr->fill_segment_ptr->avg_ctd_dpdt=0;
+  mod_som_efe_obp_ptr->fill_segment_ptr->ctd_pressure=0;
+  mod_som_efe_obp_ptr->fill_segment_ptr->ctd_temperature=0;
+  mod_som_efe_obp_ptr->fill_segment_ptr->ctd_salinity=0;
+  mod_som_efe_obp_ptr->fill_segment_ptr->ctd_dpdt=0;
 
   //ALB initialize all parameters. They should be reset right before
   //ALB fill_segment task is starts running.
@@ -725,6 +725,7 @@ mod_som_status_t mod_som_efe_obp_construct_cpt_spectra_ptr_f(){
   mod_som_efe_obp_ptr->cpt_spectra_ptr->started_flg=false;
   mod_som_efe_obp_ptr->cpt_spectra_ptr->spectra_skipped=0;
   mod_som_efe_obp_ptr->cpt_spectra_ptr->spectrum_cnt=0;
+  mod_som_efe_obp_ptr->cpt_spectra_ptr->avg_spectrum_cnt=0;
   mod_som_efe_obp_ptr->cpt_spectra_ptr->volt_read_index=0;
 
   return mod_som_efe_obp_encode_status_f(MOD_SOM_STATUS_OK);
@@ -823,16 +824,16 @@ mod_som_status_t mod_som_efe_obp_construct_cpt_dissrate_ptr_f(){
   APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
 
   //ALB initialize field ctd data
-  mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_ctd_pressure    =0;
-  mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_ctd_temperature =0;
-  mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_ctd_salinity    =0;
-  mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_ctd_dpdt    =0;
+  mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_ctd_pressure    = 0;
+  mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_ctd_temperature = 0;
+  mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_ctd_salinity    = 0;
+  mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_ctd_dpdt        = 0;
 
   //ALB initialize all parameters. They should be reset right before
   //ALB cpt_spectra task is starts running.
   mod_som_efe_obp_ptr->cpt_dissrate_ptr->dof_flag=false;
+  mod_som_efe_obp_ptr->cpt_dissrate_ptr->consumed_flag=false;
   mod_som_efe_obp_ptr->cpt_dissrate_ptr->dissrates_cnt=0;
-  mod_som_efe_obp_ptr->cpt_dissrate_ptr->spectrum_cnt=0;
   mod_som_efe_obp_ptr->cpt_dissrate_ptr->dissrate_skipped=0;
   mod_som_efe_obp_ptr->cpt_dissrate_ptr->started_flg=false;
 
@@ -943,10 +944,10 @@ mod_som_status_t mod_som_efe_obp_start_fill_segment_task_f(){
   mod_som_efe_obp_ptr->fill_segment_ptr->started_flg=true;
 
   //ALB initialize field ctd data
-  mod_som_efe_obp_ptr->fill_segment_ptr->avg_ctd_pressure=0;
-  mod_som_efe_obp_ptr->fill_segment_ptr->avg_ctd_temperature=0;
-  mod_som_efe_obp_ptr->fill_segment_ptr->avg_ctd_salinity=0;
-  mod_som_efe_obp_ptr->fill_segment_ptr->avg_ctd_dpdt=0;
+  mod_som_efe_obp_ptr->fill_segment_ptr->ctd_pressure=0;
+  mod_som_efe_obp_ptr->fill_segment_ptr->ctd_temperature=0;
+  mod_som_efe_obp_ptr->fill_segment_ptr->ctd_salinity=0;
+  mod_som_efe_obp_ptr->fill_segment_ptr->ctd_dpdt=0;
 
    OSTaskCreate(&efe_obp_fill_segment_task_tcb,
                         "efe obp fill segment task",
@@ -989,6 +990,7 @@ mod_som_status_t mod_som_efe_obp_start_cpt_spectra_task_f(){
    mod_som_efe_obp_ptr->cpt_spectra_ptr->dof=0;
    mod_som_efe_obp_ptr->cpt_spectra_ptr->spectra_skipped=0;
    mod_som_efe_obp_ptr->cpt_spectra_ptr->spectrum_cnt=0;
+   mod_som_efe_obp_ptr->cpt_spectra_ptr->avg_spectrum_cnt=0;
    mod_som_efe_obp_ptr->cpt_spectra_ptr->volt_read_index=0;
    mod_som_efe_obp_ptr->cpt_spectra_ptr->started_flg=true;
 
@@ -997,6 +999,11 @@ mod_som_status_t mod_som_efe_obp_start_cpt_spectra_task_f(){
    mod_som_efe_obp_ptr->cpt_spectra_ptr->avg_ctd_temperature=0;
    mod_som_efe_obp_ptr->cpt_spectra_ptr->avg_ctd_salinity=0;
    mod_som_efe_obp_ptr->cpt_spectra_ptr->avg_ctd_dpdt=0;
+
+   mod_som_efe_obp_ptr->cpt_spectra_ptr->ctd_pressure=0;
+   mod_som_efe_obp_ptr->cpt_spectra_ptr->ctd_temperature=0;
+   mod_som_efe_obp_ptr->cpt_spectra_ptr->ctd_salinity=0;
+   mod_som_efe_obp_ptr->cpt_spectra_ptr->ctd_dpdt=0;
 
 
    OSTaskCreate(&efe_obp_cpt_spectra_task_tcb,
@@ -1038,8 +1045,8 @@ mod_som_status_t mod_som_efe_obp_start_cpt_dissrate_task_f(){
   RTOS_ERR err;
   // Consumer Task 2
   mod_som_efe_obp_ptr->cpt_dissrate_ptr->dof_flag=false;
+  mod_som_efe_obp_ptr->cpt_dissrate_ptr->consumed_flag=false;
   mod_som_efe_obp_ptr->cpt_dissrate_ptr->dissrates_cnt    = 0;
-  mod_som_efe_obp_ptr->cpt_dissrate_ptr->spectrum_cnt     = 0;
   mod_som_efe_obp_ptr->cpt_dissrate_ptr->dissrate_skipped = 0;
   mod_som_efe_obp_ptr->cpt_dissrate_ptr->started_flg      = true;
 
@@ -1270,17 +1277,17 @@ void mod_som_efe_obp_fill_segment_task_f(void  *p_arg){
                   (mod_som_efe_obp_ptr->fill_segment_ptr->efe_element_cnt>0)){
                   mod_som_efe_obp_ptr->fill_segment_ptr->segment_cnt++;
 
-                  mod_som_efe_obp_ptr->fill_segment_ptr->avg_ctd_pressure=
+                  mod_som_efe_obp_ptr->fill_segment_ptr->ctd_pressure=
                       local_fill_segment_ctd_pressure/
                       (float)mod_som_efe_obp_ptr->fill_segment_ptr->ctd_element_cnt;
 
-                  mod_som_efe_obp_ptr->fill_segment_ptr->avg_ctd_temperature=
+                  mod_som_efe_obp_ptr->fill_segment_ptr->ctd_temperature=
                       local_fill_segment_ctd_temperature/
                       (float)mod_som_efe_obp_ptr->fill_segment_ptr->ctd_element_cnt;
-                  mod_som_efe_obp_ptr->fill_segment_ptr->avg_ctd_salinity=
+                  mod_som_efe_obp_ptr->fill_segment_ptr->ctd_salinity=
                       local_fill_segment_ctd_salinity/
                       (float)mod_som_efe_obp_ptr->fill_segment_ptr->ctd_element_cnt;
-                  mod_som_efe_obp_ptr->fill_segment_ptr->avg_ctd_dpdt=
+                  mod_som_efe_obp_ptr->fill_segment_ptr->ctd_dpdt=
                       local_fill_segment_ctd_dpdt/
                       (float)mod_som_efe_obp_ptr->fill_segment_ptr->ctd_element_cnt;
 
@@ -1339,10 +1346,12 @@ void mod_som_efe_obp_cpt_spectra_task_f(void  *p_arg){
   int spectra_offset=0;
   int padding = 0; // the padding should be big enough to include the time variance.
 
+
+
 //  int segment_offset=0//  float * curr_temp_seg_ptr;
-//  uint32_t * curr_temp_seg_ptr;
-//  float * curr_shear_seg_ptr;
-//  float * curr_accel_seg_ptr;
+//  float * curr_temp_spec_ptr;
+//  float * curr_shear_spec_ptr;
+//  float * curr_accel_spec_ptr;
 
   while (DEF_ON) {
 
@@ -1388,22 +1397,22 @@ void mod_som_efe_obp_cpt_spectra_task_f(void  *p_arg){
 
 
               //ALB Get the avg CTD data
-              mod_som_efe_obp_ptr->cpt_spectra_ptr->avg_timestamp=
+              mod_som_efe_obp_ptr->cpt_spectra_ptr->timestamp=
                   (uint64_t) *(mod_som_efe_obp_ptr->fill_segment_ptr->timestamp_segment_ptr+
                       ((mod_som_efe_obp_ptr->fill_segment_ptr->half_segment_cnt-1)%
                   (2*MOD_SOM_EFE_OBP_FILL_SEGMENT_NB_SEGMENT_PER_RECORD)));
 
-              mod_som_efe_obp_ptr->cpt_spectra_ptr->avg_ctd_pressure=
-                  mod_som_efe_obp_ptr->fill_segment_ptr->avg_ctd_pressure;
+              mod_som_efe_obp_ptr->cpt_spectra_ptr->ctd_pressure=
+                  mod_som_efe_obp_ptr->fill_segment_ptr->ctd_pressure;
 
-              mod_som_efe_obp_ptr->cpt_spectra_ptr->avg_ctd_temperature=
-                  mod_som_efe_obp_ptr->fill_segment_ptr->avg_ctd_temperature;
+              mod_som_efe_obp_ptr->cpt_spectra_ptr->ctd_temperature=
+                  mod_som_efe_obp_ptr->fill_segment_ptr->ctd_temperature;
 
-              mod_som_efe_obp_ptr->cpt_spectra_ptr->avg_ctd_salinity=
-                  mod_som_efe_obp_ptr->fill_segment_ptr->avg_ctd_salinity;
+              mod_som_efe_obp_ptr->cpt_spectra_ptr->ctd_salinity=
+                  mod_som_efe_obp_ptr->fill_segment_ptr->ctd_salinity;
 
-              mod_som_efe_obp_ptr->cpt_spectra_ptr->avg_ctd_dpdt  =
-                  mod_som_efe_obp_ptr->fill_segment_ptr->avg_ctd_dpdt;
+              mod_som_efe_obp_ptr->cpt_spectra_ptr->ctd_dpdt  =
+                  mod_som_efe_obp_ptr->fill_segment_ptr->ctd_dpdt;
 
 
           tick=sl_sleeptimer_get_tick_count64();
@@ -1483,6 +1492,37 @@ void mod_som_efe_obp_cpt_spectra_task_f(void  *p_arg){
             mod_som_efe_obp_accel_spectrum_f(mod_som_efe_obp_ptr->fill_segment_ptr->segment_buffer_ptr, spectra_offset, mod_som_efe_obp_ptr);
 //
 //
+
+
+            //ALB update the current spectra timestamp (middle segment timestamp )
+//              mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_timestamp[
+//                          mod_som_efe_obp_ptr->cpt_dissrate_ptr->dissrates_cnt%
+//                           MOD_SOM_EFE_OBP_CPT_DISSRATE_NB_RATES_PER_RECORD]+=
+//                  mod_som_efe_obp_ptr->cpt_spectra_ptr->avg_timestamp/
+//                  (float)mod_som_efe_obp_ptr->settings_ptr->degrees_of_freedom;
+            mod_som_efe_obp_ptr->cpt_spectra_ptr->avg_timestamp+=
+                mod_som_efe_obp_ptr->cpt_spectra_ptr->timestamp/
+                (uint64_t)mod_som_efe_obp_ptr->settings_ptr->degrees_of_freedom;
+
+            //ALB sum ctd temp,pressure/salinty
+            mod_som_efe_obp_ptr->cpt_spectra_ptr->avg_ctd_pressure+=
+                mod_som_efe_obp_ptr->cpt_spectra_ptr->ctd_pressure/
+                (float)mod_som_efe_obp_ptr->settings_ptr->degrees_of_freedom;
+
+            mod_som_efe_obp_ptr->cpt_spectra_ptr->avg_ctd_salinity+=
+                mod_som_efe_obp_ptr->cpt_spectra_ptr->ctd_salinity/
+                (float)mod_som_efe_obp_ptr->settings_ptr->degrees_of_freedom;
+
+            mod_som_efe_obp_ptr->cpt_spectra_ptr->avg_ctd_temperature+=
+                mod_som_efe_obp_ptr->cpt_spectra_ptr->ctd_temperature/
+                (float)mod_som_efe_obp_ptr->settings_ptr->degrees_of_freedom;
+
+            mod_som_efe_obp_ptr->cpt_spectra_ptr->avg_ctd_dpdt+=
+                mod_som_efe_obp_ptr->cpt_spectra_ptr->ctd_dpdt/
+                (float)mod_som_efe_obp_ptr->settings_ptr->degrees_of_freedom;
+
+
+
           //ALB update mod_som_efe_obp_ptr->producer_ptr->volt_read_index
           //ALB to get a new segment with a 50% overlap.
           mod_som_efe_obp_ptr->cpt_spectra_ptr->spectrum_cnt++;
@@ -1494,11 +1534,70 @@ void mod_som_efe_obp_cpt_spectra_task_f(void  *p_arg){
                            mod_som_efe_obp_ptr->settings_ptr->nfft/2;
 
           mod_som_efe_obp_ptr->fill_segment_ptr->segment_skipped=0;
-          }
-          //ALB done computing spectra
-      }
+          if ((mod_som_efe_obp_ptr->cpt_spectra_ptr->spectrum_cnt %
+                mod_som_efe_obp_ptr->settings_ptr->degrees_of_freedom)==0)
+              {
+              mod_som_efe_obp_ptr->cpt_dissrate_ptr->dof_flag=true;
+
+              //ALB sum spectra
+              for (int i=0;i<mod_som_efe_obp_ptr->settings_ptr->nfft/2;i++){
+
+                  mod_som_efe_obp_ptr->cpt_spectra_ptr->spec_temp_ptr[i]/=
+                   (float)mod_som_efe_obp_ptr->settings_ptr->degrees_of_freedom;
+
+                  mod_som_efe_obp_ptr->cpt_spectra_ptr->spec_shear_ptr[i]/=
+                   (float)mod_som_efe_obp_ptr->settings_ptr->degrees_of_freedom;
+
+                  mod_som_efe_obp_ptr->cpt_spectra_ptr->spec_accel_ptr[i]/=
+                   (float)mod_som_efe_obp_ptr->settings_ptr->degrees_of_freedom;
+              }
+
+
+              memcpy(mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_spec_shear_ptr,
+                     mod_som_efe_obp_ptr->cpt_spectra_ptr->spec_shear_ptr,
+                      mod_som_efe_obp_ptr->settings_ptr->nfft/2*sizeof(float));
+              memcpy(mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_spec_temp_ptr,
+                     mod_som_efe_obp_ptr->cpt_spectra_ptr->spec_temp_ptr,
+                      mod_som_efe_obp_ptr->settings_ptr->nfft/2*sizeof(float));
+              memcpy(mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_spec_accel_ptr,
+                     mod_som_efe_obp_ptr->cpt_spectra_ptr->spec_accel_ptr,
+                      mod_som_efe_obp_ptr->settings_ptr->nfft/2*sizeof(float));
+
+              mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_ctd_dpdt=
+                  mod_som_efe_obp_ptr->cpt_spectra_ptr->avg_ctd_dpdt;
+              mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_ctd_pressure=
+                  mod_som_efe_obp_ptr->cpt_spectra_ptr->avg_ctd_pressure;
+              mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_ctd_temperature=
+                  mod_som_efe_obp_ptr->cpt_spectra_ptr->avg_ctd_temperature;
+              mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_ctd_salinity=
+                  mod_som_efe_obp_ptr->cpt_spectra_ptr->avg_ctd_salinity;
+              mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_timestamp=
+                  mod_som_efe_obp_ptr->cpt_spectra_ptr->avg_timestamp;
+
+              mod_som_efe_obp_ptr->cpt_spectra_ptr->avg_spectrum_cnt++;
+              //ALB reset avg ctd data
+              mod_som_efe_obp_ptr->cpt_spectra_ptr->avg_ctd_dpdt        = 0;
+              mod_som_efe_obp_ptr->cpt_spectra_ptr->avg_ctd_pressure    = 0;
+              mod_som_efe_obp_ptr->cpt_spectra_ptr->avg_ctd_temperature = 0;
+              mod_som_efe_obp_ptr->cpt_spectra_ptr->avg_ctd_salinity    = 0;
+              mod_som_efe_obp_ptr->cpt_spectra_ptr->avg_timestamp       = 0;
+
+              //                  //ALB reset avg spectra data
+              for (int i=0; i<mod_som_efe_obp_ptr->settings_ptr->nfft/2;i++){
+                  mod_som_efe_obp_ptr->cpt_spectra_ptr->spec_temp_ptr [i]  = 0;
+                  mod_som_efe_obp_ptr->cpt_spectra_ptr->spec_shear_ptr[i]  = 0;
+                  mod_som_efe_obp_ptr->cpt_spectra_ptr->spec_accel_ptr[i]  = 0;
+              }
+
+
+          } //ALB done with dof
+
+          }//ALB done with segment available
+
+      }//ALB done computing spectra
 
       // Delay Start Task execution for
+
       OSTimeDly( MOD_SOM_EFE_OBP_CPT_SPECTRA_DELAY,             //   consumer delay is #define at the beginning OS Ticks
                  OS_OPT_TIME_DLY,          //   from now.
                  &err);
@@ -1534,15 +1633,16 @@ void mod_som_efe_obp_cpt_dissrate_task_f(void  *p_arg){
   (void)p_arg; // Deliberately unused argument
 
 
-  int i;
-  int spectra_avail=0, reset_dissrates_cnt=0;
-  int spectra_offset=0;
-  int avg_spectra_offset=0;
-  int padding = 0; // the padding should be big enough to include the time variance.
-
-  float * curr_temp_spec_ptr;
-  float * curr_shear_spec_ptr;
-  float * curr_accel_spec_ptr;
+//  int i;
+  int spectra_avail=0;
+//      reset_dissrates_cnt=0;
+//  int spectra_offset=0;
+//  int avg_spectra_offset=0;
+//  int padding = 0; // the padding should be big enough to include the time variance.
+//
+//  float * curr_temp_spec_ptr;
+//  float * curr_shear_spec_ptr;
+//  float * curr_accel_spec_ptr;
 
   float * local_epsilon_ptr;
   float * local_chi_ptr;
@@ -1559,139 +1659,143 @@ void mod_som_efe_obp_cpt_dissrate_task_f(void  *p_arg){
       //ALB start computing epsilon chi.
       //ALB check first if spectra_ready_flg true: i.e.,do we have enough dof
       if (mod_som_efe_obp_ptr->cpt_dissrate_ptr->started_flg){
-          spectra_avail = mod_som_efe_obp_ptr->cpt_spectra_ptr->spectrum_cnt -
-              mod_som_efe_obp_ptr->cpt_dissrate_ptr->spectrum_cnt;  //calculate number of elements available have been produced
-          // LOOP without delay until caught up to latest produced element
-          //ALB segment_avail >1 because I am incrementing segment_cnt every helf nfft to get a 50% overlap
-          while (spectra_avail > 0)
-            {
-              if ((mod_som_efe_obp_ptr->cpt_dissrate_ptr->spectrum_cnt %
-                  mod_som_efe_obp_ptr->settings_ptr->degrees_of_freedom)==0){
-                  //ALB reset avg ctd data
-                  mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_ctd_dpdt        = 0;
-                  mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_ctd_pressure    = 0;
-                  mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_ctd_temperature = 0;
-                  mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_ctd_salinity    = 0;
-                  mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_timestamp       = 0;
-
-                  //ALB reset avg spectra data
-                  for (int i=0; i<mod_som_efe_obp_ptr->settings_ptr->nfft/2;i++){
-                      mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_spec_temp_ptr [i]  = 0;
-                      mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_spec_shear_ptr[i]  = 0;
-                      mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_spec_accel_ptr[i]  = 0;
-                  }
-
-
-              }
-
-
-              // When have circular buffer overflow: have produced data bigger than consumer data: 1 circular buffer (n_elmnts)
-              // calculate new consumer count to skip ahead to the tail of the circular buffer (with optional padding),
-              // calculate the number of data we skipped, report number of elements skipped.
-              // Reset the consumers cnt equal with producer data plus padding
-
-              if (spectra_avail>MOD_SOM_EFE_OBP_CPT_SPECTRA_NB_SPECTRA_PER_RECORD){ // checking over flow. TODO check adding padding is correct.
-                  // reset the consumer count less one buffer than producer count plus padding
-                  //ALB I think I want to change this line from the cb example. The "-" only works if you overflowed once.
-                  reset_dissrates_cnt = mod_som_efe_obp_ptr->cpt_spectra_ptr->spectrum_cnt -
-                                      MOD_SOM_EFE_OBP_CPT_SPECTRA_NB_SPECTRA_PER_RECORD +
-                                      padding;
-                  // calculate the number of skipped elements
-                  mod_som_efe_obp_ptr->cpt_spectra_ptr->spectra_skipped = reset_dissrates_cnt -
-                      mod_som_efe_obp_ptr->cpt_dissrate_ptr->spectrum_cnt;
-
-                  mod_som_io_print_f("\n efe obp cpt dissrate: CB overflow: sample count = %lu,"
-                      "cnsmr_cnt = %lu,skipped %lu elements \r\n ", \
-                      (uint32_t)mod_som_efe_obp_ptr->cpt_spectra_ptr->spectrum_cnt, \
-                      (uint32_t)mod_som_efe_obp_ptr->cpt_dissrate_ptr->spectrum_cnt, \
-                      (uint32_t)mod_som_efe_obp_ptr->cpt_spectra_ptr->spectra_skipped);
-
-                  mod_som_efe_obp_ptr->cpt_dissrate_ptr->spectrum_cnt = reset_dissrates_cnt;
-              }
-
-              //ALB calculate the offset for current pointer
-              spectra_offset = (mod_som_efe_obp_ptr->cpt_dissrate_ptr->spectrum_cnt*
-                                    mod_som_efe_obp_ptr->settings_ptr->nfft/2) %
-                                   (MOD_SOM_EFE_OBP_CPT_SPECTRA_NB_SPECTRA_PER_RECORD*
-                                    mod_som_efe_obp_ptr->settings_ptr->nfft/2);
-
-              //ALB update the current temperature spectrum pointer
-              curr_temp_spec_ptr   =
-                 mod_som_efe_obp_ptr->cpt_spectra_ptr->spec_temp_ptr+
-                 spectra_offset;
-
-              //ALB update the current shear spectrum pointer
-              curr_shear_spec_ptr   =
-                  mod_som_efe_obp_ptr->cpt_spectra_ptr->spec_shear_ptr+
-                  spectra_offset;
-
-              //ALB update the current accel spectrum pointer
-              curr_accel_spec_ptr   =
-                  mod_som_efe_obp_ptr->cpt_spectra_ptr->spec_accel_ptr+
-                  spectra_offset;
-
-              //ALB update the current spectra timestamp (middle segment timestamp )
-//              mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_timestamp[
-//                          mod_som_efe_obp_ptr->cpt_dissrate_ptr->dissrates_cnt%
-//                           MOD_SOM_EFE_OBP_CPT_DISSRATE_NB_RATES_PER_RECORD]+=
+//          spectra_avail = mod_som_efe_obp_ptr->cpt_spectra_ptr->spectrum_cnt -
+//              mod_som_efe_obp_ptr->cpt_dissrate_ptr->spectrum_cnt;  //calculate number of elements available have been produced
+//          // LOOP without delay until caught up to latest produced element
+//          //ALB segment_avail >1 because I am incrementing segment_cnt every helf nfft to get a 50% overlap
+//          while (spectra_avail > 0)
+//            {
+//              if ((mod_som_efe_obp_ptr->cpt_dissrate_ptr->spectrum_cnt %
+//                  mod_som_efe_obp_ptr->settings_ptr->degrees_of_freedom)==0){
+//                  //ALB reset avg ctd data
+//                  mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_ctd_dpdt        = 0;
+//                  mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_ctd_pressure    = 0;
+//                  mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_ctd_temperature = 0;
+//                  mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_ctd_salinity    = 0;
+//                  mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_timestamp       = 0;
+//
+////                  //ALB reset avg spectra data
+//                  for (int i=0; i<mod_som_efe_obp_ptr->settings_ptr->nfft/2;i++){
+//                      mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_spec_temp_ptr [i]  = 0;
+//                      mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_spec_shear_ptr[i]  = 0;
+//                      mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_spec_accel_ptr[i]  = 0;
+//                  }
+//
+//
+//              }
+//
+//
+//              // When have circular buffer overflow: have produced data bigger than consumer data: 1 circular buffer (n_elmnts)
+//              // calculate new consumer count to skip ahead to the tail of the circular buffer (with optional padding),
+//              // calculate the number of data we skipped, report number of elements skipped.
+//              // Reset the consumers cnt equal with producer data plus padding
+//
+//              if (spectra_avail>MOD_SOM_EFE_OBP_CPT_SPECTRA_NB_SPECTRA_PER_RECORD){ // checking over flow. TODO check adding padding is correct.
+//                  // reset the consumer count less one buffer than producer count plus padding
+//                  //ALB I think I want to change this line from the cb example. The "-" only works if you overflowed once.
+//                  reset_dissrates_cnt = mod_som_efe_obp_ptr->cpt_spectra_ptr->spectrum_cnt -
+//                                      MOD_SOM_EFE_OBP_CPT_SPECTRA_NB_SPECTRA_PER_RECORD +
+//                                      padding;
+//                  // calculate the number of skipped elements
+//                  mod_som_efe_obp_ptr->cpt_spectra_ptr->spectra_skipped = reset_dissrates_cnt -
+//                      mod_som_efe_obp_ptr->cpt_dissrate_ptr->spectrum_cnt;
+//
+//                  mod_som_io_print_f("\n efe obp cpt dissrate: CB overflow: sample count = %lu,"
+//                      "cnsmr_cnt = %lu,skipped %lu elements \r\n ", \
+//                      (uint32_t)mod_som_efe_obp_ptr->cpt_spectra_ptr->spectrum_cnt, \
+//                      (uint32_t)mod_som_efe_obp_ptr->cpt_dissrate_ptr->spectrum_cnt, \
+//                      (uint32_t)mod_som_efe_obp_ptr->cpt_spectra_ptr->spectra_skipped);
+//
+//                  mod_som_efe_obp_ptr->cpt_dissrate_ptr->spectrum_cnt = reset_dissrates_cnt;
+//              }
+//
+//              //ALB calculate the offset for current pointer
+//              spectra_offset = (mod_som_efe_obp_ptr->cpt_dissrate_ptr->spectrum_cnt*
+//                                    mod_som_efe_obp_ptr->settings_ptr->nfft/2) %
+//                                   (MOD_SOM_EFE_OBP_CPT_SPECTRA_NB_SPECTRA_PER_RECORD*
+//                                    mod_som_efe_obp_ptr->settings_ptr->nfft/2);
+//
+//              //ALB update the current temperature spectrum pointer
+//              curr_temp_spec_ptr   =
+//                 mod_som_efe_obp_ptr->cpt_spectra_ptr->spec_temp_ptr+
+//                 spectra_offset;
+//
+//              //ALB update the current shear spectrum pointer
+//              curr_shear_spec_ptr   =
+//                  mod_som_efe_obp_ptr->cpt_spectra_ptr->spec_shear_ptr+
+//                  spectra_offset;
+//
+//              //ALB update the current accel spectrum pointer
+//              curr_accel_spec_ptr   =
+//                  mod_som_efe_obp_ptr->cpt_spectra_ptr->spec_accel_ptr+
+//                  spectra_offset;
+//
+//              //ALB update the current spectra timestamp (middle segment timestamp )
+////              mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_timestamp[
+////                          mod_som_efe_obp_ptr->cpt_dissrate_ptr->dissrates_cnt%
+////                           MOD_SOM_EFE_OBP_CPT_DISSRATE_NB_RATES_PER_RECORD]+=
+////                  mod_som_efe_obp_ptr->cpt_spectra_ptr->avg_timestamp/
+////                  (float)mod_som_efe_obp_ptr->settings_ptr->degrees_of_freedom;
+//              mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_timestamp+=
 //                  mod_som_efe_obp_ptr->cpt_spectra_ptr->avg_timestamp/
+//                  (uint64_t)mod_som_efe_obp_ptr->settings_ptr->degrees_of_freedom;
+//
+//              //ALB sum ctd temp,pressure/salinty
+//              mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_ctd_pressure+=
+//                  mod_som_efe_obp_ptr->cpt_spectra_ptr->avg_ctd_pressure/
 //                  (float)mod_som_efe_obp_ptr->settings_ptr->degrees_of_freedom;
-              mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_timestamp+=
-                  mod_som_efe_obp_ptr->cpt_spectra_ptr->avg_timestamp/
-                  (uint64_t)mod_som_efe_obp_ptr->settings_ptr->degrees_of_freedom;
+//
+//              mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_ctd_salinity+=
+//                  mod_som_efe_obp_ptr->cpt_spectra_ptr->avg_ctd_salinity/
+//                  (float)mod_som_efe_obp_ptr->settings_ptr->degrees_of_freedom;
+//
+//              mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_ctd_temperature+=
+//                  mod_som_efe_obp_ptr->cpt_spectra_ptr->avg_ctd_temperature/
+//                  (float)mod_som_efe_obp_ptr->settings_ptr->degrees_of_freedom;
+//
+//              mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_ctd_dpdt+=
+//                  mod_som_efe_obp_ptr->cpt_spectra_ptr->avg_ctd_dpdt/
+//                  (float)mod_som_efe_obp_ptr->settings_ptr->degrees_of_freedom;
+//
+//
+//              //ALB sum spectra
+//              for (i=0;i<mod_som_efe_obp_ptr->settings_ptr->nfft/2;i++){
+//
+//                  mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_spec_temp_ptr[
+//                                                         avg_spectra_offset+i]+=
+//                                                         curr_temp_spec_ptr[i]/
+//                   (float)mod_som_efe_obp_ptr->settings_ptr->degrees_of_freedom;
+//
+//                  mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_spec_shear_ptr[
+//                                                         avg_spectra_offset+i]+=
+//                                                         curr_shear_spec_ptr[i]/
+//                   (float)mod_som_efe_obp_ptr->settings_ptr->degrees_of_freedom;
+//
+//                  mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_spec_accel_ptr[
+//                                                         avg_spectra_offset+i]+=
+//                                                         curr_accel_spec_ptr[i]/
+//                   (float)mod_som_efe_obp_ptr->settings_ptr->degrees_of_freedom;
+//              }
+//
+//              mod_som_efe_obp_ptr->cpt_dissrate_ptr->spectrum_cnt++;
+//              spectra_avail = mod_som_efe_obp_ptr->cpt_spectra_ptr->spectrum_cnt -
+//                            mod_som_efe_obp_ptr->cpt_dissrate_ptr->spectrum_cnt;
+//
+//              if ((mod_som_efe_obp_ptr->cpt_dissrate_ptr->spectrum_cnt %
+//                    mod_som_efe_obp_ptr->settings_ptr->degrees_of_freedom)==0)
+//                  {
+//                  mod_som_efe_obp_ptr->cpt_dissrate_ptr->dof_flag=true;
+//              }
+//
+//
+//
+//            }
 
-              //ALB sum ctd temp,pressure/salinty
-              mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_ctd_pressure+=
-                  mod_som_efe_obp_ptr->cpt_spectra_ptr->avg_ctd_pressure/
-                  (float)mod_som_efe_obp_ptr->settings_ptr->degrees_of_freedom;
+          spectra_avail = mod_som_efe_obp_ptr->cpt_spectra_ptr->avg_spectrum_cnt -
+          mod_som_efe_obp_ptr->cpt_dissrate_ptr->dissrates_cnt;  //calculate number of elements available have been produced
 
-              mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_ctd_salinity+=
-                  mod_som_efe_obp_ptr->cpt_spectra_ptr->avg_ctd_salinity/
-                  (float)mod_som_efe_obp_ptr->settings_ptr->degrees_of_freedom;
-
-              mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_ctd_temperature+=
-                  mod_som_efe_obp_ptr->cpt_spectra_ptr->avg_ctd_temperature/
-                  (float)mod_som_efe_obp_ptr->settings_ptr->degrees_of_freedom;
-
-              mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_ctd_dpdt+=
-                  mod_som_efe_obp_ptr->cpt_spectra_ptr->avg_ctd_dpdt/
-                  (float)mod_som_efe_obp_ptr->settings_ptr->degrees_of_freedom;
-
-
-              //ALB sum spectra
-              for (i=0;i<mod_som_efe_obp_ptr->settings_ptr->nfft/2;i++){
-
-                  mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_spec_temp_ptr[
-                                                         avg_spectra_offset+i]+=
-                                                         curr_temp_spec_ptr[i]/
-                   (float)mod_som_efe_obp_ptr->settings_ptr->degrees_of_freedom;
-
-                  mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_spec_shear_ptr[
-                                                         avg_spectra_offset+i]+=
-                                                         curr_shear_spec_ptr[i]/
-                   (float)mod_som_efe_obp_ptr->settings_ptr->degrees_of_freedom;
-
-                  mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_spec_accel_ptr[
-                                                         avg_spectra_offset+i]+=
-                                                         curr_accel_spec_ptr[i]/
-                   (float)mod_som_efe_obp_ptr->settings_ptr->degrees_of_freedom;
-              }
-
-              mod_som_efe_obp_ptr->cpt_dissrate_ptr->spectrum_cnt++;
-              spectra_avail = mod_som_efe_obp_ptr->cpt_spectra_ptr->spectrum_cnt -
-                            mod_som_efe_obp_ptr->cpt_dissrate_ptr->spectrum_cnt;
-
-              if ((mod_som_efe_obp_ptr->cpt_dissrate_ptr->spectrum_cnt %
-                    mod_som_efe_obp_ptr->settings_ptr->degrees_of_freedom)==0)
-                  {
-                  mod_som_efe_obp_ptr->cpt_dissrate_ptr->dof_flag=true;
-              }
-
-
-
-            }
-
-          if (mod_som_efe_obp_ptr->cpt_dissrate_ptr->dof_flag)
+          while (spectra_avail > 0)
+//          if (mod_som_efe_obp_ptr->cpt_dissrate_ptr->dof_flag)
             {
 
               //ALB update pointers
@@ -1715,15 +1819,19 @@ void mod_som_efe_obp_cpt_dissrate_task_f(void  *p_arg){
                               MOD_SOM_EFE_OBP_CPT_DISSRATE_NB_RATES_PER_RECORD);
 
 
+               //ALB convert avg specs
               mod_som_efe_obp_correct_convert_avg_spectra_f(mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_spec_temp_ptr,
                                                             mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_spec_shear_ptr,
                                                             mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_spec_accel_ptr,
                                                             mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_ctd_dpdt);
+              //ALB reset  dof_flag so we know when the avg spec is converted;
+               mod_som_efe_obp_ptr->cpt_dissrate_ptr->dof_flag=false;
 
 
               //CAP Add compute epsilon chi
               //CAP Add compute spectra functions
-              mod_som_efe_obp_compute_dissrate_data_f(mod_som_efe_obp_ptr      ,
+
+               mod_som_efe_obp_compute_dissrate_data_f(mod_som_efe_obp_ptr      ,
                                                       local_epsilon_ptr        ,
                                                       local_chi_ptr            ,
                                                       local_nu_ptr             ,
@@ -1735,15 +1843,16 @@ void mod_som_efe_obp_cpt_dissrate_task_f(void  *p_arg){
               mod_som_efe_obp_ptr->sample_count++;
 
               //get spectral offset
-              avg_spectra_offset=(mod_som_efe_obp_ptr->cpt_dissrate_ptr->dissrates_cnt*
-                  mod_som_efe_obp_ptr->settings_ptr->nfft/2) %
-                      (MOD_SOM_EFE_OBP_CPT_DISSRATE_NB_AVG_SPECTRA_PER_RECORD*
-                          mod_som_efe_obp_ptr->settings_ptr->nfft/2);
-             //ALB reset  dof_flag;
-              mod_som_efe_obp_ptr->cpt_dissrate_ptr->dof_flag=false;
+//              avg_spectra_offset=(mod_som_efe_obp_ptr->cpt_dissrate_ptr->dissrates_cnt*
+//                  mod_som_efe_obp_ptr->settings_ptr->nfft/2) %
+//                      (MOD_SOM_EFE_OBP_CPT_DISSRATE_NB_AVG_SPECTRA_PER_RECORD*
+//                          mod_som_efe_obp_ptr->settings_ptr->nfft/2);
 
               //ALB increment dissrate_cnt
               mod_som_efe_obp_ptr->cpt_dissrate_ptr->dissrates_cnt++;
+              spectra_avail = mod_som_efe_obp_ptr->cpt_spectra_ptr->avg_spectrum_cnt -
+              mod_som_efe_obp_ptr->cpt_dissrate_ptr->dissrates_cnt;  //calculate number of elements available have been produced
+
 
 
           } //ALB end of dof if loop.
@@ -2270,6 +2379,7 @@ void mod_som_efe_obp_consumer_task_f(void  *p_arg){
           switch(mod_som_efe_obp_ptr->settings_ptr->mode){
             case 0:
               //ALB stream
+
               mod_som_efe_obp_ptr->consumer_ptr->consumed_flag=false;
               mod_som_io_stream_data_f(
                   mod_som_efe_obp_ptr->consumer_ptr->record_ptr,
@@ -2599,23 +2709,23 @@ uint32_t mod_som_efe_obp_copy_producer_segment_f()
 //                     (mod_som_efe_obp_ptr->consumer_ptr->rates_cnt%
 //                      MOD_SOM_EFE_OBP_CPT_DISSRATE_NB_RATES_PER_RECORD)
 //                     ],sizeof(uint64_t));
-    memcpy((void *) &mod_som_efe_obp_ptr->consumer_ptr->record_ptr[indx],
-           (void *) &mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_timestamp,
+    memcpy(&mod_som_efe_obp_ptr->consumer_ptr->record_ptr[indx],
+           &mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_timestamp,
            sizeof(uint64_t));
 
     indx+=sizeof(uint64_t);
 
-    memcpy((void *) &mod_som_efe_obp_ptr->consumer_ptr->record_ptr[indx],
-           (void *) &mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_ctd_pressure,
+    memcpy(&mod_som_efe_obp_ptr->consumer_ptr->record_ptr[indx],
+           &mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_ctd_pressure,
                     sizeof(float));
     indx+=sizeof(float);
 
-    memcpy((void *) &mod_som_efe_obp_ptr->consumer_ptr->record_ptr[indx],
-           (void *) &mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_ctd_temperature,
+    memcpy(&mod_som_efe_obp_ptr->consumer_ptr->record_ptr[indx],
+           &mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_ctd_temperature,
                     sizeof(float));
     indx+=sizeof(float);
-    memcpy((void *) &mod_som_efe_obp_ptr->consumer_ptr->record_ptr[indx],
-           (void *) &mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_ctd_salinity,
+    memcpy(&mod_som_efe_obp_ptr->consumer_ptr->record_ptr[indx],
+           &mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_ctd_salinity,
                     sizeof(float));
     indx+=sizeof(float);
 

@@ -57,6 +57,22 @@ static CPU_STK mod_som_main_task_stack[MOD_SOM_MAIN_TASK_STK_SIZE];
 static OS_TCB mod_som_main_task_tcb;
 
 
+//AlB Structure to initialize the watchdog timer.
+/* Defining the watchdog initialization data */
+WDOG_Init_TypeDef wdog_init =
+{
+  .enable     = true,                 /* Start watchdog when init done */
+  .debugRun   = false,                /* WDOG not counting during debug halt */
+  .em2Run     = true,                 /* WDOG counting when in EM2 */
+  .em3Run     = true,                 /* WDOG counting when in EM3 */
+  .em4Block   = false,                /* EM4 can be entered */
+  .swoscBlock = false,                /* Do not block disabling LFRCO/LFXO in CMU */
+  .lock       = false,                /* Do not lock WDOG configuration (if locked, reset needed to unlock) */
+  .clkSel     = wdogClkSelULFRCO,     /* Select 1kHZ WDOG oscillator */
+  .perSel     = wdogPeriod_32k,        /* Set the watchdog period to 2049 clock periods (ie ~2 seconds) */
+};
+
+
 //------------------------------------------------------------------------------
 // global functions
 //------------------------------------------------------------------------------
@@ -163,6 +179,19 @@ mod_som_status_t mod_som_main_init_f(void){
 
     //init sleep timer (by silicon labs), we use it for delays,etc.
     sl_sleeptimer_init();
+
+    //ALB init watchdog
+    CMU_ClockEnable(cmuClock_CORELE, true);
+//    WDOG_Init(&wdog_init);
+    /* Locking watchdog register (reset needed to unlock) */
+//    WDOG_Lock();
+
+
+//    /* Enable watchdog warning interrupt */
+//    WDOGn_IntEnable(DEFAULT_WDOG, WDOG_IEN_WARN);
+//    NVIC_EnableIRQ(WDOG0_IRQn);
+
+
 
 #if defined(MOD_SOM_BOARD)
     /* enable Uart ports */
@@ -1179,13 +1208,13 @@ void EMU_IRQHandler(void){
     }
     return;
 }
-void WDOG0_IRQHandler(void){
-    if(mod_som_sys_peripherals_list_ptr->WDOG0_prf_ptr != DEF_NULL){
-        mod_som_sys_peripherals_list_ptr->WDOG0_prf_ptr->irq_handler_1_f(
-                (void *)mod_som_sys_peripherals_list_ptr->WDOG0_prf_ptr->device_ptr);
-    }
-    return;
-}
+//void WDOG0_IRQHandler(void){
+//    if(mod_som_sys_peripherals_list_ptr->WDOG0_prf_ptr != DEF_NULL){
+//        mod_som_sys_peripherals_list_ptr->WDOG0_prf_ptr->irq_handler_1_f(
+//                (void *)mod_som_sys_peripherals_list_ptr->WDOG0_prf_ptr->device_ptr);
+//    }
+//    return;
+//}
 //ALB comment to make EFE and SBE module work
 // TODO create different IRQ handler with Mike
 void LDMA_IRQHandler(void){
@@ -1691,3 +1720,19 @@ void QSPI0_IRQHandler(void){
     }
     return;
 }
+
+/******************************************************************************
+ * @brief WDOG Interrupt Handler. Clears interrupt flag.
+ *        The interrupt table is in assembly startup file startup_efm32.s
+ *
+ *****************************************************************************/
+void WDOG0_IRQHandler(void)
+{
+  //ALB do something?
+  /* Clear flag for interrupt */
+//  uint8_t toto = 0;
+//        WDOGn_IntClear(DEFAULT_WDOG, WDOG_IEN_WARN);
+//      WDOG_Feed();
+}
+
+

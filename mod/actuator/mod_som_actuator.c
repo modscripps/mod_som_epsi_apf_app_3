@@ -24,6 +24,7 @@ mod_som_calendar_settings_t mod_som_calendar_settings;
 
 // MAIN module structure
 sl_status_t mystatus;
+
 mod_som_actuator_ptr_t mod_som_actuator_ptr;
 
 /*******************************************************************************
@@ -310,8 +311,8 @@ mod_som_status_t mod_som_actuator_init_timer_f()
 
   // Configure WTIMER3 cc1 Compare/Capture for output compare
   TIMER_InitCC_TypeDef timerCCInit = TIMER_INITCC_DEFAULT;
-  timerCCInit.cmoa  = timerOutputActionNone;
   timerCCInit.mode  = timerCCModeCompare;
+  timerCCInit.cmoa  = timerOutputActionNone;
   TIMER_InitCC(local_timer_ptr->timer, MOD_SOM_ACTUATOR1_CC_CHANNEL, &timerCCInit);
 
 
