@@ -1004,7 +1004,7 @@ static  void  mod_som_sbe41_consumer_task_f(void  *p_arg){
                 //ALB copy the the local element in the streamer
                 memcpy(curr_consumer_element_ptr,curr_data_ptr,mod_som_sbe41_ptr->config_ptr->element_length);
 
-                if(mod_som_sbe41_ptr->settings_ptr->data_format==3){
+                if(mod_som_sbe41_ptr->settings_ptr->data_format==0){
                     curr_sbe_sample=mod_som_sbe41_parse_sample_f(curr_consumer_element_ptr);
 
                     mod_som_sbe41_ptr->consumer_ptr->record_pressure[cnsmr_indx]= \
@@ -1061,7 +1061,7 @@ static  void  mod_som_sbe41_consumer_task_f(void  *p_arg){
                 //get the timestamp for the record header
                 tick=sl_sleeptimer_get_tick_count64();
                 mystatus = sl_sleeptimer_tick64_to_ms(tick,\
-                                                      &mod_som_sbe41_ptr->timestamp);
+                                                      &mod_som_sbe41_ptr->consumer_ptr->timestamp);
 
                 //MHA: Now augment timestamp by poweron_offset_ms
                 mod_som_calendar_settings=mod_som_calendar_get_settings_f(); //get the calendar settings pointer
@@ -1169,24 +1169,26 @@ mod_som_sbe41_sample_t mod_som_sbe41_parse_sample_f(uint8_t * element)
 {
   mod_som_sbe41_sample_t sbe_sample;
   char  str_temperature[MOD_SOM_SBE41_SBE_CHANNEL_LENGTH];
-  char  str_conductivity[MOD_SOM_SBE41_SBE_CHANNEL_LENGTH];
+  char  str_timestamp[MOD_SOM_SBE41_HEXTIMESTAMP_LENGTH];
+//  char  str_conductivity[MOD_SOM_SBE41_SBE_CHANNEL_LENGTH];
   char  str_pressure[MOD_SOM_SBE41_SBE_CHANNEL_LENGTH];
   char  str_salinity[MOD_SOM_SBE41_SBE_CHANNEL_LENGTH];
 
-  sbe_sample.timestamp=0;
-  memcpy(&sbe_sample.timestamp,element,sizeof(uint64_t));
 
-  uint8_t * sbe_str=&element[MOD_SOM_SBE41_TIMESTAMP_LENGTH];
+
+  memcpy(str_timestamp,element,MOD_SOM_SBE41_HEXTIMESTAMP_LENGTH);
+    uint8_t * sbe_str=&element[MOD_SOM_SBE41_HEXTIMESTAMP_LENGTH];
   // parse sample
   for (int i=0;i<MOD_SOM_SBE41_SBE_CHANNEL_LENGTH;i++){
-      str_temperature[i]  = sbe_str[i];
-      str_conductivity[i] = sbe_str[1*MOD_SOM_SBE41_SBE_CHANNEL_LENGTH+i+1];
-      str_pressure[i]     = sbe_str[2*MOD_SOM_SBE41_SBE_CHANNEL_LENGTH+i+3];
-      str_salinity[i]     = sbe_str[3*MOD_SOM_SBE41_SBE_CHANNEL_LENGTH+i+5];
+      str_pressure[i]  = sbe_str[i];
+//      str_conductivity[i] = sbe_str[1*MOD_SOM_SBE41_SBE_CHANNEL_LENGTH+i+1];
+      str_temperature[i]     = sbe_str[1*MOD_SOM_SBE41_SBE_CHANNEL_LENGTH+i+1];
+      str_salinity[i]     = sbe_str[2*MOD_SOM_SBE41_SBE_CHANNEL_LENGTH+i+3];
   }
 
+  sbe_sample.timestamp=strtoull(str_timestamp, NULL, 16);
   sbe_sample.temperature=strtof(str_temperature,NULL);
-  sbe_sample.conductivity=strtof(str_conductivity,NULL);
+//  sbe_sample.conductivity=strtof(str_conductivity,NULL);
   sbe_sample.pressure=strtof(str_pressure,NULL);
   sbe_sample.salinity=strtof(str_salinity,NULL);
 
@@ -1203,7 +1205,7 @@ void mod_som_sbe41_ctd_variation_f()
   float * temperature = mod_som_sbe41_ptr->consumer_ptr->record_temp;
   float * salinity    = mod_som_sbe41_ptr->consumer_ptr->record_salinity;
 
-  uint64_t * timestamp = &mod_som_sbe41_ptr->consumer_ptr->timestamp;
+  uint64_t * timestamp = mod_som_sbe41_ptr->consumer_ptr->record_timestamp;
   uint32_t dt=(timestamp[MOD_SOM_SBE41_DATA_DEFAULT_SAMPLES_PER_RECORD] -
                timestamp[0]);
   mod_som_sbe41_ptr->consumer_ptr->dPdt=\
@@ -1264,8 +1266,8 @@ void mod_som_sbe41_header_f(mod_som_sbe41_data_consumer_ptr_t consumer_ptr)
   uint32_t t_hex[2];
   uint8_t * local_header;
 
-  t_hex[0] = (uint32_t) (mod_som_sbe41_ptr->timestamp>>32);
-  t_hex[1] = (uint32_t) mod_som_sbe41_ptr->timestamp;
+  t_hex[0] = (uint32_t) (mod_som_sbe41_ptr->consumer_ptr->timestamp>>32);
+  t_hex[1] = (uint32_t) mod_som_sbe41_ptr->consumer_ptr->timestamp;
 
   //header  contains SBE,flags. Currently flags are hard coded to 0x1e
   //time stamp will come at the end of header

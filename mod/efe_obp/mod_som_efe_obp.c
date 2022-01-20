@@ -293,7 +293,7 @@ mod_som_status_t mod_som_efe_obp_default_settings_f(
   settings_ptr->channels_id[1]     = 1 ; //select channel s1
   settings_ptr->channels_id[2]     = 2 ; //select channel a3
 
-  settings_ptr->mode=0;
+  settings_ptr->mode=2;
   settings_ptr->format=1;
   settings_ptr->channel=0;
 
@@ -1228,12 +1228,12 @@ void mod_som_efe_obp_fill_segment_task_f(void  *p_arg){
 //                      sizeof(float));
 
 
-              local_sbe41_ptr->collect_data_flag=1;
-              local_sbe41_ptr->consumer_ptr->record_pressure[0]=100;
-              local_sbe41_ptr->consumer_ptr->record_temp[0]=20;
-              local_sbe41_ptr->consumer_ptr->record_salinity[0]=30;
-              local_sbe41_ptr->consumer_ptr->dPdt=0.5;
-              local_sbe41_ptr->consumer_ptr->cnsmr_cnt=0;
+//              local_sbe41_ptr->collect_data_flag=1;
+//              local_sbe41_ptr->consumer_ptr->record_pressure[0]=100;
+//              local_sbe41_ptr->consumer_ptr->record_temp[0]=20;
+//              local_sbe41_ptr->consumer_ptr->record_salinity[0]=30;
+//              local_sbe41_ptr->consumer_ptr->dPdt=0.5;
+//              local_sbe41_ptr->consumer_ptr->cnsmr_cnt=0;
 
               if(local_sbe41_ptr->collect_data_flag){
                   cnsmr_indx=local_sbe41_ptr->consumer_ptr->cnsmr_cnt % \
@@ -2774,7 +2774,7 @@ mod_som_status_t mod_som_efe_obp_consumer_format_f(CPU_INT16U argc,CPU_CHAR *arg
   uint8_t format;
 
   if (argc==1){
-      printf("efeobp.format %u\r\n.", mod_som_efe_obp_ptr->settings_ptr->format);
+      printf("efeobp.format %lu\r\n.", mod_som_efe_obp_ptr->settings_ptr->format);
   }
   else{
     //ALB switch statement easy to handle all user input cases.

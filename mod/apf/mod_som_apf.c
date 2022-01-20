@@ -1048,6 +1048,9 @@ void mod_som_apf_producer_task_f(void  *p_arg){
               //ALB increment cnsmr count
               mod_som_apf_ptr->producer_ptr->dissrates_cnt++;
 
+              mod_som_io_print_f("\n apf cnt: %lu\r\n ", \
+                  (uint32_t)mod_som_apf_ptr->producer_ptr->dissrates_cnt);
+
               //ALB update dissrate available
               dissrate_avail = mod_som_efe_obp_ptr->sample_count -
                   mod_som_apf_ptr->producer_ptr->dissrates_cnt; //elements available have been produced
@@ -2178,9 +2181,6 @@ mod_som_apf_status_t mod_som_apf_daq_start_f(uint64_t profile_id){
       return status;
   }
 
-  //ALB start collecting CTD.
-  status |= mod_som_sbe41_connect_f();
-  status |= mod_som_sbe41_start_collect_data_f();
 
 //  //ALB enable SDIO hardware
 //  mod_som_sdio_enable_hardware_f();
@@ -2199,19 +2199,18 @@ mod_som_apf_status_t mod_som_apf_daq_start_f(uint64_t profile_id){
 	//ALB start ADC master clock timer
   mod_som_apf_ptr->profile_id=profile_id;
   mod_som_apf_ptr->daq=true;
-	//ALB start turbulence processing task
+
+  //ALB start collecting CTD.
+  status |= mod_som_sbe41_connect_f();
+  status |= mod_som_sbe41_start_collect_data_f();
+
+
+//ALB start turbulence processing task
  status|= mod_som_efe_obp_start_fill_segment_task_f();
  status|= mod_som_efe_obp_start_cpt_spectra_task_f();
  status|= mod_som_efe_obp_start_cpt_dissrate_task_f();
- status|= mod_som_efe_obp_start_consumer_task_f();
+// status|= mod_som_efe_obp_start_consumer_task_f();
 
-
-  // Delay Start Task execution for
-  OSTimeDly( MOD_SOM_APF_DACQ_CTD_DELAY,   //   consumer delay is #define at the beginning OS Ticks
-             OS_OPT_TIME_DLY,              //   from now.
-             &err);
-
-  //ALB add a delay here
 
   //ALB get a P reading and define the dz to get 25kB in the producer->dacq_profile
   //ALB the dz will depends on the comm_packet_format.
@@ -2226,6 +2225,7 @@ mod_som_apf_status_t mod_som_apf_daq_start_f(uint64_t profile_id){
 
 
   //ALB I should have a delay here. So the system has time to get a pressure sample
+  sl_sleeptimer_delay_millisecond(delay);
   //ALB I think OS_TIME_delay would the same and free the CPU for other tasks.
   //ALB get a pressure sample
   mod_som_apf_ptr->dacq_start_pressure = mod_som_sbe41_get_pressure_f();
@@ -2245,8 +2245,6 @@ mod_som_apf_status_t mod_som_apf_daq_start_f(uint64_t profile_id){
 //  //ALB start APF consumer task
   status |= mod_som_apf_start_consumer_task_f();
 
-  //ALB why the delay? (to get ctd data?)
-  sl_sleeptimer_delay_millisecond(delay);
 
   status|=mod_som_efe_sampling_f();
 
@@ -3072,6 +3070,15 @@ mod_som_apf_status_t mod_som_apf_packet_format_f(CPU_INT16U argc,
       mode=shellStrtol(argv[1],&p_err);
       if(mode<3){
           mod_som_apf_ptr->settings_ptr->comm_telemetry_packet_format=mode;
+          mod_som_settings_save_settings_f();
+
+          mod_som_io_print_f("packet_format,ack,%u\r\n",mode);
+          // save to the local string for sending out - Mai-Nov 18, 2021
+          sprintf(apf_reply_str,"packet_format,ack,%u\r\n",mode);
+          reply_str_len = strlen(apf_reply_str);
+          // sending the above string to the APF port - Mai - Nov 18, 2021
+          bytes_sent = mod_som_apf_send_line_f(apf_leuart_ptr,apf_reply_str, reply_str_len);
+
       }else{
           status=MOD_SOM_APF_STATUS_WRONG_ARG;
           mod_som_io_print_f("packet_format,nak,%lu\r\n",status);
@@ -3080,15 +3087,21 @@ mod_som_apf_status_t mod_som_apf_packet_format_f(CPU_INT16U argc,
           reply_str_len = strlen(apf_reply_str);
           // sending the above string to the APF port - Mai - Nov 18, 2021
           bytes_sent = mod_som_apf_send_line_f(apf_leuart_ptr,apf_reply_str, reply_str_len);
+          //ALB I handled the error coms. I should put status back to 0
+          status=0;
       }
       break;
     default:
+      status=MOD_SOM_APF_STATUS_WRONG_ARG;
       mod_som_io_print_f("packet_format,nak,%lu\r\n",status);
       // save to the local string for sending out - Mai-Nov 18, 2021
       sprintf(apf_reply_str,"packet_format,nak,%lu\r\n",status);
       reply_str_len = strlen(apf_reply_str);
       // sending the above string to the APF port - Mai - Nov 18, 2021
       bytes_sent = mod_som_apf_send_line_f(apf_leuart_ptr,apf_reply_str, reply_str_len);
+      //ALB I handled the error coms. I should put status back to 0
+      status=0;
+
       break;
     }
     if(bytes_sent==0){
@@ -3119,15 +3132,6 @@ mod_som_apf_status_t mod_som_apf_packet_format_f(CPU_INT16U argc,
 
       break;
   }
-
-  mod_som_settings_save_settings_f();
-
-  mod_som_io_print_f("packet_format,ack,%lu\r\n",mode);
-  // save to the local string for sending out - Mai-Nov 18, 2021
-  sprintf(apf_reply_str,"packet_format,ack,%lu\r\n",mode);
-  reply_str_len = strlen(apf_reply_str);
-  // sending the above string to the APF port - Mai - Nov 18, 2021
-  bytes_sent = mod_som_apf_send_line_f(apf_leuart_ptr,apf_reply_str, reply_str_len);
 
   return status;
 }
