@@ -40,8 +40,8 @@ static SHELL_CMD  mod_som_apf_cmd_tbl[] =
         { "poweroff",     mod_som_apf_cmd_poweroff_f },
         { "sd_format?",   mod_som_apf_cmd_sd_format_status_f },
         { "sd_format",    mod_som_apf_cmd_sd_format_f },
-        { "comm_packet_format?", mod_som_apf_cmd_comm_packet_format_status_f },
-        { "comm_packet_format", mod_som_apf_cmd_comm_packet_format_f },
+        { "packet_format?", mod_som_apf_cmd_packet_format_status_f },
+        { "packet_format", mod_som_apf_cmd_packet_format_f },
         { 0, 0 }
 };
 //{ "EpsiNo", mod_som_apf_cmd_epsi_id_f },
@@ -466,7 +466,6 @@ CPU_INT16S mod_som_apf_cmd_probe_id_status_f(CPU_INT16U argc,
         SHELL_OUT_FNCT out_put_f,
         SHELL_CMD_PARAM *cmd_param){
 
-//    mod_som_apf_status_t status = mod_som_apf_fwrev_f();
     mod_som_apf_status_t status = mod_som_apf_probe_id_status_f();
 
     if(status != MOD_SOM_APF_STATUS_OK)
@@ -582,24 +581,24 @@ CPU_INT16S mod_som_apf_cmd_time_status_f(CPU_INT16U argc,
  * @return
  *   apf Command Status
  ******************************************************************************/
-CPU_INT16S mod_som_apf_cmd_comm_packet_format_f(CPU_INT16U argc,
+CPU_INT16S mod_som_apf_cmd_packet_format_f(CPU_INT16U argc,
         CPU_CHAR *argv[],
         SHELL_OUT_FNCT out_put_f,
         SHELL_CMD_PARAM *cmd_param){
 
-    mod_som_apf_status_t status = mod_som_apf_comm_packet_format_f(argc,argv);
+    mod_som_apf_status_t status = mod_som_apf_packet_format_f(argc,argv);
 
     if(status != MOD_SOM_APF_STATUS_OK)
         return SHELL_EXEC_ERR;
     return SHELL_EXEC_ERR_NONE;
 }
 
-CPU_INT16S mod_som_apf_cmd_comm_packet_format_status_f(CPU_INT16U argc,
+CPU_INT16S mod_som_apf_cmd_packet_format_status_f(CPU_INT16U argc,
         CPU_CHAR *argv[],
         SHELL_OUT_FNCT out_put_f,
         SHELL_CMD_PARAM *cmd_param){
 
-    mod_som_apf_status_t status = mod_som_apf_comm_packet_format_status_f(argc,argv);
+    mod_som_apf_status_t status = mod_som_apf_packet_format_status_f(argc,argv);
 
     if(status != MOD_SOM_APF_STATUS_OK)
         return SHELL_EXEC_ERR;

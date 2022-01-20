@@ -2568,25 +2568,25 @@ mod_som_apf_status_t mod_som_apf_epsi_id_status_f(){
                                           mod_som_settings_get_settings_f();
 
 
-  status|=mod_som_io_print_f("EpsiNo?,ack,SOM%s,%s,EFE%s,%s\r\n",
+  status|=mod_som_io_print_f("epsino?,ack,SOM%s,%s,EFE%s,%s\r\n",
 	                   local_settings_ptr->rev,local_settings_ptr->sn,
 	                   local_settings_ptr->mod_som_efe_settings.rev,
 	                   local_settings_ptr->mod_som_efe_settings.sn);
   // save the string into the temporary local string - Mai - Nov 18, 2021
-  sprintf(apf_reply_str,"EpsiNo?,ack,SOM%s,%s,EFE%s,%s\r\n",
+  sprintf(apf_reply_str,"epsino?,ack,SOM%s,%s,EFE%s,%s\r\n",
           local_settings_ptr->rev,local_settings_ptr->sn,
           local_settings_ptr->mod_som_efe_settings.rev,
           local_settings_ptr->mod_som_efe_settings.sn);
   reply_str_len = strlen(apf_reply_str);
 
   // sending the above string to the APF port - Mai - Nov 18, 2021
-  status = mod_som_apf_send_line_f(apf_leuart_ptr,apf_reply_str, reply_str_len);
+  bytes_sent = mod_som_apf_send_line_f(apf_leuart_ptr,apf_reply_str, reply_str_len);
 
-if (status!=0)
+if (status!=0 || bytes_sent==0)
 {
-    mod_som_io_print_f("EpsiNo?,nak,%lu\r\n",status);
+    mod_som_io_print_f("epsino?,nak,%lu\r\n",status);
 
-    sprintf(apf_reply_str,"EpsiNo?,nak,%lu\r\n",status);
+    sprintf(apf_reply_str,"epsino?,nak,%lu\r\n",status);
     reply_str_len = strlen(apf_reply_str);
     // sending the above string to the APF port - Mai - Nov 18, 2021
     bytes_sent = mod_som_apf_send_line_f(apf_leuart_ptr,apf_reply_str, reply_str_len);
@@ -2754,24 +2754,22 @@ mod_som_apf_status_t mod_som_apf_probe_id_status_f(){
   mod_som_efe_settings_ptr_t local_efe_settings_ptr=
       mod_som_efe_get_settings_ptr_f();
 
-  status|= mod_som_io_print_f("probe_no?,ack,%s,%s,%lu\r\n","S",
+  status|= mod_som_io_print_f("probe_no?,ack,%s,%s,%lu,%s,%s,%lu\r\n","S",
                               local_efe_settings_ptr->sensors[1].sn,
-                              (uint32_t)local_efe_settings_ptr->sensors[1].cal);
-  // save to the local string for sending out - Mai-Nov 18, 2021
-  sprintf(apf_reply_str,"probe_no?,ack,%s,%s,%lu\r\n","S",
-          local_efe_settings_ptr->sensors[1].sn,
-          (uint32_t)local_efe_settings_ptr->sensors[1].cal);
-  reply_str_len = strlen(apf_reply_str);
-  // sending the above string to the APF port - Mai - Nov 18, 2021
-  bytes_sent = mod_som_apf_send_line_f(apf_leuart_ptr,apf_reply_str, reply_str_len);
-
-  status|= mod_som_io_print_f("probe_no?,ack,%s,%s,%lu\r\n","F",
+                              (uint32_t)local_efe_settings_ptr->sensors[1].cal,
+                              "F",
                               local_efe_settings_ptr->sensors[0].sn,
                               (uint32_t)local_efe_settings_ptr->sensors[0].cal);
+
   // save to the local string for sending out - Mai-Nov 18, 2021
-  sprintf(apf_reply_str,"probe_no?,ack,%s,%s,%lu\r\n","F",
+  sprintf(apf_reply_str,"probe_no?,ack,%s,%s,%lu,%s,%s,%lu\r\n",
+          "S",
+          local_efe_settings_ptr->sensors[1].sn,
+          (uint32_t)local_efe_settings_ptr->sensors[1].cal,
+          "F",
           local_efe_settings_ptr->sensors[0].sn,
           (uint32_t)local_efe_settings_ptr->sensors[0].cal);
+
   reply_str_len = strlen(apf_reply_str);
   // sending the above string to the APF port - Mai - Nov 18, 2021
   bytes_sent = mod_som_apf_send_line_f(apf_leuart_ptr,apf_reply_str, reply_str_len);
@@ -3033,7 +3031,7 @@ mod_som_apf_status_t mod_som_apf_time_status_f(){
 
 /*******************************************************************************
  * @brief
- *   command shell for mod_som_apf_cmd_comm_packet_format_f
+ *   command shell for mod_som_apf_cmd_packet_format_f
  *   set the format of the data
  *   0 = no format (latter on called F0)
  *   1 = format 1 (F1) time pressure epsilon chi fom
@@ -3051,7 +3049,7 @@ mod_som_apf_status_t mod_som_apf_time_status_f(){
  * @return
  *   apf Command Status
  ******************************************************************************/
-mod_som_apf_status_t mod_som_apf_comm_packet_format_f(CPU_INT16U argc,
+mod_som_apf_status_t mod_som_apf_packet_format_f(CPU_INT16U argc,
                                                       CPU_CHAR *argv[])
 {
 
@@ -3075,18 +3073,19 @@ mod_som_apf_status_t mod_som_apf_comm_packet_format_f(CPU_INT16U argc,
       if(mode<3){
           mod_som_apf_ptr->settings_ptr->comm_telemetry_packet_format=mode;
       }else{
-          mod_som_io_print_f("comm_packet_format,nak,%s\r\n","argument to high");
+          status=MOD_SOM_APF_STATUS_WRONG_ARG;
+          mod_som_io_print_f("packet_format,nak,%lu\r\n",status);
           // save to the local string for sending out - Mai-Nov 18, 2021
-          sprintf(apf_reply_str,"comm_packet_format,nak,%s\r\n","argument to high");
+          sprintf(apf_reply_str,"packet_format,nak,%lu\r\n",status);
           reply_str_len = strlen(apf_reply_str);
           // sending the above string to the APF port - Mai - Nov 18, 2021
           bytes_sent = mod_som_apf_send_line_f(apf_leuart_ptr,apf_reply_str, reply_str_len);
       }
       break;
     default:
-      mod_som_io_print_f("comm_packet_format,nak,%s\r\n","wrong arguments");
+      mod_som_io_print_f("packet_format,nak,%lu\r\n",status);
       // save to the local string for sending out - Mai-Nov 18, 2021
-      sprintf(apf_reply_str,"comm_packet_format,nak,%s\r\n","wrong arguments");
+      sprintf(apf_reply_str,"packet_format,nak,%lu\r\n",status);
       reply_str_len = strlen(apf_reply_str);
       // sending the above string to the APF port - Mai - Nov 18, 2021
       bytes_sent = mod_som_apf_send_line_f(apf_leuart_ptr,apf_reply_str, reply_str_len);
@@ -3123,9 +3122,9 @@ mod_som_apf_status_t mod_som_apf_comm_packet_format_f(CPU_INT16U argc,
 
   mod_som_settings_save_settings_f();
 
-  mod_som_io_print_f("comm_packet_format,ack\r\n");
+  mod_som_io_print_f("packet_format,ack,%lu\r\n",mode);
   // save to the local string for sending out - Mai-Nov 18, 2021
-  sprintf(apf_reply_str,"comm_packet_format,ack\r\n");
+  sprintf(apf_reply_str,"packet_format,ack,%lu\r\n",mode);
   reply_str_len = strlen(apf_reply_str);
   // sending the above string to the APF port - Mai - Nov 18, 2021
   bytes_sent = mod_som_apf_send_line_f(apf_leuart_ptr,apf_reply_str, reply_str_len);
@@ -3141,7 +3140,7 @@ mod_som_apf_status_t mod_som_apf_comm_packet_format_f(CPU_INT16U argc,
  * @return
  *   MOD_SOM_APF_STATUS_OK if function execute nicely
  ******************************************************************************/
-mod_som_apf_status_t mod_som_apf_comm_packet_format_status_f(){
+mod_som_apf_status_t mod_som_apf_packet_format_status_f(){
 
   mod_som_apf_status_t status=0;
   uint32_t bytes_sent = 0;
@@ -3152,17 +3151,20 @@ mod_som_apf_status_t mod_som_apf_comm_packet_format_status_f(){
   // get the port's fd
   apf_leuart_ptr = (LEUART_TypeDef *)mod_som_apf_ptr->com_prf_ptr->handle_port;
 
-  status|= mod_som_io_print_f("comm_packet_format,ack\r\n");
+
+  uint32_t mode=mod_som_apf_ptr->settings_ptr->comm_telemetry_packet_format;
+
+  status|= mod_som_io_print_f("packet_format?,ack,%lu\r\n",mode);
   // save to the local string for sending out - Mai-Dec 1, 2021
-  sprintf(apf_reply_str,"comm_packet_format,ack\r\n");
+  sprintf(apf_reply_str,"packet_format?,ack,%lu\r\n",mode);
   reply_str_len = strlen(apf_reply_str);
   // sending the above string to the APF port - Mai - Dec 1, 2021
   bytes_sent = mod_som_apf_send_line_f(apf_leuart_ptr,apf_reply_str, reply_str_len);
 
    if(status>0){
-      mod_som_io_print_f("comm_packet_format,nak,%lu\r\n",status);
+      mod_som_io_print_f("packet_format?,nak,%lu\r\n",status);
       // save to the local string for sending out - Mai- Dec 1, 2021
-      sprintf(apf_reply_str,"comm_packet_format,nak,%lu\r\n",status);
+      sprintf(apf_reply_str,"packet_format?,nak,%lu\r\n",status);
       reply_str_len = strlen(apf_reply_str);
       // sending the above string to the APF port - Mai - Dec 1, 2021
       bytes_sent = mod_som_apf_send_line_f(apf_leuart_ptr,apf_reply_str, reply_str_len);
