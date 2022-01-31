@@ -96,7 +96,8 @@
 //#define MOD_SOM_APF_SHELL_SAMPLE_LASTCHAR        '\r'
 
 #define MOD_SOM_APF_STATUS_OK   0
-#define MOD_SOM_APF_STATUS_ERR -2   //ALB cannot -1 because it interfere with default shell ERR
+#define MOD_SOM_APF_STATUS_ERR 0x1u   //ALB cannot -1 because it interfere with default shell ERR
+#define MOD_SOM_APF_STATUS_WRONG_ARG                            0x2u
 #define MOD_SOM_APF_STATUS_CANNOT_ALLOCATE_SETUP                0x1u
 #define MOD_SOM_APF_STATUS_CANNOT_ALLOCATE_CONFIG               0x2u
 #define MOD_SOM_APF_STATUS_CANNOT_ALLOCATE_PRODUCER             0x3u
@@ -111,7 +112,6 @@
 #define MOD_SOM_APF_STATUS_FAIL_SEND_PACKET                     0x12U
 #define MOD_SOM_APF_STATUS_DAQ_ALREADY_STARTED                  0x13U
 #define MOD_SOM_APF_STATUS_ARG_TOO_HIGH                         0x14U
-#define MOD_SOM_APF_STATUS_WRONG_ARG                            0x15U
 
 
 #define MOD_SOM_APF_UPLOAD_DELAY                  500      // 500 ms delay upon reception of the upload cmd
@@ -936,7 +936,7 @@ mod_som_status_t mod_som_apf_shell_get_line_f(char *buf, uint32_t * buf_len);
  *  Length of buffer as the user is typing
  ******************************************************************************/
 uint32_t mod_som_apf_send_line_f(LEUART_TypeDef *leuart, char * buf, uint32_t nb_of_char_to_send);
-
+//uint32_t mod_som_apf_make_nack_apf_reply_f(uint8_t * apf_reply_str,char * cmd, uint32_t status);
 /*******************************************************************************
  * @brief
  * convert the dissrates into MOD format
@@ -1020,7 +1020,7 @@ mod_som_status_t mod_som_apf_encode_status_f(uint8_t mod_som_io_status);
  ******************************************************************************/
 uint8_t mod_som_apf_decode_status_f(mod_som_status_t mod_som_status);
 
-uint32_t mod_som_apf_convert_string_f(char* input_str, char* output_str);
-mod_som_status_t mod_som_apf_get_char_f(LEUART_TypeDef *leuart, char* read_char);
+uint32_t mod_som_apf_convert_string_f(char* input_str, uint32_t * bytes_read, char* output_str);
+mod_som_status_t mod_som_apf_get_char_f(LEUART_TypeDef *leuart, int* read_char);
 
 #endif /* MOD_APF_MOD_SOM_APF_H_ */

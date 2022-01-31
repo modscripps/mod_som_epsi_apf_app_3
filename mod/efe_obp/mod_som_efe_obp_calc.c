@@ -509,6 +509,8 @@ void mod_som_efe_obp_accel_spectrum_f(float *seg_buffer, int spectra_offset, mod
     // ALB no conversion to g. Do not know if this is necessary yet
     // NOTE: this should be double checked (linear offsets in space should not affect psd)
     // stuff spectrum into output
+      //ALB The sumation of FOCO is done here (i.e., +=)
+    //ALB BE AWARE: I am summing the FOCO over dof times (i.e. 5 times). That is why I have the +=
     *(mod_som_efe_obp_ptr->cpt_spectra_ptr->spec_accel_ptr+spectra_offset+i) += spectrum_buffer[i];
   }
 

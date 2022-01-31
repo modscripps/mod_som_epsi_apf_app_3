@@ -61,13 +61,20 @@ mod_som_status_t mod_som_settings_init_f(){
 		mod_som_settings_struct.initialized_flag=false;
 
     //ALB get the settings header
-    strncpy(mod_som_settings_struct.header, \
-            MOD_SOM_SETTINGS_DEFAULT_HEADER, \
+    strncpy(mod_som_settings_struct.header,
+            MOD_SOM_SETTINGS_DEFAULT_HEADER,
             MOD_SOM_SETTINGS_DEFAULT_STR_LENGTH);
     //ALB get the firmware id
-    strncpy(mod_som_settings_struct.firmware, \
-            MOD_SOM_SETTINGS_DEFAULT_FIRMWARE_NAME, \
-            MOD_SOM_SETTINGS_DEFAULT_FIRMWARE_LENGTH);
+//    strncpy(mod_som_settings_struct.firmware,
+//            MOD_SOM_SETTINGS_DEFAULT_FIRMWARE_NAME,
+//            MOD_SOM_SETTINGS_DEFAULT_FIRMWARE_LENGTH);
+
+    sprintf(mod_som_settings_struct.firmware,"%s-%s",
+            MOD_SOM_SETTINGS_DEFAULT_FIRMWARE_NAME,__DATE__);
+
+    //    strncpy(mod_som_settings_struct.firmware,
+//            $Projname,
+//            MOD_SOM_SETTINGS_DEFAULT_FIRMWARE_LENGTH);
     //ALB set default efe rev number (rev3)
     strncpy(mod_som_settings_struct.rev, \
             MOD_SOM_SETTINGS_DEFAULT_CTL_REV_NAME, \
@@ -467,6 +474,7 @@ mod_som_status_t mod_som_settings_save_settings_f(){
 	  }
 		// 4. disable the flash controller
 		MSC_Deinit();
+
     return mod_som_settings_encode_status_f(status);
 }
 

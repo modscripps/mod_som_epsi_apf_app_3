@@ -300,7 +300,7 @@ mod_som_status_t mod_som_sbe41_init_f(){
     mod_som_sbe41_ptr->connected_flag = false;
     mod_som_sbe41_ptr->initialized_flag = true;
     mod_som_sbe41_ptr->sample_count= 0;
-    mod_som_sbe41_ptr->consumer_mode=0;
+    mod_som_sbe41_ptr->consumer_mode=1;
 
     printf("S41 initialized\n");
 
@@ -1005,31 +1005,40 @@ static  void  mod_som_sbe41_consumer_task_f(void  *p_arg){
                 memcpy(curr_consumer_element_ptr,curr_data_ptr,mod_som_sbe41_ptr->config_ptr->element_length);
 
                 if(mod_som_sbe41_ptr->settings_ptr->data_format==0){
-                    curr_sbe_sample=mod_som_sbe41_parse_sample_f(curr_consumer_element_ptr);
+                    curr_sbe_sample=mod_som_sbe41_parse_sample_f(curr_data_ptr);
 
-                    mod_som_sbe41_ptr->consumer_ptr->record_pressure[cnsmr_indx]= \
+                    mod_som_sbe41_ptr->consumer_ptr->record_pressure[0]=
+                        mod_som_sbe41_ptr->consumer_ptr->record_pressure[1];
+                    mod_som_sbe41_ptr->consumer_ptr->record_salinity[0]=
+                        mod_som_sbe41_ptr->consumer_ptr->record_salinity[1];
+                    mod_som_sbe41_ptr->consumer_ptr->record_temp[0]=
+                        mod_som_sbe41_ptr->consumer_ptr->record_temp[1];
+                    mod_som_sbe41_ptr->consumer_ptr->record_timestamp[0]=
+                        mod_som_sbe41_ptr->consumer_ptr->record_timestamp[1];
+
+                    mod_som_sbe41_ptr->consumer_ptr->record_pressure[1]=
                         curr_sbe_sample.pressure;
-                    mod_som_sbe41_ptr->consumer_ptr->record_salinity[cnsmr_indx]= \
+                    mod_som_sbe41_ptr->consumer_ptr->record_salinity[1]=
                         curr_sbe_sample.salinity;
-                    mod_som_sbe41_ptr->consumer_ptr->record_temp[cnsmr_indx]= \
+                    mod_som_sbe41_ptr->consumer_ptr->record_temp[1]=
                         curr_sbe_sample.temperature;
-                    mod_som_sbe41_ptr->consumer_ptr->record_timestamp[cnsmr_indx]= \
+                    mod_som_sbe41_ptr->consumer_ptr->record_timestamp[1]=
                         curr_sbe_sample.timestamp;
 
                     //ALB compute dPdt to get a fall rate
-                    float dP=mod_som_sbe41_ptr->consumer_ptr->record_pressure[cnsmr_indx]-
-                        mod_som_sbe41_ptr->consumer_ptr->record_pressure[cnsmr_indx-1];
+                    float dP=mod_som_sbe41_ptr->consumer_ptr->record_pressure[1]-
+                        mod_som_sbe41_ptr->consumer_ptr->record_pressure[0];
 
-                    uint64_t dt=mod_som_sbe41_ptr->consumer_ptr->record_timestamp[cnsmr_indx]-
-                        mod_som_sbe41_ptr->consumer_ptr->record_timestamp[cnsmr_indx-1];
+                    uint64_t dt=mod_som_sbe41_ptr->consumer_ptr->record_timestamp[1]-
+                        mod_som_sbe41_ptr->consumer_ptr->record_timestamp[0];
 
                     mod_som_sbe41_ptr->consumer_ptr->dPdt= dP /
-                                                   (float)dt;
-
+                                                   ((float)dt)*1000;
+//                    printf("fall rate %3.3f\r\n",mod_som_sbe41_ptr->consumer_ptr->dPdt);
                 }
 
                 mod_som_sbe41_ptr->consumer_ptr->cnsmr_cnt++;  // increment cnsmr count
-                cnsmr_indx=mod_som_sbe41_ptr->consumer_ptr->cnsmr_cnt % \
+                cnsmr_indx=mod_som_sbe41_ptr->consumer_ptr->cnsmr_cnt %
                            mod_som_sbe41_ptr->consumer_ptr->max_element_per_record;  // increment cnsmr count
                 elmnts_avail = mod_som_sbe41_ptr->sample_count - mod_som_sbe41_ptr->consumer_ptr->cnsmr_cnt; //elements available have been produced
                 //ALB this IF check if we have enough element in the consumer record
@@ -1168,11 +1177,11 @@ static  void  mod_som_sbe41_consumer_task_f(void  *p_arg){
 mod_som_sbe41_sample_t mod_som_sbe41_parse_sample_f(uint8_t * element)
 {
   mod_som_sbe41_sample_t sbe_sample;
-  char  str_temperature[MOD_SOM_SBE41_SBE_CHANNEL_LENGTH];
-  char  str_timestamp[MOD_SOM_SBE41_HEXTIMESTAMP_LENGTH];
+  char  str_temperature[MOD_SOM_SBE41_SBE_CHANNEL_LENGTH+1]={0};
+  char  str_timestamp[MOD_SOM_SBE41_HEXTIMESTAMP_LENGTH+1]={0};
 //  char  str_conductivity[MOD_SOM_SBE41_SBE_CHANNEL_LENGTH];
-  char  str_pressure[MOD_SOM_SBE41_SBE_CHANNEL_LENGTH];
-  char  str_salinity[MOD_SOM_SBE41_SBE_CHANNEL_LENGTH];
+  char  str_pressure[MOD_SOM_SBE41_SBE_CHANNEL_LENGTH+1]={0};
+  char  str_salinity[MOD_SOM_SBE41_SBE_CHANNEL_LENGTH+1]={0};
 
 
 
@@ -1183,10 +1192,10 @@ mod_som_sbe41_sample_t mod_som_sbe41_parse_sample_f(uint8_t * element)
       str_pressure[i]  = sbe_str[i];
 //      str_conductivity[i] = sbe_str[1*MOD_SOM_SBE41_SBE_CHANNEL_LENGTH+i+1];
       str_temperature[i]     = sbe_str[1*MOD_SOM_SBE41_SBE_CHANNEL_LENGTH+i+1];
-      str_salinity[i]     = sbe_str[2*MOD_SOM_SBE41_SBE_CHANNEL_LENGTH+i+3];
+      str_salinity[i]     = sbe_str[2*MOD_SOM_SBE41_SBE_CHANNEL_LENGTH+i+2];
   }
 
-  sbe_sample.timestamp=strtoull(str_timestamp, NULL, 16);
+  sbe_sample.timestamp=strtoll(str_timestamp, NULL, 16);
   sbe_sample.temperature=strtof(str_temperature,NULL);
 //  sbe_sample.conductivity=strtof(str_conductivity,NULL);
   sbe_sample.pressure=strtof(str_pressure,NULL);

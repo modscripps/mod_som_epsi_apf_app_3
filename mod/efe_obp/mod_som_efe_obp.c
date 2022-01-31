@@ -293,7 +293,7 @@ mod_som_status_t mod_som_efe_obp_default_settings_f(
   settings_ptr->channels_id[1]     = 1 ; //select channel s1
   settings_ptr->channels_id[2]     = 2 ; //select channel a3
 
-  settings_ptr->mode=2;
+  settings_ptr->mode=0;
   settings_ptr->format=1;
   settings_ptr->channel=0;
 
@@ -1235,22 +1235,6 @@ void mod_som_efe_obp_fill_segment_task_f(void  *p_arg){
 //              local_sbe41_ptr->consumer_ptr->dPdt=0.5;
 //              local_sbe41_ptr->consumer_ptr->cnsmr_cnt=0;
 
-              if(local_sbe41_ptr->collect_data_flag){
-                  cnsmr_indx=local_sbe41_ptr->consumer_ptr->cnsmr_cnt % \
-                              local_sbe41_ptr->consumer_ptr->max_element_per_record;
-                  local_fill_segment_ctd_pressure +=
-                          local_sbe41_ptr->consumer_ptr->record_pressure[cnsmr_indx];
-
-                  local_fill_segment_ctd_temperature +=
-                          local_sbe41_ptr->consumer_ptr->record_temp[cnsmr_indx];
-
-                  local_fill_segment_ctd_salinity +=
-                          local_sbe41_ptr->consumer_ptr->record_salinity[cnsmr_indx];
-
-                  local_fill_segment_ctd_dpdt+=
-                      local_sbe41_ptr->consumer_ptr->dPdt;
-                  mod_som_efe_obp_ptr->fill_segment_ptr->ctd_element_cnt++;
-              }
 
 
               mod_som_efe_obp_ptr->fill_segment_ptr->efe_element_cnt++;  // increment cnsmr count
@@ -1269,6 +1253,24 @@ void mod_som_efe_obp_fill_segment_task_f(void  *p_arg){
                          sizeof(uint64_t));
                   mod_som_efe_obp_ptr->fill_segment_ptr->half_segment_cnt++;
 
+                  if(local_sbe41_ptr->collect_data_flag){
+//                      cnsmr_indx=local_sbe41_ptr->consumer_ptr->cnsmr_cnt %
+//                                  local_sbe41_ptr->consumer_ptr->max_element_per_record;
+                      local_fill_segment_ctd_pressure =
+                              local_sbe41_ptr->consumer_ptr->record_pressure[1];
+
+                      local_fill_segment_ctd_temperature =
+                              local_sbe41_ptr->consumer_ptr->record_temp[1];
+
+                      local_fill_segment_ctd_salinity =
+                              local_sbe41_ptr->consumer_ptr->record_salinity[1];
+
+                      local_fill_segment_ctd_dpdt=
+                          local_sbe41_ptr->consumer_ptr->dPdt;
+                      mod_som_efe_obp_ptr->fill_segment_ptr->ctd_element_cnt++;
+                  }
+
+
               }
 
               //ALB
@@ -1278,18 +1280,18 @@ void mod_som_efe_obp_fill_segment_task_f(void  *p_arg){
                   mod_som_efe_obp_ptr->fill_segment_ptr->segment_cnt++;
 
                   mod_som_efe_obp_ptr->fill_segment_ptr->ctd_pressure=
-                      local_fill_segment_ctd_pressure/
-                      (float)mod_som_efe_obp_ptr->fill_segment_ptr->ctd_element_cnt;
+                      local_fill_segment_ctd_pressure;
 
                   mod_som_efe_obp_ptr->fill_segment_ptr->ctd_temperature=
-                      local_fill_segment_ctd_temperature/
-                      (float)mod_som_efe_obp_ptr->fill_segment_ptr->ctd_element_cnt;
+                      local_fill_segment_ctd_temperature;
                   mod_som_efe_obp_ptr->fill_segment_ptr->ctd_salinity=
-                      local_fill_segment_ctd_salinity/
-                      (float)mod_som_efe_obp_ptr->fill_segment_ptr->ctd_element_cnt;
+                      local_fill_segment_ctd_salinity;
                   mod_som_efe_obp_ptr->fill_segment_ptr->ctd_dpdt=
-                      local_fill_segment_ctd_dpdt/
-                      (float)mod_som_efe_obp_ptr->fill_segment_ptr->ctd_element_cnt;
+                      local_fill_segment_ctd_dpdt;
+
+//                  mod_som_io_print_f("Pressure  %f\r\n",mod_som_efe_obp_ptr->fill_segment_ptr->ctd_pressure);
+//                  mod_som_io_print_f("fall rate %f\r\n",mod_som_efe_obp_ptr->fill_segment_ptr->ctd_dpdt);
+
 
                   local_fill_segment_ctd_pressure=0;
                   local_fill_segment_ctd_temperature=0;
@@ -1415,6 +1417,7 @@ void mod_som_efe_obp_cpt_spectra_task_f(void  *p_arg){
                   mod_som_efe_obp_ptr->fill_segment_ptr->ctd_dpdt;
 
 
+
           tick=sl_sleeptimer_get_tick_count64();
           mystatus = sl_sleeptimer_tick64_to_ms(tick,\
                                                 &mod_som_efe_obp_ptr->start_computation_timestamp);
@@ -1520,8 +1523,6 @@ void mod_som_efe_obp_cpt_spectra_task_f(void  *p_arg){
             mod_som_efe_obp_ptr->cpt_spectra_ptr->avg_ctd_dpdt+=
                 mod_som_efe_obp_ptr->cpt_spectra_ptr->ctd_dpdt/
                 (float)mod_som_efe_obp_ptr->settings_ptr->degrees_of_freedom;
-
-
 
           //ALB update mod_som_efe_obp_ptr->producer_ptr->volt_read_index
           //ALB to get a new segment with a 50% overlap.
@@ -1635,7 +1636,7 @@ void mod_som_efe_obp_cpt_dissrate_task_f(void  *p_arg){
 
 //  int i;
   int spectra_avail=0;
-//      reset_dissrates_cnt=0;
+//  reset_dissrates_cnt=0;
 //  int spectra_offset=0;
 //  int avg_spectra_offset=0;
 //  int padding = 0; // the padding should be big enough to include the time variance.
@@ -2592,7 +2593,7 @@ uint32_t mod_som_efe_obp_copy_producer_segment_f()
 
 
     memcpy(&mod_som_efe_obp_ptr->consumer_ptr->record_ptr[indx],
-           &mod_som_efe_obp_ptr->cpt_spectra_ptr->avg_timestamp,
+           &mod_som_efe_obp_ptr->cpt_spectra_ptr->timestamp,
            sizeof(uint64_t));
 
     indx+=sizeof(uint64_t);

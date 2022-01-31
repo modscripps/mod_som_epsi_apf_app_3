@@ -1,0 +1,5 @@
+eclipse.preferences.version=1
+environment/project/com.silabs.ss.tool.ide.arm.toolchain.gnu.cdt.debug\#com.silabs.ss.tool.ide.arm.toolchain.gnu.cdt\:7.2.1.20170904/append=true
+environment/project/com.silabs.ss.tool.ide.arm.toolchain.gnu.cdt.debug\#com.silabs.ss.tool.ide.arm.toolchain.gnu.cdt\:7.2.1.20170904/appendContributed=true
+environment/project/com.silabs.ss.tool.ide.arm.toolchain.gnu.cdt.release\#com.silabs.ss.tool.ide.arm.toolchain.gnu.cdt\:7.2.1.20170904/append=true
+environment/project/com.silabs.ss.tool.ide.arm.toolchain.gnu.cdt.release\#com.silabs.ss.tool.ide.arm.toolchain.gnu.cdt\:7.2.1.20170904/appendContributed=true

@@ -244,16 +244,14 @@ mod_som_status_t mod_som_main_start_f(void){
         return mod_som_encode_status_f(MOD_SOM_STATUS_ERR_NOT_INITIALIZED_MAIN);
 
 
+    printf("\r\n==============================\r\n");
+    printf(PROJECTNAME);
     printf("\r\n");
-    printf(__DATE__);
+    printf("Version: " __DATE__);
     printf(" ");
     printf(__TIME__);
-    printf("\r\n== MOD SOM APF BASE Application ==\r\n");
-    printf("\r\n== Version ALB 11/18/2021 ==\r\n");
-    printf("\r\n\r\n");
-    printf("\r\n== YOU MUST SET THE CLOCK NOW WITH 'time.set'!!! ==\r\n");
-    printf("\r\n\r\n");
-    printf("\r\n== Type 'help' for commands and syntax. ==\r\n\r\n");//MHA
+    printf("\r\n");
+    printf("==============================\r\n");
 
     // MNB round robin enbable from cbtest project
     // using Schedule Round Robin to handle 2 or more process has the same priority
@@ -1417,15 +1415,15 @@ void UART1_TX_IRQHandler(void){
     }
     return;
 }
-void LEUART0_IRQHandler(void){
-    if(mod_som_sys_peripherals_list_ptr->LEUART0_prf_ptr != DEF_NULL){
-        //        printf("LEUART0_IRQHandler();\r\n");
-        mod_som_sys_peripherals_list_ptr->LEUART0_prf_ptr->irq_handler_1_f(
-                (void *)mod_som_sys_peripherals_list_ptr->LEUART0_prf_ptr->device_ptr);
-        //    printf("LEUART0_IRQHandler();\r\n");
-    }
-    return;
-}
+//void LEUART0_IRQHandler(void){
+//    if(mod_som_sys_peripherals_list_ptr->LEUART0_prf_ptr != DEF_NULL){
+//        //        printf("LEUART0_IRQHandler();\r\n");
+//        mod_som_sys_peripherals_list_ptr->LEUART0_prf_ptr->irq_handler_1_f(
+//                (void *)mod_som_sys_peripherals_list_ptr->LEUART0_prf_ptr->device_ptr);
+//        //    printf("LEUART0_IRQHandler();\r\n");
+//    }
+//    return;
+//}
 void LEUART1_IRQHandler(void){
     if(mod_som_sys_peripherals_list_ptr->LEUART1_prf_ptr != DEF_NULL){
         mod_som_sys_peripherals_list_ptr->LEUART1_prf_ptr->irq_handler_1_f(

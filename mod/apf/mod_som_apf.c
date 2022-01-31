@@ -49,6 +49,11 @@ static CPU_STK mod_som_apf_shell_task_stk[MOD_SOM_APF_PRODUCER_TASK_STK_SIZE];
 static OS_TCB  mod_som_apf_shell_task_tcb;
 
 
+static volatile int     apf_rxReadIndex  = 0;       /**< Index in buffer to be read */
+static volatile int     apf_rxWriteIndex = 0;       /**< Index in buffer to be written to */
+static volatile int     apf_rxCount      = 0;       /**< Keeps track of how much data which are stored in the buffer */
+static volatile uint8_t apf_rxBuffer[MOD_SOM_APF_SETTINGS_STR_lENGTH];    /**< Buffer to store data */
+
 sl_status_t mystatus;
 
 /*******************************************************************************
@@ -609,7 +614,10 @@ mod_som_apf_status_t mod_som_apf_construct_com_prf_f(){
 //        leuart_ptr->CMD = LEUART_CMD_CLEARRX | LEUART_CMD_CLEARTX;
 //
 //        /* Clear previous RX interrupts. */
-//        LEUART_IntClear(leuart_ptr, ~0x0);
+        LEUART_IntClear(leuart_ptr, ~0x0);
+        LEUART_IntEnable(leuart_ptr, LEUART_IF_RXDATAV);
+        NVIC_EnableIRQ(LEUART0_IRQn);
+
 
 
       break;
@@ -1486,29 +1494,34 @@ void mod_som_apf_shell_task_f(void  *p_arg){
       status = mod_som_apf_shell_get_line_f(input_buf,&input_buf_len); // get the whole string from the port (i.e LEUART)
 
       // send "NAK,<expression>\r\n"
-      if (status > 0) // if not success: send a message to APF (LEUART port)
+      if (status > 0) // if no bytes:
       {
 //          mod_som_apf_send_line_f(mod_som_apf_ptr->com_prf_ptr->handle_port, temp_str,temp_str_len);
           //      status = mod_som_apf_send_line_f(apf_leuart_ptr, "NAK,<ReceivedCmd>,\r\n",input_buf_len);
-      }
+      }else{
+          //ALB we got a cmd comming in
+          if (!Str_Cmp(input_buf, "exit"))
+            {
+              break;
+            }
+          // we have the whole string, we would convert the string to the right format string we want
+          //ALB changing convert string so it can read everything no only char
+          //ALB I need input_buffer_length
+          status = mod_som_apf_convert_string_f(input_buf,&input_buf_len, output_buf);   // convert the input string to the right format: cap -> uncap, coma -> space
+          status = mod_som_shell_execute_input_f(output_buf,input_buf_len);   // execute the appropriate routine base on the command. Return the mod_som_status
 
-      if (!Str_Cmp(input_buf, "exit"))
-      {
-          break;
-      }
-      // we have the whole string, we would convert the string to the right format string we want
-      status = mod_som_apf_convert_string_f(input_buf, output_buf);   // convert the input string to the right format: cap -> uncap, coma -> space
-      status = mod_som_shell_execute_input_f(output_buf,input_buf_len);   // execute the appropriate routine base on the command. Return the mod_som_status
-
-      if (status>0){
-          sprintf(apf_reply_str,"nak,%s\r\n",output_buf);
-          reply_str_len = strlen(apf_reply_str);
-          // sending the above string to the APF port - Mai - Nov 18, 2021
-          bytes_sent = mod_som_apf_send_line_f(apf_leuart_ptr,apf_reply_str, reply_str_len);
-          if(bytes_sent==0){
-              //TODO handle the error
+          if (status>0){
+              sprintf(apf_reply_str,"nak,%s\r\n",output_buf);
+              reply_str_len = strlen(apf_reply_str);
+              // sending the above string to the APF port - Mai - Nov 18, 2021
+              bytes_sent = mod_som_apf_send_line_f(apf_leuart_ptr,apf_reply_str, reply_str_len);
+              if(bytes_sent==0){
+                  //TODO handle the error
+              }
           }
+
       }
+
   }
 }
 
@@ -1521,15 +1534,15 @@ void mod_som_apf_shell_task_f(void  *p_arg){
  * Passing parameters: input_str: the string would like to convert
  *                     output_str: return the right format string
  */
-uint32_t mod_som_apf_convert_string_f(char* data_str_input, char* data_str_output)
+uint32_t mod_som_apf_convert_string_f(char* data_str_input, uint32_t * bytes_received, char* data_str_output)
 {
     uint32_t retval = 0;
-    char* local_str_input_ptr = data_str_input;
+    char* local_str_input_ptr  = data_str_input;
     char* local_str_output_ptr = data_str_output;
 
     while(*local_str_input_ptr!='\0')
     {
-        // if the character is upercase -> change to lowercase
+        // if the character is uppercase -> change to lowercase
         if (*local_str_input_ptr >= 'A' && *local_str_input_ptr <= 'Z')
           {
               *local_str_output_ptr = *local_str_input_ptr+32;
@@ -1546,6 +1559,7 @@ uint32_t mod_som_apf_convert_string_f(char* data_str_input, char* data_str_outpu
         local_str_output_ptr++;
     }
     printf("outptstr: %s\n", data_str_output);
+
 
     return retval;
 }
@@ -1583,9 +1597,11 @@ mod_som_status_t mod_som_apf_shell_get_line_f(char *buf, uint32_t * buf_len)
  *  Length of buffer as the user is typing
  ******************************************************************************/
 mod_som_apf_status_t mod_som_apf_shell_get_line_f(char *buf, uint32_t * bytes_read){
-  mod_som_apf_status_t status;
+  mod_som_apf_status_t status=0;
+  RTOS_ERR err;
+
     int32_t i=0;
-    char read_char;
+    int read_char=-1;
     LEUART_TypeDef  *apf_leuart_ptr;
 
     Mem_Set(buf, '\0', MOD_SOM_SHELL_INPUT_BUF_SIZE); // Clear previous input
@@ -1608,14 +1624,29 @@ mod_som_apf_status_t mod_som_apf_shell_get_line_f(char *buf, uint32_t * bytes_re
     {
         status = mod_som_apf_get_char_f(apf_leuart_ptr, &read_char); // call for getting char from LEUART
 
-    buf[i] = read_char;// save the read character into the buffer
+        //ALB while status > 0  we do not haver a bytes
+        while(status>0){
+            OSTimeDly(
+                    (OS_TICK     )MOD_SOM_CFG_LOOP_TICK_DELAY,
+                    (OS_OPT      )OS_OPT_TIME_DLY,
+                    &err);
+            APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
+            status = mod_som_apf_get_char_f(apf_leuart_ptr, &read_char); // call for getting char from LEUART
+
+        }
+
         if (read_char == '\r')
         {
-            //MN We do not save \r and \n in the output str
-            buf[i] = '\0';
+//            buf[i] = '\0';
             break;
         }
+        else if (!(read_char>31 && read_char<127)){ // check for printable characters
+                    i--;
+                    continue;
+                }
+    buf[i] = read_char;// save the read character into the buffer
     }
+    buf[i] = '\0';
     *bytes_read = i;
     return status;
 }
@@ -1638,16 +1669,37 @@ mod_som_apf_status_t mod_som_apf_shell_get_line_f(char *buf, uint32_t * bytes_re
  *  character as the user is typing
  *  LEUART() is always waiting the input character -> this funct is always return 0 - Arnaud & Mai
  ******************************************************************************/
-mod_som_apf_status_t mod_som_apf_get_char_f(LEUART_TypeDef *leuart_ptr, char* read_char)
+mod_som_status_t mod_som_apf_get_char_f(LEUART_TypeDef *leuart_ptr, int* read_char_ptr)
 {
   //Get one bytes from the select port
-  *read_char = LEUART_Rx(leuart_ptr);
+//  *read_char = LEUART_Rx(leuart_ptr);
+  mod_som_status_t status=1;
+  *read_char_ptr=-1;
+//  int c = -1;
+  CORE_DECLARE_IRQ_STATE;
 
-  // if not succeed, it return error
-  if (*read_char==0)
-    return mod_som_shell_encode_status_f(MOD_SOM_STATUS_NOT_OK);
-  // otherwise, return ok
-  return mod_som_shell_encode_status_f(MOD_SOM_STATUS_OK);
+  CORE_ENTER_ATOMIC();
+  if (apf_rxCount > 0) {
+    *read_char_ptr = (int) apf_rxBuffer[apf_rxReadIndex];
+    apf_rxReadIndex++;
+    if (apf_rxReadIndex == MOD_SOM_APF_SETTINGS_STR_lENGTH) {
+      apf_rxReadIndex = 0;
+    }
+    apf_rxCount--;
+    /* Unconditionally enable the RX interrupt. RX interrupts are disabled when
+     * a buffer full condition is entered. This way flow control can be handled
+     * automatically by the hardware. */
+    LEUART_IntEnable(leuart_ptr, LEUART_IF_RXDATAV);
+  }
+
+  CORE_EXIT_ATOMIC();
+
+//ALB if read char is a byte chnage status to OK (i.e., 0);
+if (*read_char_ptr>0){
+  status=0;
+}
+
+  return status;
 }
 
 /*******************************************************************************
@@ -1677,6 +1729,38 @@ uint32_t mod_som_apf_send_line_f(LEUART_TypeDef *leuart_ptr,char * buf, uint32_t
   return nb_char_sent;
 
 }
+
+///*******************************************************************************
+// * @brief
+// *   Send a line from a PORT.
+// *
+// *
+// * @param buf
+// *   Buffer to hold the input string.
+// * @param buf_length
+// *  Length of buffer as the user is typing
+// *  edit: Nov 19, 2021
+// ******************************************************************************/
+//uint32_t mod_som_apf_make_nack_apf_reply_f(uint8_t * apf_reply_str,char * cmd1, uint32_t status)
+//{
+//  size_t reply_str_len = 0;
+//
+//  sprintf((char *) apf_reply_str,"%s,nack",cmd1);
+//  reply_str_len = strlen((char*)apf_reply_str);
+//
+//  memcpy(&apf_reply_str[reply_str_len],",",sizeof(char));
+//  reply_str_len++;
+//  memcpy(&apf_reply_str[reply_str_len],&status,sizeof(uint32_t));
+//  reply_str_len+=sizeof(uint32_t);
+//  memcpy(&apf_reply_str[reply_str_len],"\r",sizeof(char));
+//  reply_str_len++;
+//  memcpy(&apf_reply_str[reply_str_len],"\n",sizeof(char));
+//  reply_str_len++;
+//
+//  return reply_str_len;
+//
+//}
+
 
 
 /*******************************************************************************
@@ -2209,7 +2293,7 @@ mod_som_apf_status_t mod_som_apf_daq_start_f(uint64_t profile_id){
  status|= mod_som_efe_obp_start_fill_segment_task_f();
  status|= mod_som_efe_obp_start_cpt_spectra_task_f();
  status|= mod_som_efe_obp_start_cpt_dissrate_task_f();
-// status|= mod_som_efe_obp_start_consumer_task_f();
+ //status|= mod_som_efe_obp_start_consumer_task_f();
 
 
   //ALB get a P reading and define the dz to get 25kB in the producer->dacq_profile
@@ -2240,10 +2324,10 @@ mod_som_apf_status_t mod_som_apf_daq_start_f(uint64_t profile_id){
 
 
 
-//  //ALB start APF producer task
+////  //ALB start APF producer task
   status |= mod_som_apf_start_producer_task_f();
-//  //ALB start APF consumer task
-  status |= mod_som_apf_start_consumer_task_f();
+////  //ALB start APF consumer task
+//  status |= mod_som_apf_start_consumer_task_f();
 
 
   status|=mod_som_efe_sampling_f();
@@ -2295,7 +2379,7 @@ mod_som_apf_status_t mod_som_apf_daq_stop_f(){
   //ALB disable SDIO hardware
 
   status |=mod_som_sdio_stop_store_f();
-  mod_som_sdio_disable_hardware_f();
+//  mod_som_sdio_disable_hardware_f();
 
   //reset Daq flags
   mod_som_apf_ptr->daq=false;
@@ -2430,10 +2514,12 @@ mod_som_apf_status_t mod_som_apf_fwrev_status_f(){
   if (bytes_send!=reply_str_len){
       status=MOD_SOM_APF_STATUS_FAIL_SEND_MS;
   }
-
   if (status!=0)
   {
       mod_som_io_print_f("fwrev?,nak,%lu\r\n",status);
+      for (int i=0;i<MOD_SOM_SHELL_INPUT_BUF_SIZE;i++){
+          apf_reply_str[i]=0;
+      }
 
       sprintf(apf_reply_str,"fwrev?,nak,%lu\r\n",status);
       reply_str_len = strlen(apf_reply_str);
@@ -2538,6 +2624,12 @@ mod_som_apf_status_t mod_som_apf_poweroff_f(){
   // sending the above string to the APF port - Mai - Nov 18, 2021
   bytes_sent = mod_som_apf_send_line_f(apf_leuart_ptr,apf_reply_str, reply_str_len);
   if(bytes_sent==0){
+
+      sprintf(apf_reply_str,"poweroff,nak,%lu\r\n",status);
+      reply_str_len = strlen(apf_reply_str);
+      // sending the above string to the APF port - Mai - Nov 18, 2021
+      bytes_sent = mod_som_apf_send_line_f(apf_leuart_ptr,apf_reply_str, reply_str_len);
+
       status=MOD_SOM_APF_STATUS_FAIL_SEND_MS;
   }
 
@@ -2557,6 +2649,7 @@ mod_som_apf_status_t mod_som_apf_epsi_id_status_f(){
   char apf_reply_str[MOD_SOM_SHELL_INPUT_BUF_SIZE]="\0";
   size_t reply_str_len = 0;
   LEUART_TypeDef* apf_leuart_ptr;
+
   // get the port's fd
   apf_leuart_ptr = (LEUART_TypeDef *)mod_som_apf_ptr->com_prf_ptr->handle_port;
   uint32_t bytes_sent = 0;
@@ -2571,6 +2664,8 @@ mod_som_apf_status_t mod_som_apf_epsi_id_status_f(){
 	                   local_settings_ptr->mod_som_efe_settings.rev,
 	                   local_settings_ptr->mod_som_efe_settings.sn);
   // save the string into the temporary local string - Mai - Nov 18, 2021
+
+
   sprintf(apf_reply_str,"epsino?,ack,SOM%s,%s,EFE%s,%s\r\n",
           local_settings_ptr->rev,local_settings_ptr->sn,
           local_settings_ptr->mod_som_efe_settings.rev,
@@ -2624,7 +2719,7 @@ mod_som_apf_status_t mod_som_apf_probe_id_f(CPU_INT16U argc,
   char *endptr2;
   bool argument_flag1 = false;
   bool argument_flag2 = false;
-  uint8_t channel_id = 0;
+  uint8_t channel_id  = 0;
   uint8_t length_argument3 = 0;
   uint8_t length_argument4 = 0;
   uint8_t length_argument6 = 0;
@@ -2642,12 +2737,15 @@ mod_som_apf_status_t mod_som_apf_probe_id_f(CPU_INT16U argc,
   mod_som_efe_settings_ptr_t local_efe_settings_ptr =
       mod_som_efe_get_settings_ptr_f();
 
+
   switch (argc)
   {
      case 7: // the right number args of the command "Probe No,Type1,SerNo1,Coef1,Type2,SerNo2,Coef2\r"
       // get value of all parameter of the probe
       cal1 = strtol(argv[3], &endptr1, 10);  // Coef1
       cal2 = strtol(argv[6], &endptr2, 10);  // Coef2
+
+
       length_argument3 = strlen(argv[2]); //SerNo1
       length_argument4 = strlen(argv[3]); //Coef1
       length_argument6 = strlen(argv[5]); //SerNo2
@@ -2664,6 +2762,9 @@ mod_som_apf_status_t mod_som_apf_probe_id_f(CPU_INT16U argc,
       // sensor 1: "s", length(123) = 3, length(12) = 2
       if(!strcmp(argv[1],"s") && (length_argument3==3) && (length_argument4==2) && (cal1>0)){
           channel_id = 1;
+
+
+
           memcpy(&local_efe_settings_ptr->sensors[channel_id].sn,argv[2],3);
           local_efe_settings_ptr->sensors[channel_id].cal = cal1;
           argument_flag1 = true;
@@ -2749,8 +2850,15 @@ mod_som_apf_status_t mod_som_apf_probe_id_status_f(){
   // get the port's fd
   apf_leuart_ptr = (LEUART_TypeDef *)mod_som_apf_ptr->com_prf_ptr->handle_port;
 
+//  char *endptr1;
+
   mod_som_efe_settings_ptr_t local_efe_settings_ptr=
       mod_som_efe_get_settings_ptr_f();
+
+//  uint16_t sn_temp   = (uint16_t) strtoul(local_efe_settings_ptr->sensors[0].sn,&endptr1,10) ;
+//  uint16_t sn_shear  = (uint16_t) strtoul(local_efe_settings_ptr->sensors[1].sn,&endptr1,10) ;
+//  uint16_t cal_temp  = (uint16_t) local_efe_settings_ptr->sensors[0].cal;
+//  uint16_t cal_shear = (uint16_t) local_efe_settings_ptr->sensors[1].cal;
 
   status|= mod_som_io_print_f("probe_no?,ack,%s,%s,%lu,%s,%s,%lu\r\n","S",
                               local_efe_settings_ptr->sensors[1].sn,
@@ -2759,8 +2867,8 @@ mod_som_apf_status_t mod_som_apf_probe_id_status_f(){
                               local_efe_settings_ptr->sensors[0].sn,
                               (uint32_t)local_efe_settings_ptr->sensors[0].cal);
 
-  // save to the local string for sending out - Mai-Nov 18, 2021
-  sprintf(apf_reply_str,"probe_no?,ack,%s,%s,%lu,%s,%s,%lu\r\n",
+// save to the local string for sending out - Mai-Nov 18, 2021
+ sprintf(apf_reply_str,"probe_no?,ack,%s,%s,%lu,%s,%s,%lu\r\n",
           "S",
           local_efe_settings_ptr->sensors[1].sn,
           (uint32_t)local_efe_settings_ptr->sensors[1].cal,
@@ -2769,6 +2877,7 @@ mod_som_apf_status_t mod_som_apf_probe_id_status_f(){
           (uint32_t)local_efe_settings_ptr->sensors[0].cal);
 
   reply_str_len = strlen(apf_reply_str);
+
   // sending the above string to the APF port - Mai - Nov 18, 2021
   bytes_sent = mod_som_apf_send_line_f(apf_leuart_ptr,apf_reply_str, reply_str_len);
 
@@ -3241,40 +3350,6 @@ mod_som_apf_status_t mod_som_apf_sd_format_f(CPU_INT16U argc,
       break;
     }
 
-//    if(mod_som_apf_ptr->settings_ptr->sd_packet_format>1){
-//        //ALB start writing data on the sd from the apf producers.
-//        mod_som_apf_ptr->consumer_ptr->started_flg=true;
-//        //ALB if sd_packet is "on" I ll always write the disrates on the SD card.
-//        mod_som_efe_obp_consumer_format_f(argc_efe_obp,argv_efe_obp_none_format);
-//        mod_som_efe_obp_mode_f(argc_efe_obp,argv_efe_obp_sd);
-//    }else{
-//        mod_som_efe_obp_mode_f(argc_efe_obp,argv_efe_obp_off);
-//    }
-//    if(mod_som_apf_ptr->settings_ptr->sd_packet_format==1){
-//        //ALB write raw data in the Profile file
-//        mod_som_sbe41_consumer_mode_f(argc_sbe41,argv_sbe41_sd);
-//        mod_som_efe_consumer_mode_f(argc_efe,argv_efe_sd);
-//    }else{
-//        //ALB sd_mode will use apf producer data.
-//        //ALB make sure I turn off raw data sd write.
-//        mod_som_sbe41_consumer_mode_f(argc_sbe41,argv_sbe41_off);
-//        mod_som_efe_consumer_mode_f(argc_efe,argv_efe_off);
-//    }
-
-
-//    if(mod_som_apf_ptr->settings_ptr->sd_packet_format==2){
-//        //ALB write spectra from efeobp on the SD card
-//        mod_som_efe_obp_consumer_format_f(argc_efe_obp,argv_efe_obp_avgspec_format);
-//    }else{
-//        mod_som_efe_obp_consumer_format_f(argc_efe_obp,argv_efe_obp_none_format);
-//    }
-
-//    if(mod_som_apf_ptr->settings_ptr->sd_packet_format==3){
-//        //ALB write decimated spectra from apf on the SDcard.
-//
-//
-//    }
-
   status|=mod_som_settings_save_settings_f();
 
   if(good_argument){
@@ -3282,9 +3357,10 @@ mod_som_apf_status_t mod_som_apf_sd_format_f(CPU_INT16U argc,
       // save to the local string for sending out - Mai-Nov 18, 2021
       sprintf(apf_reply_str,"sd_format,ack,%i\r\n",mode);
   }else{
-      mod_som_io_print_f("sd_format,nak,%s\r\n","wrong arguments");
+      status=MOD_SOM_APF_STATUS_WRONG_ARG;
+      mod_som_io_print_f("sd_format,nak,%lu\r\n",status);
       // save to the local string for sending out - Mai-Nov 18, 2021
-      sprintf(apf_reply_str,"sd_format,nak,%s\r\n","wrong arguments");
+      sprintf(apf_reply_str,"sd_format,nak,%lu\r\n",status);
   }
   reply_str_len = strlen(apf_reply_str);
   // sending the above string to the APF port - Mai - Nov 18, 2021
@@ -3384,10 +3460,11 @@ mod_som_apf_status_t mod_som_apf_upload_f(){
   // get the port's fd
   apf_leuart_ptr = (LEUART_TypeDef *)mod_som_apf_ptr->com_prf_ptr->handle_port;
 
-  int c;
+//  int c;
+  int read_char=-1;
 
   unsigned int crc=0;
-  uint32_t   timeout = 0;
+//  uint32_t   timeout = 0;
   uint32_t   timeout_flag = 0;
   uint32_t   t1 = 0;
   uint32_t   t0 = 0;
@@ -3468,7 +3545,8 @@ mod_som_apf_status_t mod_som_apf_upload_f(){
           mod_som_apf_ptr->consumer_ptr->daq_remaining_bytes-=dacq_bytes_to_sent;
           //ALB update packet.counters
           mod_som_apf_ptr->consumer_ptr->packet.counters|=
-                             mod_som_apf_ptr->consumer_ptr->daq_remaining_bytes;
+                             (mod_som_apf_ptr->consumer_ptr->daq_remaining_bytes
+                              & 0x3FF);
 
           //ALB packet should be ready. Now send it
           mod_som_apf_ptr->consumer_ptr->consumed_flag=false;
@@ -3481,6 +3559,13 @@ mod_som_apf_status_t mod_som_apf_upload_f(){
               &mod_som_apf_ptr->consumer_ptr->consumed_flag);
 
           //ALB We need to send the packet to the APEX shell
+//          sl_sleeptimer_delay_millisecond(10);
+          bytes_sent = mod_som_apf_send_line_f(
+              apf_leuart_ptr,
+              (char *) &mod_som_apf_ptr->consumer_ptr->packet,
+              dacq_bytes_to_sent+MOD_SOM_APF_UPLOAD_PACKET_CRC_SIZE+
+                                 MOD_SOM_APF_UPLOAD_PACKET_CNT_SIZE);
+
 
           //ALB Wait for APF11 answer.
           //ALB APF sends ACK if fine.
@@ -3491,17 +3576,19 @@ mod_som_apf_status_t mod_som_apf_upload_f(){
 
           //ALB get a t0=timestamp right before the while
           mod_som_apf_ptr->consumer_ptr->nb_packet_sent++;
-          mod_som_apf_ptr->consumer_ptr->nb_packet_sent%=0x3FF;
+          mod_som_apf_ptr->consumer_ptr->nb_packet_sent%=64;
           t0= mod_som_calendar_get_time_f();
-          c=0;
-          while (c <= 0){ // Wait for valid input
+          read_char=0;
+          while (read_char <= 0){ // Wait for valid input
               timeout_flag=0;
               //Release for waiting tasks
-              c = RETARGET_ReadChar();
+//              c = RETARGET_ReadChar();
+              status = mod_som_apf_get_char_f(apf_leuart_ptr, &read_char); // call for getting char from LEUART
+
               //TODO MNB read the bytes from APEX-shell
 //              c=MOD_SOM_APF_UPLOAD_APF11_ACK;
               //ALB good transmit, go to next packet.
-              if(c==MOD_SOM_APF_UPLOAD_APF11_ACK){
+              if(read_char==MOD_SOM_APF_UPLOAD_APF11_ACK){
                   //ALB update current_data_ptr to point to the next dacq data
                   current_data_ptr+=dacq_bytes_to_sent;
                   dacq_bytes_sent+=dacq_bytes_to_sent;
@@ -3513,18 +3600,21 @@ mod_som_apf_status_t mod_som_apf_upload_f(){
               t1= mod_som_calendar_get_time_f();
               //ALB calculate time out if t1-t0>5sec
               if ((t1-t0)>=MOD_SOM_APF_UPLOAD_APF11_TIMEOUT){
-                  //ALB timeout_flag=1
+                  //e
                   timeout_flag=1;
               }
               //ALB error: either NACK of timeout.
               //ALB Break the while loop and retry to send the packet
-              if((c==MOD_SOM_APF_UPLOAD_APF11_NACK) || (timeout_flag==1)){
+              if((read_char==MOD_SOM_APF_UPLOAD_APF11_NACK) || (timeout_flag==1)){
                   mod_som_apf_ptr->consumer_ptr->send_packet_tries++;
+                  mod_som_apf_ptr->consumer_ptr->nb_packet_sent--;
+                  mod_som_apf_ptr->consumer_ptr->daq_remaining_bytes-=
+                                                             dacq_bytes_to_sent;
                   status=MOD_SOM_APF_STATUS_FAIL_SEND_PACKET;
                   dacq_bytes_sent=0;
                   break; //Break the while loop to try again
               }//ALB end of if
-              c=0;
+              read_char=0;
           }//ALB end of while c
 
           //ALB update dacq_bytes_available.
@@ -3560,6 +3650,58 @@ mod_som_apf_status_t mod_som_apf_upload_f(){
 
   return mod_som_apf_encode_status_f(status);
 }
+
+
+/*******************************************************************************
+ * @brief
+ *
+ * @param handle
+ *   handle to communication port
+ *
+ * @param xfer_status
+ *  status of transfer
+ *
+ * @param data
+ *  pointer to data
+ *
+ * @param xfer_count
+ *  length of data receive
+ ******************************************************************************/
+void LEUART0_IRQHandler(){
+
+  LEUART_TypeDef  *leuart_ptr;
+//  uint8_t indx    =0;
+
+  uint32_t interrupt_sig;
+  leuart_ptr  = (LEUART_TypeDef *)mod_som_apf_ptr->com_prf_ptr->handle_port;;
+  // Disabling the LEUART IRQ to "run" on the LDMA interrupt.
+
+  interrupt_sig = leuart_ptr->IF;
+  LEUART_IntClear(leuart_ptr,interrupt_sig);
+
+
+  if(interrupt_sig & LEUART_IF_RXDATAV){
+
+      if (apf_rxCount < (MOD_SOM_APF_SETTINGS_STR_lENGTH)) {
+        /* There is room for data in the RX buffer so we store the data. */
+        apf_rxBuffer[apf_rxWriteIndex] = LEUART_Rx(leuart_ptr);
+        apf_rxWriteIndex++;
+        apf_rxCount++;
+
+        if (apf_rxWriteIndex == (MOD_SOM_APF_SETTINGS_STR_lENGTH)) {
+            apf_rxWriteIndex = 0;
+        }
+      } else {
+        /* The RX buffer is full so we must wait for the RETARGET_ReadChar()
+         * function to make some more room in the buffer. RX interrupts are
+         * disabled to let the ISR exit. The RX interrupt will be enabled in
+         * RETARGET_ReadChar(). */
+          LEUART_IntDisable(leuart_ptr, LEUART_IF_RXDATAV);
+      }
+  }
+}
+
+
 
 
 #endif

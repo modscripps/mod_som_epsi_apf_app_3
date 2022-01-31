@@ -47,7 +47,7 @@ typedef struct{
 bool initialized_flag;
 bool started_flag;
 mod_som_calendar_settings_ptr_t  mod_som_calendar_settings_ptr;
-sl_sleeptimer_date_t current_date;
+sl_sleeptimer_date_t sl_current_date;
 char buff[20];
 }mod_som_calendar_t,*mod_som_calendar_ptr_t;
 

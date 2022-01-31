@@ -141,9 +141,13 @@
                                     								
                                 </option>
                                 								
-                                <option IS_BUILTIN_EMPTY="false" IS_VALUE_EMPTY="false" id="com.silabs.ide.si32.gcc.cdt.managedbuild.tool.gnu.c.compiler.def.symbols.1292314095" name="Defined symbols (-D)" superClass="com.silabs.ide.si32.gcc.cdt.managedbuild.tool.gnu.c.compiler.def.symbols" valueType="definedSymbols">
+                                <option IS_BUILTIN_EMPTY="false" IS_VALUE_EMPTY="false" id="com.silabs.ide.si32.gcc.cdt.managedbuild.tool.gnu.c.compiler.def.symbols.1292314095" name="Defined symbols (-D)" superClass="com.silabs.ide.si32.gcc.cdt.managedbuild.tool.gnu.c.compiler.def.symbols" useByScannerDiscovery="false" valueType="definedSymbols">
                                     									
                                     <listOptionValue builtIn="false" value="EFM32GG11B420F2048GQ100=1"/>
+                                    									
+                                    <listOptionValue builtIn="false" value="&quot;PROJECTNAME=&quot;${ProjName}&quot;"/>
+                                    									
+                                    <listOptionValue builtIn="false" value="TOTO=&quot;toto&quot;"/>
                                     								
                                 </option>
                                 								
@@ -255,6 +259,8 @@
                 				
                 <macros>
                     					
+                    <stringMacro name="ProjName" type="VALUE_TEXT" value="mod_som_epsi_apf_app_3"/>
+                    					
                     <stringMacro name="StudioSdkPath" type="VALUE_PATH_DIR" value="${StudioSdkPathFromID:com.silabs.sdk.stack.super:3.0.2._-1295735258}"/>
                     					
                     <stringMacro name="StudioToolchainPath" type="VALUE_PATH_DIR" value="${StudioToolchainPathFromID:com.silabs.ss.tool.ide.arm.toolchain.gnu.cdt:7.2.1.20170904}"/>
@@ -315,28 +321,6 @@
                                 								
                                 <option id="com.silabs.ide.si32.gcc.cdt.managedbuild.tool.gnu.c.compiler.debug.builtin.1352209671" name="Always branch to builtin functions (-fno-builtin)" superClass="com.silabs.ide.si32.gcc.cdt.managedbuild.tool.gnu.c.compiler.debug.builtin" value="false" valueType="boolean"/>
                                 								
-                                <option IS_BUILTIN_EMPTY="false" IS_VALUE_EMPTY="false" id="gnu.c.compiler.option.include.paths.217537288" name="Include paths (-I)" superClass="gnu.c.compiler.option.include.paths" valueType="includePath">
-                                    									
-                                    <listOptionValue builtIn="false" value="&quot;${workspace_loc:/${ProjName}/service}&quot;"/>
-                                    									
-                                    <listOptionValue builtIn="false" value="&quot;${StudioSdkPath}/platform/CMSIS/Include&quot;"/>
-                                    									
-                                    <listOptionValue builtIn="false" value="&quot;${StudioSdkPath}/platform/emlib/inc&quot;"/>
-                                    									
-                                    <listOptionValue builtIn="false" value="&quot;${StudioSdkPath}/hardware/kit/common/drivers&quot;"/>
-                                    									
-                                    <listOptionValue builtIn="false" value="&quot;${StudioSdkPath}/hardware/kit/common/bsp&quot;"/>
-                                    									
-                                    <listOptionValue builtIn="false" value="&quot;${StudioSdkPath}/platform/Device/SiliconLabs/EFM32GG11B/Include&quot;"/>
-                                    								
-                                </option>
-                                								
-                                <option IS_BUILTIN_EMPTY="false" IS_VALUE_EMPTY="false" id="com.silabs.ide.si32.gcc.cdt.managedbuild.tool.gnu.c.compiler.def.symbols.124451272" name="Defined symbols (-D)" superClass="com.silabs.ide.si32.gcc.cdt.managedbuild.tool.gnu.c.compiler.def.symbols" valueType="definedSymbols">
-                                    									
-                                    <listOptionValue builtIn="false" value="EFM32GG11B420F2048GQ100=1"/>
-                                    								
-                                </option>
-                                								
                                 <inputType id="com.silabs.ide.si32.gcc.cdt.managedbuild.tool.gnu.c.compiler.input.1711293413" superClass="com.silabs.ide.si32.gcc.cdt.managedbuild.tool.gnu.c.compiler.input"/>
                                 							
                             </tool>
@@ -350,28 +334,6 @@
                             </tool>
                             							
                             <tool id="com.silabs.ide.si32.gcc.cdt.managedbuild.tool.gnu.assembler.base.1640233144" name="GNU ARM Assembler" superClass="com.silabs.ide.si32.gcc.cdt.managedbuild.tool.gnu.assembler.base">
-                                								
-                                <option IS_BUILTIN_EMPTY="false" IS_VALUE_EMPTY="false" id="com.silabs.ide.si32.gcc.cdt.managedbuild.tool.gnu.assembler.includes.577393958" name="Include paths (-I)" superClass="com.silabs.ide.si32.gcc.cdt.managedbuild.tool.gnu.assembler.includes" valueType="includePath">
-                                    									
-                                    <listOptionValue builtIn="false" value="&quot;${workspace_loc:/${ProjName}/service}&quot;"/>
-                                    									
-                                    <listOptionValue builtIn="false" value="&quot;${StudioSdkPath}/platform/CMSIS/Include&quot;"/>
-                                    									
-                                    <listOptionValue builtIn="false" value="&quot;${StudioSdkPath}/platform/emlib/inc&quot;"/>
-                                    									
-                                    <listOptionValue builtIn="false" value="&quot;${StudioSdkPath}/hardware/kit/common/drivers&quot;"/>
-                                    									
-                                    <listOptionValue builtIn="false" value="&quot;${StudioSdkPath}/hardware/kit/common/bsp&quot;"/>
-                                    									
-                                    <listOptionValue builtIn="false" value="&quot;${StudioSdkPath}/platform/Device/SiliconLabs/EFM32GG11B/Include&quot;"/>
-                                    								
-                                </option>
-                                								
-                                <option IS_BUILTIN_EMPTY="false" IS_VALUE_EMPTY="false" id="com.silabs.ide.si32.gcc.cdt.managedbuild.tool.gnu.as.def.symbols.1822052598" name="Defined symbols (-D)" superClass="com.silabs.ide.si32.gcc.cdt.managedbuild.tool.gnu.as.def.symbols" valueType="definedSymbols">
-                                    									
-                                    <listOptionValue builtIn="false" value="EFM32GG11B420F2048GQ100=1"/>
-                                    								
-                                </option>
                                 								
                                 <inputType id="org.eclipse.cdt.core.asmSource.1806190004" superClass="org.eclipse.cdt.core.asmSource"/>
                                 							
@@ -406,12 +368,6 @@
                         </toolChain>
                         					
                     </folderInfo>
-                    					
-                    <sourceEntries>
-                        						
-                        <entry excluding="FatFS/ccsbcs.c|mod/sbe49|mod/DSP|bsp|mod/efe_obp/mod_som_efe_obp_calculus.c|.trash" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
-                        					
-                    </sourceEntries>
                     				
                 </configuration>
                 			
@@ -423,7 +379,7 @@
         	
     </storageModule>
     	
-    <storageModule moduleId="com.silabs.ss.framework.ide.project.core.cpp" project.generation="62" projectCommon.boardIds="" projectCommon.buildArtifactType="EXE" projectCommon.copiedFiles="[{&quot;generated&quot;:false,&quot;projectPath&quot;:&quot;src/main.c&quot;,&quot;originalPath&quot;:&quot;/var/folders/cm/9rm922js001112v8v2wxb9mr0000gn/T/expandedFile16642092405337593488&quot;,&quot;content&quot;:43596938},{&quot;generated&quot;:false,&quot;projectPath&quot;:&quot;service/sl_sleeptimer_config.h&quot;,&quot;originalPath&quot;:&quot;/Applications/Simplicity Studio 2.app/Contents/Eclipse/developer/sdks/gecko_sdk_suite/v3.0/platform/service/sleeptimer/config/sl_sleeptimer_config.h&quot;,&quot;content&quot;:-936517745},{&quot;generated&quot;:false,&quot;projectPath&quot;:&quot;common/source/shell/shell.c&quot;,&quot;originalPath&quot;:&quot;/Applications/Simplicity Studio 2.app/Contents/Eclipse/developer/sdks/gecko_sdk_suite/v3.0/platform/micrium_os/common/source/shell/shell.c&quot;,&quot;content&quot;:-877339537}]" projectCommon.ideId="simplicity-ide" projectCommon.importModeId="LINK_LIBRARIES" projectCommon.partId="mcu.arm.efm32.gg11.efm32gg11b420f2048gq100" projectCommon.sdkId="com.silabs.sdk.stack.super:3.0.2._-1295735258" projectCommon.toolchainId="com.silabs.ss.tool.ide.arm.toolchain.gnu.cdt:7.2.1.20170904"/>
+    <storageModule moduleId="com.silabs.ss.framework.ide.project.core.cpp" project.generation="60" projectCommon.boardIds="" projectCommon.buildArtifactType="EXE" projectCommon.copiedFiles="[{&quot;generated&quot;:false,&quot;projectPath&quot;:&quot;src/main.c&quot;,&quot;originalPath&quot;:&quot;/var/folders/cm/9rm922js001112v8v2wxb9mr0000gn/T/expandedFile16642092405337593488&quot;,&quot;content&quot;:43596938},{&quot;generated&quot;:false,&quot;projectPath&quot;:&quot;service/sl_sleeptimer_config.h&quot;,&quot;originalPath&quot;:&quot;/Applications/Simplicity Studio 2.app/Contents/Eclipse/developer/sdks/gecko_sdk_suite/v3.0/platform/service/sleeptimer/config/sl_sleeptimer_config.h&quot;,&quot;content&quot;:-936517745},{&quot;generated&quot;:false,&quot;projectPath&quot;:&quot;common/source/shell/shell.c&quot;,&quot;originalPath&quot;:&quot;/Applications/Simplicity Studio 2.app/Contents/Eclipse/developer/sdks/gecko_sdk_suite/v3.0/platform/micrium_os/common/source/shell/shell.c&quot;,&quot;content&quot;:-877339537}]" projectCommon.ideId="simplicity-ide" projectCommon.importModeId="LINK_LIBRARIES" projectCommon.partId="mcu.arm.efm32.gg11.efm32gg11b420f2048gq100" projectCommon.sdkId="com.silabs.sdk.stack.super:3.0.2._-1295735258" projectCommon.toolchainId="com.silabs.ss.tool.ide.arm.toolchain.gnu.cdt:7.2.1.20170904"/>
     	
     <storageModule moduleId="cdtBuildSystem" version="4.0.0">
         		

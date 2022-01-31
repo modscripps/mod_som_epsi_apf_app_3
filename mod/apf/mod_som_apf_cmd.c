@@ -184,10 +184,16 @@ CPU_INT16S mod_som_apf_cmd_daq_f(CPU_INT16U argc,
               // save time string into the temporary local string - Mai - Nov 18, 2021
               sprintf(apf_reply_str,"daq,start,nak,%lu\r\n",status);
           } // end of else (status !=0)
-          reply_str_len = strlen(apf_reply_str);
-          // sending the above string to the APF port - Mai - Nov 18, 2021
-          bytes_sent = mod_som_apf_send_line_f(apf_leuart_ptr,apf_reply_str, reply_str_len);
        } // if (!Str_Cmp(argv[argc], "start"))
+      else{
+          status = MOD_SOM_APF_STATUS_WRONG_ARG;
+          mod_som_io_print_f("daq,nak,%lu\r\n",status);
+          // save time string into the temporary local string - Mai - Nov 18, 2021
+          sprintf(apf_reply_str,"daq,nak,%lu\r\n",status);
+      }
+      reply_str_len = strlen(apf_reply_str);
+      // sending the above string to the APF port - Mai - Nov 18, 2021
+      bytes_sent = mod_som_apf_send_line_f(apf_leuart_ptr,apf_reply_str, reply_str_len);
 
       break;
     default:  // more than 3 argc
@@ -710,10 +716,6 @@ CPU_INT16S mod_som_apf_cmd_upload_f(CPU_INT16U argc,
         return SHELL_EXEC_ERR;
     return SHELL_EXEC_ERR_NONE;
 }
-
-
-
-
 
 
 #endif // MOD_SOM_APF_MODULE_SHELL_AVAIL

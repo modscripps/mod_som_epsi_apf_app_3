@@ -155,6 +155,34 @@ void mod_som_modules_init_f()
 //------------------------------------------------------------------------------
 // MAIN TASK
 //------------------------------------------------------------------------------
+/*******************************************************************************
+ * @brief
+ *   - We are inside the main shell task.
+ *   - initialize the main shell task
+ *   This is the task that will be called by the Startup when all services
+ *   are initializes successfully.
+ *
+ * @param p_arg
+ *   Argument passed from task creation. Unused, in this case.
+ ******************************************************************************/
+void mod_som_main_start_modules_f(void *p_arg)
+{
+
+  mod_som_efe_sampling_f();
+
+//  mod_som_sbe49_connect_f();
+//  mod_som_sbe49_start_collect_data_f();
+//  mod_som_altimeter_start_task_f();
+//  mod_som_vecnav_connect_f();
+//  mod_som_vecnav_start_collect_data_f();
+//  mod_som_aggregator_start_consumer_task_f();
+//  mod_som_efe_obp_start_fill_segment_task_f();
+//  mod_som_efe_obp_start_cpt_spectra_task_f();
+//  mod_som_efe_obp_start_cpt_dissrate_task_f();
+//  mod_som_efe_obp_start_consumer_task_f();
+
+}
+
 
 /*******************************************************************************
  * @brief
@@ -171,6 +199,7 @@ void mod_som_main_task_f(void *p_arg)
     (void)p_arg; // Deliberately unused argument
     uint64_t tick;
     RTOS_ERR err;
+    int delay =10;
 
     //initialize the SOM running flag
     mod_som_running_flag=false;
@@ -179,10 +208,22 @@ void mod_som_main_task_f(void *p_arg)
      *****************************************/
     mod_som_main_task_init_f();
 
+    sl_sleeptimer_delay_millisecond(delay);
+
+    printf("\r\n=====START INITIALIZATION======\r\n");
+
     /*****************************************
      * Initialize Modules
      *****************************************/
     mod_som_modules_init_f();
+
+    printf("\r\n=====STOP INITIALIZATION======\r\n");
+    printf("===================================\r\n");
+    printf("== YOU MUST SET THE CLOCK NOW WITH 'time.set'!!! ==\r\n");
+    printf("== Type 'help' for commands and syntax. ==\r\n\r\n");//MHA
+    printf("===================================\r\n");
+    printf("===========MODSOM SHELL============\r\n");
+    printf("===================================\r\n$");
 
     /*****************************************
      * END Post OS start Add your code here
@@ -207,19 +248,6 @@ void mod_som_main_task_f(void *p_arg)
 
 
         if((tick >1000) & !mod_som_running_flag){
-            //MHA do not start modules automatically
-//            mod_som_altimeter_start_task_f();
-//            mod_som_efe_sampling_f();
-//            mod_som_sbe49_connect_f();
-//            mod_som_sbe49_start_collect_data_f();
-
-//            mod_som_vecnav_connect_f();
-//            mod_som_vecnav_start_collect_data_f();
-//            mod_som_aggregator_start_consumer_task_f();
-//            mod_som_efe_obp_start_fill_segment_task_f();
-//            mod_som_efe_obp_start_cpt_spectra_task_f();
-//            mod_som_efe_obp_start_cpt_dissrate_task_f();
-//            mod_som_efe_obp_start_consumer_task_f();
 
             mod_som_running_flag=true;
         }

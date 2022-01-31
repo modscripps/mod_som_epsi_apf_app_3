@@ -183,10 +183,10 @@ void mod_som_calendar_set_settings_f(mod_som_calendar_settings_ptr_t setup_ptr){
 char * mod_som_calendar_get_datetime_f(){
 //	char buff[20];
 	char * format="%Y%m%d_%H%M%S";
-	sl_sleeptimer_get_datetime(&mod_som_calendar_ptr->current_date);
+	sl_sleeptimer_get_datetime(&mod_som_calendar_ptr->sl_current_date);
 	sl_sleeptimer_convert_date_to_str(mod_som_calendar_ptr->buff,20,
 	                                  (uint8_t*) format,
-									                  &mod_som_calendar_ptr->current_date);
+									                  &mod_som_calendar_ptr->sl_current_date);
 	return mod_som_calendar_ptr->buff;
 }
 /*******************************************************************************
