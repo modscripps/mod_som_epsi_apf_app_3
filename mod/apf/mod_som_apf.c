@@ -2753,7 +2753,7 @@ mod_som_apf_status_t mod_som_apf_probe_id_f(CPU_INT16U argc,
 
       if (cal1<0 || cal2<=0)
         {
-          status = MOD_SOM_APF_STATUS_FAIL_WRONG_ARGUMENTS;
+          status = MOD_SOM_APF_STATUS_WRONG_ARG;
           break;
         }
 
@@ -2802,12 +2802,12 @@ mod_som_apf_status_t mod_som_apf_probe_id_f(CPU_INT16U argc,
      } // end of  if (argument_flag1 && argument_flag2)
      else // if any input argument is not valid
      {
-          status|=MOD_SOM_APF_STATUS_FAIL_WRONG_ARGUMENTS;
+          status|=MOD_SOM_APF_STATUS_WRONG_ARG;
      }
 
       break;
     default:  // argc != 7
-      status|=MOD_SOM_APF_STATUS_FAIL_WRONG_ARGUMENTS;
+      status|=MOD_SOM_APF_STATUS_WRONG_ARG;
   } // end of switch (args)
 
   if(status!=0) // print out "ProbeNo,nak,status\r\n" and the right command format should input
@@ -3022,14 +3022,15 @@ mod_som_apf_status_t mod_som_apf_time_f(CPU_INT16U argc,
   // get the port's fd
   apf_leuart_ptr = (LEUART_TypeDef *)mod_som_apf_ptr->com_prf_ptr->handle_port;
 
+  int apex_time=0;
   sl_sleeptimer_timestamp_t time;
   mod_som_apf_status_t status = 0;
 
 
   if (argc == 2) // valid command: "time,1234567\r"
   {
-
-      time= shellStrtol(argv[1],&p_err);
+      apex_time = shellStrtol(argv[1],&p_err);
+      time = (uint32_t) apex_time;
 
       //ALB maybe the real APEX with send directly time
       //TODO check
@@ -3468,7 +3469,7 @@ mod_som_apf_status_t mod_som_apf_upload_f(){
   uint32_t   timeout_flag = 0;
   uint32_t   t1 = 0;
   uint32_t   t0 = 0;
-  uint32_t   dacq_bytes_available = 0;
+//  uint32_t   dacq_bytes_available = 0;
   uint32_t   dacq_bytes_sent      = 0;
   uint32_t   dacq_bytes_to_sent   = 0;
   uint8_t *  current_data_ptr=
@@ -3501,12 +3502,12 @@ mod_som_apf_status_t mod_som_apf_upload_f(){
                                     mod_som_apf_ptr->producer_ptr->dacq_size;
       //ALB split acq_profile into 990 bytes packets:
       //ALB count how bytes are left to send out.
-      dacq_bytes_available=
-          mod_som_apf_ptr->producer_ptr->dacq_size-dacq_bytes_sent;
+//      dacq_bytes_available=
+//          mod_som_apf_ptr->producer_ptr->dacq_size-dacq_bytes_sent;
 
       //ALB while bytes available > than 986 bytes
       //ALB I build a full packet and stream it.
-      while ((dacq_bytes_available>=0) &&
+      while ((mod_som_apf_ptr->consumer_ptr->daq_remaining_bytes>=0) &&
           (mod_som_apf_ptr->consumer_ptr->send_packet_tries<
               MOD_SOM_APF_UPLOAD_MAX_TRY_PACKET)){
 
@@ -3515,13 +3516,14 @@ mod_som_apf_status_t mod_som_apf_upload_f(){
           //ALB i.e. min(dacq_bytes_available,
           //ALB          MOD_SOM_APF_UPLOAD_PACKET_LOAD_SIZE)
 
-          dacq_bytes_to_sent=MIN(dacq_bytes_available,
+          dacq_bytes_to_sent=MIN(mod_som_apf_ptr->consumer_ptr->daq_remaining_bytes,
                                  MOD_SOM_APF_UPLOAD_PACKET_LOAD_SIZE);
 
           //ALB end of profile sending the EOT bytes
-          if(dacq_bytes_to_sent==0){
+          if(mod_som_apf_ptr->consumer_ptr->daq_remaining_bytes==0){
               current_data_ptr=&eot_byte;
               dacq_bytes_to_sent=1;
+              mod_som_apf_ptr->consumer_ptr->daq_remaining_bytes=-1;
           }
           //ALB copy the dacq bytes in the packet payload structure.
           memcpy(&mod_som_apf_ptr->consumer_ptr->packet.payload,
@@ -3541,12 +3543,11 @@ mod_som_apf_status_t mod_som_apf_upload_f(){
           //ALB bitshift packet.counters
           mod_som_apf_ptr->consumer_ptr->packet.counters=
               mod_som_apf_ptr->consumer_ptr->packet.counters<<10;
-          //ALB update daq_remaining_bytes
+          //ALB update daq_remaining_bytes. !!This the while loop param!!
           mod_som_apf_ptr->consumer_ptr->daq_remaining_bytes-=dacq_bytes_to_sent;
           //ALB update packet.counters
           mod_som_apf_ptr->consumer_ptr->packet.counters|=
-                             (mod_som_apf_ptr->consumer_ptr->daq_remaining_bytes
-                              & 0x3FF);
+                             dacq_bytes_to_sent;
 
           //ALB packet should be ready. Now send it
           mod_som_apf_ptr->consumer_ptr->consumed_flag=false;
@@ -3591,7 +3592,7 @@ mod_som_apf_status_t mod_som_apf_upload_f(){
               if(read_char==MOD_SOM_APF_UPLOAD_APF11_ACK){
                   //ALB update current_data_ptr to point to the next dacq data
                   current_data_ptr+=dacq_bytes_to_sent;
-                  dacq_bytes_sent+=dacq_bytes_to_sent;
+//                  dacq_bytes_sent+=dacq_bytes_to_sent;
                   mod_som_apf_ptr->consumer_ptr->send_packet_tries=0;
                   status=MOD_SOM_APF_STATUS_OK;
                   break;
@@ -3608,7 +3609,7 @@ mod_som_apf_status_t mod_som_apf_upload_f(){
               if((read_char==MOD_SOM_APF_UPLOAD_APF11_NACK) || (timeout_flag==1)){
                   mod_som_apf_ptr->consumer_ptr->send_packet_tries++;
                   mod_som_apf_ptr->consumer_ptr->nb_packet_sent--;
-                  mod_som_apf_ptr->consumer_ptr->daq_remaining_bytes-=
+                  mod_som_apf_ptr->consumer_ptr->daq_remaining_bytes+=
                                                              dacq_bytes_to_sent;
                   status=MOD_SOM_APF_STATUS_FAIL_SEND_PACKET;
                   dacq_bytes_sent=0;
@@ -3618,8 +3619,9 @@ mod_som_apf_status_t mod_som_apf_upload_f(){
           }//ALB end of while c
 
           //ALB update dacq_bytes_available.
-          dacq_bytes_available=
-              mod_som_apf_ptr->producer_ptr->dacq_size-dacq_bytes_sent;
+//          dacq_bytes_available=
+//              mod_som_apf_ptr->producer_ptr->dacq_size-dacq_bytes_sent;
+//          mod_som_apf_ptr->consumer_ptr->daq_remaining_bytes
 
       }//ALB end of while bytes available
 

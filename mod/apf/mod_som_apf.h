@@ -333,7 +333,7 @@ typedef struct{
   bool      consumed_flag;
   uint8_t   send_packet_tries;
   uint32_t  nb_packet_sent;
-  uint32_t  daq_remaining_bytes;
+  int       daq_remaining_bytes;
 
   uint8_t    header[MOD_SOM_APF_MAX_HEADER_SIZE];
   char       tag[MOD_SOM_APF_TAG_LENGTH];
