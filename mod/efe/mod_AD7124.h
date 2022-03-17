@@ -97,6 +97,8 @@
 //	uint32_t channel_0=0x8210; temperature sensor
 
 //	uint32_t filter0=0x06003c; 320 Hz
+//  uint32_t filter0=0x060078; 160 Hz
+
 //	uint32_t adc_control=0x02c2; fullpower - adc continous conversion mode- external clock
 //	uint32_t adc_control=0x0ac2; continuous read - fullpower - adc continous conversion mode- external clock
 //	uint32_t adc_error_en=AD7124_ERREN_REG_REF_DET_ERR_EN | AD7124_ERREN_REG_SPI_IGNORE_ERR_EN; //3 bytes
@@ -115,7 +117,7 @@
 	0x0,																		\
 	0x8001,																    	\
 	0x860,																		\
-	0x06003c,																	\
+	0x060078,																	\
 	0x800000,																	\
 	0x500000																	\
   }
@@ -133,7 +135,7 @@
 	0x0,																		\
 	0x8001,																    	\
 	0x01e0,																		\
-	0x06003c,																	\
+	0x060078,																	\
 	0x800000,																	\
 	0x500000																	\
   }
@@ -152,7 +154,7 @@
   0x0,                                    \
   0x8001,                                     \
   0x01e0,                                   \
-  0x06003c,                                 \
+  0x060078,                                 \
   0x800000,                                 \
   0x500000                                  \
   }
@@ -169,7 +171,7 @@
   0x0,                                    \
   0x8001,                                     \
   0x01e0,                                   \
-  0x06003c,                                 \
+  0x060078,                                 \
   0x800000,                                 \
   0x500000                                  \
   }
@@ -186,7 +188,7 @@
   0x0,                                    \
   0x8001,                                     \
   0x01e0,                                   \
-  0x06003c,                                 \
+  0x060078,                                 \
   0x800000,                                 \
   0x500000                                  \
   }
@@ -204,12 +206,12 @@
 	0x0,																		\
 	0x8001,																    	\
 	0x09e0,																		\
-	0x06003c,																	\
+	0x060078,																	\
 	0x800000,																	\
 	0x500000																	\
   }
 
-  //MHA add a disabled channel for shear and accel
+ //MHA add a disabled channel for shear and accel
  //MHA: Set control bits (3rd arg) for quiescent mode.  Disables the ADC.
 #define MOD_AD7124_SHEAR_DISABLED                                                    \
   { 0x0,                                    \
@@ -224,7 +226,7 @@
   0x0,                                    \
   0x8001,                                     \
   0x09e0,                                   \
-  0x06003c,                                 \
+  0x060078,                                 \
   0x800000,                                 \
   0x500000                                  \
   }
@@ -244,7 +246,7 @@
    0x0,                                    \
    0x8001,                                     \
    0x01e0,                                   \
-   0x06003c,                                 \
+   0x060078,                                 \
    0x800000,                                 \
    0x500000                                  \
    }
@@ -264,7 +266,7 @@
   0x0,                                    \
   0x80c7,                                     \
   0x01e0,                                   \
-  0x06003c,                                 \
+  0x060078,                                 \
   0x800000,                                 \
   0x500000                                  \
   }
@@ -284,7 +286,7 @@
   0x0,                                    \
   0x80c7,                                     \
   0x01e0,                                   \
-  0x06003c,                                 \
+  0x060078,                                 \
   0x800000,                                 \
   0x500000                                  \
   }
@@ -303,7 +305,7 @@
 	0x0,																		\
 	0x8001,																    	\
 	0x09e0,																		\
-	0x06003c,																	\
+	0x060078,																	\
 	0x800000,																	\
 	0x500000																	\
   }
@@ -321,7 +323,7 @@
 	0x0,																		\
 	0x8043,																    	\
 	0x01e0,																		\
-	0x06003c,																	\
+	0x060078,																	\
 	0x800000,																	\
 	0x500000																	\
   }

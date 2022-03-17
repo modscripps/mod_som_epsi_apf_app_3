@@ -300,7 +300,7 @@ mod_som_status_t mod_som_sbe41_init_f(){
     mod_som_sbe41_ptr->connected_flag = false;
     mod_som_sbe41_ptr->initialized_flag = true;
     mod_som_sbe41_ptr->sample_count= 0;
-    mod_som_sbe41_ptr->consumer_mode=1;
+    mod_som_sbe41_ptr->consumer_mode=2;
 
     printf("S41 initialized\n");
 
@@ -1134,6 +1134,7 @@ static  void  mod_som_sbe41_consumer_task_f(void  *p_arg){
                     printf("On board processing. Work in progress\r\n");
                     break;
                   default:
+                    printf("wrong sbe.mode\r\n");
                     break;
                 }
 
@@ -1573,7 +1574,7 @@ void mod_som_sbe41_irq_tx_handler_f(){
 mod_som_status_t mod_som_sbe41_consumer_mode_f(CPU_INT16U argc,CPU_CHAR *argv[])
 {
   RTOS_ERR  p_err;
-
+  uint8_t temp_mode;
   if (argc==1){
       printf("sbe.mode %u\r\n.", mod_som_sbe41_ptr->consumer_mode);
   }
@@ -1581,7 +1582,12 @@ mod_som_status_t mod_som_sbe41_consumer_mode_f(CPU_INT16U argc,CPU_CHAR *argv[])
     //ALB switch statement easy to handle all user input cases.
     switch (argc){
     case 2:
-      mod_som_sbe41_ptr->consumer_mode=shellStrtol(argv[1],&p_err);
+      temp_mode=shellStrtol(argv[1],&p_err);
+      if (temp_mode<3){
+          mod_som_sbe41_ptr->consumer_mode=temp_mode;
+      }else{
+          printf("format: sbe.mode mode (0:stream, 1:SD store, 2: on board processing)\r\n");
+      }
       break;
     default:
       printf("format: sbe.mode mode (0:stream, 1:SD store, 2: on board processing)\r\n");

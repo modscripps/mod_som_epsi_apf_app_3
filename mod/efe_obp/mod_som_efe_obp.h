@@ -45,6 +45,9 @@
 #define MOD_SOM_EFE_OBP_PAYLOAD_LENGTH          8
 #define MOD_SOM_EFE_OBP_HEADER              "OBPE"
 #define MOD_SOM_EFE_OBP_CHANNEL_NUMBER          3      // number of channels being processed. Default should be t1,s1,a3.
+#define MOD_SOM_EFE_OBP_SAMPLING_FREQ           160
+#define MOD_SOM_EFE_OBP_PUMP_FREQ               45
+
 
 #define MOD_SOM_EFE_OBP_SYNC_TAG_LENGTH                      1
 #define MOD_SOM_EFE_OBP_HEADER_TAG_LENGTH                    4
@@ -73,7 +76,6 @@
 
 //ALB compute spectra
 #define MOD_SOM_EFE_OBP_CPT_SPECTRA_TASK_PRIO              18u
-//#define MOD_SOM_EFE_OBP_CPT_SPECTRA_TASK_STK_SIZE          512u
 #define MOD_SOM_EFE_OBP_CPT_SPECTRA_TASK_STK_SIZE          1024u
 #define MOD_SOM_EFE_OBP_CPT_SPECTRA_DELAY                  1      // delay for compute spectra task
 #define MOD_SOM_EFE_OBP_CPT_SPECTRA_NB_SPECTRA_PER_RECORD  1       // this number wants to be as low as possible it can creates huge arrrays

@@ -272,6 +272,19 @@ void RETARGET_SerialInit(void)
 }
 
 /**************************************************************************//**
+ * @brief De-Intializes UART/LEUART
+ *****************************************************************************/
+void RETARGET_SerialdeInit(void)
+{
+
+  /* To avoid false start, configure output as high */
+  GPIO_PinModeSet(RETARGET_TXPORT, RETARGET_TXPIN, gpioModePushPull, 0);
+  GPIO_PinModeSet(RETARGET_RXPORT, RETARGET_RXPIN, gpioModeInputPull, 0);
+  RETARGET_PERIPHERAL_DISABLE();
+
+}
+
+/**************************************************************************//**
  * @brief Receive a byte from USART/LEUART and put into global buffer
  * @return -1 on failure, or positive character integer on success
  *****************************************************************************/

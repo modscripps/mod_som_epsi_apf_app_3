@@ -107,7 +107,7 @@ static float seawater_density_f(float salinity, float temperature, float pressur
 static float seawater_thermal_conductivity_f(float salinity, float temperature, float pressure);
 static float seawater_thermal_diffusivity_f(float salinity, float temperature, float pressure);
 static float seawater_kinematic_viscosity_f(float salinity, float temperature, float pressure);
-static float fom_panchev_f(float *shear_spec,float epsilon, float kvis, uint16_t kvec_size, float *panchev_spec);
+float fom_panchev_f(float *shear_spec, float epsilon, float kvis,uint16_t kvec_indices, uint16_t kvec_size, float *panchev_spec);
 static float fom_batchelor_f(float *temp_spec,float epsilon, float chi, float kvis, float kappa, uint16_t cutoff, float *batchelor_spec);
 // end
 
@@ -424,8 +424,13 @@ void mod_som_efe_obp_shear_spectrum_f(float *seg_buffer, int spectra_offset, mod
 //      spectrum_buffer[i] = spectrum_buffer[i]/filters_ptr->shear_filter[i];
       // stuff spectrum into output
       //ALB move the level up to be able to compute chi and epsilon
-//      *(mod_som_efe_obp_ptr->cpt_spectra_ptr->spec_shear_ptr+spectra_offset+i) = spectrum_buffer[i];
-      *(mod_som_efe_obp_ptr->cpt_spectra_ptr->spec_shear_ptr+spectra_offset+i) += 100000 * spectrum_buffer[i];
+      if (mod_som_efe_obp_ptr->cpt_spectra_ptr->dof==0){
+          //ALB move the level up to be able to compute chi and epsilon
+          *(mod_som_efe_obp_ptr->cpt_spectra_ptr->spec_shear_ptr+spectra_offset+i) = 100000*spectrum_buffer[i]/(float)mod_som_efe_obp_ptr->settings_ptr->degrees_of_freedom;
+      }else{
+          *(mod_som_efe_obp_ptr->cpt_spectra_ptr->spec_shear_ptr+spectra_offset+i) += 100000*spectrum_buffer[i]/(float)mod_som_efe_obp_ptr->settings_ptr->degrees_of_freedom;
+      }
+//      *(mod_som_efe_obp_ptr->cpt_spectra_ptr->spec_shear_ptr+spectra_offset+i) += 100000*spectrum_buffer[i];
   }
 
 }
@@ -481,8 +486,13 @@ void mod_som_efe_obp_temp_spectrum_f(float *seg_buffer, int spectra_offset, mod_
 //    spectrum_buffer[i] = spectrum_buffer[i]/filters_ptr->fp07_filter[i];
     // stuff spectrum into output
       //ALB move the level up to be able to compute chi and epsilon
-//   *(mod_som_efe_obp_ptr->cpt_spectra_ptr->spec_temp_ptr+spectra_offset+i) = spectrum_buffer[i];
-   *(mod_som_efe_obp_ptr->cpt_spectra_ptr->spec_temp_ptr+spectra_offset+i) += 100000 * spectrum_buffer[i];
+      if (mod_som_efe_obp_ptr->cpt_spectra_ptr->dof==0){
+          //ALB move the level up to be able to compute chi and epsilon
+          *(mod_som_efe_obp_ptr->cpt_spectra_ptr->spec_temp_ptr+spectra_offset+i) =100000* spectrum_buffer[i]/(float)mod_som_efe_obp_ptr->settings_ptr->degrees_of_freedom;
+      }else{
+          *(mod_som_efe_obp_ptr->cpt_spectra_ptr->spec_temp_ptr+spectra_offset+i) +=100000* spectrum_buffer[i]/(float)mod_som_efe_obp_ptr->settings_ptr->degrees_of_freedom;
+      }
+//   *(mod_som_efe_obp_ptr->cpt_spectra_ptr->spec_temp_ptr+spectra_offset+i) += 100000 * spectrum_buffer[i];
   }
 }
 
@@ -511,7 +521,12 @@ void mod_som_efe_obp_accel_spectrum_f(float *seg_buffer, int spectra_offset, mod
     // stuff spectrum into output
       //ALB The sumation of FOCO is done here (i.e., +=)
     //ALB BE AWARE: I am summing the FOCO over dof times (i.e. 5 times). That is why I have the +=
-    *(mod_som_efe_obp_ptr->cpt_spectra_ptr->spec_accel_ptr+spectra_offset+i) += spectrum_buffer[i];
+      if (mod_som_efe_obp_ptr->cpt_spectra_ptr->dof==0){
+          //ALB move the level up to be able to compute chi and epsilon
+          *(mod_som_efe_obp_ptr->cpt_spectra_ptr->spec_accel_ptr+spectra_offset+i) = spectrum_buffer[i]/(float)mod_som_efe_obp_ptr->settings_ptr->degrees_of_freedom;
+      }else{
+          *(mod_som_efe_obp_ptr->cpt_spectra_ptr->spec_accel_ptr+spectra_offset+i) += spectrum_buffer[i]/(float)mod_som_efe_obp_ptr->settings_ptr->degrees_of_freedom;
+      }
   }
 
 
@@ -549,14 +564,30 @@ void mod_som_efe_obp_calc_epsilon_f(float *local_epsilon, float *nu, float *fom_
   static const float eps_fit_shear10[5] = {8.6819e-04, -3.4473e-03, -1.3373e-03, 1.5248, -3.1607};
   static const float shtotal_fit_shear10[5] = {6.9006e-04, -4.2461e-03, -7.0832e-04, 1.5275, 1.8564};
 
+  float   spectrum_integral;
+  float * local_avg_spec_shear_ptr;
+  float log10_spectrum_integral;
+  float threshold = -3.0;
 
   float kvis = seawater_kinematic_viscosity_f(S, T, P);
   *nu = kvis;
   static const float kvec_min_1 = 2, kvec_max_1 = 10;
+  static float eps_1, log10_eps;
+
   float kvec_limits_1[] = {kvec_min_1, kvec_max_1};
   float k_max = config->f_CTD_pump/w;
 
-  float dk = config->f_samp/settings->nfft/w;
+  float dk = (float) config->f_samp/(float) settings->nfft/w;
+  float k_cutoff;
+  float kvec_limits_2[2];
+  float kvec_limits_3[2];
+  uint16_t kvec_indices_2[2];
+  uint16_t kvec_indices_3[2];
+  uint16_t kvec_2_size;
+  uint16_t kvec_3_size;
+
+  float eps_2;
+  float eps_3;
 
   // start loop here
   // removed multiple channel handling for the time being
@@ -596,17 +627,18 @@ void mod_som_efe_obp_calc_epsilon_f(float *local_epsilon, float *nu, float *fom_
 //      fft_ptr->kvec[i] = kvec_interp_start + i*dk_interp;
 //  }
 //  interp1_f(kvec_1, spectrum_kvec_1, kvec_1_size, kvec_interp, spectrum_interp, kvec_interp_size);
-  float * local_avg_spec_shear_ptr=
+  local_avg_spec_shear_ptr=
       &mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_spec_shear_ptr[kvec_indices_1[0]];
 
-  static float spectrum_integral = 0;
+  spectrum_integral = 0;
   //Compute the integral of the spectrum from 2-10 cpm
   for (uint16_t i = 0; i < kvec_1_size; i++) {
-    spectrum_integral += (local_avg_spec_shear_ptr[i]*w*pow((2*M_PI*vals->kvec[i]), 2.0))*dk;
+//    spectrum_integral += (local_avg_spec_shear_ptr[i]*w*pow((2*M_PI*vals->kvec[kvec_indices_1[0]+i]), 2.0))*dk;
+    spectrum_integral += local_avg_spec_shear_ptr[i]*dk;
   }
-  float log10_spectrum_integral = log10(spectrum_integral), threshold = -3.0;
+  log10_spectrum_integral = log10(spectrum_integral);
 
-  static float eps_1, log10_eps;
+
 
   if (log10_spectrum_integral > threshold) {
     log10_eps = eps_fit_shear10[0]*pow(log10_spectrum_integral, 4.0) +
@@ -626,22 +658,26 @@ void mod_som_efe_obp_calc_epsilon_f(float *local_epsilon, float *nu, float *fom_
 
 
   //STAGE 2 - Second estimate
-  float k_cutoff = 0.0816*pow(eps_1, 0.25)/pow(kvis, 0.75);  // k for 90% variance of Panchev spectrum
+  k_cutoff = 0.0816*pow(eps_1, 0.25)/pow(kvis, 0.75);  // k for 90% variance of Panchev spectrum
   if (k_cutoff > k_max) {k_cutoff = k_max;} // limit set by noise spectrum (or in this case the pump freq).  May need to fix that.
-  float kvec_limits_2[] = {kvec_min_1, k_cutoff};
-  static uint16_t kvec_indices_2[2];
+  kvec_limits_2[0] = kvec_min_1,
+  kvec_limits_2[1] = k_cutoff;
+
   //find this k range, 2 cpm out to k_cutoff
   find_vector_indices_f(vals->kvec, settings->nfft/2, kvec_limits_2, kvec_indices_2);
-  uint16_t kvec_2_size = kvec_indices_2[1] - kvec_indices_2[0] + 1;
+  kvec_2_size = kvec_indices_2[1] - kvec_indices_2[0] + 1;
 //  float spectrum_kvec_2[kvec_2_size];
-  float eps_2;
 //  float dk = vals->kvec[1] - vals->kvec[0];
 
   //Compute the integral of the spectrum over this range
+  local_avg_spec_shear_ptr=
+      &mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_spec_shear_ptr[kvec_indices_2[0]];
+
   spectrum_integral = 0;
   for (uint16_t i = 0; i < kvec_2_size; i++) {
 //    spectrum_kvec_2[i] = (mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_spec_shear_ptr[kvec_indices_2[0] + i]);
-    spectrum_integral += (local_avg_spec_shear_ptr[i]*w*pow((2*M_PI*vals->kvec[i]), 2.0))*dk;
+//    spectrum_integral += (local_avg_spec_shear_ptr[i]*w*pow((2*M_PI*vals->kvec[kvec_indices_2[0]+i]), 2.0))*dk;
+    spectrum_integral += local_avg_spec_shear_ptr[i]*dk;
 //
 //    spectrum_integral += spectrum_kvec_2[i]*dk;
   }
@@ -654,18 +690,22 @@ void mod_som_efe_obp_calc_epsilon_f(float *local_epsilon, float *nu, float *fom_
   if (k_cutoff > k_max) {k_cutoff = k_max;} // limit set by noise spectrum (or in this case the pump freq).  May need to fix that.
 //  % third estimate
   //find this k range, 2 cpm out to k_cutoff
-  float kvec_limits_3[] = {kvec_min_1, k_cutoff};
-  static uint16_t kvec_indices_3[2];
+  kvec_limits_3[0] = kvec_min_1;
+  kvec_limits_3[1] = k_cutoff;
   //find this k range, 2 cpm out to k_cutoff
   find_vector_indices_f(vals->kvec, settings->nfft/2, kvec_limits_3, kvec_indices_3);
-  uint16_t kvec_3_size = kvec_indices_3[1] - kvec_indices_3[0] + 1;
+  kvec_3_size = kvec_indices_3[1] - kvec_indices_3[0] + 1;
 //  float spectrum_kvec_3[kvec_3_size];
-  static float eps_3;
+
+  //Compute the integral of the spectrum over this range
+  local_avg_spec_shear_ptr=
+      &mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_spec_shear_ptr[kvec_indices_3[0]];
   //Compute the integral of the spectrum
   spectrum_integral = 0;
   for (uint16_t i = 0; i < kvec_3_size; i++) {
 //    spectrum_kvec_3[i] = (mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_spec_shear_ptr[kvec_indices_3[0] + i]);
-    spectrum_integral += (local_avg_spec_shear_ptr[i]*w*pow((2*M_PI*vals->kvec[i]), 2.0))*dk;
+//    spectrum_integral += (local_avg_spec_shear_ptr[i]*w*pow((2*M_PI*vals->kvec[kvec_indices_3[0]+i]), 2.0))*dk;
+    spectrum_integral += local_avg_spec_shear_ptr[i]*dk;
 //    spectrum_integral += spectrum_kvec_3[i]*dk;
   } //Compute eps from this and divide by 0.9 to account for the excess over 90%
   eps_3 = 7.5*kvis*spectrum_integral;
@@ -686,8 +726,12 @@ void mod_som_efe_obp_calc_epsilon_f(float *local_epsilon, float *nu, float *fom_
     eps_3 = eps_3*pow(10, correction);
   }
   *local_epsilon = eps_3;
+//  char kc[10];
+//  sprintf(kc,"kc=%3.2f",k_cutoff);
+//  printf(kc);
+
   // calculate figure of merit
-  *fom_ptr = fom_panchev_f(local_avg_spec_shear_ptr, eps_3, kvis, kvec_3_size, theospec_ptr->panchev_spec);
+  *fom_ptr = fom_panchev_f(local_avg_spec_shear_ptr, eps_3, kvis, kvec_indices_3[0], kvec_3_size, theospec_ptr->panchev_spec);
 
 //    }
 }
@@ -707,48 +751,46 @@ void mod_som_efe_obp_calc_chi_f(float *local_epsilon, float *local_chi, float *k
  ******************************************************************************/
 {
     // pull in CTD values
-    static float w, P, T, S;
+    float w, P, T, S;
     w = mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_ctd_dpdt;
     P = mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_ctd_pressure;
     T = mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_ctd_temperature;
     S = mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_ctd_salinity;
 
-//    // calculate wavenumber vector
-//    for (uint16_t i = 0; i < settings->nfft/2; i++) {
-//      //Make the k vector from the freq vector with the appropriate fall speed
-//      vals->kvec[i] = vals->freq[i]/w;
-//    }
-    // start loop here
-    // changed for one channel only (for right now)
-//    for (uint8_t j = 0; config->num_shear; j++) {
-    //  redefine spectrum and wavenumbers only up to cutoff
+    float * local_avg_spec_temp_ptr;
+    float chi_sum;
+    float kvis;
+    float dk;
+    float chi;
+
+
     //ALB get cut off
     *(vals->fp07_cutoff) = mod_som_epsiobp_fp07_cutoff_f(
         mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_spec_temp_ptr,
         settings->nfft/2);
 
-    float * local_avg_spec_temp_ptr=
+    local_avg_spec_temp_ptr=
         mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_spec_temp_ptr;
 
-//    float k_fp07[*(vals->fp07_cutoff)];
-//    float chi_spectrum[*(vals->fp07_cutoff)];
-    float chi_sum = 0;
+    chi_sum = 0;
 
     for (uint16_t i = 0; i < *(vals->fp07_cutoff); i++) {
-//      k_fp07[i] = vals->kvec[i];
-//      chi_spectrum[i] = (mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_spec_temp_ptr[i]);
-      // multiply by fall rate and (2*pi*k)^2 to get spectrum vs wavenumber
-        chi_sum += local_avg_spec_temp_ptr[i]*w*pow((2*M_PI*vals->kvec[i]), 2.0);
+
+        // multiply by fall rate and (2*pi*k)^2 to get spectrum vs wavenumber
+//        chi_sum += local_avg_spec_temp_ptr[i]*w*pow((2*M_PI*vals->kvec[i]), 2.0);
+        chi_sum += local_avg_spec_temp_ptr[i];
     }
+
     //  compute chi
     *kappa_t = seawater_thermal_diffusivity_f(S, T, P);
-//    float dk = k_fp07[1] - k_fp07[0];
-    float dk = config->f_samp/settings->nfft/w;
-    float chi = 6*(*kappa_t)*dk*chi_sum;
+
+    dk = (float) config->f_samp/ (float) settings->nfft/w;
+    chi = 6*(*kappa_t)*dk*chi_sum;
     *local_chi = chi;
+
     //ALB modify
 //    float batchelor_spec[settings->nfft/2];
-    float kvis = seawater_kinematic_viscosity_f(S, T, P);
+    kvis = seawater_kinematic_viscosity_f(S, T, P);
     //ALB compute FOM
     *fom = fom_batchelor_f(local_avg_spec_temp_ptr,*local_epsilon, chi, kvis, *kappa_t, *(vals->fp07_cutoff), theospec_ptr->batchelor_spec);
 
@@ -769,8 +811,8 @@ void mod_som_efe_obp_correct_convert_avg_spectra_f(float * temp_spectrum,
       //Make the k vector from the freq vector with the appropriate fall speed
       vals->kvec[i] = vals->freq[i]/fall_rate;
 
-      shear_spectrum[i] = shear_spectrum[i]*pow(2*g/(cals->shear_sv*fall_rate), 2);
-      temp_spectrum[i]  = temp_spectrum[i]*pow(cals->fp07_dTdV, 2);
+      shear_spectrum[i] = shear_spectrum[i]*pow(2*g/(cals->shear_sv*fall_rate), 2)*fall_rate*pow((2*M_PI*vals->kvec[i]), 2.0);
+      temp_spectrum[i]  = temp_spectrum[i]*pow(cals->fp07_dTdV, 2)*fall_rate*pow((2*M_PI*vals->kvec[i]), 2.0);
       shear_spectrum[i] = shear_spectrum[i]/filters_ptr->shear_filter[i];
       temp_spectrum[i]  = temp_spectrum[i]/filters_ptr->fp07_filter[i];
 
@@ -1315,7 +1357,7 @@ float seawater_kinematic_viscosity_f(float salinity, float temperature, float pr
   return nu;
 }
 
-float fom_panchev_f(float *shear_spec, float epsilon, float kvis, uint16_t kvec_size, float *panchev_spec)
+float fom_panchev_f(float *shear_spec, float epsilon, float kvis,uint16_t kvec_indices, uint16_t kvec_size, float *panchev_spec)
 /*******************************************************************************
  * @brief
  *   function to calculate the panchev spectrum for the current wavenumber vector
@@ -1334,45 +1376,53 @@ float fom_panchev_f(float *shear_spec, float epsilon, float kvis, uint16_t kvec_
 {
   // initialize constants and variables
   float eta, conv, z, phi;
-  static const float a = 1.6, delta = 0.1, c32 = 1.5, c23 = 2.0/3.0, c43 = 4.0/3.0;
+  const float a = 1.6, delta = 0.1, c32 = 1.5, c23 = 2.0/3.0, c43 = 4.0/3.0;
   float sc32 = sqrt(c32), ac32 = pow(a, c32);
-  eta = pow(pow(kvis, 3)/epsilon, 1.0/4.0);
-  conv = 1/(eta*2.0*M_PI);
   float zeta[10] = {0.05, 0.15, 0.25, 0.35, 0.45, 0.55, 0.65, 0.75, 0.85, 0.95};
   float scale = 2*M_PI*pow((epsilon*pow(kvis, 5)), 0.25);
   //ALB modify
 //  float kn[settings->nfft/2];
-  float sum = 0;
-  float dk = vals->kvec[1] - vals->kvec[0];
+  float sum      = 0;
   float integral = 0;
-  float average  =0;
+  float average  = 0;
 
-  //ALB Figure of Merit buisness
-  float sig_lnS = 5/4 * settings->degrees_of_freedom^(-7/9);
-  float sum1;
-  float fom;
+  //ALB Figure of Merit business
+  float sig_c1 =  5.0/4.0;
+  float sig_c2 = -7.0/9.0;
+  float sig_lnS = sig_c1 * pow((float)settings->degrees_of_freedom,sig_c2);
+  float sum1=0;
+  float fom=0;
+
+
+  eta = pow(pow(kvis, 3)/epsilon, 1.0/4.0);
+  conv = 1/(eta*2.0*M_PI);
 
   // compute spectrum
   for (uint16_t i = 0; i < kvec_size; i++) {
-      theospec_ptr->kn[i] = vals->kvec[i]/conv;
+      theospec_ptr->kn[i] = vals->kvec[kvec_indices+i]/conv;
+
       for (uint16_t j = 0; j < (sizeof(zeta)/sizeof(zeta[0])); j++) {
           z = zeta[j];
-          sum = sum + delta*(1 + pow(z, 2))*(a*pow(z, c23) + (sc32*ac32)*pow(theospec_ptr->kn[i], c23))*exp(-c32*a*pow((theospec_ptr->kn[i]/z), c43) - (sc32*ac32*pow((theospec_ptr->kn[i]/z), 2)));
+          sum = sum + delta*(1 + pow(z, 2))*
+                      (a*pow(z, c23) +
+                      (sc32*ac32)*pow(theospec_ptr->kn[i], c23))*
+                       exp(-c32*a*pow((theospec_ptr->kn[i]/z), c43) -
+                       (sc32*ac32*pow((theospec_ptr->kn[i]/z), 2)));
       }
       phi = 0.5*pow(theospec_ptr->kn[i], -5.0/3.0)*sum;
-      panchev_spec[i] =log10(shear_spec[i]/( scale*pow((theospec_ptr->kn[i]/eta), 2)*phi));
-      //      *fom_ptr=log10(shear_spec[i]/panchev_spec[i]);
+      panchev_spec[i] =log(shear_spec[i]/( scale*pow((theospec_ptr->kn[i]/eta), 2.0)*phi));
       integral = integral + panchev_spec[i];
   }
+
   average = integral / (float) kvec_size;
   /*  Compute  variance*/
   for (uint16_t i = 0; i < kvec_size; i++) {
       {
         sum1 = sum1 + pow((panchev_spec[i] - average), 2);
       }
-      fom = sum1 / (float)kvec_size;
-      fom = fom /sig_lnS;
   }
+  fom = sum1 / (float)(kvec_size-1);
+  fom = fom /sig_lnS;
 
   // return integral value
   return fom;

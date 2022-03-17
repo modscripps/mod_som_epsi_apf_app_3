@@ -721,6 +721,17 @@ mod_som_apf_status_t mod_som_apf_sleep_f();
 
 /*******************************************************************************
  * @brief
+ *   command shell for gate command
+ *   gate,on gate,off turn on and off the 232 drive and MOD shell
+ *   should return an apf status.
+ * @return
+ *   MOD_SOM_APF_STATUS_OK if function execute nicely
+ ******************************************************************************/
+mod_som_apf_status_t mod_som_apf_gate_f(CPU_INT16U argc,
+                                         CPU_CHAR *argv[]);
+
+/*******************************************************************************
+ * @brief
  *   command shell for time command
  *   set UnixEpoch time on SOM
  *   should return an apf status.

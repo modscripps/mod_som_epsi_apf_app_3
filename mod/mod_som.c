@@ -24,6 +24,15 @@
 #include "mod_som_sdio.h"
 #endif
 
+#include "retargetserial.h"
+
+#if defined(HAL_CONFIG)
+#include "retargetserialhalconfig.h"
+#else
+#include "retargetserialconfig.h"
+#endif
+
+
 //TODO remove once we have multiple LDMA ISR
 #ifdef  MOD_SOM_EFE_EN
 #include "mod_som_efe.h"
@@ -225,6 +234,36 @@ mod_som_status_t mod_som_main_init_f(void){
     mod_som_initialized_flag = true;
     return mod_som_encode_status_f(MOD_SOM_STATUS_OK);
 }
+
+
+/*******************************************************************************
+ * @brief
+ *   turn off main com
+ ******************************************************************************/
+mod_som_status_t mod_som_main_com_off_f(void){
+  RETARGET_SerialdeInit();
+  return mod_som_encode_status_f(MOD_SOM_STATUS_OK);
+}
+/*******************************************************************************
+ * @brief
+ *   turn on main com
+ ******************************************************************************/
+mod_som_status_t mod_som_main_com_on_f(void){
+  RETARGET_SerialInit();
+  return mod_som_encode_status_f(MOD_SOM_STATUS_OK);
+}
+
+/*******************************************************************************
+ * @brief
+ *   prep the SOM to sleep
+ *   HFXO off
+ *   CRYOstuff on
+ ******************************************************************************/
+mod_som_status_t mod_som_prep_sleep_f(void){
+  return mod_som_encode_status_f(MOD_SOM_STATUS_OK);
+}
+
+
 
 /*******************************************************************************
  * @brief

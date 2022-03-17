@@ -90,7 +90,17 @@
                 RETARGET_ENABLE_PIN,  \
                 gpioModePushPull,    \
                 1);
+#define RETARGET_PERIPHERAL_DISABLE() \
+        GPIO_PinModeSet(RETARGET_ENABLE_PORT, \
+                RETARGET_ENABLE_PIN,  \
+                gpioModePushPull,    \
+                0);
 #else
 #define RETARGET_PERIPHERAL_ENABLE()
 #endif
 #endif
+
+/**************************************************************************//**
+ * @brief De-Intializes UART/LEUART
+ *****************************************************************************/
+void RETARGET_SerialdeInit(void);

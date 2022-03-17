@@ -237,7 +237,7 @@ mod_som_apf_status_t mod_som_apf_default_settings_f(
           MOD_SOM_APF_HEADER0,MOD_SOM_APF_SETTINGS_STR_lENGTH);
 
   settings_ptr->comm_telemetry_packet_format=2;
-  settings_ptr->sd_packet_format=1;
+  settings_ptr->sd_packet_format=2;
 
 
   settings_ptr->initialize_flag=true;
@@ -966,8 +966,8 @@ void mod_som_apf_producer_task_f(void  *p_arg){
               curr_avg_pressure_ptr =
                   &mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_ctd_pressure;
 
-              //ALB check if the updated avg pressure is lower than
-              //ALB the previous pressure + dz.
+//              //ALB check if the updated avg pressure is lower than
+//              //ALB the previous pressure + dz.
 //              if (*curr_avg_pressure_ptr<=
 //                   mod_som_apf_ptr->dacq_pressure-mod_som_apf_ptr->dacq_dz)
 //                {
@@ -1619,6 +1619,7 @@ mod_som_apf_status_t mod_som_apf_shell_get_line_f(char *buf, uint32_t * bytes_re
 
     // use for to read input from APF until geting '\r' character
     // it would be ended either reach the max characters need to read or '\r'
+
 
     for (i=0;i<MOD_SOM_SHELL_INPUT_BUF_SIZE;i++)
     {
@@ -2293,7 +2294,7 @@ mod_som_apf_status_t mod_som_apf_daq_start_f(uint64_t profile_id){
  status|= mod_som_efe_obp_start_fill_segment_task_f();
  status|= mod_som_efe_obp_start_cpt_spectra_task_f();
  status|= mod_som_efe_obp_start_cpt_dissrate_task_f();
- //status|= mod_som_efe_obp_start_consumer_task_f();
+ status|= mod_som_efe_obp_start_consumer_task_f();
 
 
   //ALB get a P reading and define the dz to get 25kB in the producer->dacq_profile
@@ -2327,7 +2328,7 @@ mod_som_apf_status_t mod_som_apf_daq_start_f(uint64_t profile_id){
 ////  //ALB start APF producer task
   status |= mod_som_apf_start_producer_task_f();
 ////  //ALB start APF consumer task
-//  status |= mod_som_apf_start_consumer_task_f();
+  status |= mod_som_apf_start_consumer_task_f();
 
 
   status|=mod_som_efe_sampling_f();
@@ -2930,22 +2931,6 @@ mod_som_apf_status_t mod_som_apf_sleep_f(){
   // get the port's fd
   apf_leuart_ptr = (LEUART_TypeDef *)mod_som_apf_ptr->com_prf_ptr->handle_port;
 
-
-  //ALB check if in Daq mode
-  if(mod_som_apf_ptr->daq){
-      //ALB we are in Daq mode. Do nothing.
-      // send some ack - mnbui Dec 1, 2021
-        status|=mod_som_io_print_f("sleep,ack,%lu\r\n",status);
-       // save to the local string for sending out - Mai- Dec1, 2021
-       sprintf(apf_reply_str,"sleep,ack,%lu\r\n",status);
-       reply_str_len = strlen(apf_reply_str);
-       // sending the above string to the APF port - Mai - Dec 1, 2021
-       bytes_sent = mod_som_apf_send_line_f(apf_leuart_ptr,apf_reply_str, reply_str_len);
-       if(bytes_sent==0){
-           //TODO handle the error
-       }
-
-  }else{
       //ALB we are not in daq mode make sure
       //ALB efe,sdio,efe obp,sbe-sniffer are asleep
       // stop ADC master clock timer
@@ -2988,10 +2973,81 @@ mod_som_apf_status_t mod_som_apf_sleep_f(){
           //TODO handle the error
       }
 
+  return mod_som_apf_encode_status_f(status);
 }
+
+
+/*******************************************************************************
+ * @brief
+ *   command shell for sleep command
+ *   put SOM to sleep
+ *   should return an apf status.
+ *   This command puts the Epsilometer back to sleep.
+ *   If the sensor happened to be in DAQ mode when it was awakened,
+ *   the sleep command has the e ect of resuming the DAQ period
+ *   already in progress.
+ *   If the sensor was not in DAQ mode, then the sleep command has the
+ *   effect of inducing the Epsilometer into its low-power sleep state.
+ *   The sensor should respond with sleep,ack\r\n.
+ *
+ * @return
+ *   MOD_SOM_APF_STATUS_OK if function execute nicely
+ ******************************************************************************/
+mod_som_apf_status_t mod_som_apf_gate_f(CPU_INT16U argc,
+                                        CPU_CHAR *argv[]){
+
+  mod_som_apf_status_t status = MOD_SOM_APF_STATUS_OK;
+
+  uint32_t bytes_sent = 0;
+  // for send_string to the port
+  char apf_reply_str[MOD_SOM_SHELL_INPUT_BUF_SIZE]="\0";
+  size_t reply_str_len = 0;
+  LEUART_TypeDef* apf_leuart_ptr;
+  // get the port's fd
+  apf_leuart_ptr = (LEUART_TypeDef *)mod_som_apf_ptr->com_prf_ptr->handle_port;
+
+
+
+  if (argc == 2) // valid command: "gate on gate off\r"
+  {
+
+      if (strcmp(argv[1],"on")==0){
+      //ALB turn on RS232 driver
+          mod_som_main_com_on_f();
+      }else if (strcmp(argv[1],"off")==0){
+      //ALB turn off RS232 driver
+          mod_som_main_com_off_f();
+      }else{
+          //ALB ERROR
+          status=MOD_SOM_APF_STATUS_WRONG_ARG;
+      }
+
+      }else{
+          //ALB ERROR
+          status=MOD_SOM_APF_STATUS_WRONG_ARG;
+      }
+
+
+      if (status==MOD_SOM_APF_STATUS_OK){
+          status|=mod_som_io_print_f("gate,ack\r\n");
+          // save to the local string for sending out - Mai-Nov 18, 2021
+          sprintf(apf_reply_str,"gate,ack\r\n");
+      }else{
+          status|=mod_som_io_print_f("gate,nak,%lu\r\n",status);
+          // save to the local string for sending out - Mai-Nov 18, 2021
+          sprintf(apf_reply_str,"gate,nak,%lu\r\n",status);
+     }
+      reply_str_len = strlen(apf_reply_str);
+      // sending the above string to the APF port - Mai - Nov 18, 2021
+      bytes_sent = mod_som_apf_send_line_f(apf_leuart_ptr,apf_reply_str, reply_str_len);
+      if(bytes_sent==0){
+          //TODO handle the error
+      }
+
 
   return mod_som_apf_encode_status_f(status);
 }
+
 
 /*******************************************************************************
  * @brief
@@ -3030,7 +3086,8 @@ mod_som_apf_status_t mod_som_apf_time_f(CPU_INT16U argc,
   if (argc == 2) // valid command: "time,1234567\r"
   {
       apex_time = shellStrtol(argv[1],&p_err);
-      time = (uint32_t) apex_time;
+      time = (int32_t) apex_time;
+
 
       //ALB maybe the real APEX with send directly time
       //TODO check
@@ -3072,12 +3129,12 @@ mod_som_apf_status_t mod_som_apf_time_f(CPU_INT16U argc,
   } // end of if(argc==2)
   else  // argc != 2
   {
+      status = MOD_SOM_APF_STATUS_WRONG_ARG;
       mod_som_io_print_f("time,nak,%lu\r\n",status);
       // save to the local string for sending out - Mai-Nov 18, 2021
       sprintf(apf_reply_str,"time,nak,%lu\r\n",status);
       // sending the above string to the APF port - Mai - Nov 18, 2021
       bytes_sent = mod_som_apf_send_line_f(apf_leuart_ptr,apf_reply_str, reply_str_len);
-      status = MOD_SOM_APF_STATUS_ERR;
   }
   return status;
   //  return mod_som_apf_encode_status_f(MOD_SOM_APF_STATUS_OK);

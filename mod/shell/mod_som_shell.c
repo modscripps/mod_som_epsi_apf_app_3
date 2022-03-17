@@ -30,6 +30,7 @@
 // LOCAL VARIABLES
 //------------------------------------------------------------------------------
 static bool mod_som_shell_initialized_flag = false;
+static bool mod_som_shell_started_flag     = false;
 static CPU_STK mod_som_shell_task_stack[MOD_SOM_SHELL_TASK_STK_SIZE];
 static OS_TCB mod_som_shell_task_tcb;
 //------------------------------------------------------------------------------
@@ -71,10 +72,30 @@ mod_som_status_t mod_som_shell_start_f(){
                 (OS_OPT_TASK_STK_CHK | OS_OPT_TASK_STK_CLR),
                 &err);
     APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
+    mod_som_shell_started_flag = true;
+
     if(RTOS_ERR_CODE_GET(err) != RTOS_ERR_NONE)
         return mod_som_shell_encode_status_f(MOD_SOM_SHELL_STATUS_ERR_FAIL_TO_RUN);
     return MOD_SOM_STATUS_OK;
 }
+
+mod_som_status_t mod_som_shell_stop_f(){
+    if(mod_som_shell_started_flag)
+        return mod_som_shell_encode_status_f(MOD_SOM_SHELL_STATUS_ERR_NOT_INIT);
+
+    RTOS_ERR err;
+
+    OSTaskDel(&mod_som_shell_task_tcb,
+              &err);
+
+    APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
+
+    if(RTOS_ERR_CODE_GET(err) != RTOS_ERR_NONE)
+        return mod_som_shell_encode_status_f(MOD_SOM_SHELL_STATUS_ERR_FAIL_TO_RUN);
+    return MOD_SOM_STATUS_OK;
+}
+
+
 
 /*****************************************************************************
  * @brief

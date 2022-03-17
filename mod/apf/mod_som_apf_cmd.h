@@ -241,6 +241,31 @@ CPU_INT16S mod_som_apf_cmd_sleep_f(CPU_INT16U argc,
         CPU_CHAR *argv[],
         SHELL_OUT_FNCT out_put_f,
         SHELL_CMD_PARAM *cmd_param);
+
+/*******************************************************************************
+ * @brief
+ *   command shell for gate command
+ *   start or stop MOD shell and turn off 232 driver
+ *   should return an apf status.
+ *   gate,on\r\n
+ *   gate,off\r\n
+ *
+ * @param argc
+ *   argument count
+ * @param argv
+ *   argument values
+ * @param out_put_f
+ *   out_put_f (print function)
+ * @param cmd_param
+ *   command parameters (passing along)
+ * @return
+ *   apf Command Status
+ ******************************************************************************/
+CPU_INT16S mod_som_apf_cmd_gate_f(CPU_INT16U argc,
+        CPU_CHAR *argv[],
+        SHELL_OUT_FNCT out_put_f,
+        SHELL_CMD_PARAM *cmd_param);
+
 /*******************************************************************************
  * @brief
  *   command shell for time command

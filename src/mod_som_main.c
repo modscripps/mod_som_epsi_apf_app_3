@@ -279,6 +279,7 @@ void mod_som_main_task_f(void *p_arg)
  *\
  ******************************************************************************/
 int main(void)
+
 {
     mod_som_status_t status;
 

@@ -32,6 +32,7 @@ static SHELL_CMD  mod_som_apf_cmd_tbl[] =
         { "time?",        mod_som_apf_cmd_time_status_f },
         { "ok?",          mod_som_apf_cmd_ok_status_f },
         { "sleep",        mod_som_apf_cmd_sleep_f },
+        { "gate",         mod_som_apf_cmd_gate_f },
         { "fwrev?",       mod_som_apf_cmd_fwrev_status_f },
         { "upload",       mod_som_apf_cmd_upload_f },
         { "epsino?",      mod_som_apf_cmd_epsi_id_status_f },
@@ -514,6 +515,38 @@ CPU_INT16S mod_som_apf_cmd_sleep_f(CPU_INT16U argc,
         return SHELL_EXEC_ERR;
     return SHELL_EXEC_ERR_NONE;
 }
+
+/*******************************************************************************
+ * @brief
+ *   command shell for gate command
+ *   start or stop MOD shell and turn off 232 driver
+ *   should return an apf status.
+ *   gate,on\r\n
+ *   gate,off\r\n
+ *
+ * @param argc
+ *   argument count
+ * @param argv
+ *   argument values
+ * @param out_put_f
+ *   out_put_f (print function)
+ * @param cmd_param
+ *   command parameters (passing along)
+ * @return
+ *   apf Command Status
+ ******************************************************************************/
+CPU_INT16S mod_som_apf_cmd_gate_f(CPU_INT16U argc,
+        CPU_CHAR *argv[],
+        SHELL_OUT_FNCT out_put_f,
+        SHELL_CMD_PARAM *cmd_param){
+
+    mod_som_apf_status_t status = mod_som_apf_gate_f(argc,argv);
+
+    if(status != MOD_SOM_APF_STATUS_OK)
+        return SHELL_EXEC_ERR;
+    return SHELL_EXEC_ERR_NONE;
+}
+
 
 /*******************************************************************************
  * @brief
