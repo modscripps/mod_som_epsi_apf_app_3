@@ -943,15 +943,15 @@ void mod_som_apf_producer_task_f(void  *p_arg){
                       (uint32_t)mod_som_apf_ptr->producer_ptr->dissrates_cnt, \
                       (uint32_t)mod_som_apf_ptr->producer_ptr->dissrate_skipped);
 
-                  // save time string into the temporary local string - Mai - Nov 18, 2021
-                  sprintf(apf_reply_str,"\n apf obp prod task: CB overflow: sample count = %lu,"
-                          "cnsmr_cnt = %lu,skipped %lu elements \r\n ", \
-                          (uint32_t)mod_som_efe_obp_ptr->sample_count, \
-                          (uint32_t)mod_som_apf_ptr->producer_ptr->dissrates_cnt, \
-                          (uint32_t)mod_som_apf_ptr->producer_ptr->dissrate_skipped);
-                  reply_str_len = strlen(apf_reply_str);
-                  // sending the above string to the APF port - Mai - Nov 18, 2021
-                  bytes_sent = mod_som_apf_send_line_f(apf_leuart_ptr,apf_reply_str, reply_str_len);
+//                  // save time string into the temporary local string - Mai - Nov 18, 2021
+//                  sprintf(apf_reply_str,"\n apf obp prod task: CB overflow: sample count = %lu,"
+//                          "cnsmr_cnt = %lu,skipped %lu elements \r\n ", \
+//                          (uint32_t)mod_som_efe_obp_ptr->sample_count, \
+//                          (uint32_t)mod_som_apf_ptr->producer_ptr->dissrates_cnt, \
+//                          (uint32_t)mod_som_apf_ptr->producer_ptr->dissrate_skipped);
+//                  reply_str_len = strlen(apf_reply_str);
+//                  // sending the above string to the APF port - Mai - Nov 18, 2021
+//                  bytes_sent = mod_som_apf_send_line_f(apf_leuart_ptr,apf_reply_str, reply_str_len);
                   if (bytes_sent==0){
                       //TODO handle error
                   }
@@ -1197,15 +1197,15 @@ void mod_som_apf_consumer_task_f(void  *p_arg){
                           (uint32_t)mod_som_apf_ptr->consumer_ptr->dissrates_cnt, \
                           (uint32_t)mod_som_apf_ptr->consumer_ptr->dissrate_skipped);
 
-                      // save time string into the temporary local string - Mai - Nov 18, 2021
-                      sprintf(apf_reply_str,"\n apf obp consumer task: CB overflow: sample count = %lu,"
-                              "cnsmr_cnt = %lu,skipped %lu elements \r\n ", \
-                              (uint32_t)mod_som_efe_obp_ptr->sample_count, \
-                              (uint32_t)mod_som_apf_ptr->consumer_ptr->dissrates_cnt, \
-                              (uint32_t)mod_som_apf_ptr->consumer_ptr->dissrate_skipped);
-                      reply_str_len = strlen(apf_reply_str);
-                      // sending the above string to the APF port - Mai - Nov 18, 2021
-                      bytes_send = mod_som_apf_send_line_f(apf_leuart_ptr,apf_reply_str, reply_str_len);
+//                      // save time string into the temporary local string - Mai - Nov 18, 2021
+//                      sprintf(apf_reply_str,"\n apf obp consumer task: CB overflow: sample count = %lu,"
+//                              "cnsmr_cnt = %lu,skipped %lu elements \r\n ", \
+//                              (uint32_t)mod_som_efe_obp_ptr->sample_count, \
+//                              (uint32_t)mod_som_apf_ptr->consumer_ptr->dissrates_cnt, \
+//                              (uint32_t)mod_som_apf_ptr->consumer_ptr->dissrate_skipped);
+//                      reply_str_len = strlen(apf_reply_str);
+//                      // sending the above string to the APF port - Mai - Nov 18, 2021
+//                      bytes_send = mod_som_apf_send_line_f(apf_leuart_ptr,apf_reply_str, reply_str_len);
                       if (bytes_send==0){
                           //TODO handle the error
                       }
