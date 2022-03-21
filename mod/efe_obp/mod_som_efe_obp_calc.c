@@ -426,9 +426,9 @@ void mod_som_efe_obp_shear_spectrum_f(float *seg_buffer, int spectra_offset, mod
       //ALB move the level up to be able to compute chi and epsilon
       if (mod_som_efe_obp_ptr->cpt_spectra_ptr->dof==0){
           //ALB move the level up to be able to compute chi and epsilon
-          *(mod_som_efe_obp_ptr->cpt_spectra_ptr->spec_shear_ptr+spectra_offset+i) = 100000*spectrum_buffer[i]/(float)mod_som_efe_obp_ptr->settings_ptr->degrees_of_freedom;
+          *(mod_som_efe_obp_ptr->cpt_spectra_ptr->spec_shear_ptr+spectra_offset+i) = spectrum_buffer[i]/(float)mod_som_efe_obp_ptr->settings_ptr->degrees_of_freedom;
       }else{
-          *(mod_som_efe_obp_ptr->cpt_spectra_ptr->spec_shear_ptr+spectra_offset+i) += 100000*spectrum_buffer[i]/(float)mod_som_efe_obp_ptr->settings_ptr->degrees_of_freedom;
+          *(mod_som_efe_obp_ptr->cpt_spectra_ptr->spec_shear_ptr+spectra_offset+i) += spectrum_buffer[i]/(float)mod_som_efe_obp_ptr->settings_ptr->degrees_of_freedom;
       }
 //      *(mod_som_efe_obp_ptr->cpt_spectra_ptr->spec_shear_ptr+spectra_offset+i) += 100000*spectrum_buffer[i];
   }
@@ -488,9 +488,9 @@ void mod_som_efe_obp_temp_spectrum_f(float *seg_buffer, int spectra_offset, mod_
       //ALB move the level up to be able to compute chi and epsilon
       if (mod_som_efe_obp_ptr->cpt_spectra_ptr->dof==0){
           //ALB move the level up to be able to compute chi and epsilon
-          *(mod_som_efe_obp_ptr->cpt_spectra_ptr->spec_temp_ptr+spectra_offset+i) =100000* spectrum_buffer[i]/(float)mod_som_efe_obp_ptr->settings_ptr->degrees_of_freedom;
+          *(mod_som_efe_obp_ptr->cpt_spectra_ptr->spec_temp_ptr+spectra_offset+i) =spectrum_buffer[i]/(float)mod_som_efe_obp_ptr->settings_ptr->degrees_of_freedom;
       }else{
-          *(mod_som_efe_obp_ptr->cpt_spectra_ptr->spec_temp_ptr+spectra_offset+i) +=100000* spectrum_buffer[i]/(float)mod_som_efe_obp_ptr->settings_ptr->degrees_of_freedom;
+          *(mod_som_efe_obp_ptr->cpt_spectra_ptr->spec_temp_ptr+spectra_offset+i) +=spectrum_buffer[i]/(float)mod_som_efe_obp_ptr->settings_ptr->degrees_of_freedom;
       }
 //   *(mod_som_efe_obp_ptr->cpt_spectra_ptr->spec_temp_ptr+spectra_offset+i) += 100000 * spectrum_buffer[i];
   }
