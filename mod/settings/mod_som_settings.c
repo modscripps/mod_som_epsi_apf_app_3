@@ -72,6 +72,9 @@ mod_som_status_t mod_som_settings_init_f(){
     sprintf(mod_som_settings_struct.firmware,"%s-%s",
             MOD_SOM_SETTINGS_DEFAULT_FIRMWARE_NAME,__DATE__);
 
+    sprintf(mod_som_settings_struct.gitid,"%s",
+            MOD_SOM_SETTINGS_DEFAULT_FIRMWARE_GITID);
+
     //    strncpy(mod_som_settings_struct.firmware,
 //            $Projname,
 //            MOD_SOM_SETTINGS_DEFAULT_FIRMWARE_LENGTH);
@@ -162,6 +165,12 @@ mod_som_status_t mod_som_settings_init_f(){
 	           MOD_SOM_SETTINGS_DEFAULT_FIRMWARE_LENGTH);
 	    user_page_offset+=MOD_SOM_SETTINGS_DEFAULT_FIRMWARE_LENGTH/sizeof(uint32_t)+ \
 	        (MOD_SOM_SETTINGS_DEFAULT_FIRMWARE_LENGTH % sizeof(uint32_t));
+
+      memcpy(mod_som_settings_struct.gitid,\
+             (uint8_t*) &userDataPage_ptr[user_page_offset],\
+             MOD_SOM_SETTINGS_DEFAULT_NAME_LENGTH);
+      user_page_offset+=MOD_SOM_SETTINGS_DEFAULT_NAME_LENGTH/sizeof(uint32_t)+ \
+          (MOD_SOM_SETTINGS_DEFAULT_NAME_LENGTH % sizeof(uint32_t));
 
 
 	    memcpy(mod_som_settings_struct.rev,\
@@ -652,20 +661,22 @@ mod_som_status_t mod_som_settings_stream_settings_f(){
 void mod_som_settings_id_f(CPU_INT16U argc,CPU_CHAR *argv[]){
 
 	if (argc==1){
-		printf("SOM, %s, %s, %s.\r\n",(char*) mod_som_settings_struct.rev ,(char*) mod_som_settings_struct.sn, \
-				                      (char*) mod_som_settings_struct.firmware);
+
+		printf("SOM, %s, %s, %s, %8s.\r\n",(char*) mod_som_settings_struct.rev ,(char*) mod_som_settings_struct.sn, \
+				                      (char*) mod_som_settings_struct.firmware,(char*) mod_som_settings_struct.gitid);
 	}
 	else{
 
 		//ALB switch statement easy to handle all user input cases.
 		switch (argc){
-		case 4:
+		case 5:
 			strcpy(mod_som_settings_struct.rev,argv[1]);
 			strcpy(mod_som_settings_struct.sn,argv[2]);
 			strcpy(mod_som_settings_struct.firmware,argv[3]);
+      strcpy(mod_som_settings_struct.gitid,argv[4]);
 			break;
 		default:
-			printf("format: settings.som_id REV S/N firmwarename\r\n");
+			printf("format: settings.som_id REV S/N firmwarename gitid\r\n");
 			break;
 		}
 	}

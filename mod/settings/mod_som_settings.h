@@ -73,24 +73,25 @@
 #define MOD_SOM_SETTINGS_DEFAULT_CTL_REV_NAME   "rev3"
 #define MOD_SOM_SETTINGS_DEFAULT_CTL_SN         "000"
 #define MOD_SOM_SETTINGS_DEFAULT_FIRMWARE_NAME  PROJECTNAME
-//#define MOD_SOM_SETTINGS_DEFAULT_FIRMWARE_NAME   "mod_som_epsi_apf_app"
+#define MOD_SOM_SETTINGS_DEFAULT_FIRMWARE_GITID "014e3b9d"
 
 #define MOD_SOM_SETTINGS_DEFAULT_STR_LENGTH       8
 #define MOD_SOM_SETTINGS_DEFAULT_NAME_LENGTH      24
 #define MOD_SOM_SETTINGS_DEFAULT_FIRMWARE_LENGTH  40
 #define MOD_SOM_SETTINGS_HEADER_CHECKSUM_LENGTH   3
-#define MOD_SOM_SETTINGS_PAYLOAD_CHECKSUM_LENGTH   5
+#define MOD_SOM_SETTINGS_PAYLOAD_CHECKSUM_LENGTH  5
 //------------------------------------------------------------------------------
 // TYPEDEFS
 //------------------------------------------------------------------------------
 typedef struct{
 	uint32_t size;
-	char   header[MOD_SOM_SETTINGS_DEFAULT_STR_LENGTH];
-	char   mission_name[MOD_SOM_SETTINGS_DEFAULT_NAME_LENGTH];
-	char   vehicle_name[MOD_SOM_SETTINGS_DEFAULT_NAME_LENGTH];
-	char   firmware[MOD_SOM_SETTINGS_DEFAULT_FIRMWARE_LENGTH];
-	char   rev[MOD_SOM_SETTINGS_DEFAULT_STR_LENGTH];
-	char   sn[MOD_SOM_SETTINGS_DEFAULT_STR_LENGTH];
+	char     header[MOD_SOM_SETTINGS_DEFAULT_STR_LENGTH];
+	char     mission_name[MOD_SOM_SETTINGS_DEFAULT_NAME_LENGTH];
+	char     vehicle_name[MOD_SOM_SETTINGS_DEFAULT_NAME_LENGTH];
+	char     firmware[MOD_SOM_SETTINGS_DEFAULT_FIRMWARE_LENGTH];
+	char     gitid[MOD_SOM_SETTINGS_DEFAULT_NAME_LENGTH];
+	char     rev[MOD_SOM_SETTINGS_DEFAULT_STR_LENGTH];
+	char     sn[MOD_SOM_SETTINGS_DEFAULT_STR_LENGTH];
 	uint32_t   initialized_flag;
 
 #if defined(MOD_SOM_CALENDAR_EN)

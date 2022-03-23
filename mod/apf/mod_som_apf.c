@@ -1366,13 +1366,10 @@ void mod_som_apf_consumer_task_f(void  *p_arg){
                       mod_som_apf_ptr->producer_ptr->dacq_size=0;
                       mod_som_apf_ptr->producer_ptr->dacq_ptr     =
                                                 &mod_som_apf_ptr->producer_ptr->acq_profile.data_acq[0];
-
                   } //endif full true
-
               // ALB done with segment storing.
               mod_som_apf_ptr->consumer_ptr->dissrate_skipped = 0;
           } //end if started
-
       // Delay Start Task execution for
       OSTimeDly( MOD_SOM_APF_CONSUMER_DELAY,             //   consumer delay is #define at the beginning OS Ticks
                  OS_OPT_TIME_DLY,          //   from now.
@@ -2441,7 +2438,7 @@ void mod_som_apf_init_meta_data(mod_som_apf_meta_data_ptr_t mod_som_apf_meta_dat
   mod_som_apf_meta_data_ptr->efe_sn=
                       strtol(local_efe_obp->efe_settings_ptr->sn,NULL,10);
   mod_som_apf_meta_data_ptr->firmware_rev=
-                      strtol(local_settings_ptr->firmware, NULL, 16);
+                      strtol(local_settings_ptr->gitid, NULL, 16);
   mod_som_apf_meta_data_ptr->modsom_sn=
                       strtol(local_settings_ptr->sn,NULL,10);
 
