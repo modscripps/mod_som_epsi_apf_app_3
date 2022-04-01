@@ -457,7 +457,7 @@ void ADC0_IRQHandler(void)
   // 4096 is 2^12 the bit resolution
   // 2500 is 2.5 volts the voltage reference.
   // voltage is in v.
-  mod_som_voltage_ptr->voltage = MOD_SOM_VOLTAGE_DIVIDER * data * \
+  mod_som_voltage_ptr->voltage = MOD_SOM_VOLTAGE_DIVIDER * data *
                                                  2500 / 4096;
 
   t_hex[0] = (uint32_t) (mod_som_voltage_ptr->timestamp>>32);
@@ -485,6 +485,7 @@ void ADC0_IRQHandler(void)
   uint16_t local_chksum = \
       mod_som_int8_2hex_f(mod_som_voltage_ptr->chksum);
 
+  memcpy(curr_record_ptr,&local_chksum,sizeof(uint16_t));
 
   switch(mod_som_voltage_ptr->mode){
     case 0:
@@ -495,7 +496,7 @@ void ADC0_IRQHandler(void)
       break;
     case 1:
       //ALB direct SD store
-      mod_som_sdio_write_data_f(&mod_som_voltage_ptr->str_record, \
+      mod_som_sdio_write_data_f((uint8_t*) mod_som_voltage_ptr->str_record, \
                                  MOD_SOM_VOLTAGE_RECORD_LENGTH,   \
                                  DEF_NULL);
       break;

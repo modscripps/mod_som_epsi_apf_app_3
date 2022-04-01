@@ -195,14 +195,15 @@ mod_som_apf_probe_t, *mod_som_apf_probe_ptr_t;
 8-9    EFE serial number - revision   (two bytes for serial and revision)
 10-13  Firmware revision. ALB: I would recommend the latest github commit number like 6e92d93  (could be 4 bytes in hex)
 14-15  Nfft  (2 bytes) ALB not a param the user can change
-16-20  <ProbeType1><ProbeSerNo1><ProbeCalcoef1> (1+2 +2 bytes)
-21-25  <ProbeType2><ProbeSerNo2><ProbeCalcoef2>(1+2 +2 bytes)
+16-17  Nfftdiag  (2 bytes) ALB not a param the user can change
+18-22  <ProbeType1><ProbeSerNo1><ProbeCalcoef1> (1+2 +2 bytes)
+23-27  <ProbeType2><ProbeSerNo2><ProbeCalcoef2>(1+2 +2 bytes)
 
-26      comm_telemetry_packet_format (1 byte)
-27      sd_format (1 byte)
+28      comm_telemetry_packet_format (1 byte)
+29      sd_format (1 byte)
 
-28-29   Number of samples.
-30-31   0xFFFF
+30-31   Number of samples.
+32-33   0xFFFF
 ******************************************************************************/
 
 typedef struct{
@@ -213,11 +214,13 @@ typedef struct{
   uint16_t efe_sn;
   uint32_t firmware_rev;
   uint16_t nfft;
+  uint16_t nfftdiag;
   mod_som_apf_probe_t  probe1;
   mod_som_apf_probe_t  probe2;
   uint8_t  comm_telemetry_packet_format;
   uint8_t  sd_format;
   uint16_t sample_cnt;
+  uint32_t voltage;
   uint16_t end_metadata; //always 0xFFFF;
 }
 mod_som_apf_meta_data_t, *mod_som_apf_meta_data_ptr_t;

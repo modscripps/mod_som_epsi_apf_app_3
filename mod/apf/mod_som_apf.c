@@ -2253,7 +2253,7 @@ mod_som_apf_status_t mod_som_apf_encode_status_f(uint8_t mod_som_apf_status){
 mod_som_apf_status_t mod_som_apf_daq_start_f(uint64_t profile_id){
   mod_som_apf_status_t status=0;
   uint32_t delay=1000;
-  RTOS_ERR  err;
+  uint32_t id;
 
   status=MOD_SOM_APF_STATUS_OK;
   CPU_CHAR filename[100];
@@ -2326,6 +2326,13 @@ mod_som_apf_status_t mod_som_apf_daq_start_f(uint64_t profile_id){
   status |= mod_som_apf_start_producer_task_f();
 ////  //ALB start APF consumer task
   status |= mod_som_apf_start_consumer_task_f();
+
+//ALB get the voltage at the beginning of the profile
+  // Get ADC results
+  // Read data from ADC
+  mod_som_apf_ptr->producer_ptr->
+  acq_profile.mod_som_apf_meta_data.voltage =
+        ADC_DataIdScanGet(ADC0, &id);
 
 
   status|=mod_som_efe_sampling_f();
@@ -2430,6 +2437,7 @@ void mod_som_apf_init_meta_data(mod_som_apf_meta_data_ptr_t mod_som_apf_meta_dat
                                               mod_som_settings_get_settings_f();
 
   mod_som_apf_meta_data_ptr->nfft=local_efe_obp->settings_ptr->nfft;
+  mod_som_apf_meta_data_ptr->nfftdiag=local_efe_obp->settings_ptr->nfft/MOD_SOM_APF_DACQ_F3_NFFT_DECIM_COEF;
   mod_som_apf_meta_data_ptr->comm_telemetry_packet_format=
       mod_som_apf_ptr->settings_ptr->comm_telemetry_packet_format;
   mod_som_apf_meta_data_ptr->sd_format=
@@ -2461,6 +2469,7 @@ void mod_som_apf_init_meta_data(mod_som_apf_meta_data_ptr_t mod_som_apf_meta_dat
   mod_som_apf_meta_data_ptr->daq_timestamp=sl_sleeptimer_get_time();
 
   mod_som_apf_meta_data_ptr->sample_cnt=0;
+  mod_som_apf_meta_data_ptr->voltage=0;
   mod_som_apf_meta_data_ptr->end_metadata=0xFFFF;
 
 
