@@ -68,6 +68,13 @@ mod_som_apf_status_t mod_som_apf_init_f(){
     mod_som_apf_status_t status;
     RTOS_ERR  err;
 
+
+    LEUART_TypeDef* apf_leuart_ptr;
+    apf_leuart_ptr =(LEUART_TypeDef *) mod_som_apf_get_port_ptr_f();
+    char apf_reply_str[MOD_SOM_SHELL_INPUT_BUF_SIZE]="\0";
+    size_t reply_str_len = 0;
+    uint32_t bytes_sent;
+
     //ALB gittest#3
 
 #ifdef  RTOS_MODULE_COMMON_SHELL_AVAIL
@@ -165,6 +172,12 @@ mod_som_apf_status_t mod_som_apf_init_f(){
     }
     else{
         printf("APF initialized\n");
+
+        sprintf(apf_reply_str,"APEX-EPSI initialized\r\n",status);
+        reply_str_len = strlen(apf_reply_str);
+        //ALB sending the above string to the APF port -
+        bytes_sent = mod_som_apf_send_line_f(apf_leuart_ptr,apf_reply_str, reply_str_len);
+
     }
 
 
