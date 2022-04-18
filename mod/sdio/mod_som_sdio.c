@@ -63,14 +63,24 @@ DWORD get_fattime(void)
 mod_som_status_t mod_som_sdio_init_f(){
     mod_som_status_t status;
     RTOS_ERR  err;
+    mod_som_sdio_ptr_t mod_som_sdio_struct_ptr=&mod_som_sdio_struct;
 
     //ALB initialize the SDIO module commands
 #ifdef  RTOS_MODULE_COMMON_SHELL_AVAIL
-    status = mod_som_sdio_init_cmd_f();
-    //ALB return error if cmd not initialized
-    if(status != MOD_SOM_STATUS_OK)
-        return mod_som_sdio_encode_status_f(MOD_SOM_SDIO_STATUS_FAIL_INIT_CMD);
+    if (mod_som_sdio_struct.initialized_flag){
+        status = mod_som_sdio_init_cmd_f();
+        //ALB return error if cmd not initialized
+        if(status != MOD_SOM_STATUS_OK)
+            return mod_som_sdio_encode_status_f(MOD_SOM_SDIO_STATUS_FAIL_INIT_CMD);
+    }
 #endif
+
+    for (int i=0;i<sizeof(mod_som_sdio_t);i++){
+        mod_som_sdio_struct_ptr=0;
+        mod_som_sdio_struct_ptr++;
+    }
+    mod_som_sdio_struct_ptr=&mod_som_sdio_struct;
+
 
     //ALB allocate memory for the module settings ptr.
     //ALB SDIO module have the a module struct directly defined (line 28)

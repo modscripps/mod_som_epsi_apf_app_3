@@ -28,6 +28,7 @@
 #include "mod_som.h"
 #include "mod_som_io.h"
 #include "mod_som_shell.h"
+#include "em_emu.h"
 
 #include <stddef.h>
 
@@ -93,6 +94,7 @@
 
 
 bool mod_som_running_flag;
+bool mod_som_sleep_flag;
 
 /*****************************************
  * END Include module header files here
@@ -155,33 +157,165 @@ void mod_som_modules_init_f()
 //------------------------------------------------------------------------------
 // MAIN TASK
 //------------------------------------------------------------------------------
+//*******************************************************************************
+ /* @brief
+ *   - We are inside the main shell task.
+ *   - This function initialize all the enabled modules.
+ *
+ ******************************************************************************/
+void mod_som_main_start_modules_f()
+{
+
+//#if defined(MOD_SOM_SDIO_EN)
+//  CPU_CHAR filename[10]="modsom";
+//  mod_som_sdio_define_filename_f(filename);
+//#endif
+
+#if defined(MOD_SOM_SETTINGS_EN)
+  mod_som_settings_stream_settings_f();
+#endif
+
+#if defined(MOD_SOM_SBE41_EN)
+  mod_som_sbe41_connect_f();
+  mod_som_sbe41_start_collect_data_f();
+#endif
+
+#if defined(MOD_SOM_EFE_EN)
+  mod_som_efe_sampling_f();
+#endif
+
+  printf("ok\r\n");
+
+  mod_som_running_flag=true;
+  mod_som_sleep_flag=false;
+
+}
+
 /*******************************************************************************
  * @brief
  *   - We are inside the main shell task.
- *   - initialize the main shell task
- *   This is the task that will be called by the Startup when all services
- *   are initializes successfully.
+ *   - This function initialize all the enabled modules.
  *
- * @param p_arg
- *   Argument passed from task creation. Unused, in this case.
  ******************************************************************************/
-void mod_som_main_start_modules_f(void *p_arg)
+void mod_som_main_stop_modules_f()
 {
 
-  mod_som_efe_sampling_f();
+  int delay =1000;
+  mod_som_status_t status;
+  status=MOD_SOM_STATUS_OK;
 
-//  mod_som_sbe49_connect_f();
-//  mod_som_sbe49_start_collect_data_f();
-//  mod_som_altimeter_start_task_f();
-//  mod_som_vecnav_connect_f();
-//  mod_som_vecnav_start_collect_data_f();
-//  mod_som_aggregator_start_consumer_task_f();
-//  mod_som_efe_obp_start_fill_segment_task_f();
-//  mod_som_efe_obp_start_cpt_spectra_task_f();
-//  mod_som_efe_obp_start_cpt_dissrate_task_f();
-//  mod_som_efe_obp_start_consumer_task_f();
+  // stop ADC master clock timer
+  status|= mod_som_efe_stop_sampling_f();
+
+
+
+  // stop collecting CTD data
+  status|= mod_som_sbe41_stop_collect_data_f();
+  status|= mod_som_sbe41_disconnect_f();
+
+  // stop turbulence processing task
+  status = mod_som_efe_obp_stop_fill_segment_task_f();
+  status|= mod_som_efe_obp_stop_cpt_spectra_task_f();
+  status|= mod_som_efe_obp_stop_cpt_dissrate_task_f();
+  status|= mod_som_efe_obp_stop_consumer_task_f();
+
+  //ALB stop APF producer task
+  status |= mod_som_apf_stop_producer_task_f();
+  //ALB stop APF consumer task
+  status |= mod_som_apf_stop_consumer_task_f();
+
+  sl_sleeptimer_delay_millisecond(delay);
+  //ALB disable SDIO hardware
+
+
+printf("epsi sleep\r\n");
+
+
+  mod_som_running_flag=false;
+  WDOGn_Lock(DEFAULT_WDOG);
 
 }
+
+/*******************************************************************************
+ * @brief
+ *   - We are inside the main shell task.
+ *   - This function initialize all the enabled modules.
+ *
+ ******************************************************************************/
+mod_som_status_t mod_som_main_sleep_f()
+{
+
+  if (mod_som_sleep_flag==false){
+      printf("Making all modules are stopped \r\n");
+      mod_som_main_stop_modules_f();
+
+      //Select intern HFRCO
+      CMU_ClockSelectSet(cmuClock_HF, cmuSelect_HFRCO);
+
+      //ALB Disable HFXO
+      //ALB turn off the
+      /* Power External Oscillator SOM-U8-U4*/
+      // HF oscillator disable.
+      CMU_OscillatorEnable(cmuOsc_HFXO, false, false);
+
+      // turn dowm HFXO
+      GPIO_PinModeSet(MOD_SOM_HFXO_EN_PORT, MOD_SOM_HFXO_EN_PIN, gpioModePushPull, 0);
+    //
+    //  CMU_ClockEnable(cmuClock_CORELE, true);
+
+      //ALB I want to keep LEUART alive  (SBEcom) so I reconnect it
+      //ALB It also send some power to the SBE I need to NOT do this
+
+//      CMU_ClockEnable(cmuClock_HFLE, true);
+//      CMU_ClockSelectSet(cmuClock_LFB, cmuSelect_LFXO); // Set a reference clock
+//      CMU_ClockEnable(cmuClock_LEUART0, true);    /* Enable device clock */
+//      CMU_ClockDivSet(cmuClock_LEUART0, cmuClkDiv_1); // Don't prescale LEUART clock
+//      LEUART_Init_TypeDef init = LEUART_INIT_DEFAULT;
+//      LEUART_Init(LEUART0, &init);
+      EMU_EnterEM2(false);
+      mod_som_sleep_flag=true;
+
+  }else{
+      EMU_EnterEM2(false);
+  }
+
+  return 0;
+}
+
+/*******************************************************************************
+ * @brief
+ *   - We are inside the main shell task.
+ *   - This function initialize all the enabled modules.
+ *
+ ******************************************************************************/
+mod_som_status_t mod_som_main_wake_up_f()
+{
+
+  if (mod_som_sleep_flag==true){
+      printf("Making all modules are stopped \r\n");
+
+      // turn dowm HFXO
+      GPIO_PinModeSet(MOD_SOM_HFXO_EN_PORT, MOD_SOM_HFXO_EN_PIN, gpioModePushPull, 1);
+      //Select intern HFXO
+      CMU_ClockSelectSet(cmuClock_HF, cmuSelect_HFXO);
+
+      //ALB Disable HFXO
+      //ALB turn off the
+      /* Power External Oscillator SOM-U8-U4*/
+      // HF oscillator disable.
+      CMU_OscillatorEnable(cmuOsc_HFXO, true, false);
+      CMU_OscillatorEnable(cmuOsc_HFRCO, false, false);
+
+      mod_som_sdio_init_f();
+
+      mod_som_sleep_flag=false;
+
+
+  }
+
+  return 0;
+}
+
 
 
 /*******************************************************************************

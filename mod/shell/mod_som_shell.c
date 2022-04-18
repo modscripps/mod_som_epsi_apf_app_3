@@ -22,9 +22,10 @@
 #include <mod_som_common.h>
 #ifdef  RTOS_MODULE_COMMON_SHELL_AVAIL
 #include "mod_som_shell.h"
+#include "mod_som_shell_cmd.h"
 #include "mod_som_io.h"
 
-
+mod_som_shell_t mod_som_shell;
 
 //------------------------------------------------------------------------------
 // LOCAL VARIABLES
@@ -50,7 +51,14 @@ mod_som_status_t mod_som_shell_init_f(){
     if(RTOS_ERR_CODE_GET(err) != RTOS_ERR_NONE)
         return mod_som_shell_encode_status_f(MOD_SOM_SHELL_STATUS_ERR_FAIL_TO_INIT);
 #endif
+    mod_som_init_shellcmd_f();
+    //TODO see if we can get rid of this line easily
     mod_som_shell_initialized_flag = true;
+    //ALB I am starting to add a shell struct.
+    //ALB because I need to get access to it so I can easily stop the shell from anywhere
+    mod_som_shell.initialize_flag = true;
+    mod_som_shell.running_flag    = 0;
+    mod_som_shell.stop_flag       = 1;
     return MOD_SOM_STATUS_OK;
 }
 
@@ -58,6 +66,9 @@ mod_som_status_t mod_som_shell_start_f(){
     if(!mod_som_shell_initialized_flag)
         return mod_som_shell_encode_status_f(MOD_SOM_SHELL_STATUS_ERR_NOT_INIT);
     RTOS_ERR err;
+
+    mod_som_shell_stop_f();
+
     OSTaskCreate(&mod_som_shell_task_tcb, // Create the Start Task
                 "MOD SOM Shell Task",
                 mod_som_shell_task_f,
@@ -72,7 +83,9 @@ mod_som_status_t mod_som_shell_start_f(){
                 (OS_OPT_TASK_STK_CHK | OS_OPT_TASK_STK_CLR),
                 &err);
     APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
-    mod_som_shell_started_flag = true;
+    mod_som_shell_started_flag    = true;
+    mod_som_shell.running_flag    = 1;
+    mod_som_shell.stop_flag       = 0;
 
     if(RTOS_ERR_CODE_GET(err) != RTOS_ERR_NONE)
         return mod_som_shell_encode_status_f(MOD_SOM_SHELL_STATUS_ERR_FAIL_TO_RUN);
@@ -80,11 +93,12 @@ mod_som_status_t mod_som_shell_start_f(){
 }
 
 mod_som_status_t mod_som_shell_stop_f(){
-    if(mod_som_shell_started_flag)
+    if(!mod_som_shell_started_flag)
         return mod_som_shell_encode_status_f(MOD_SOM_SHELL_STATUS_ERR_NOT_INIT);
 
     RTOS_ERR err;
 
+    //ALB kill shell task
     OSTaskDel(&mod_som_shell_task_tcb,
               &err);
 
@@ -293,7 +307,9 @@ void mod_som_shell_task_f(void *p_arg){
         shellPrint(mod_som_shell_output_f, "\r$ ");
         mod_som_shell_get_input_f(input_buf,&input_buf_len);
 
-        if (!Str_Cmp(input_buf, "exit")) {
+        if (!Str_Cmp(input_buf, "exit") ) {
+            mod_som_shell.running_flag    = 0;
+            mod_som_shell.stop_flag       = 0;
             break;
         }
 

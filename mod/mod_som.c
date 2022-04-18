@@ -191,7 +191,7 @@ mod_som_status_t mod_som_main_init_f(void){
 
     //ALB init watchdog
     CMU_ClockEnable(cmuClock_CORELE, true);
-//    WDOG_Init(&wdog_init);
+    WDOG_Init(&wdog_init);
     /* Locking watchdog register (reset needed to unlock) */
 //    WDOG_Lock();
 
@@ -220,9 +220,9 @@ mod_som_status_t mod_som_main_init_f(void){
 
 #endif
 
-    RETARGET_SerialInit();
-    RETARGET_SerialCrLf(0);
-    RETARGET_SerialFlush();
+//    RETARGET_SerialInit();
+//    RETARGET_SerialCrLf(0);
+//    RETARGET_SerialFlush();
 
     OSInit(&err); // Initialize the Kernel
 
@@ -241,6 +241,9 @@ mod_som_status_t mod_som_main_init_f(void){
  *   turn off main com
  ******************************************************************************/
 mod_som_status_t mod_som_main_com_off_f(void){
+  mod_som_io_stop_task_f();
+  mod_som_shell_stop_f();
+
   RETARGET_SerialdeInit();
   return mod_som_encode_status_f(MOD_SOM_STATUS_OK);
 }
@@ -250,6 +253,9 @@ mod_som_status_t mod_som_main_com_off_f(void){
  ******************************************************************************/
 mod_som_status_t mod_som_main_com_on_f(void){
   RETARGET_SerialInit();
+   mod_som_io_start_f();
+   mod_som_shell_start_f();
+
   return mod_som_encode_status_f(MOD_SOM_STATUS_OK);
 }
 
@@ -393,9 +399,9 @@ mod_som_status_t mod_som_main_task_init_f(void){
 
     //start IO and shell here
     // create and start the streaming consumer (i.e IO task)
-    mod_som_io_start_f();
+//    mod_som_io_start_f();
 #ifdef  RTOS_MODULE_COMMON_SHELL_AVAIL
-    mod_som_shell_start_f();
+//    mod_som_shell_start_f();
     //ALB add MOD default shell commands.
     //mod_som_init_shellcmd_f(); //MHA uncomment this line to enable default shell commandsso
 #endif

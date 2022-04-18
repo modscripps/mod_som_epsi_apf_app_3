@@ -165,10 +165,13 @@ CPU_INT16S mod_som_apf_cmd_daq_f(CPU_INT16U argc,
       i = 1; //MNB get the second argument
       if (!Str_Cmp(argv[i], "start"))
       {
-          profile_id = shellStrtol(argv[i+1], &err); //MNB Convert the third argument to int to get proid
+
+          int temporary_id;
+          temporary_id = shellStrtol(argv[i+1], &err); //MNB Convert the third argument to int to get proid
           //          status = MOD_SOM_APF_STATUS_OK; //MNB just for debug to test with daq - mnbui Nov30,2021
-          if (profile_id>0){
-              status = mod_som_apf_daq_start_f((uint64_t)profile_id);
+          if (temporary_id>0){
+              profile_id=temporary_id;
+              status = mod_som_apf_daq_start_f(profile_id);
           }else{
               status = MOD_SOM_APF_STATUS_WRONG_ARG;
           }

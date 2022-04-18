@@ -32,11 +32,7 @@ CPU_INT16S mod_som_void_cmd_f (CPU_INT16U argc,
         SHELL_OUT_FNCT outFunc,
         SHELL_CMD_PARAM *cmdParam);
 
-//MHA
-CPU_INT16S mod_som_startall_cmd_f (CPU_INT16U argc,
-        CPU_CHAR *argv[],
-        SHELL_OUT_FNCT outFunc,
-        SHELL_CMD_PARAM *cmdParam);
+
 
 #endif /* RTOS_MODULE_COMMON_SHELL_AVAIL */
 

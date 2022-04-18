@@ -12,6 +12,7 @@
 //------------------------------------------------------------------------------
 #include <mod_som_common.h>
 #include "mod_som_io.h"
+#include "mod_som_efe.h"
 #include "mod_som_shell_cmd.h"
 
 
@@ -32,7 +33,6 @@
 static SHELL_CMD  mod_som_cmd_tbl[] =
 {
     { "som_void"            , mod_som_void_cmd_f },
-    { "som_startall" , mod_som_startall_cmd_f},//MHA new startall command
 		{ 0, 0 }
 };
 //{ "som.start"            , mod_som_starteverything_cmd_f },
@@ -65,14 +65,6 @@ CPU_INT16S mod_som_void_cmd_f (CPU_INT16U argc,
 
 }
 
-CPU_INT16S mod_som_startall_cmd_f (CPU_INT16U argc,
-        CPU_CHAR *argv[],
-        SHELL_OUT_FNCT outFunc,
-        SHELL_CMD_PARAM *cmdParam){
-
-  return mod_som_shell_encode_status_f(MOD_SOM_STATUS_OK);
-
-}
 
 ///*******************************************************************************
 // * @brief

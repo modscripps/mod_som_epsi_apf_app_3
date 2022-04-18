@@ -179,6 +179,8 @@ uint32_t mod_som_generate_data_block_f(
  *   Argument passed from task creation. Unused, in this case.
  ******************************************************************************/
 void mod_som_modules_init_f(void);
+mod_som_status_t mod_som_main_sleep_f();
+mod_som_status_t mod_som_main_wake_up_f();
 
 void mod_som_main_task_f(void *p_arg);// __attribute__ ((weak));
 #endif /* MOD_MOD_SOM_H_ */

@@ -157,6 +157,18 @@ mod_som_calendar_settings_t mod_som_calendar_get_settings_f(){
 }
 /*******************************************************************************
  * @brief
+ *   get calendar setup struct pointer
+ *
+ * @return
+ *   MOD_SOM_STATUS_OK if initialization goes well
+ *   or otherwise
+ ******************************************************************************/
+mod_som_calendar_settings_ptr_t mod_som_calendar_get_settings_ptr_f(){
+  return mod_som_calendar_ptr->mod_som_calendar_settings_ptr;
+}
+
+/*******************************************************************************
+ * @brief
  *   set calendar setup struct pointer
  *   the setup module gets the new calendar_setup from SD or other com port
  *   this function should memcopy the data from that new setup to the

@@ -43,7 +43,7 @@
 
 #define MOD_SOM_APF_SYNC_TAG_LENGTH         1
 #define MOD_SOM_APF_HEADER_TAG_LENGTH       4
-#define MOD_SOM_APF_SETTINGS_STR_lENGTH     8
+#define MOD_SOM_APF_SETTINGS_STR_lENGTH     64
 
 
 
@@ -112,6 +112,7 @@
 #define MOD_SOM_APF_STATUS_FAIL_SEND_PACKET                     0x12U
 #define MOD_SOM_APF_STATUS_DAQ_ALREADY_STARTED                  0x13U
 #define MOD_SOM_APF_STATUS_ARG_TOO_HIGH                         0x14U
+#define MOD_SOM_APF_STATUS_BUFFER_OVFLW                         0x15U
 
 
 #define MOD_SOM_APF_UPLOAD_DELAY                  500      // 500 ms delay upon reception of the upload cmd
@@ -452,7 +453,9 @@ typedef struct{
 ******************************************************************************/
 typedef struct{
    uint32_t initialize_flag;
+   uint32_t sleep_flag;
    mod_som_status_t status;
+
 
    mod_som_apf_settings_ptr_t settings_ptr;
    mod_som_apf_config_ptr_t   config_ptr;
@@ -841,6 +844,9 @@ mod_som_status_t mod_som_apf_start_producer_task_f();
  *   or otherwise
  ******************************************************************************/
 mod_som_status_t mod_som_apf_stop_producer_task_f();
+
+mod_som_status_t mod_som_apf_start_consumer_task_f();
+mod_som_status_t mod_som_apf_stop_consumer_task_f();
 
 /*******************************************************************************
  * @brief

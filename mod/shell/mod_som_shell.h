@@ -60,6 +60,15 @@
 #define MOD_SOM_SHELL_TASK_STK_SIZE         512u
 #endif
 
+
+/******************************************************************************/
+typedef struct{
+   uint32_t initialize_flag;
+   uint32_t running_flag;
+   uint32_t stop_flag;
+}
+mod_som_shell_t, *mod_som_shell_ptr_t;
+
 //------------------------------------------------------------------------------
 // FUNCTIONS
 //------------------------------------------------------------------------------
@@ -82,8 +91,7 @@ mod_som_status_t mod_som_shell_init_f();
  *     MOD_SOM_SHELL_STATUS_ERR_FAIL_TO_RUN
  ******************************************************************************/
 mod_som_status_t mod_som_shell_start_f();
-
-
+mod_som_status_t mod_som_shell_stop_f();
 //------------------------------------------------------------------------------
 // FUNCTIONS NOT FOR USER, only for implementation
 //------------------------------------------------------------------------------

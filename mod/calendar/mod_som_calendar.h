@@ -66,6 +66,16 @@ mod_som_status_t mod_som_calendar_init_f();
 mod_som_status_t mod_som_calendar_default_settings_f();
 mod_som_status_t mod_som_calendar_settings_f();
 mod_som_calendar_settings_t mod_som_calendar_get_settings_f();
+/*******************************************************************************
+ * @brief
+ *   get calendar setup struct pointer
+ *
+ * @return
+ *   MOD_SOM_STATUS_OK if initialization goes well
+ *   or otherwise
+ ******************************************************************************/
+mod_som_calendar_settings_ptr_t mod_som_calendar_get_settings_ptr_f();
+
 void mod_som_calendar_set_settings_f();
 /*******************************************************************************
  * @brief

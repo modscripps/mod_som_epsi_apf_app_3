@@ -184,8 +184,8 @@ mod_som_status_t mod_som_io_init_f(void){
         return mod_som_io_encode_status_f(MOD_SOM_IO_STATUS_ERR_FAIL_TO_ALLOCATE_DYNAMIC_MEMORY);
 
 
-    //ALB add LDMA transfer in mod_som_io
-    mod_som_io_init_ldma_f();
+//    //TODO make all IO through LDMA
+//    mod_som_io_init_ldma_f();
 
     // Create overflow flag is to many messages are in the list
     mod_som_io_struct.listoverflow_flag=false;
@@ -269,6 +269,30 @@ mod_som_status_t mod_som_io_start_f(void){
     mod_som_io_struct.started_flag = true;
     return mod_som_io_encode_status_f(MOD_SOM_STATUS_OK);
 }
+/*******************************************************************************
+ * @brief
+ *   mod_som_io_stop_task_f
+ *   stop the io task (i.e. efe stream consumer)
+ *
+ * @return
+ *   MOD_SOM_STATUS_OK if initialization goes well
+ *   or otherwise
+ ******************************************************************************/
+
+mod_som_status_t  mod_som_io_stop_task_f(){
+
+  mod_som_status_t status=MOD_SOM_STATUS_OK;
+  RTOS_ERR err;
+
+  OSTaskDel(&mod_som_io_struct.print_task_tcb,
+            &err);
+
+  if(RTOS_ERR_CODE_GET(err) != RTOS_ERR_NONE)
+    status=1;
+
+  return status;
+}
+
 /*******************************************************************************
  * @function
  *     mod_som_io_print_f

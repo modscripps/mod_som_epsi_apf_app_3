@@ -217,7 +217,17 @@ mod_som_status_t mod_som_io_init_ldma_f();
  *     status would indicate error in initialization
  ******************************************************************************/
 mod_som_status_t mod_som_io_start_f(void);
+/*******************************************************************************
+ * @brief
+ *   mod_som_io_stop_task_f
+ *   stop the io task (i.e. efe stream consumer)
+ *
+ * @return
+ *   MOD_SOM_STATUS_OK if initialization goes well
+ *   or otherwise
+ ******************************************************************************/
 
+mod_som_status_t  mod_som_io_stop_task_f();
 /*******************************************************************************
  * @function
  *     mod_som_io_print_f
