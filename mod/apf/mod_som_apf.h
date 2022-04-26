@@ -132,7 +132,8 @@
 
 #define MOD_SOM_APF_REPLY_MAX_LEN 128
 
-#define MOD_SOM_APF_DAQ_CMMD_LIMIT 65534 // April 19, 2022
+#define MOD_SOM_APF_DAQ_CMMD_LIMIT 65534 // mnbui - April 19, 2022
+// testing
 //------------------------------------------------------------------------------
 // TYPEDEFS
 //------------------------------------------------------------------------------
