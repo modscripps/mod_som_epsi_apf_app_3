@@ -247,13 +247,13 @@ mod_som_status_t mod_som_efe_init_f(){
 	//ALB TODO I want to simply initialize the CMDs and let the user or the default process initalizing the module
 
 #ifdef  RTOS_MODULE_COMMON_SHELL_AVAIL
-	status = mod_som_efe_init_shellcmd_f();
-	//ALB checking if the shell comds are initalized. return a error if shell cmd initialization failed.
-	if(status != MOD_SOM_STATUS_OK){
-	    //ALB change the printf to a report status function.
-	    printf("%s not initialized\n",MOD_SOM_EFE_HEADER);
-		return mod_som_efe_encode_status_f(MOD_SOM_EFE_STATUS_FAIL_INIT_CMD);
-	}
+//	status = mod_som_efe_init_shellcmd_f();
+//	//ALB checking if the shell comds are initalized. return a error if shell cmd initialization failed.
+//	if(status != MOD_SOM_STATUS_OK){
+//	    //ALB change the printf to a report status function.
+//	    printf("%s not initialized\n",MOD_SOM_EFE_HEADER);
+//		return mod_som_efe_encode_status_f(MOD_SOM_EFE_STATUS_FAIL_INIT_CMD);
+//	}
 #endif
 
 

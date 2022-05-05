@@ -324,14 +324,6 @@ uint32_t SDIO_S_SendCMDWithOutDAT(SDIO_TypeDef *sdio_t,
   // Sequence to Finalize Command
   // 1. Wait for Command Complete
   while (!(sdio_t->IFCR & _SDIO_IFCR_CMDCOM_MASK));
-//  while (!(sdio_t->IFCR & _SDIO_IFCR_CMDCOM_MASK) & (delay>=0) ){
-////        ALB add a timeout in case there is no scard
-//          delay--;
-//        if (delay==0){
-//            return LOCAL_STA_NODISK;//0x02 is STA_NODISK in diskio.h
-//          return 0;
-//        }
-//  };
   // 2. clear previous command complete int
   while ((sdio_t->IFCR & _SDIO_IFCR_CMDCOM_MASK))
   {
@@ -486,6 +478,7 @@ static void SDIO_S_LowLevelRegisterInit(SDIO_TypeDef *sdio_t,
    * Board specific register adjustment
    * Route soldered microSD card slot
    */
+  //ALB Make CD LOC since the SOM use LOC0 (F8) but for some reason it chokes when I do this
   sdio_t->ROUTELOC0 = 	SDIO_ROUTELOC0_DATLOC_LOC1 
 						| SDIO_ROUTELOC0_CDLOC_LOC3
 						//| SDIO_ROUTELOC0_WPLOC_LOC3
@@ -571,7 +564,10 @@ static void SDIO_S_LowLevelRegisterInit(SDIO_TypeDef *sdio_t,
                         | SDIO_IFENC_CMDCRCERREN
                         | SDIO_IFENC_CMDINDEXERREN
                         | SDIO_IFENC_DATTOUTERREN
-                        | SDIO_IFENC_DATCRCERREN;
+                        | SDIO_IFENC_DATCRCERREN
+                        | SDIO_IFENC_CARDINSEN
+                        | SDIO_IFENC_CARDRMEN
+                        | SDIO_IFENC_CARDINTEN;
 
   {
     // Calculate the divisor for SD clock frequency
@@ -580,10 +576,14 @@ static void SDIO_S_LowLevelRegisterInit(SDIO_TypeDef *sdio_t,
                         | (SDIO_CLOCKCTRL_INTCLKEN)
                         | (SDIO_CLOCKCTRL_SDCLKEN);
   }
-
-  sdio_t->HOSTCTRL1 =   (SDIO_HOSTCTRL1_SDBUSVOLTSEL_3P0V)
+//ALB I am changing to 3P3 becasue that is what we have
+  sdio_t->HOSTCTRL1 =   (SDIO_HOSTCTRL1_SDBUSVOLTSEL_3P3V)
                         | (SDIO_HOSTCTRL1_SDBUSPOWER)
                         | (SDIO_HOSTCTRL1_DATTRANWD_SD4);
+  //ALB
+  //ALB CDSIGDET should trigger the toggling of the register CDTSTLLVL
+//  SDIO->HOSTCTRL1|=(_SDIO_HOSTCTRL1_CDSIGDET_MASK & SDIO_HOSTCTRL1_CDSIGDET);
+
 }
 
 /**************************************************************************//**

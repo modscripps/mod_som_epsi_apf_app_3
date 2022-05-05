@@ -57,9 +57,9 @@ mod_som_status_t mod_som_voltage_init_f(){
     RTOS_ERR  err;
 
 #ifdef  RTOS_MODULE_COMMON_SHELL_AVAIL
-    status = mod_som_voltage_init_cmd_f();
-    if(status != MOD_SOM_STATUS_OK)
-        return mod_som_voltage_encode_status_f(MOD_SOM_VOLTAGE_STATUS_FAIL_INIT_CMD);
+//    status = mod_som_voltage_init_cmd_f();
+//    if(status != MOD_SOM_STATUS_OK)
+//        return mod_som_voltage_encode_status_f(MOD_SOM_VOLTAGE_STATUS_FAIL_INIT_CMD);
 #endif
 
 

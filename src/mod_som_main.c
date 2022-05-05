@@ -244,6 +244,7 @@ printf("epsi sleep\r\n");
  ******************************************************************************/
 mod_som_status_t mod_som_main_sleep_f()
 {
+  int delay =1000;
 
   if (mod_som_sleep_flag==false){
       printf("Making all modules are stopped \r\n");
@@ -261,6 +262,8 @@ mod_som_status_t mod_som_main_sleep_f()
       // turn dowm HFXO
       GPIO_PinModeSet(MOD_SOM_HFXO_EN_PORT, MOD_SOM_HFXO_EN_PIN, gpioModePushPull, 0);
     //
+      //ALB      DC/DC burst mode  PF10 low
+      GPIO_PinModeSet(gpioPortF, 10, gpioModePushPull, 0);
     //  CMU_ClockEnable(cmuClock_CORELE, true);
 
       //ALB I want to keep LEUART alive  (SBEcom) so I reconnect it
@@ -291,6 +294,8 @@ mod_som_status_t mod_som_main_sleep_f()
 mod_som_status_t mod_som_main_wake_up_f()
 {
 
+  int delay =1000;
+
   if (mod_som_sleep_flag==true){
       printf("Making all modules are stopped \r\n");
 
@@ -306,9 +311,15 @@ mod_som_status_t mod_som_main_wake_up_f()
       CMU_OscillatorEnable(cmuOsc_HFXO, true, false);
       CMU_OscillatorEnable(cmuOsc_HFRCO, false, false);
 
-      mod_som_sdio_init_f();
+      //ALB      DC/DC not burst mode  PF10 high
+      GPIO_PinModeSet(gpioPortF, 10, gpioModePushPull, 1);
+
+      sl_sleeptimer_delay_millisecond(delay);
+
 
       mod_som_sleep_flag=false;
+
+
 
 
   }

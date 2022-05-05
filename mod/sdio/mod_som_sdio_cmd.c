@@ -35,6 +35,8 @@ static SHELL_CMD  mod_som_sdio_cmd_tbl[] =
         { "sdio.getconfig", mod_som_sdio_get_config_cmd_f  },
         { "sdio.ls",        mod_som_sdio_ls_cmd_f          },
         { "sdio.rm",        mod_som_sdio_rm_cmd_f          },
+        { "sdio.enable",    mod_som_sdio_enable_cmd_f          },
+        { "sdio.disable",   mod_som_sdio_disable_cmd_f          },
         { 0, 0 }
 };
 
@@ -236,6 +238,26 @@ CPU_INT16S mod_som_sdio_rm_cmd_f(CPU_INT16U argc,
     return SHELL_EXEC_ERR_NONE;
 }
 
+CPU_INT16S mod_som_sdio_enable_cmd_f(CPU_INT16U argc,
+        CPU_CHAR *argv[],
+        SHELL_OUT_FNCT out_put_f,
+        SHELL_CMD_PARAM *cmd_param){
+    mod_som_status_t status=MOD_SOM_STATUS_OK;
 
+    status = mod_som_sdio_enable_hardware_f();
+
+    return status;
+}
+
+CPU_INT16S mod_som_sdio_disable_cmd_f(CPU_INT16U argc,
+        CPU_CHAR *argv[],
+        SHELL_OUT_FNCT out_put_f,
+        SHELL_CMD_PARAM *cmd_param){
+    mod_som_status_t status=MOD_SOM_STATUS_OK;
+
+    status = mod_som_sdio_disable_hardware_f();
+
+    return status;
+}
 
 

@@ -2415,7 +2415,7 @@ mod_som_apf_status_t mod_som_apf_daq_stop_f(){
   //ALB disable SDIO hardware
 
   status |=mod_som_sdio_stop_store_f();
-//  mod_som_sdio_disable_hardware_f();
+  mod_som_sdio_disable_hardware_f();
 
   //reset Daq flags
   mod_som_apf_ptr->daq=false;

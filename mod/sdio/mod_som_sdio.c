@@ -63,23 +63,17 @@ DWORD get_fattime(void)
 mod_som_status_t mod_som_sdio_init_f(){
     mod_som_status_t status;
     RTOS_ERR  err;
-    mod_som_sdio_ptr_t mod_som_sdio_struct_ptr=&mod_som_sdio_struct;
+//    mod_som_sdio_ptr_t mod_som_sdio_struct_ptr=&mod_som_sdio_struct;
 
     //ALB initialize the SDIO module commands
 #ifdef  RTOS_MODULE_COMMON_SHELL_AVAIL
-    if (mod_som_sdio_struct.initialized_flag){
+    if (!mod_som_sdio_struct.initialized_flag){
         status = mod_som_sdio_init_cmd_f();
         //ALB return error if cmd not initialized
         if(status != MOD_SOM_STATUS_OK)
             return mod_som_sdio_encode_status_f(MOD_SOM_SDIO_STATUS_FAIL_INIT_CMD);
     }
 #endif
-
-    for (int i=0;i<sizeof(mod_som_sdio_t);i++){
-        mod_som_sdio_struct_ptr=0;
-        mod_som_sdio_struct_ptr++;
-    }
-    mod_som_sdio_struct_ptr=&mod_som_sdio_struct;
 
 
     //ALB allocate memory for the module settings ptr.
@@ -122,8 +116,8 @@ mod_som_status_t mod_som_sdio_init_f(){
     //mount fatFS memory.
     // ALB the SDIO software does not have a disk_initialization working correctly.
     // ALB consequently we can mount a volume but not check if an physical SD is in the slot.
-    //ALB I am moving mount fatfs inside enable hardware
-//    mod_som_sdio_mount_fatfs_f();
+    // ALB I am moving mount fatfs inside enable hardware
+    // mod_som_sdio_mount_fatfs_f();
 
     //ALB initialize runtime param initialized flag
     mod_som_sdio_struct.initialized_flag = true;
@@ -131,7 +125,7 @@ mod_som_status_t mod_som_sdio_init_f(){
     //ALB start the SDIO task.
     mod_som_sdio_start_f();
 
-    //ALB enable hardware
+    //ALB disable hardware
     mod_som_sdio_disable_hardware_f();
 
     // return default mod som OK.
@@ -156,12 +150,15 @@ mod_som_status_t mod_som_sdio_enable_hardware_f(){
       mod_som_sdio_struct.enable_flag=true;
   CMU_ClockEnable(cmuClock_GPIO, true);
 
-    //TODO use bsp_som variables to initialize the SD card.
-    // Soldered sdCard slot
+
+  // Soldered sdCard slot
     GPIO_PinModeSet(gpioPortD, 6u, gpioModePushPull, 1); //SD_EN
     GPIO_PinOutSet(gpioPortD, 6u);
 
-    GPIO_PinModeSet(gpioPortB, 10, gpioModeInput, 1);             // SDIO_CD
+    sl_sleeptimer_delay_millisecond(delay);
+
+//ALB TODO Make CD works
+    GPIO_PinModeSet(gpioPortB, 10, gpioModeInput, 1);              // SDIO_CD
     GPIO_PinModeSet(gpioPortE, 15, gpioModePushPullAlternate, 0); // SDIO_CMD
     GPIO_PinModeSet(gpioPortE, 14, gpioModePushPullAlternate, 1); // SDIO_CLK
     GPIO_PinModeSet(gpioPortA, 0, gpioModePushPullAlternate, 1);  // SDIO_DAT0
@@ -173,6 +170,9 @@ mod_som_status_t mod_som_sdio_enable_hardware_f(){
 
 
     mod_som_sdio_mount_fatfs_f();
+//    //ALB CDSIGDET should trigger the toggling of the register CDTSTLLVL
+//    SDIO->HOSTCTRL1|=(_SDIO_HOSTCTRL1_CDSIGDET_MASK & SDIO_HOSTCTRL1_CDSIGDET);
+
 
   }
 
@@ -202,11 +202,16 @@ mod_som_status_t status=0;
       if(mod_som_sdio_struct.data_file_ptr->is_open_flag==1){
           mod_som_sdio_close_file_f(mod_som_sdio_struct.data_file_ptr);
       }
-      //ALB unmount fatfs
+//      //ALB unmount fatfs
+//      f_mount(0, NULL);
+
       res=f_mount(NULL,(TCHAR *) "" ,1);
+      SDIO->CLOCKCTRL|=(_SDIO_CLOCKCTRL_SFTRSTA_MASK & SDIO_CLOCKCTRL_SFTRSTA);
+
       if (res!=FR_OK){
         status=1;
       }
+      sl_sleeptimer_delay_millisecond(delay);
 
     //TODO use bsp_som variables to initialize the SD card.
     // Soldered sdCard slot
@@ -222,6 +227,8 @@ mod_som_status_t status=0;
     sl_sleeptimer_delay_millisecond(delay);
     GPIO_PinModeSet(gpioPortD, 6u, gpioModePushPull, 0); //SD_EN
 
+  }else{
+      status=1;
   }
     // return default mod som OK.
     // TODO handle error from the previous calls.
@@ -242,6 +249,12 @@ mod_som_status_t mod_som_sdio_mount_fatfs_f(){
 
     //mount volume
     FRESULT res;
+    if(mod_som_sdio_struct.initialized_flag){
+        uint8_t * local_fat_fs_ptr= (uint8_t *) &mod_som_sdio_struct.fat_fs;
+        for (int i=1;i<sizeof(FATFS);i++){
+            local_fat_fs_ptr[i]=0;
+        }
+    }
     res=f_mount(&mod_som_sdio_struct.fat_fs,(TCHAR *) "" ,0);
 
     //    res = f_mount(VOLUME_ADDRESS, &Fatfs);
@@ -819,7 +832,10 @@ mod_som_status_t mod_som_sdio_read_file_f(mod_som_sdio_file_ptr_t mod_som_sdio_f
         		} else{
         			mod_som_io_print_f("\nRead Failure: %d\n", res);
         		}
-        		done_reading=f_eof(mod_som_sdio_file_ptr->fp);
+            //ALB feed the WDOG coz sending long files tiggers the WDOG.
+            WDOG_Feed();
+            //ALB check If I am at the end of the file. if yes done_reading=1
+            done_reading=f_eof(mod_som_sdio_file_ptr->fp);
         	}
         } else
         {
