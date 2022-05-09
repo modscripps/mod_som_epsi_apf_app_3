@@ -67,8 +67,6 @@ mod_som_status_t mod_som_shell_start_f(){
         return mod_som_shell_encode_status_f(MOD_SOM_SHELL_STATUS_ERR_NOT_INIT);
     RTOS_ERR err;
 
-    mod_som_shell_stop_f();
-
     OSTaskCreate(&mod_som_shell_task_tcb, // Create the Start Task
                 "MOD SOM Shell Task",
                 mod_som_shell_task_f,

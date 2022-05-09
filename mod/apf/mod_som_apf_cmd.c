@@ -17,7 +17,7 @@
 #include "mod_som_io.h"
 #include  <common/source/shell/shell_priv.h>
 
-
+#include <ctype.h>
 //ALB
 
 //------------------------------------------------------------------------------

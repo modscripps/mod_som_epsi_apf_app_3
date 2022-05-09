@@ -220,12 +220,14 @@ mod_som_status_t mod_som_main_init_f(void){
 
 #endif
 
-//    RETARGET_SerialInit();
-//    RETARGET_SerialCrLf(0);
-//    RETARGET_SerialFlush();
+    RETARGET_SerialInit();
+    RETARGET_SerialCrLf(0);
+    RETARGET_SerialFlush();
 
     OSInit(&err); // Initialize the Kernel
 
+// mai bui - try to turn on the main shell - May 4, 2022
+//    mod_som_main_com_on_f();
 
     // Check error code
     APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
@@ -399,9 +401,10 @@ mod_som_status_t mod_som_main_task_init_f(void){
 
     //start IO and shell here
     // create and start the streaming consumer (i.e IO task)
-//    mod_som_io_start_f();
+    mod_som_io_start_f();
 #ifdef  RTOS_MODULE_COMMON_SHELL_AVAIL
-//    mod_som_shell_start_f();
+    //ALB I am not startig the main shell task
+    mod_som_shell_start_f();
     //ALB add MOD default shell commands.
     //mod_som_init_shellcmd_f(); //MHA uncomment this line to enable default shell commandsso
 #endif

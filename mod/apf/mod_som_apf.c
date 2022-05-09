@@ -25,6 +25,7 @@
   #include <mod_som_settings.h>
 #endif
 
+#define SOM_APF_NOT_DEBUG_MODE 0  // use this flag to turn on main command for debugging: 0: turn off,1: debug -- mai bui 5 May, 2022
 
 #include <efe_obp/mod_som_efe_obp.h>
 
@@ -35,6 +36,7 @@ mod_som_calendar_settings_t mod_som_calendar_settings;
 //ALB add crc16bit functions to compute the crc checksum
 #include <crc16bit.h>
 
+#include <ctype.h> // for isalpha
 mod_som_apf_ptr_t mod_som_apf_ptr;
 
 // producer task
@@ -184,6 +186,11 @@ mod_som_apf_status_t mod_som_apf_init_f(){
     }
 
 
+    //ALB turn off min com
+    //MB add "Debugg" flag
+#if SOM_APF_NOT_DEBUG_MODE
+    mod_som_main_com_off_f();
+#endif
 
     //ALB initialize mod_som_apf_ptr params
     mod_som_apf_ptr->sleep_flag=0;
@@ -2738,6 +2745,21 @@ if (status!=0 || bytes_sent==0)
 	return mod_som_apf_encode_status_f(MOD_SOM_APF_STATUS_OK);
 }
 
+
+int isNumber(char *input_str);
+
+int isNumber(char *input_str)
+{
+    int i = 0;
+    i = strlen(input_str);
+    while (i--)
+      {
+        if(input_str[i]>47 && input_str[i]<58)
+          continue;
+        return 0;
+      }
+    return 1;
+}
 /*******************************************************************************
  * @brief
  *   command shell for ProbeNo command
@@ -2754,6 +2776,16 @@ if (status!=0 || bytes_sent==0)
  *   The sensor should respond with: "probe no,ack,type1,serno1,coef1,type2,serno2,coef2\r\n"
  *   If the sensor detects an exception that prevents it from storing these parameters,
  *   the sensor should respond with: "probe no,nak,error-description\r\n".
+ *   probe_no command must:
+      // Type1 is 's'
+      // the SerNo1 & SerNo2 have 3 digits and
+      // the Coef1 & Coef2 have 2 digits and
+      // Coef1 & Coef2 not 0
+      // "probe_id,Type1,SerNo1,Coef1,Type2,SerNo2,Coef2\r"
+      // example command: "probe_id,s,123,12,f,123,12"
+      // sensor 1: "s", length(123) = 3, length(12) = 2
+      // if Type1 is 's', length of SerNo1 is 3, length of Coef1 is 2, Coef1 is positive => good command => save it
+ *
  ******************************************************************************/
 mod_som_apf_status_t mod_som_apf_probe_id_f(CPU_INT16U argc,
                                             CPU_CHAR *argv[]){
@@ -2763,19 +2795,28 @@ mod_som_apf_status_t mod_som_apf_probe_id_f(CPU_INT16U argc,
   uint32_t cal2 = 0;
   char *endptr1;
   char *endptr2;
-  bool argument_flag1 = false;
-  bool argument_flag2 = false;
+//  bool argument_flag1 = false;
+//  bool argument_flag2 = false;
   uint8_t channel_id  = 0;
+  uint8_t length_argument2 = 0;
   uint8_t length_argument3 = 0;
-  uint8_t length_argument4 = 0;
+  uint8_t length_argument5 = 0;
   uint8_t length_argument6 = 0;
-  uint8_t length_argument7 = 0;
+
+  char arg2[16] = "\0";
+  char arg3[16] = "\0";
+  char arg5[16] = "\0";
+  char arg6[16] = "\0";
+
+  // probe_no command guide
+  char probe_no_valid_cmmd[] = "\"probe_id,Type1,SerNo1,Coef1,Type2,SerNo2,Coef2\"(Type1 = 's',Type2 = 'f',SerNo1 and SerNo2: 3 digits positive number,Coef1 and Coef2: 2 digits positive number)\n";
 
   // for send_string to the port
   uint32_t bytes_sent = 0;
-  char apf_reply_str[MOD_SOM_SHELL_INPUT_BUF_SIZE]="\0";
+  char apf_reply_str[MOD_SOM_SHELL_INPUT_BUF_SIZE] = "\0";
   size_t reply_str_len = 0;
   LEUART_TypeDef* apf_leuart_ptr;
+
   // get the port's fd
   apf_leuart_ptr = (LEUART_TypeDef *)mod_som_apf_ptr->com_prf_ptr->handle_port;
 
@@ -2783,90 +2824,175 @@ mod_som_apf_status_t mod_som_apf_probe_id_f(CPU_INT16U argc,
   mod_som_efe_settings_ptr_t local_efe_settings_ptr =
       mod_som_efe_get_settings_ptr_f();
 
-
   switch (argc)
   {
-     case 7: // the right number args of the command "Probe No,Type1,SerNo1,Coef1,Type2,SerNo2,Coef2\r"
-      // get value of all parameter of the probe
-      cal1 = strtol(argv[3], &endptr1, 10);  // Coef1
-      cal2 = strtol(argv[6], &endptr2, 10);  // Coef2
+     case 7: // the right number args of the command "probe_id,Type1,SerNo1,Coef1,Type2,SerNo2,Coef2\r"
 
+       // bad type1
+       if(strcmp(argv[1],"s"))
+       {
+           sprintf(apf_reply_str,"probe_no,nak,your input invalid Type1 = %s, valid command: %s\r\n",argv[1],probe_no_valid_cmmd);
+           status |= MOD_SOM_APF_STATUS_WRONG_ARG;
+           break;
+       }
+       // bad type2
+       if(strcmp(argv[4],"f"))
+       {
+           sprintf(apf_reply_str,"probe_no,nak,your input invalid Type2 = %s, valid command: %s\r\n",argv[4],probe_no_valid_cmmd);
+           status |= MOD_SOM_APF_STATUS_WRONG_ARG;
+           break;
+       }
+       // get the length of the rest of arguments - mai bui May 3rd, 2022
+       length_argument2 = strlen(argv[2]); //SerNo1
+       length_argument3 = strlen(argv[3]); //Coef1
+       length_argument5 = strlen(argv[5]); //SerNo2
+       length_argument6 = strlen(argv[6]); //Coef2
 
-      length_argument3 = strlen(argv[2]); //SerNo1
-      length_argument4 = strlen(argv[3]); //Coef1
-      length_argument6 = strlen(argv[5]); //SerNo2
-      length_argument7 = strlen(argv[6]); //Coef2
+       // save into the temporary variables
+       strcpy(arg2,argv[2]);
+       strcpy(arg3,argv[3]);
+       strcpy(arg5,argv[5]);
+       strcpy(arg6,argv[6]);
 
-      if (cal1<0 || cal2<=0)
-        {
-          status = MOD_SOM_APF_STATUS_WRONG_ARG;
+        // bad Serial1 number - arg2
+       if (arg2[0]=='-') // negative
+       {
+           sprintf(apf_reply_str,"probe_no,nak,input SerialNo1: \"%s\" is NEGATIVE number.Valid command: %s\r\n",arg2,probe_no_valid_cmmd);
+           status |= MOD_SOM_APF_STATUS_WRONG_ARG;
+           break;
+       }
+       if (length_argument2!=3) // NOT 3 digits
+       {
+           sprintf(apf_reply_str,"probe_no,nak,input SerialNo1: \"%s\" is NOT 3 digits number.Valid command: %s\r\n",arg2,probe_no_valid_cmmd);
+           status |= MOD_SOM_APF_STATUS_WRONG_ARG;
+           break;
+       }
+       if (isNumber(arg2)==0)  // NOT a number
+       {
+           sprintf(apf_reply_str,"probe_no,nak,input SerialNo1: \"%s\" is NOT a number.Valid command: %s\r\n",arg2,probe_no_valid_cmmd);
+           status |= MOD_SOM_APF_STATUS_WRONG_ARG;
+           break;
+       }
+
+       // bad Coef1 number - arg3
+       if (arg3[0]=='-')  // NEGATIVE
+       {
+           sprintf(apf_reply_str,"probe_no,nak,input Coef1: \"%s\" is NEGATIVE number.Valid command: %s\r\n",arg3,probe_no_valid_cmmd);
+           status |= MOD_SOM_APF_STATUS_WRONG_ARG;
+           break;
+       }
+       if (length_argument3!=2) // NOT 2 digits
+       {
+           sprintf(apf_reply_str,"probe_no,nak,input Coef1 \"%s\" is NOT 2 digits.Valid command: %s\r\n",arg3,probe_no_valid_cmmd);
+           status |= MOD_SOM_APF_STATUS_WRONG_ARG;
+           break;
+       }
+       if (isNumber(arg3)==0)  // NOT a number
+       {
+           sprintf(apf_reply_str,"probe_no,nak,input Coef1 \"%s\" is NOT a number.Valid command: %s\r\n",arg3,probe_no_valid_cmmd);
+           status |= MOD_SOM_APF_STATUS_WRONG_ARG;
+           break;
+       }
+
+       // bad Serial2 number - arg5
+       if (arg5[0]=='-') // negative
+       {
+           sprintf(apf_reply_str,"probe_no,nak,input SerialNo2 \"%s\" is NEGATIVE number, valid command: %s\r\n",arg5,probe_no_valid_cmmd);
+           status |= MOD_SOM_APF_STATUS_WRONG_ARG;
+           break;
+       }
+       if (length_argument5!=3) //  NOT 3 digits
+       {
+           sprintf(apf_reply_str,"probe_no,nak,input SerialNo2 \"%s\" is NOT 3 digits nunber.Valid command: %s\r\n",arg5,probe_no_valid_cmmd);
+           status |= MOD_SOM_APF_STATUS_WRONG_ARG;
+           break;
+       }
+       if (isNumber(arg5)==0) // NOT a number
+       {
+           sprintf(apf_reply_str,"probe_no,nak,input SerialNo2 \"%s\" is NOT a number.Valid command: %s\r\n",arg5,probe_no_valid_cmmd);
+           status |= MOD_SOM_APF_STATUS_WRONG_ARG;
+           break;
+       }
+
+       // bad cases of Coef2 number -- arg6
+      if (arg6[0]=='-')
+      {
+          // save to the local string for sending out - Mai- May 3, 2022
+          sprintf(apf_reply_str,"probe_no,nak,input Coef2 \"%s\" is NEGATIVE. Valid command: %s\r\n",arg6,probe_no_valid_cmmd);
+          status |= MOD_SOM_APF_STATUS_WRONG_ARG;
           break;
-        }
+      }
+       if (length_argument6!=2) // NOT 2 digits
+       {
+           sprintf(apf_reply_str,"probe_no,nak,input Coef2 \"%s\" is NOT 2 digits number.Valid command: %s\r\n",arg6,probe_no_valid_cmmd);
+           status |= MOD_SOM_APF_STATUS_WRONG_ARG;
+           break;
+       }
+       if (isNumber(arg6)==0)  // NOT a number
+       {
+           sprintf(apf_reply_str,"probe_no,nak,input Coef2 \"%s\" is NOT a number. Valid command: %s\r\n",arg6,probe_no_valid_cmmd);
+           status |= MOD_SOM_APF_STATUS_WRONG_ARG;
+           break;
+       }
+      // get value of all parameter of the probe
+     cal1 = strtol(argv[3], &endptr1, 10);  // Coef1
+     cal2 = strtol(argv[6], &endptr2, 10);  // Coef2
 
-      // make sure the serno has 3 digits and coef has 2 digits and cal not 0
-      // if command: "probeno,s,123,12,f,123,12"
-      // sensor 1: "s", length(123) = 3, length(12) = 2
-      if(!strcmp(argv[1],"s") && (length_argument3==3) && (length_argument4==2) && (cal1>0)){
-          channel_id = 1;
-
-
+      // this point, the input command is valid command
+     channel_id = 1;  // save 'f' set in channel 1
 
           memcpy(&local_efe_settings_ptr->sensors[channel_id].sn,argv[2],3);
           local_efe_settings_ptr->sensors[channel_id].cal = cal1;
-          argument_flag1 = true;
-      }
-      // sensor 2: "f", length(123) = 3, length(12) = 2
-      if(!strcmp(argv[4],"f") && (length_argument6==3) && (length_argument7==2) && (cal2>0))
-      {
-          channel_id = 0;
-          memcpy(&local_efe_settings_ptr->sensors[channel_id].sn,
-                  argv[5],3);
-           local_efe_settings_ptr->sensors[channel_id].cal = cal2;
-           argument_flag2 = true;
-      }
 
-      // 2 sensors' arguments are valid
-      if (argument_flag1 && argument_flag2)
-      {
+          channel_id = 0; // save 's' set in channel 0 - Maibui 5 May, 2022
+
+          memcpy(&local_efe_settings_ptr->sensors[channel_id].sn,argv[5],3);
+          local_efe_settings_ptr->sensors[channel_id].cal = cal2;
+          // save all parameters' value
           status|= mod_som_settings_save_settings_f();
+
+          // send 'ack' to screen
+
+
+
+
           status|= mod_som_io_print_f("probe_no,ack,s,%s,%lu,f,%s,%lu\r\n",
                                       local_efe_settings_ptr->sensors[1].sn,
                                       (uint32_t)local_efe_settings_ptr->sensors[1].cal,
                                       local_efe_settings_ptr->sensors[0].sn,
                                       (uint32_t)local_efe_settings_ptr->sensors[0].cal);
+
           sprintf(apf_reply_str,"probe_no,ack,s,%s,%lu,f,%s,%lu\r\n",
                   local_efe_settings_ptr->sensors[1].sn,
                   (uint32_t)local_efe_settings_ptr->sensors[1].cal,
                   local_efe_settings_ptr->sensors[0].sn,
                   (uint32_t)local_efe_settings_ptr->sensors[0].cal);
           reply_str_len = strlen(apf_reply_str);
-         // sending the above string to the APF port - Mai - Nov 18, 2021
-          bytes_sent = mod_som_apf_send_line_f(apf_leuart_ptr,apf_reply_str, reply_str_len);
-          if(bytes_sent==0){
-              //TODO handle the error
-          }
-     } // end of  if (argument_flag1 && argument_flag2)
-     else // if any input argument is not valid
-     {
-          status|=MOD_SOM_APF_STATUS_WRONG_ARG;
-     }
 
-      break;
+          // sending the above string to the APF port - Mai - Nov 18, 2021
+          bytes_sent = mod_som_apf_send_line_f(apf_leuart_ptr,apf_reply_str, reply_str_len);
+
+          if(bytes_sent==0){
+              sprintf(apf_reply_str,"probe_no,nak,%lu, failed to send to the APF port\r\n",status);
+              status |= MOD_SOM_APF_STATUS_WRONG_ARG;
+              break;
+          }
+ //    } // end of  if (argument_flag1 && argument_flag2)
+      break;  // argc == 7
     default:  // argc != 7
+      // save to the local string for sending out - Mai- May 3, 2022
+      sprintf(apf_reply_str,"probe_no,nak,not enough arguments,should be: %s\r\n",probe_no_valid_cmmd);
       status|=MOD_SOM_APF_STATUS_WRONG_ARG;
+      break;
   } // end of switch (args)
 
-  if(status!=0) // print out "ProbeNo,nak,status\r\n" and the right command format should input
-  {
-      mod_som_io_print_f("probe_no,nak,%lu\r\n",status);
-      // save to the local string for sending out - Mai-Nov 18, 2021
-      sprintf(apf_reply_str,"probe_no,nak,%lu\r\n",status);
-      reply_str_len = strlen(apf_reply_str);
-      // sending the above string to the APF port - Mai - Nov 18, 2021
-      bytes_sent = mod_som_apf_send_line_f(apf_leuart_ptr,apf_reply_str, reply_str_len);
+  // sending to the screen - Mai- May 3, 2022
+  mod_som_io_print_f("%s",apf_reply_str);
+  reply_str_len = strlen(apf_reply_str);
+  // sending the above string to the APF port - Mai - Nov 18, 2021
+  bytes_sent = mod_som_apf_send_line_f(apf_leuart_ptr,apf_reply_str, reply_str_len);
 
-  }
-	return mod_som_apf_encode_status_f(MOD_SOM_APF_STATUS_OK);
+  return mod_som_apf_encode_status_f(MOD_SOM_APF_STATUS_OK);
 }
 
 /*******************************************************************************
@@ -3488,6 +3614,7 @@ mod_som_apf_status_t mod_som_apf_sd_format_f(CPU_INT16U argc,
 //  CPU_CHAR   *argv_efe_obp_avgspec_format[2]={"efeobp.format" ,"2"}; //spectra
 //  CPU_CHAR   *argv_efe_obp_none_format[2]={"efeobp.format" ,"3"}; //only dissrates
 
+  char second_arg[16] = "\0";
   uint32_t bytes_sent = 0;
   // for send_string to the port
   char apf_reply_str[MOD_SOM_SHELL_INPUT_BUF_SIZE]="\0";
@@ -3501,7 +3628,8 @@ mod_som_apf_status_t mod_som_apf_sd_format_f(CPU_INT16U argc,
     switch (argc){
     case 2: // 2 args:      "sd_format,arg2"
       // if sd's format is not interger => break
-      if (isalpha(argv[1]))
+      strcpy(second_arg,argv[1]);
+      if (isalpha(second_arg[0]))
       {
           status = MOD_SOM_APF_STATUS_WRONG_ARG;
           // send status and 'nak' message to the some board
