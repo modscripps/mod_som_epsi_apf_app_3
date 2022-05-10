@@ -3227,6 +3227,22 @@ mod_som_apf_status_t mod_som_apf_gate_f(CPU_INT16U argc,
 
 /*******************************************************************************
  * @brief
+ *   command shell for sleep command
+ *   put SOM to sleep
+ *   should return an apf status.
+ *   This command puts the Epsilometer back to sleep.
+ *   If the sensor happened to be in DAQ mode when it was awakened,
+ *   the sleep command has the e ect of resuming the DAQ period
+ *   already in progress.
+ *   If the sensor was not in DAQ mode, then the sleep command has the
+ *   effect of inducing the Epsilometer into its low-power sleep state.
+ *   The sensor should respond with sleep,ack\r\n.
+ *
+ * @return
+ *   MOD_SOM_APF_STATUS_OK if function execute nicely
+ ******************************************************************************/
+/*******************************************************************************
+ * @brief
  *   command shell for time command
  *   set UnixEpoch time on SOM
  *   should return an apf status.

@@ -113,6 +113,7 @@
 #define MOD_SOM_APF_STATUS_DAQ_ALREADY_STARTED                  0x13U
 #define MOD_SOM_APF_STATUS_ARG_TOO_HIGH                         0x14U
 #define MOD_SOM_APF_STATUS_BUFFER_OVFLW                         0x15U
+#define MOD_SOM_APF_STATUS_NO_CTD_DATA                         0x16U
 
 
 #define MOD_SOM_APF_UPLOAD_DELAY                  500      // 500 ms delay upon reception of the upload cmd
