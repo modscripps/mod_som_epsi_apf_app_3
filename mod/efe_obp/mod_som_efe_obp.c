@@ -189,11 +189,11 @@ mod_som_status_t mod_som_efe_obp_init_f(){
     // ALB Allocate memory for the consumer_ptr,
     // ALB contains the consumer stream data_ptr and stream_data length.
     // ALB This pointer is also used to store the data on the SD card
-      status |= mod_som_efe_obp_construct_consumer_ptr_f();
-    if (status!=MOD_SOM_STATUS_OK){
-      printf("EFE OBP not initialized\n");
-      return status;
-    }
+//      status |= mod_som_efe_obp_construct_consumer_ptr_f();
+//    if (status!=MOD_SOM_STATUS_OK){
+//      printf("EFE OBP not initialized\n");
+//      return status;
+//    }
 
     mod_som_epsiobp_init_f(mod_som_efe_obp_ptr->config_ptr,
                            mod_som_efe_obp_ptr->settings_ptr,
@@ -1120,10 +1120,25 @@ void mod_som_efe_obp_fill_segment_task_f(void  *p_arg){
   float local_fill_segment_ctd_pressure=0;
   float local_fill_segment_ctd_salinity=0;
   float local_fill_segment_ctd_dpdt=0;
+  float local_fill_segment_ctd_direction=none;
 
   //local_sbe41_ptr
   //ALB get runtime sbe41 for futur use.
   local_sbe41_ptr=mod_som_sbe41_get_runtime_ptr_f();
+
+  local_fill_segment_ctd_pressure =
+      local_sbe41_ptr->consumer_ptr->record_pressure[1];
+
+  local_fill_segment_ctd_temperature =
+      local_sbe41_ptr->consumer_ptr->record_temp[1];
+
+  local_fill_segment_ctd_salinity =
+      local_sbe41_ptr->consumer_ptr->record_salinity[1];
+
+  local_fill_segment_ctd_dpdt=
+      local_sbe41_ptr->consumer_ptr->dPdt;
+
+  local_fill_segment_ctd_direction=local_sbe41_ptr->consumer_ptr->direction;
 
   while (DEF_ON) {
 
@@ -1148,7 +1163,8 @@ void mod_som_efe_obp_fill_segment_task_f(void  *p_arg){
               mod_som_efe_obp_ptr->cpt_dissrate_ptr->dissrates_cnt   = 0;
           }
           // LOOP without delay until caught up to latest produced element
-          while (elmnts_avail > 0)
+          local_fill_segment_ctd_direction=local_sbe41_ptr->consumer_ptr->direction;
+          while ((elmnts_avail > 0) & (local_fill_segment_ctd_direction==up))
             {
               // When have circular buffer overflow: have produced data bigger than consumer data: 1 circular buffer (n_elmnts)
               // calculate new consumer count to skip ahead to the tail of the circular buffer (with optional padding),
@@ -1266,6 +1282,10 @@ void mod_som_efe_obp_fill_segment_task_f(void  *p_arg){
 
                       local_fill_segment_ctd_dpdt=
                           local_sbe41_ptr->consumer_ptr->dPdt;
+
+                      local_fill_segment_ctd_direction=
+                          local_sbe41_ptr->consumer_ptr->direction;
+
 
                       mod_som_efe_obp_ptr->fill_segment_ptr->ctd_element_cnt++;
                   }else{

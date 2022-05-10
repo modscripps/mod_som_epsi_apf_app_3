@@ -35,7 +35,7 @@ static SHELL_CMD  mod_som_apf_cmd_tbl[] =
         { "gate",         mod_som_apf_cmd_gate_f }, // turn on/off the main menu
         { "fwrev?",       mod_som_apf_cmd_fwrev_status_f },
         { "upload",       mod_som_apf_cmd_upload_f },
-        { "epsi_no?",      mod_som_apf_cmd_epsi_id_status_f },
+        { "epsi_no?",     mod_som_apf_cmd_epsi_id_status_f },
         { "probe_no",     mod_som_apf_cmd_probe_id_f },
         { "probe_no?",    mod_som_apf_cmd_probe_id_status_f },
         { "poweroff",     mod_som_apf_cmd_poweroff_f },

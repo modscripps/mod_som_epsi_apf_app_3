@@ -57,9 +57,9 @@ mod_som_status_t mod_som_voltage_init_f(){
     RTOS_ERR  err;
 
 #ifdef  RTOS_MODULE_COMMON_SHELL_AVAIL
-//    status = mod_som_voltage_init_cmd_f();
-//    if(status != MOD_SOM_STATUS_OK)
-//        return mod_som_voltage_encode_status_f(MOD_SOM_VOLTAGE_STATUS_FAIL_INIT_CMD);
+    status = mod_som_voltage_init_cmd_f();
+    if(status != MOD_SOM_STATUS_OK)
+        return mod_som_voltage_encode_status_f(MOD_SOM_VOLTAGE_STATUS_FAIL_INIT_CMD);
 #endif
 
 
@@ -206,6 +206,16 @@ mod_som_status_t mod_som_voltage_default_settings_f(mod_som_voltage_settings_ptr
  ******************************************************************************/
 mod_som_voltage_settings_t mod_som_voltage_get_settings_f(){
   return *mod_som_voltage_ptr->settings_ptr;
+}
+/*******************************************************************************
+ * @brief
+ *   get the voltage runtime ptr
+ *
+ * @param config_ptr
+ *   configuration pointer
+ ******************************************************************************/
+mod_som_voltage_ptr_t mod_som_voltage_get_runtime_ptr_f(){
+  return mod_som_voltage_ptr;
 }
 
 
@@ -412,7 +422,7 @@ mod_som_status_t mod_som_voltage_scan_f(void){
  *   or otherwise
  ******************************************************************************/
 
-static void mod_som_voltage_scan_task_f(void  *p_arg){
+void mod_som_voltage_scan_task_f(void  *p_arg){
 
   RTOS_ERR err;
 

@@ -101,6 +101,7 @@ mod_som_status_t mod_som_sdio_init_f(){
     mod_som_sdio_struct.new_file_flag=false;
     mod_som_sdio_struct.listoverflow_flag=false;
     mod_som_sdio_struct.enable_flag=false;
+    mod_som_sdio_struct.fatfs_mounted=false;
 
     //ALB What is that?
     if(mod_som_sdio_struct.max_size_of_complete_data_block == 0)
@@ -111,8 +112,8 @@ mod_som_status_t mod_som_sdio_init_f(){
     mod_som_sdio_default_settings_f();
     //allocate memory
     mod_som_sdio_allocate_memory_f();
-    //ALB enable hardware
-    mod_som_sdio_enable_hardware_f();
+//    //ALB enable hardware
+//    mod_som_sdio_enable_hardware_f();
     //mount fatFS memory.
     // ALB the SDIO software does not have a disk_initialization working correctly.
     // ALB consequently we can mount a volume but not check if an physical SD is in the slot.
@@ -122,11 +123,11 @@ mod_som_status_t mod_som_sdio_init_f(){
     //ALB initialize runtime param initialized flag
     mod_som_sdio_struct.initialized_flag = true;
 
-    //ALB start the SDIO task.
-    mod_som_sdio_start_f();
+//    //ALB start the SDIO task.
+//    mod_som_sdio_start_f();
 
-    //ALB disable hardware
-    mod_som_sdio_disable_hardware_f();
+//    //ALB disable hardware
+//    mod_som_sdio_disable_hardware_f();
 
     // return default mod som OK.
     //TODO handle error from the previous calls.
@@ -144,7 +145,7 @@ mod_som_status_t mod_som_sdio_init_f(){
 
 mod_som_status_t mod_som_sdio_enable_hardware_f(){
 //  int delay=833333; //ALB 60s at 50e6 Hz
-  int delay=1000; //ALB 1sec
+  int delay=500; //ALB .1sec
 
   if(!mod_som_sdio_struct.enable_flag){
       mod_som_sdio_struct.enable_flag=true;
@@ -169,9 +170,18 @@ mod_som_status_t mod_som_sdio_enable_hardware_f(){
     sl_sleeptimer_delay_millisecond(delay);
 
 
-    mod_som_sdio_mount_fatfs_f();
-//    //ALB CDSIGDET should trigger the toggling of the register CDTSTLLVL
+    sl_sleeptimer_delay_millisecond(delay);
+    if (!mod_som_sdio_struct.fatfs_mounted){
+        mod_som_sdio_mount_fatfs_f();
+        mod_som_sdio_struct.fatfs_mounted=true;
+       //
+    }
+    mod_som_sdio_start_f();
+      //ALB CDSIGDET should trigger the toggling of the register CDTSTLLVL
 //    SDIO->HOSTCTRL1|=(_SDIO_HOSTCTRL1_CDSIGDET_MASK & SDIO_HOSTCTRL1_CDSIGDET);
+
+    //    //ALB start the SDIO task.
+//        mod_som_sdio_start_f();
 
 
   }
@@ -191,7 +201,7 @@ mod_som_status_t mod_som_sdio_enable_hardware_f(){
  ******************************************************************************/
 
 mod_som_status_t mod_som_sdio_disable_hardware_f(){
-int delay=1000; //ALB 60s at 50e6 Hz
+int delay=500; //ALB .1 sec
 FRESULT res;
 mod_som_status_t status=0;
 
@@ -203,10 +213,10 @@ mod_som_status_t status=0;
           mod_som_sdio_close_file_f(mod_som_sdio_struct.data_file_ptr);
       }
 //      //ALB unmount fatfs
-//      f_mount(0, NULL);
-
-      res=f_mount(NULL,(TCHAR *) "" ,1);
-      SDIO->CLOCKCTRL|=(_SDIO_CLOCKCTRL_SFTRSTA_MASK & SDIO_CLOCKCTRL_SFTRSTA);
+      if (mod_som_sdio_struct.fatfs_mounted){
+          res=f_mount(NULL,(TCHAR *) "" ,1);
+          mod_som_sdio_struct.fatfs_mounted=false;
+      }
 
       if (res!=FR_OK){
         status=1;
@@ -226,6 +236,10 @@ mod_som_status_t status=0;
 
     sl_sleeptimer_delay_millisecond(delay);
     GPIO_PinModeSet(gpioPortD, 6u, gpioModePushPull, 0); //SD_EN
+
+    //ALB Software reset of SDIO
+    SDIO->CLOCKCTRL|=(_SDIO_CLOCKCTRL_SFTRSTA_MASK & SDIO_CLOCKCTRL_SFTRSTA);
+    mod_som_sdio_stop_f();
 
   }else{
       status=1;
@@ -249,12 +263,12 @@ mod_som_status_t mod_som_sdio_mount_fatfs_f(){
 
     //mount volume
     FRESULT res;
-    if(mod_som_sdio_struct.initialized_flag){
-        uint8_t * local_fat_fs_ptr= (uint8_t *) &mod_som_sdio_struct.fat_fs;
-        for (int i=1;i<sizeof(FATFS);i++){
-            local_fat_fs_ptr[i]=0;
-        }
-    }
+//    if(mod_som_sdio_struct.initialized_flag){
+//        uint8_t * local_fat_fs_ptr= (uint8_t *) &mod_som_sdio_struct.fat_fs;
+//        for (int i=1;i<sizeof(FATFS);i++){
+//            local_fat_fs_ptr[i]=0;
+//        }
+//    }
     res=f_mount(&mod_som_sdio_struct.fat_fs,(TCHAR *) "" ,0);
 
     //    res = f_mount(VOLUME_ADDRESS, &Fatfs);
@@ -462,10 +476,13 @@ mod_som_status_t mod_som_sdio_define_filename_f(CPU_CHAR* filename){
   mod_som_settings_struct_ptr_t local_settings_ptr=
                                           mod_som_settings_get_settings_f();
 
+  printf("sdiototo1\r\n");
+
 	status_data=mod_som_sdio_write_config_f((uint8_t *) local_settings_ptr,\
 	                                        local_settings_ptr->size,
 												   mod_som_sdio_struct.data_file_ptr);
 
+	printf("sdiototo4\r\n");
 
 
 	//ALB sync the file to actually write on the SD card
@@ -652,6 +669,8 @@ mod_som_status_t mod_som_sdio_write_config_f(uint8_t *data_ptr,
 		}
 		tchar_filename[idx] = '\0';
 
+		printf("sdiototo2\r\n");
+
 		res = f_open(file_ptr->fp, \
 				tchar_filename,\
 				FA_OPEN_APPEND);
@@ -702,6 +721,8 @@ mod_som_status_t mod_som_sdio_write_config_f(uint8_t *data_ptr,
 
 	sprintf((char*) str_payload_chksum,  \
 	        "*%02x\r\n",payload_chksum);
+
+  printf("sdiototo3\r\n");
 
     res = f_write(file_ptr->fp,(uint8_t*) header,length_header,&byteswritten);  /* buffptr = pointer to the data to be written */
 
@@ -1139,6 +1160,27 @@ mod_som_status_t mod_som_sdio_start_f(void){
 
     mod_som_sdio_struct.started_flag = true;
     return mod_som_sdio_encode_status_f(MOD_SOM_STATUS_OK);
+}
+
+/*******************************************************************************
+ * @brief
+ *   stop print sdio task
+ *
+ * @return
+ *   MOD_SOM_STATUS_OK if initialization goes well
+ *   or otherwise
+ ******************************************************************************/
+mod_som_status_t mod_som_sdio_stop_f(){
+
+
+  RTOS_ERR err;
+  OSTaskDel(&mod_som_sdio_struct.print_task_tcb,
+             &err);
+
+
+
+
+  return mod_som_sdio_encode_status_f(MOD_SOM_STATUS_OK);
 }
 
 

@@ -96,10 +96,10 @@ static OS_TCB  efe_consumer_task_tcb;
 //ALB TODO change the name of the typedef efe_a2d_spec_t
 //ALB I tried with mod_efe_adc_spec_t but for some reason it does not config
 #ifdef MOD_SOM_EFE_REV3
-sensor_spec_t ch1  = {"t1","000",0, MOD_AD7124_TEMP, 0x7080};
-sensor_spec_t ch2  = {"t2","000",0, MOD_AD7124_TEMP, 0x3080};
-sensor_spec_t ch3  = {"s1","000",0, MOD_AD7124_SHEAR, 0x5080};
-sensor_spec_t ch4  = {"s2","000",0, MOD_AD7124_SHEAR, 0x1080};
+sensor_spec_t ch1  = {"t1","999",99, MOD_AD7124_TEMP, 0x7080};
+sensor_spec_t ch2  = {"t2","999",99, MOD_AD7124_TEMP, 0x3080};
+sensor_spec_t ch3  = {"s1","999",99, MOD_AD7124_SHEAR, 0x5080};
+sensor_spec_t ch4  = {"s2","999",99, MOD_AD7124_SHEAR, 0x1080};
 sensor_spec_t ch5  = {"a1","000",0, MOD_AD7124_ACCELL, 0x6080};
 sensor_spec_t ch6  = {"a2","000",0, MOD_AD7124_ACCELL, 0x2080};
 sensor_spec_t ch7  = {"a3","000",0, MOD_AD7124_ACCELL, 0x4080};
@@ -111,10 +111,10 @@ sensor_spec_t ch7  = {"a3","000",0, MOD_AD7124_ACCELL, 0x4080};
 
 #ifdef MOD_SOM_EFE_REV4
 //ALB I am putting default Sv, dTdV values
-sensor_spec_t ch1  = {"t1","000",30, MOD_AD7124_TEMP, 0x7080};
-sensor_spec_t ch2  = {"t2","000",0, MOD_AD7124_TEMP, 0x3080};
-sensor_spec_t ch3  = {"s1","000",40, MOD_AD7124_SHEAR, 0x5080};//epsi
-sensor_spec_t ch4  = {"s2","000",0, MOD_AD7124_SHEAR, 0x1080};//epsi
+sensor_spec_t ch1  = {"t1","999",99, MOD_AD7124_TEMP, 0x7080};
+sensor_spec_t ch2  = {"t2","999",99, MOD_AD7124_TEMP, 0x3080};
+sensor_spec_t ch3  = {"s1","999",99, MOD_AD7124_SHEAR, 0x5080};//epsi
+sensor_spec_t ch4  = {"s2","999",99, MOD_AD7124_SHEAR, 0x1080};//epsi
 //sensor_spec_t ch3  = {"s1","000",0, MOD_AD7124_FLUO, 0x5080};//FCTD
 //sensor_spec_t ch4  = {"s2","000",0, MOD_AD7124_UCOND, 0x1080};//FCTD
 sensor_spec_t ch5  = {"a1","000",0, MOD_AD7124_ACCELLX, 0x6080};

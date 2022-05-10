@@ -48,14 +48,14 @@ static CPU_STK mod_som_apf_consumer_task_stk[MOD_SOM_APF_CONSUMER_TASK_STK_SIZE]
 static OS_TCB  mod_som_apf_consumer_task_tcb;
 
 // apf shell task
-static CPU_STK mod_som_apf_shell_task_stk[MOD_SOM_APF_PRODUCER_TASK_STK_SIZE];
+static CPU_STK mod_som_apf_shell_task_stk[MOD_SOM_APF_SHELL_TASK_STK_SIZE];
 static OS_TCB  mod_som_apf_shell_task_tcb;
 
 
 static volatile int     apf_rxReadIndex  = 0;       /**< Index in buffer to be read */
 static volatile int     apf_rxWriteIndex = 0;       /**< Index in buffer to be written to */
 static volatile int     apf_rxCount      = 0;       /**< Keeps track of how much data which are stored in the buffer */
-static volatile uint8_t apf_rxBuffer[MOD_SOM_APF_SETTINGS_STR_lENGTH];    /**< Buffer to store data */
+static volatile uint8_t apf_rxBuffer[MOD_SOM_APF_SHELL_STR_LENGTH];    /**< Buffer to store data */
 
 sl_status_t mystatus;
 
@@ -258,7 +258,7 @@ mod_som_apf_status_t mod_som_apf_default_settings_f(
   // TODO I do not know how to check if everything is fine here.
 
   strncpy(settings_ptr->header,
-          MOD_SOM_APF_HEADER0,MOD_SOM_APF_SETTINGS_STR_lENGTH);
+          MOD_SOM_APF_HEADER0,MOD_SOM_APF_SETTINGS_STR_LENGTH);
 
   settings_ptr->comm_telemetry_packet_format=2;
   settings_ptr->sd_packet_format=2;
@@ -482,7 +482,7 @@ mod_som_apf_status_t mod_som_apf_construct_consumer_ptr_f(){
                                              MOD_SOM_APF_SYNC_TAG_LENGTH+
                                              MOD_SOM_APF_HEADER_TAG_LENGTH+
                                              MOD_SOM_APF_HEXTIMESTAMP_LENGTH +
-                                             MOD_SOM_APF_SETTINGS_STR_lENGTH+
+                                             MOD_SOM_APF_SETTINGS_STR_LENGTH+
                                              MOD_SOM_APF_LENGTH_HEADER_CHECKSUM;
 
 
@@ -993,11 +993,13 @@ void mod_som_apf_producer_task_f(void  *p_arg){
 
 //              //ALB check if the updated avg pressure is lower than
 //              //ALB the previous pressure + dz.
-//              if (*curr_avg_pressure_ptr<=
-//                   mod_som_apf_ptr->dacq_pressure-mod_som_apf_ptr->dacq_dz)
+                //ALB if the com is broken between CTD and epsi. I still want to store the data, flag them and
+                //TODO set up a time out
+              if (*curr_avg_pressure_ptr<=
+                   mod_som_apf_ptr->dacq_pressure-mod_som_apf_ptr->dacq_dz)
 //                {
               //ALB fake if loop to test the dacq
-              if (dissrate_avail>0)
+//              if (dissrate_avail>0)
                 {
 
                   mod_som_apf_ptr->dacq_pressure=*curr_avg_pressure_ptr;
@@ -1718,7 +1720,7 @@ mod_som_status_t mod_som_apf_get_char_f(LEUART_TypeDef *leuart_ptr, int* read_ch
   if (apf_rxCount > 0) {
     *read_char_ptr = (int) apf_rxBuffer[apf_rxReadIndex];
     apf_rxReadIndex++;
-    if (apf_rxReadIndex == MOD_SOM_APF_SETTINGS_STR_lENGTH) {
+    if (apf_rxReadIndex == MOD_SOM_APF_SHELL_STR_LENGTH) {
       apf_rxReadIndex = 0;
     }
     apf_rxCount--;
@@ -2039,7 +2041,6 @@ uint32_t mod_som_apf_copy_F2_element_f(  uint64_t * curr_avg_timestamp_ptr,
       //ALB first make sure it is above the min/max values
       local_accel_avg_fft = MAX(local_accel_avg_fft,min_foco);
       local_accel_avg_fft = MIN(local_accel_avg_fft,max_foco);
-//      local_accel_avg_fft = -7.3;
       //ALB then digitize on a 16bits number
       mod_accel_foco  = (uint16_t) ceil(local_accel_avg_fft*
                mod_som_apf_ptr->producer_ptr->decim_coef.foco_per_bit+
@@ -2291,7 +2292,7 @@ mod_som_apf_status_t mod_som_apf_encode_status_f(uint8_t mod_som_apf_status){
 mod_som_apf_status_t mod_som_apf_daq_start_f(uint64_t profile_id){
   mod_som_apf_status_t status=0;
   uint32_t delay=1000;
-  uint32_t id;
+  sl_sleeptimer_timestamp_t local_timestamp=0;
 
   status=MOD_SOM_APF_STATUS_OK;
   CPU_CHAR filename[100];
@@ -2301,19 +2302,29 @@ mod_som_apf_status_t mod_som_apf_daq_start_f(uint64_t profile_id){
       return status;
   }
 
+  mod_som_voltage_ptr_t local_voltage_runtime_ptr =
+      mod_som_voltage_get_runtime_ptr_f();
+
+  mod_som_sbe41_ptr_t local_sbe41_runtime_ptr =
+      mod_som_sbe41_get_runtime_ptr_f();
 
 //  //ALB enable SDIO hardware
-//  mod_som_sdio_enable_hardware_f();
+  mod_som_sdio_enable_hardware_f();
+
+
 
   mod_som_apf_ptr->profile_id=profile_id;
   //ALB Open SD file,
   sprintf(filename, "Profile%lu",(uint32_t) mod_som_apf_ptr->profile_id);
+  printf("toto1\r\n");
   mod_som_sdio_define_filename_f(filename);
+  printf("toto2\r\n");
   //ALB write MODSOM settings on the SD file
 //  mod_som_settings_sd_settings_f();
   //ALB initialize Meta_Data Structure, TODO
   mod_som_apf_init_meta_data(&mod_som_apf_ptr->producer_ptr->
                              acq_profile.mod_som_apf_meta_data);
+  printf("toto3\r\n");
 
 
 	//ALB start ADC master clock timer
@@ -2329,7 +2340,7 @@ mod_som_apf_status_t mod_som_apf_daq_start_f(uint64_t profile_id){
  status|= mod_som_efe_obp_start_fill_segment_task_f();
  status|= mod_som_efe_obp_start_cpt_spectra_task_f();
  status|= mod_som_efe_obp_start_cpt_dissrate_task_f();
- status|= mod_som_efe_obp_start_consumer_task_f();
+// status|= mod_som_efe_obp_start_consumer_task_f();
 
 
   //ALB get a P reading and define the dz to get 25kB in the producer->dacq_profile
@@ -2341,39 +2352,44 @@ mod_som_apf_status_t mod_som_apf_daq_start_f(uint64_t profile_id){
             (MOD_SOM_APF_METADATA_STRUCT_SIZE+
       mod_som_apf_ptr->producer_ptr->dacq_element_size));
 
+  printf("toto4\r\n");
 
 
+  //ALB I am getting a pressure sample
 
-  //ALB I should have a delay here. So the system has time to get a pressure sample
-  sl_sleeptimer_delay_millisecond(delay);
-  //ALB I think OS_TIME_delay would the same and free the CPU for other tasks.
-  //ALB get a pressure sample
-  mod_som_apf_ptr->dacq_start_pressure = mod_som_sbe41_get_pressure_f();
-  //ALB the evolving pressure is initialized with the start pressure.
-  mod_som_apf_ptr->dacq_pressure=mod_som_apf_ptr->dacq_start_pressure;
-  //ALB define dz
-  mod_som_apf_ptr->dacq_dz = (mod_som_apf_ptr->dacq_start_pressure-
-                              MOD_SOM_APF_DACQ_MINIMUM_PRESSURE)/
-                              mod_som_apf_ptr->producer_ptr->
-                              acq_profile.mod_som_apf_meta_data.sample_cnt;
+  local_timestamp=sl_sleeptimer_get_time();
+  while(local_sbe41_runtime_ptr->consumer_ptr->record_pressure[1]==0){
+      if (local_timestamp-sl_sleeptimer_get_time()>delay){
+          //ALB no CTD sample. Status no CTD data
+          status|=MOD_SOM_APF_STATUS_NO_CTD_DATA;
+          break;
+      }
+  }
+  if (status==MOD_SOM_APF_STATUS_OK){
+      mod_som_apf_ptr->dacq_start_pressure = mod_som_sbe41_get_pressure_f();
+      //ALB the evolving pressure is initialized with the start pressure.
+      mod_som_apf_ptr->dacq_pressure=mod_som_apf_ptr->dacq_start_pressure;
+      //ALB define dz
+      mod_som_apf_ptr->dacq_dz = (mod_som_apf_ptr->dacq_start_pressure-
+                                  MOD_SOM_APF_DACQ_MINIMUM_PRESSURE)/
+                                  mod_som_apf_ptr->producer_ptr->
+                                  acq_profile.mod_som_apf_meta_data.sample_cnt;
 
+    //  //ALB start APF producer task
+      status |= mod_som_apf_start_producer_task_f();
+    ////  //ALB start APF consumer task
+      status |= mod_som_apf_start_consumer_task_f();
 
+    //ALB get the voltage at the beginning of the profile
+      mod_som_voltage_scan_f();
+      while(local_voltage_runtime_ptr->voltage==0){};
+      mod_som_apf_ptr->producer_ptr->acq_profile.mod_som_apf_meta_data.voltage=
+          local_voltage_runtime_ptr->voltage;
+      //ALB reset voltage
+      local_voltage_runtime_ptr->voltage=0;
 
-
-////  //ALB start APF producer task
-  status |= mod_som_apf_start_producer_task_f();
-////  //ALB start APF consumer task
-  status |= mod_som_apf_start_consumer_task_f();
-
-//ALB get the voltage at the beginning of the profile
-  // Get ADC results
-  // Read data from ADC
-  mod_som_apf_ptr->producer_ptr->
-  acq_profile.mod_som_apf_meta_data.voltage =
-        ADC_DataIdScanGet(ADC0, &id);
-
-
-  status|=mod_som_efe_sampling_f();
+      status|=mod_som_efe_sampling_f();
+  }
 
 	return status;
 }
@@ -2394,7 +2410,7 @@ mod_som_apf_status_t mod_som_apf_daq_start_f(uint64_t profile_id){
  ******************************************************************************/
 
 mod_som_apf_status_t mod_som_apf_daq_stop_f(){
-  int delay =1000;
+  int delay =100; //0.1 sec
   mod_som_apf_status_t status;
   status=MOD_SOM_APF_STATUS_OK;
 
@@ -2411,18 +2427,19 @@ mod_som_apf_status_t mod_som_apf_daq_stop_f(){
   status = mod_som_efe_obp_stop_fill_segment_task_f();
   status|= mod_som_efe_obp_stop_cpt_spectra_task_f();
   status|= mod_som_efe_obp_stop_cpt_dissrate_task_f();
-  status|= mod_som_efe_obp_stop_consumer_task_f();
+//  status|= mod_som_efe_obp_stop_consumer_task_f();
 
   //ALB stop APF producer task
   status |= mod_som_apf_stop_producer_task_f();
   //ALB stop APF consumer task
   status |= mod_som_apf_stop_consumer_task_f();
 
-  sl_sleeptimer_delay_millisecond(delay);
   //ALB disable SDIO hardware
-
   status |=mod_som_sdio_stop_store_f();
+  sl_sleeptimer_delay_millisecond(delay);
   mod_som_sdio_disable_hardware_f();
+  mod_som_sdio_stop_f();
+
 
   //reset Daq flags
   mod_som_apf_ptr->daq=false;
@@ -3774,7 +3791,7 @@ mod_som_apf_status_t mod_som_apf_sd_format_status_f(CPU_INT16U argc,
 
 /*******************************************************************************
  * @brief
- *   command shell for upload command
+ *   command shell for q command
  *   start uploading data from the SD card to the apf
  *   should return an apf status.
  *
@@ -3839,7 +3856,9 @@ mod_som_apf_status_t mod_som_apf_upload_f(){
       mod_som_apf_ptr->consumer_ptr->packet.CRC          = 0;
       mod_som_apf_ptr->consumer_ptr->packet.counters     = 0;
       mod_som_apf_ptr->consumer_ptr->daq_remaining_bytes =
-                                    mod_som_apf_ptr->producer_ptr->dacq_size;
+          mod_som_apf_ptr->producer_ptr->dacq_size+
+          sizeof(mod_som_apf_meta_data_t);
+
       //ALB split acq_profile into 990 bytes packets:
       //ALB count how bytes are left to send out.
 //      dacq_bytes_available=
@@ -4024,13 +4043,13 @@ void LEUART0_IRQHandler(){
 
   if(interrupt_sig & LEUART_IF_RXDATAV){
 
-      if (apf_rxCount < (MOD_SOM_APF_SETTINGS_STR_lENGTH)) {
+      if (apf_rxCount < (MOD_SOM_APF_SHELL_STR_LENGTH)) {
         /* There is room for data in the RX buffer so we store the data. */
         apf_rxBuffer[apf_rxWriteIndex] = LEUART_Rx(leuart_ptr);
         apf_rxWriteIndex++;
         apf_rxCount++;
 
-        if (apf_rxWriteIndex == (MOD_SOM_APF_SETTINGS_STR_lENGTH)) {
+        if (apf_rxWriteIndex == (MOD_SOM_APF_SHELL_STR_LENGTH)) {
             apf_rxWriteIndex = 0;
         }
       } else {

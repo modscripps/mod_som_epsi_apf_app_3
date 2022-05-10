@@ -126,12 +126,13 @@ typedef struct{
   float    record_pressure[MOD_SOM_SBE41_DATA_DEFAULT_SAMPLES_PER_RECORD];
   float    record_temp[MOD_SOM_SBE41_DATA_DEFAULT_SAMPLES_PER_RECORD];
   float    record_salinity[MOD_SOM_SBE41_DATA_DEFAULT_SAMPLES_PER_RECORD];
-  float    dPdt; // time derivative of P, fall rate.
+  float    dPdt; // time derivative of P, fall rate ALWAYS POSITIVE.
   float    dTdt; // time derivative of Temperature.
   float    dSdt; // time derivative of Salinity.
   float    Pmean;
   float    Tmean;
   float    Smean;
+  enum {up,down,none}direction;
 
   bool      consumed_flag;
 }

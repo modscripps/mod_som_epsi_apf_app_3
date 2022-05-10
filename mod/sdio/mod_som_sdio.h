@@ -228,6 +228,7 @@ bool initialized_flag;
 bool started_flag;
 bool listoverflow_flag;
 bool enable_flag;
+bool fatfs_mounted;
 
 uint32_t file_number;
 mod_som_sdio_settings_ptr_t mod_som_sdio_settings_ptr;
@@ -522,6 +523,15 @@ mod_som_status_t mod_som_sdio_start_f(void);
  *     status would indicate error in execution
  ******************************************************************************/
 mod_som_status_t mod_som_sdio_print_f(const char *format, ...) _ATTRIBUTE ((__format__ (__printf__, 1, 2)));
+/*******************************************************************************
+ * @brief
+ *   stop print sdio task
+ *
+ * @return
+ *   MOD_SOM_STATUS_OK if initialization goes well
+ *   or otherwise
+ ******************************************************************************/
+mod_som_status_t mod_som_sdio_stop_f();
 
 /*******************************************************************************
  * @function

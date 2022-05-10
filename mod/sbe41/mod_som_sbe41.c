@@ -668,6 +668,7 @@ mod_som_status_t mod_som_sbe41_construct_consumer_ptr_f(){
   mod_som_sbe41_ptr->consumer_ptr->dPdt=0;
   mod_som_sbe41_ptr->consumer_ptr->dTdt=0;
   mod_som_sbe41_ptr->consumer_ptr->dSdt=0;
+  mod_som_sbe41_ptr->consumer_ptr->direction=none;
 
   mod_som_sbe41_ptr->consumer_ptr->Pmean=0;
   mod_som_sbe41_ptr->consumer_ptr->Tmean=0;
@@ -1032,8 +1033,15 @@ static  void  mod_som_sbe41_consumer_task_f(void  *p_arg){
                     uint64_t dt=mod_som_sbe41_ptr->consumer_ptr->record_timestamp[1]-
                         mod_som_sbe41_ptr->consumer_ptr->record_timestamp[0];
 
-                    mod_som_sbe41_ptr->consumer_ptr->dPdt= dP /
-                                                   ((float)dt)*1000;
+                    if (dP>=0){
+                        mod_som_sbe41_ptr->consumer_ptr->dPdt= dP /
+                                                       ((float)dt)*1000;
+                        mod_som_sbe41_ptr->consumer_ptr->direction=down;
+                    }else{
+                        mod_som_sbe41_ptr->consumer_ptr->dPdt= -dP /
+                                                       ((float)dt)*1000;
+                        mod_som_sbe41_ptr->consumer_ptr->direction=up;
+                    }
 //                    printf("fall rate %3.3f\r\n",mod_som_sbe41_ptr->consumer_ptr->dPdt);
                 }
 

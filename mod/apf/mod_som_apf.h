@@ -24,7 +24,7 @@
 #define MOD_SOM_APF_STATUS_FAIL_INIT_CMD 0x2U
 
 
-#define MOD_SOM_APF_SETTINGS_STR_lENGTH 8
+#define MOD_SOM_APF_SHELL_STR_LENGTH 64
 #define MOD_SOM_APF_VIBRATION_CUT_OFF   50
 #define MOD_SOM_APF_HEADER0              "APF0"
 #define MOD_SOM_APF_HEADER1              "APF1"
@@ -43,7 +43,7 @@
 
 #define MOD_SOM_APF_SYNC_TAG_LENGTH         1
 #define MOD_SOM_APF_HEADER_TAG_LENGTH       4
-#define MOD_SOM_APF_SETTINGS_STR_lENGTH     64
+#define MOD_SOM_APF_SETTINGS_STR_LENGTH     8
 
 
 
@@ -90,8 +90,8 @@
 #define MOD_SOM_APF_CONSUMER_TIMESTAMP_SIZE         8
 #define MOD_SOM_APF_CONSUMER_CHECKSUM_SIZE          5
 
-#define MOD_SOM_APF_SHELL_TASK_PRIO              21u
-#define MOD_SOM_APF_SHELL_TASK_STK_SIZE          512u
+#define MOD_SOM_APF_SHELL_TASK_PRIO              20u
+#define MOD_SOM_APF_SHELL_TASK_STK_SIZE          1024u
 #define MOD_SOM_APF_SHELL_DELAY                  1      // delay for fill segment task
 //#define MOD_SOM_APF_SHELL_SAMPLE_LASTCHAR        '\r'
 
@@ -159,7 +159,7 @@ typedef struct{
 ******************************************************************************/
 typedef struct{
    uint32_t size;
-   char header[MOD_SOM_APF_SETTINGS_STR_lENGTH];
+   char header[MOD_SOM_APF_SETTINGS_STR_LENGTH];
 
    //ALB comm_telemetry_packet_format:
    //ALB 0: time,pr,epsi,chi,nu,kappa,fomepsi,fomchi,
@@ -201,14 +201,15 @@ mod_som_apf_probe_t, *mod_som_apf_probe_ptr_t;
 10-13  Firmware revision. ALB: I would recommend the latest github commit number like 6e92d93  (could be 4 bytes in hex)
 14-15  Nfft  (2 bytes) ALB not a param the user can change
 16-17  Nfftdiag  (2 bytes) ALB not a param the user can change
-18-22  <ProbeType1><ProbeSerNo1><ProbeCalcoef1> (1+2 +2 bytes)
-23-27  <ProbeType2><ProbeSerNo2><ProbeCalcoef2>(1+2 +2 bytes)
+18-23  <ProbeType1><ProbeSerNo1><ProbeCalcoef1> (2+2 +2 bytes)
+24-29  <ProbeType2><ProbeSerNo2><ProbeCalcoef2>(2+2 +2 bytes)
 
-28      comm_telemetry_packet_format (1 byte)
-29      sd_format (1 byte)
+30      comm_telemetry_packet_format (1 byte)
+31      sd_format (1 byte)
 
-30-31   Number of samples.
-32-33   0xFFFF
+32-33   Number of samples.
+34-37   Voltage (2bytes)
+38-39   0xFFFF
 ******************************************************************************/
 
 typedef struct{
