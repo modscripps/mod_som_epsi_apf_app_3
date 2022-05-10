@@ -6,6 +6,8 @@
  */
 
 
+// testing for github - maibui 10 May 2022
+
 //------------------------------------------------------------------------------
 // Includes
 //------------------------------------------------------------------------------
@@ -213,7 +215,7 @@ CPU_INT16S mod_som_apf_cmd_daq_f(CPU_INT16U argc,
             {
               mod_som_io_print_f("daq,start,nak,%lu, input profile is not continous,last profile id is %lu, must be %lu\r\n",profile_id,last_profile_id,last_profile_id+1);
               // save time string into the temporary local string - Mai - Nov 18, 2021
-              sprintf(apf_reply_str,"daq,start,nak,%lu, input profile is not continous,last profile id is %lu, must be %lu\r\n",status,MOD_SOM_APF_DAQ_CMMD_LIMIT,last_profile_id,last_profile_id+1);
+              sprintf(apf_reply_str,"daq,start,nak,input profile is not continous,last profile id is %lu, must be %lu\r\n",MOD_SOM_APF_DAQ_CMMD_LIMIT,last_profile_id,last_profile_id+1);
               reply_str_len = strlen(apf_reply_str);
               // sending the above string to the APF port - Mai - Nov 18, 2021
               bytes_sent = mod_som_apf_send_line_f(apf_leuart_ptr,apf_reply_str, reply_str_len);
@@ -225,9 +227,9 @@ CPU_INT16S mod_som_apf_cmd_daq_f(CPU_INT16U argc,
           return_status = mod_som_apf_daq_start_f((uint64_t)profile_id);
           if (return_status == MOD_SOM_APF_STATUS_NO_CTD_DATA)
             {
-              mod_som_io_print_f("daq,start,nak, no CTD's data\r\n");
+              mod_som_io_print_f("daq,start,nak,no CTD data\r\n");
               // save time string into the temporary local string - Mai - Nov 18, 2021
-              sprintf(apf_reply_str,"daq,start,nak,, no CTD's data\r\n");
+              sprintf(apf_reply_str,"daq,start,nak,no CTD data\r\n");
               reply_str_len = strlen(apf_reply_str);
               // sending the above string to the APF port - Mai - Nov 18, 2021
               bytes_sent = mod_som_apf_send_line_f(apf_leuart_ptr,apf_reply_str, reply_str_len);
