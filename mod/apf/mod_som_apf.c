@@ -2826,7 +2826,7 @@ mod_som_apf_status_t mod_som_apf_probe_id_f(CPU_INT16U argc,
   char arg6[16] = "\0";
 
   // probe_no command guide
-  char probe_no_valid_cmmd[] = "\"probe_id,Type1,SerNo1,Coef1,Type2,SerNo2,Coef2\"(Type1 = 's',Type2 = 'f',SerNo1 and SerNo2: 3 digits positive number,Coef1 and Coef2: 2 digits positive number)\n";
+  char probe_no_valid_cmmd[] = "\"probe_no,Type1,SerNo1,Coef1,Type2,SerNo2,Coef2\"(Type1 = 's',Type2 = 'f',SerNo1 and SerNo2: 3 digits positive number,Coef1 and Coef2: 2 digits positive number)\n";
 
   // for send_string to the port
   uint32_t bytes_sent = 0;
@@ -2987,7 +2987,7 @@ mod_som_apf_status_t mod_som_apf_probe_id_f(CPU_INT16U argc,
           reply_str_len = strlen(apf_reply_str);
 
           // sending the above string to the APF port - Mai - Nov 18, 2021
-          bytes_sent = mod_som_apf_send_line_f(apf_leuart_ptr,apf_reply_str, reply_str_len);
+ //         bytes_sent = mod_som_apf_send_line_f(apf_leuart_ptr,apf_reply_str, reply_str_len);
 
           if(bytes_sent==0){
               sprintf(apf_reply_str,"probe_no,nak,%lu, failed to send to the APF port\r\n",status);
@@ -3008,6 +3008,10 @@ mod_som_apf_status_t mod_som_apf_probe_id_f(CPU_INT16U argc,
   reply_str_len = strlen(apf_reply_str);
   // sending the above string to the APF port - Mai - Nov 18, 2021
   bytes_sent = mod_som_apf_send_line_f(apf_leuart_ptr,apf_reply_str, reply_str_len);
+  if(bytes_sent==0){
+      sprintf(apf_reply_str,"probe_no,nak,%lu, failed to send to the APF port\r\n",status);
+      status |= MOD_SOM_APF_STATUS_WRONG_ARG;
+   }
 
   return mod_som_apf_encode_status_f(MOD_SOM_APF_STATUS_OK);
 }
