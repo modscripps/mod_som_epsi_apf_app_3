@@ -2565,10 +2565,10 @@ mod_som_apf_status_t mod_som_apf_fwrev_status_f(){
                                           mod_som_settings_get_settings_f();
 
 
-  status|= mod_som_io_print_f("fwrev?,ack,%s\r\n",local_settings_ptr->firmware);
+  status|= mod_som_io_print_f("fwrev?,ack,%s\r\n",local_settings_ptr->gitid);
 
   // save time string into the temporary local string - Mai - Nov 18, 2021
-  sprintf(apf_reply_str,"fwrev?,ack,%s\r\n",local_settings_ptr->firmware);
+  sprintf(apf_reply_str,"fwrev?,ack,%s\r\n",local_settings_ptr->gitid);
   reply_str_len = strlen(apf_reply_str);
   // sending the above string to the APF port - Mai - Nov 18, 2021
   bytes_send = mod_som_apf_send_line_f(apf_leuart_ptr,apf_reply_str, reply_str_len);
