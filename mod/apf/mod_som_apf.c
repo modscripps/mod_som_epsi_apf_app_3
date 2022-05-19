@@ -3274,7 +3274,7 @@ mod_som_apf_status_t mod_som_apf_time_f(CPU_INT16U argc,
   mod_som_apf_status_t status = 0;
   char second_arg[25] = "\0";
  // uint64_t time_unix = 0;
-  char time_valid_cmmd[] = "time,1234567890123456890"; // unixEpoch time range [1575205200  12345678901] (from Jan,1 2020)
+  char time_valid_cmmd[] = "time,posixtime(>01-01-2020)"; // unixEpoch time range [1575205200  12345678901] (from Jan,1 2020)
 
   switch(argc)
   {
@@ -3311,7 +3311,7 @@ mod_som_apf_status_t mod_som_apf_time_f(CPU_INT16U argc,
 //      time = (int32_t) apex_time;
       if(apex_time>ULONG_MAX)
       {
-           sprintf(apf_reply_str,"time,nak,%lu,UnixEpoch time is too big number -- valid cmmd: %s\r\n",time_valid_cmmd);
+           sprintf(apf_reply_str,"time,nak,UnixEpoch time is too big number -- valid cmmd: %s\r\n",time_valid_cmmd);
            status |= MOD_SOM_APF_STATUS_WRONG_ARG;
          break;
       }
@@ -3329,7 +3329,7 @@ mod_som_apf_status_t mod_som_apf_time_f(CPU_INT16U argc,
 
       // calculate the seconds from
 
-      status|=mod_som_calendar_set_time_f(time);
+      status|=mod_som_calendar_set_time_f(apex_time);
       status|=mod_som_settings_save_settings_f();
 
       // save time string into the temporary local string - Mai - Nov 18, 2021
