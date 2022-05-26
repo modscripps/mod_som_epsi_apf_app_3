@@ -899,7 +899,7 @@ void mod_som_epsiobp_fp07_noise_f()
 {
   // loop over all frequencies using the noise calibration values
   for (uint16_t i = 0; i < settings->nfft/2; i++) {
-    vals->fp07_noise[i] = (cals->fp07_noise[0] + cals->fp07_noise[1]*log10(vals->freq[i]) + cals->fp07_noise[2]*pow(log10(vals->freq[i]), 2) + cals->fp07_noise[3]*pow(log10(vals->freq[i]), 3));
+    vals->fp07_noise[i] = pow(10, (cals->fp07_noise[0] + cals->fp07_noise[1]*log10(vals->freq[i]) + cals->fp07_noise[2]*pow(log10(vals->freq[i]), 2) + cals->fp07_noise[3]*pow(log10(vals->freq[i]), 3)));
   }
 }
 
