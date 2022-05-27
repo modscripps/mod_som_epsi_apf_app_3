@@ -108,14 +108,12 @@ void mod_som_efe_obp_temp_spectrum_f(float *seg_buffer,
 void mod_som_efe_obp_accel_spectrum_f(float *seg_buffer,
                                       int spectra_offset,
                                       mod_som_efe_obp_ptr_t mod_som_efe_obp_ptr);
-void mod_som_efe_obp_calc_epsilon_f(float *local_epsilon,
-                                    float *nu, float *fom,
+void mod_som_efe_obp_calc_epsilon_f(float *local_epsilon, float *nu,
+                                    float *fom_ptr,float * kcutoff,
                                     mod_som_efe_obp_ptr_t mod_som_efe_obp_ptr);
-void mod_som_efe_obp_calc_chi_f(float *local_epsilon,
-                                float *local_chi,
-                                float *kappa, float *fom,
+void mod_som_efe_obp_calc_chi_f(float *local_epsilon, float *local_chi,
+                                float *kappa_t, float *fcutoff, float *fom,
                                 mod_som_efe_obp_ptr_t mod_som_efe_obp_ptr);
-
 void mod_som_efe_obp_correct_convert_avg_spectra_f(float * temp_spectrum,
                                                float * shear_spectrum,
                                                float * accel_spectrum,

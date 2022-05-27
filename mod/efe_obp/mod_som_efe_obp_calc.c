@@ -426,9 +426,9 @@ void mod_som_efe_obp_shear_spectrum_f(float *seg_buffer, int spectra_offset, mod
       //ALB move the level up to be able to compute chi and epsilon
       if (mod_som_efe_obp_ptr->cpt_spectra_ptr->dof==0){
           //ALB move the level up to be able to compute chi and epsilon
-          *(mod_som_efe_obp_ptr->cpt_spectra_ptr->spec_shear_ptr+spectra_offset+i) = spectrum_buffer[i]/(float)mod_som_efe_obp_ptr->settings_ptr->degrees_of_freedom;
+          *(mod_som_efe_obp_ptr->cpt_spectra_ptr->spec_shear_ptr+spectra_offset+i) = 1000000*spectrum_buffer[i]/(float)mod_som_efe_obp_ptr->settings_ptr->degrees_of_freedom;
       }else{
-          *(mod_som_efe_obp_ptr->cpt_spectra_ptr->spec_shear_ptr+spectra_offset+i) += spectrum_buffer[i]/(float)mod_som_efe_obp_ptr->settings_ptr->degrees_of_freedom;
+          *(mod_som_efe_obp_ptr->cpt_spectra_ptr->spec_shear_ptr+spectra_offset+i) += 1000000*spectrum_buffer[i]/(float)mod_som_efe_obp_ptr->settings_ptr->degrees_of_freedom;
       }
 //      *(mod_som_efe_obp_ptr->cpt_spectra_ptr->spec_shear_ptr+spectra_offset+i) += 100000*spectrum_buffer[i];
   }
@@ -488,9 +488,9 @@ void mod_som_efe_obp_temp_spectrum_f(float *seg_buffer, int spectra_offset, mod_
       //ALB move the level up to be able to compute chi and epsilon
       if (mod_som_efe_obp_ptr->cpt_spectra_ptr->dof==0){
           //ALB move the level up to be able to compute chi and epsilon
-          *(mod_som_efe_obp_ptr->cpt_spectra_ptr->spec_temp_ptr+spectra_offset+i) =spectrum_buffer[i]/(float)mod_som_efe_obp_ptr->settings_ptr->degrees_of_freedom;
+          *(mod_som_efe_obp_ptr->cpt_spectra_ptr->spec_temp_ptr+spectra_offset+i) =1000000*spectrum_buffer[i]/(float)mod_som_efe_obp_ptr->settings_ptr->degrees_of_freedom;
       }else{
-          *(mod_som_efe_obp_ptr->cpt_spectra_ptr->spec_temp_ptr+spectra_offset+i) +=spectrum_buffer[i]/(float)mod_som_efe_obp_ptr->settings_ptr->degrees_of_freedom;
+          *(mod_som_efe_obp_ptr->cpt_spectra_ptr->spec_temp_ptr+spectra_offset+i) +=1000000*spectrum_buffer[i]/(float)mod_som_efe_obp_ptr->settings_ptr->degrees_of_freedom;
       }
 //   *(mod_som_efe_obp_ptr->cpt_spectra_ptr->spec_temp_ptr+spectra_offset+i) += 100000 * spectrum_buffer[i];
   }
@@ -533,7 +533,9 @@ void mod_som_efe_obp_accel_spectrum_f(float *seg_buffer, int spectra_offset, mod
 }
 
 
-void mod_som_efe_obp_calc_epsilon_f(float *local_epsilon, float *nu, float *fom_ptr, mod_som_efe_obp_ptr_t mod_som_efe_obp_ptr)
+void mod_som_efe_obp_calc_epsilon_f(float *local_epsilon, float *nu,
+                                    float *fom_ptr,float * kcutoff,
+                                    mod_som_efe_obp_ptr_t mod_som_efe_obp_ptr)
 /*******************************************************************************
  * @brief
  *   function to calculate a value for dissipation (i.e. epsilon) in W/kg for
@@ -549,7 +551,7 @@ void mod_som_efe_obp_calc_epsilon_f(float *local_epsilon, float *nu, float *fom_
 
   // pull in CTD values
   static float w, P, T, S;
-  w = -mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_ctd_dpdt;
+  w = mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_ctd_dpdt;
   P = mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_ctd_pressure;
   T = mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_ctd_temperature;
   S = mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_ctd_salinity;
@@ -598,35 +600,7 @@ void mod_som_efe_obp_calc_epsilon_f(float *local_epsilon, float *nu, float *fom_
   static uint16_t kvec_indices_1[2];
   find_vector_indices_f(vals->kvec, settings->nfft/2, kvec_limits_1, kvec_indices_1);
   uint16_t kvec_1_size = kvec_indices_1[1] - kvec_indices_1[0] + 1;
-//  float kvec_1[kvec_1_size];
-//  float spectrum_kvec_1[kvec_1_size];
-  // calculate wavenumber vector and convert spectrum from freq to wavenumber space
-//  for (uint16_t i = 0; i < kvec_1_size; i++) {
-//    fft_ptr->kvec[i] = vals->kvec[kvec_indices_1[0] + i];
-//    fft_ptr->spectrum_k[i] = (mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_spec_shear_ptr[kvec_indices_1[0] + i]);
-//    // multiply by fall rate and (2*pi*k)^2 to get spectrum vs wavenumber
-//    fft_ptr->spectrum_k[i] = fft_ptr->spectrum_k[i]*w*pow((2*M_PI*vals->kvec[i]), 2.0);
-//  }
-//ALB removing the interp
-//  static const float dk_interp = 0.2;
-//  uint16_t kvec_interp_size = (uint16_t) ((fft_ptr->kvec[kvec_1_size - 1] - fft_ptr->kvec[0])/dk_interp);
-//  float spectrum_interp[kvec_interp_size];
-//  float kvec_interp[kvec_interp_size];
-//  float kvec_interp_start;
 
-//  for (uint16_t i = 0; i < 41; i++) { // i know this is a magic number... might handle it at some point
-//    kvec_interp_start = 2 + i*dk_interp;
-//    if (kvec_interp_start > kvec_1[0]) {break;}
-//  }
-
-  //ALB always start at cpm k=2;
-//  kvec_start=2.0;
-//  kvec_interp_start=2.0;
-
-//  for (uint16_t i = 0; i < kvec_interp_size; i++) {
-//      fft_ptr->kvec[i] = kvec_interp_start + i*dk_interp;
-//  }
-//  interp1_f(kvec_1, spectrum_kvec_1, kvec_1_size, kvec_interp, spectrum_interp, kvec_interp_size);
   local_avg_spec_shear_ptr=
       &mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_spec_shear_ptr[kvec_indices_1[0]];
 
@@ -687,7 +661,10 @@ void mod_som_efe_obp_calc_epsilon_f(float *local_epsilon, float *nu, float *fom_
 
   // THIRD STAGE
   k_cutoff = 0.0816*pow(eps_2, 0.25)/pow(kvis, 0.75);
+
   if (k_cutoff > k_max) {k_cutoff = k_max;} // limit set by noise spectrum (or in this case the pump freq).  May need to fix that.
+  *kcutoff=k_cutoff;
+
 //  % third estimate
   //find this k range, 2 cpm out to k_cutoff
   kvec_limits_3[0] = kvec_min_1;
@@ -736,7 +713,9 @@ void mod_som_efe_obp_calc_epsilon_f(float *local_epsilon, float *nu, float *fom_
 //    }
 }
 
-void mod_som_efe_obp_calc_chi_f(float *local_epsilon, float *local_chi, float *kappa_t, float *fom, mod_som_efe_obp_ptr_t mod_som_efe_obp_ptr)
+void mod_som_efe_obp_calc_chi_f(float *local_epsilon, float *local_chi,
+                                float *kappa_t, float *fcutoff,
+                                float *fom, mod_som_efe_obp_ptr_t mod_som_efe_obp_ptr)
 /*******************************************************************************
  * @brief
  *   function to calculate a value for dissipation of thermal variance in K^2/s (chi)
@@ -752,7 +731,7 @@ void mod_som_efe_obp_calc_chi_f(float *local_epsilon, float *local_chi, float *k
 {
     // pull in CTD values
     float w, P, T, S;
-    w = -mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_ctd_dpdt;
+    w = mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_ctd_dpdt;
     P = mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_ctd_pressure;
     T = mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_ctd_temperature;
     S = mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_ctd_salinity;
@@ -791,6 +770,8 @@ void mod_som_efe_obp_calc_chi_f(float *local_epsilon, float *local_chi, float *k
     //ALB modify
 //    float batchelor_spec[settings->nfft/2];
     kvis = seawater_kinematic_viscosity_f(S, T, P);
+    *fcutoff=*(vals->fp07_cutoff);
+
     //ALB compute FOM
     *fom = fom_batchelor_f(local_avg_spec_temp_ptr,*local_epsilon, chi, kvis, *kappa_t, *(vals->fp07_cutoff), theospec_ptr->batchelor_spec);
 

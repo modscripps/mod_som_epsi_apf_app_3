@@ -383,7 +383,7 @@ mod_som_status_t mod_som_efe_init_f(){
 
 	//ALB initialize the runtime flags
 	mod_som_efe_ptr->sample_count=0;
-	mod_som_efe_ptr->consumer_mode=3; //3=do nothing
+	mod_som_efe_ptr->consumer_mode=1; //3=do nothing
 	mod_som_efe_ptr->sampling_flag=0;
 	mod_som_efe_ptr->data_ready_flag=0;
   mod_som_efe_ptr->error_flag=0;
@@ -1124,7 +1124,7 @@ mod_som_status_t mod_som_efe_default_settings_f(mod_som_efe_settings_ptr_t setti
 	//ALB if you want change the number of channel change the
 	//ALB settings_ptr->number_of_channels
 
-	settings_ptr->number_of_channels   = MOD_SOM_EFE_MAX_CHANNEL;
+	settings_ptr->number_of_channels   = MOD_SOM_EFE_USER_NBCHANNEL;
 	settings_ptr->nb_sample_per_record = MOD_SOM_EFE_SAMPLE_PER_RECORD;
 	settings_ptr->nb_record_per_buffer = MOD_SOM_EFE_RECORD_PER_BUFFER;
 	settings_ptr->spi_baudrate         = MOD_SOM_EFE_SPI_BAUDRATE;
@@ -1132,8 +1132,8 @@ mod_som_status_t mod_som_efe_default_settings_f(mod_som_efe_settings_ptr_t setti
 	settings_ptr->sensors[0]=ch1; //t1
   settings_ptr->sensors[1]=ch3; //s1
   settings_ptr->sensors[2]=ch7; //a3
-  settings_ptr->sensors[3]=ch5; //a1
-  settings_ptr->sensors[4]=ch6; //a2
+  settings_ptr->sensors[3]=ch6; //a2. I need to config a2. TODO
+  settings_ptr->sensors[4]=ch5; //a1
 	settings_ptr->sensors[5]=ch2; //t2
 	settings_ptr->sensors[6]=ch4; //s2
 

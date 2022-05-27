@@ -89,7 +89,7 @@ mod_som_status_t mod_som_apf_init_cmd_f(){
  *   apf Command Status
  ******************************************************************************/
 #define MOD_SOM_APF_DAQ_CMMD_LIMIT 65534
-uint64_t last_profile_id = 0;
+//uint64_t last_profile_id = 0;
 
 CPU_INT16S mod_som_apf_cmd_daq_f(CPU_INT16U argc,
     CPU_CHAR *argv[],
@@ -112,17 +112,19 @@ CPU_INT16S mod_som_apf_cmd_daq_f(CPU_INT16U argc,
   CPU_INT16U i = argc;
 
   char third_arg[125] = "\0";
-  char daq_valid_cmmd[] = "valid command: \"daq,stop\" or \"daq,start,profile_id_positive_int_below_65534\"";
-  char daq_stop_valid_cmmd[] = "valid command: \"daq,stop\"\n";
-  char daq_start_valid_cmmd[] = "valid command: \"daq,start,profile_id_positive_int_below_65534\"";
-//  char input_cmmd[125] = "\0";
+  char daq_valid_cmd[] = "valid command: \"daq,stop\" or \"daq,start,profile_id_positive_int_below_65534\"";
+  char daq_stop_valid_cmd[] = "valid command: \"daq,stop\"\n";
+  char daq_start_valid_cmd[] = "valid command: \"daq,start,profile_id_positive_int_below_65534\"";
+//  char input_cmd[125] = "\0";
   char err_str[125] = "\0";
+
+  mod_som_apf_ptr_t local_apf_runtime_ptr = mod_som_apf_get_runtime_ptr_f();
 
   switch(argc)
   {
     case 1: // input: "daq" -- invalid command, not enough information
       // save time string into the temporary local string - Mai - Nov 18, 2021
-      sprintf(apf_reply_str,"daq,nak,missing arguments -- valid cmmd: %s.\r\n",daq_valid_cmmd);
+      sprintf(apf_reply_str,"daq,nak,missing arguments -- valid cmd: %s.\r\n",daq_valid_cmd);
       status |= MOD_SOM_APF_STATUS_WRONG_ARG;
       break;
     case 2: // input: "daq,stop", if "daq,start" or "daq,somethingelse" -> error
@@ -142,14 +144,14 @@ CPU_INT16S mod_som_apf_cmd_daq_f(CPU_INT16U argc,
       else if (!Str_Cmp(argv[i], "start"))  // "daq,start" => missing profile id
       {
           // save time string into the temporary local string - Mai - Dec 3, 2021
-          sprintf(apf_reply_str,"daq,start,nak,missing profile id -- valid cmmd: %s\r\n",daq_start_valid_cmmd);
+          sprintf(apf_reply_str,"daq,start,nak,missing profile id -- valid cmd: %s\r\n",daq_start_valid_cmd);
           status |= MOD_SOM_APF_STATUS_WRONG_ARG;
           break;
       } // end of if (!Str_Cmp(argv[i], "start"))
       else  // not "daq stop" nor "daq start"
       {
               // save time string into the temporary local string - Mai - Nov 18, 2021
-              sprintf(apf_reply_str,"daq,nak,wrong second argument -- valid cmmd: %s\r\n",daq_valid_cmmd);
+              sprintf(apf_reply_str,"daq,nak,wrong second argument -- valid cmd: %s\r\n",daq_valid_cmd);
               status |= MOD_SOM_APF_STATUS_ERR;
       }
       break;
@@ -158,7 +160,7 @@ CPU_INT16S mod_som_apf_cmd_daq_f(CPU_INT16U argc,
       if (!Str_Cmp(argv[i], "stop"))  // daq stop arg => wrong stop command
       {
           // save time string into the temporary local string - Mai - Nov 18, 2021
-          sprintf(apf_reply_str,"daq,stop,nak,wrong command -- valid cmmd: %s\r\n",daq_stop_valid_cmmd);
+          sprintf(apf_reply_str,"daq,stop,nak,wrong command -- valid cmd: %s\r\n",daq_stop_valid_cmd);
           status |= MOD_SOM_APF_STATUS_ERR;
           break;
       }
@@ -170,7 +172,7 @@ CPU_INT16S mod_som_apf_cmd_daq_f(CPU_INT16U argc,
           if(isalpha(third_arg[0])) // daq start not_integer
           {
               // save time string into the temporary local string - Mai - 11 May, 2022
-              sprintf(apf_reply_str,"daq,start,nak,profile_id is NOT integer -- valid cmmd: %s\r\n",daq_start_valid_cmmd);
+              sprintf(apf_reply_str,"daq,start,nak,profile_id is NOT integer -- valid cmd: %s\r\n",daq_start_valid_cmd);
               status |= MOD_SOM_APF_STATUS_WRONG_ARG;
               break;
           }
@@ -183,21 +185,21 @@ CPU_INT16S mod_som_apf_cmd_daq_f(CPU_INT16U argc,
           if (profile_id < 0 || profile_id>MOD_SOM_APF_DAQ_CMMD_LIMIT)
           {
                  // save time string into the temporary local string - Mai - Nov 18, 2021
-                 sprintf(apf_reply_str,"daq,start,nak,third arg is NOT in range [0 %d], -- valid cmmd: %s\n",MOD_SOM_APF_DAQ_CMMD_LIMIT,daq_start_valid_cmmd);
+                 sprintf(apf_reply_str,"daq,start,nak,third arg is NOT in range [0 %d], -- valid cmd: %s\n",MOD_SOM_APF_DAQ_CMMD_LIMIT,daq_start_valid_cmd);
                  status |= MOD_SOM_APF_STATUS_WRONG_ARG;
                  break;
           }
 
           // check the profile_id is continous
-          if (profile_id - last_profile_id != 1)
+          if (profile_id - local_apf_runtime_ptr->profile_id != 1)
             {
                // save time string into the temporary local string - Mai - Nov 18, 2021
-              sprintf(apf_reply_str,"daq,start,nak,wrong profile id,input profile is not continous,last profile id is %lu, must be %lu\r\n",(uint32_t) last_profile_id,(uint32_t) last_profile_id+1);
+              sprintf(apf_reply_str,"daq,start,nak,wrong profile id,input profile is not continous,last profile id is %lu, must be %lu\r\n",(uint32_t) local_apf_runtime_ptr->profile_id,(uint32_t) local_apf_runtime_ptr->profile_id+1);
               status |= MOD_SOM_APF_STATUS_WRONG_ARG;
               break;
             }
           // all the bad input are detected, now only have valid command - maibui Aprl 28, 2022
-          last_profile_id = profile_id;  // update the frofile id
+//          last_profile_id = profile_id;  // update the frofile id
           return_status = mod_som_apf_daq_start_f((uint64_t)profile_id); // execute start()
 
           if (return_status == MOD_SOM_APF_STATUS_NO_CTD_DATA)
@@ -214,7 +216,7 @@ CPU_INT16S mod_som_apf_cmd_daq_f(CPU_INT16U argc,
       break;
     default:  // more than 3 argc
       // save time string into the temporary local string - Mai - Nov 18, 2021
-      sprintf(apf_reply_str,"daq,nak,too many arguments -- valid cmmd: %s\r\n",daq_valid_cmmd);
+      sprintf(apf_reply_str,"daq,nak,too many arguments -- valid cmd: %s\r\n",daq_valid_cmd);
       status |= MOD_SOM_APF_STATUS_WRONG_ARG;
      break;
   }

@@ -96,6 +96,22 @@
 bool mod_som_running_flag;
 bool mod_som_sleep_flag;
 
+//AlB Structure to initialize the watchdog timer.
+/* Defining the watchdog initialization data */
+//WDOG_Init_TypeDef wdog_init =
+//{
+//  .enable     = true,                 /* Start watchdog when init done */
+//  .debugRun   = false,                /* WDOG not counting during debug halt */
+//  .em2Run     = true,                 /* WDOG counting when in EM2 */
+//  .em3Run     = true,                 /* WDOG counting when in EM3 */
+//  .em4Block   = false,                /* EM4 can be entered */
+//  .swoscBlock = false,                /* Do not block disabling LFRCO/LFXO in CMU */
+//  .lock       = false,                /* Do not lock WDOG configuration (if locked, reset needed to unlock) */
+//  .clkSel     = wdogClkSelULFRCO,     /* Select 1kHZ WDOG oscillator */
+//  .perSel     = wdogPeriod_32k,        /* Set the watchdog period to 2049 clock periods (ie ~2 seconds) */
+//};
+
+
 /*****************************************
  * END Include module header files here
  *****************************************/
@@ -226,7 +242,7 @@ void mod_som_main_stop_modules_f()
 
   sl_sleeptimer_delay_millisecond(delay);
   //ALB disable SDIO hardware
-
+  mod_som_sdio_disable_hardware_f();
 
 printf("epsi sleep\r\n");
 
@@ -248,23 +264,37 @@ mod_som_status_t mod_som_main_sleep_f()
 
   if (mod_som_sleep_flag==false){
       printf("Making all modules are stopped \r\n");
-      mod_som_main_stop_modules_f();
+//      mod_som_main_stop_modules_f();
 
       //Select intern HFRCO
-      CMU_ClockSelectSet(cmuClock_HF, cmuSelect_HFRCO);
+//      CMU_OscillatorEnable(cmuOsc_HFRCO, true,true);
+//      CMU_ClockSelectSet(cmuClock_HF, cmuSelect_HFRCO);
 
       //ALB Disable HFXO
-      //ALB turn off the
+      //ALB IF cmuSelect_HFRCO is NOT selected before it will reset the whole board
       /* Power External Oscillator SOM-U8-U4*/
       // HF oscillator disable.
-      CMU_OscillatorEnable(cmuOsc_HFXO, false, false);
 
       // turn dowm HFXO
-      GPIO_PinModeSet(MOD_SOM_HFXO_EN_PORT, MOD_SOM_HFXO_EN_PIN, gpioModePushPull, 0);
-    //
+      //
       //ALB      DC/DC burst mode  PF10 low
+      RETARGET_SerialFlush(); // Wait for UART TX buffer to be empty
+      CMU_ClockSelectSet(cmuClock_HF, cmuSelect_HFRCO);
+      CMU_HFRCOBandSet(cmuHFRCOFreq_13M0Hz);
+      RETARGET_SerialInit(); // Re-enable VCOM
       GPIO_PinModeSet(gpioPortF, 10, gpioModePushPull, 0);
-    //  CMU_ClockEnable(cmuClock_CORELE, true);
+      CMU_OscillatorEnable(cmuOsc_HFXO, false, false);
+      GPIO_PinModeSet(MOD_SOM_HFXO_EN_PORT,
+                      MOD_SOM_HFXO_EN_PIN,
+                      gpioModePushPull, 0);
+
+//WAKE UP CMD
+//      GPIO_PinModeSet(gpioPortF, 10, gpioModePushPull, 1);
+//      RETARGET_SerialFlush(); // Wait for UART TX buffer to be empty
+//      CMU_ClockSelectSet(cmuClock_HF, cmuSelect_HFXO);
+//      RETARGET_SerialInit(); // Re-enable VCOM
+
+
 
       //ALB I want to keep LEUART alive  (SBEcom) so I reconnect it
       //ALB It also send some power to the SBE I need to NOT do this
@@ -299,20 +329,28 @@ mod_som_status_t mod_som_main_wake_up_f()
   if (mod_som_sleep_flag==true){
       printf("Making all modules are stopped \r\n");
 
-      // turn dowm HFXO
-      GPIO_PinModeSet(MOD_SOM_HFXO_EN_PORT, MOD_SOM_HFXO_EN_PIN, gpioModePushPull, 1);
-      //Select intern HFXO
-      CMU_ClockSelectSet(cmuClock_HF, cmuSelect_HFXO);
-
-      //ALB Disable HFXO
-      //ALB turn off the
-      /* Power External Oscillator SOM-U8-U4*/
-      // HF oscillator disable.
-      CMU_OscillatorEnable(cmuOsc_HFXO, true, false);
-      CMU_OscillatorEnable(cmuOsc_HFRCO, false, false);
-
       //ALB      DC/DC not burst mode  PF10 high
       GPIO_PinModeSet(gpioPortF, 10, gpioModePushPull, 1);
+
+      // turn dowm HFXO
+      GPIO_PinModeSet(MOD_SOM_HFXO_EN_PORT, MOD_SOM_HFXO_EN_PIN, gpioModePushPull, 1);
+//      //Select intern HFXO
+      CMU_OscillatorEnable(cmuOsc_HFXO, true, true);
+      RETARGET_SerialFlush(); // Wait for UART TX buffer to be empty
+      CMU_ClockSelectSet(cmuClock_HF, cmuSelect_HFXO);
+      RETARGET_SerialInit(); // Re-enable VCOM
+      sl_sleeptimer_delay_millisecond(delay);
+
+//      // HFRCO oscillator disable.
+//      CMU_OscillatorEnable(cmuOsc_HFRCO, false, false);
+//
+//      CMU_ClockEnable(cmuClock_HFLE, true);
+      CMU_ClockEnable(cmuClock_HFPER, true);
+//      CMU_ClockEnable(cmuClock_CORELE, true);
+
+
+      //ALB Software reset of SDIO
+//      SDIO->CLOCKCTRL|=(_SDIO_CLOCKCTRL_SFTRSTA_MASK & SDIO_CLOCKCTRL_SFTRSTA);
 
       sl_sleeptimer_delay_millisecond(delay);
 

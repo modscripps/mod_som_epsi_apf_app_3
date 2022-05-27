@@ -139,8 +139,8 @@
 #define MOD_SOM_SBE41_EN
 #define MOD_SOM_APF_EN
 
-#define MOD_SOM_EFE_REV3
-//#define MOD_SOM_EFE_REV4
+//#define MOD_SOM_EFE_REV3
+#define MOD_SOM_EFE_REV4
 
 //MHA klugy compile flag for FCTD
 //#define MOD_SOM_FCTD_EN

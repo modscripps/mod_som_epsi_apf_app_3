@@ -66,8 +66,8 @@ static CPU_STK mod_som_main_task_stack[MOD_SOM_MAIN_TASK_STK_SIZE];
 static OS_TCB mod_som_main_task_tcb;
 
 
-//AlB Structure to initialize the watchdog timer.
-/* Defining the watchdog initialization data */
+////AlB Structure to initialize the watchdog timer.
+///* Defining the watchdog initialization data */
 WDOG_Init_TypeDef wdog_init =
 {
   .enable     = true,                 /* Start watchdog when init done */

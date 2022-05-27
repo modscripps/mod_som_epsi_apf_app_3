@@ -63,6 +63,7 @@ DWORD get_fattime(void)
 mod_som_status_t mod_som_sdio_init_f(){
     mod_som_status_t status;
     RTOS_ERR  err;
+    int delay=5000; //5 seconds
 //    mod_som_sdio_ptr_t mod_som_sdio_struct_ptr=&mod_som_sdio_struct;
 
     //ALB initialize the SDIO module commands
@@ -114,11 +115,9 @@ mod_som_status_t mod_som_sdio_init_f(){
     mod_som_sdio_allocate_memory_f();
 //    //ALB enable hardware
 //    mod_som_sdio_enable_hardware_f();
-    //mount fatFS memory.
-    // ALB the SDIO software does not have a disk_initialization working correctly.
-    // ALB consequently we can mount a volume but not check if an physical SD is in the slot.
-    // ALB I am moving mount fatfs inside enable hardware
-    // mod_som_sdio_mount_fatfs_f();
+//    //ALB Only APEX epsi and becasue of the big cap.
+//    //ALB I need to charge it
+//    sl_sleeptimer_delay_millisecond(delay);
 
     //ALB initialize runtime param initialized flag
     mod_som_sdio_struct.initialized_flag = true;
@@ -145,7 +144,7 @@ mod_som_status_t mod_som_sdio_init_f(){
 
 mod_som_status_t mod_som_sdio_enable_hardware_f(){
 //  int delay=833333; //ALB 60s at 50e6 Hz
-  int delay=500; //ALB .1sec
+  int delay=100; //ALB .1sec
 
   if(!mod_som_sdio_struct.enable_flag){
       mod_som_sdio_struct.enable_flag=true;
@@ -201,12 +200,15 @@ mod_som_status_t mod_som_sdio_enable_hardware_f(){
  ******************************************************************************/
 
 mod_som_status_t mod_som_sdio_disable_hardware_f(){
-int delay=500; //ALB .1 sec
+int delay=100; //ALB .1 sec
 FRESULT res;
 mod_som_status_t status=0;
 
   if(mod_som_sdio_struct.enable_flag){
       mod_som_sdio_struct.enable_flag=false;
+      sl_sleeptimer_delay_millisecond(delay);
+      //ALB stop the sdio task
+      mod_som_sdio_stop_f();
 
       //ALB if loop insde to check if the file is open
       if(mod_som_sdio_struct.data_file_ptr->is_open_flag==1){
@@ -221,7 +223,6 @@ mod_som_status_t status=0;
       if (res!=FR_OK){
         status=1;
       }
-      sl_sleeptimer_delay_millisecond(delay);
 
     //TODO use bsp_som variables to initialize the SD card.
     // Soldered sdCard slot
@@ -237,9 +238,9 @@ mod_som_status_t status=0;
     sl_sleeptimer_delay_millisecond(delay);
     GPIO_PinModeSet(gpioPortD, 6u, gpioModePushPull, 0); //SD_EN
 
+
     //ALB Software reset of SDIO
     SDIO->CLOCKCTRL|=(_SDIO_CLOCKCTRL_SFTRSTA_MASK & SDIO_CLOCKCTRL_SFTRSTA);
-    mod_som_sdio_stop_f();
 
   }else{
       status=1;

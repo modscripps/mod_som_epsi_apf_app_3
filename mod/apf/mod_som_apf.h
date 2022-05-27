@@ -53,6 +53,10 @@
 #define MOD_SOM_APF_DACQ_TIMESTAMP_SIZE      2
 #define MOD_SOM_APF_DACQ_DISSRATE_SIZE       3
 #define MOD_SOM_APF_DACQ_PRESSURE_SIZE       4
+#define MOD_SOM_APF_DACQ_TEMPERATURE_SIZE    4
+#define MOD_SOM_APF_DACQ_SALINITY_SIZE       4
+#define MOD_SOM_APF_DACQ_KCUT_SIZE           4
+#define MOD_SOM_APF_DACQ_FCUT_SIZE           4
 #define MOD_SOM_APF_DACQ_DPDT_SIZE           4
 #define MOD_SOM_APF_DACQ_FOCO_SIZE           4
 #define MOD_SOM_APF_DACQ_FLOAT_SIZE          4
@@ -530,6 +534,15 @@ mod_som_status_t mod_som_apf_default_settings_f(
  *   configuration pointer
  ******************************************************************************/
 mod_som_apf_settings_t mod_som_apf_get_settings_f();
+/*******************************************************************************
+ * @brief
+ *   get the runtime ptr
+ *
+ * @param config_ptr
+ *   configuration pointer
+ ******************************************************************************/
+mod_som_apf_ptr_t mod_som_apf_get_runtime_ptr_f();
+
 
 bool mod_som_apf_get_daq_f(); // mnbui Nov 29, 2021
 
@@ -991,9 +1004,15 @@ uint32_t mod_som_apf_copy_F1_element_f( uint64_t * curr_avg_timestamp_ptr,
  ******************************************************************************/
 uint32_t mod_som_apf_copy_F2_element_f(  uint64_t * curr_avg_timestamp_ptr,
                                 float * curr_avg_pressure_ptr,
+                                float * curr_temperature_ptr,
+                                float * curr_salinity_ptr,
                                 float * curr_avg_dpdt_ptr,
                                 float * curr_epsilon_ptr,
                                 float * curr_chi_ptr,
+                                float * curr_kcut_shear_ptr,
+                                float * curr_fcut_temp_ptr,
+                                float * curr_fom_epsi_ptr,
+                                float * curr_fom_chi_ptr,
                                 float * curr_temp_avg_spectra_ptr,
                                 float * curr_shear_avg_spectra_ptr,
                                 float * curr_accel_avg_spectra_ptr,
@@ -1001,11 +1020,15 @@ uint32_t mod_som_apf_copy_F2_element_f(  uint64_t * curr_avg_timestamp_ptr,
 
 void mod_som_apf_copy_sd_element_f(  uint64_t * curr_avg_timestamp_ptr,
                                      float * curr_avg_pressure_ptr,
-                                     float * curr_avg_temperature_ptr,
-                                     float * curr_avg_salinity_ptr,
+                                     float * curr_temperature_ptr,
+                                     float * curr_salinity_ptr,
                                      float * curr_avg_dpdt_ptr,
                                      float * curr_epsilon_ptr,
                                      float * curr_chi_ptr,
+                                     float * curr_kcut_shear_ptr,
+                                     float * curr_fcut_temp_ptr,
+                                     float * curr_fom_epsi_ptr,
+                                     float * curr_fom_chi_ptr,
                                      float * curr_temp_avg_spectra_ptr,
                                      float * curr_shear_avg_spectra_ptr,
                                      float * curr_accel_avg_spectra_ptr);

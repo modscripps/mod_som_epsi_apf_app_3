@@ -809,6 +809,19 @@ mod_som_status_t mod_som_efe_obp_construct_cpt_dissrate_ptr_f(){
         &err);
   APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
 
+  mod_som_efe_obp_ptr->cpt_dissrate_ptr->kcutoff_shear = (float *)Mem_SegAlloc(
+        "MOD SOM EFE OBP dissrate kcutoff_shear ptr",DEF_NULL,
+        MOD_SOM_EFE_OBP_CPT_DISSRATE_NB_RATES_PER_RECORD*sizeof(float),
+        &err);
+  APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
+
+  mod_som_efe_obp_ptr->cpt_dissrate_ptr->fcutoff_temp = (float *)Mem_SegAlloc(
+        "MOD SOM EFE OBP dissrate fcutoff_temp ptr",DEF_NULL,
+        MOD_SOM_EFE_OBP_CPT_DISSRATE_NB_RATES_PER_RECORD*sizeof(float),
+        &err);
+  APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
+
+
   mod_som_efe_obp_ptr->cpt_dissrate_ptr->epsi_fom = (float *)Mem_SegAlloc(
         "MOD SOM EFE OBP dissrate epsi fom ptr",DEF_NULL,
         MOD_SOM_EFE_OBP_CPT_DISSRATE_NB_RATES_PER_RECORD*sizeof(float),
@@ -825,7 +838,6 @@ mod_som_status_t mod_som_efe_obp_construct_cpt_dissrate_ptr_f(){
   mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_ctd_pressure    = 0;
   mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_ctd_temperature = 0;
   mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_ctd_salinity    = 0;
-  mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_ctd_dpdt        = 0;
 
   //ALB initialize all parameters. They should be reset right before
   //ALB cpt_spectra task is starts running.
@@ -993,10 +1005,10 @@ mod_som_status_t mod_som_efe_obp_start_cpt_spectra_task_f(){
    mod_som_efe_obp_ptr->cpt_spectra_ptr->started_flg=true;
 
    //ALB initialize field ctd data
-   mod_som_efe_obp_ptr->cpt_spectra_ptr->avg_ctd_pressure=0;
-   mod_som_efe_obp_ptr->cpt_spectra_ptr->avg_ctd_temperature=0;
-   mod_som_efe_obp_ptr->cpt_spectra_ptr->avg_ctd_salinity=0;
-   mod_som_efe_obp_ptr->cpt_spectra_ptr->avg_ctd_dpdt=0;
+   mod_som_efe_obp_ptr->cpt_spectra_ptr->avg_ctd_pressure     = 0;
+   mod_som_efe_obp_ptr->cpt_spectra_ptr->avg_ctd_temperature  = 0;
+   mod_som_efe_obp_ptr->cpt_spectra_ptr->avg_ctd_salinity     = 0;
+   mod_som_efe_obp_ptr->cpt_spectra_ptr->avg_ctd_dpdt         = 0;
 
    mod_som_efe_obp_ptr->cpt_spectra_ptr->ctd_pressure=0;
    mod_som_efe_obp_ptr->cpt_spectra_ptr->ctd_temperature=0;
@@ -1055,6 +1067,8 @@ mod_som_status_t mod_som_efe_obp_start_cpt_dissrate_task_f(){
   mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_ctd_salinity=0;
   mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_ctd_dpdt=0;
 
+  //ALB re-initialize sample count
+  mod_som_efe_obp_ptr->sample_count=0;
 
    OSTaskCreate(&efe_obp_cpt_dissrate_task_tcb,
                         "efe obp cpt_dissrate task",
@@ -1632,8 +1646,11 @@ void mod_som_efe_obp_cpt_dissrate_task_f(void  *p_arg){
   float * local_chi_ptr;
   float * local_nu_ptr;
   float * local_kappa_ptr;
+  float * local_kcutoff_shear_ptr;
+  float * local_fcutoff_temp_ptr;
   float * local_epsi_fom_ptr;
   float * local_chi_fom_ptr;
+
 
 
 
@@ -1664,6 +1681,12 @@ void mod_som_efe_obp_cpt_dissrate_task_f(void  *p_arg){
               local_kappa_ptr   = mod_som_efe_obp_ptr->cpt_dissrate_ptr->kappa +
                              (mod_som_efe_obp_ptr->cpt_dissrate_ptr->dissrates_cnt%
                               MOD_SOM_EFE_OBP_CPT_DISSRATE_NB_RATES_PER_RECORD);
+              local_kcutoff_shear_ptr   = mod_som_efe_obp_ptr->cpt_dissrate_ptr->kcutoff_shear +
+                             (mod_som_efe_obp_ptr->cpt_dissrate_ptr->dissrates_cnt%
+                              MOD_SOM_EFE_OBP_CPT_DISSRATE_NB_RATES_PER_RECORD);
+              local_fcutoff_temp_ptr   = mod_som_efe_obp_ptr->cpt_dissrate_ptr->fcutoff_temp +
+                             (mod_som_efe_obp_ptr->cpt_dissrate_ptr->dissrates_cnt%
+                              MOD_SOM_EFE_OBP_CPT_DISSRATE_NB_RATES_PER_RECORD);
               local_epsi_fom_ptr     = mod_som_efe_obp_ptr->cpt_dissrate_ptr->epsi_fom +
                              (mod_som_efe_obp_ptr->cpt_dissrate_ptr->dissrates_cnt%
                               MOD_SOM_EFE_OBP_CPT_DISSRATE_NB_RATES_PER_RECORD);
@@ -1679,13 +1702,16 @@ void mod_som_efe_obp_cpt_dissrate_task_f(void  *p_arg){
               //CAP Add compute epsilon chi
               //CAP Add compute spectra functions
 
-               mod_som_efe_obp_compute_dissrate_data_f(mod_som_efe_obp_ptr      ,
+               mod_som_efe_obp_compute_dissrate_data_f(mod_som_efe_obp_ptr     ,
                                                       local_epsilon_ptr        ,
                                                       local_chi_ptr            ,
                                                       local_nu_ptr             ,
                                                       local_kappa_ptr          ,
+                                                      local_kcutoff_shear_ptr  ,
+                                                      local_fcutoff_temp_ptr   ,
                                                       local_epsi_fom_ptr       ,
                                                       local_chi_fom_ptr);
+
 
               //ALB increment the counters
               mod_som_efe_obp_ptr->sample_count++;
@@ -1861,14 +1887,16 @@ mod_som_status_t mod_som_efe_obp_compute_dissrate_data_f(
                                                       float * local_chi,
                                                       float * local_nu,
                                                       float * local_kappa,
+                                                      float * local_kcutoff_shear,
+                                                      float * local_fcutoff_temp,
                                                       float * local_epsi_fom,
                                                       float * local_chi_fom
                                                       )
 {
 
   //CAP
-  mod_som_efe_obp_calc_epsilon_f(local_epsilon, local_nu, local_epsi_fom, mod_som_efe_obp_ptr);
-  mod_som_efe_obp_calc_chi_f(local_epsilon, local_chi, local_kappa, local_chi_fom, mod_som_efe_obp_ptr);
+  mod_som_efe_obp_calc_epsilon_f(local_epsilon, local_nu, local_kcutoff_shear,local_epsi_fom, mod_som_efe_obp_ptr);
+  mod_som_efe_obp_calc_chi_f(local_epsilon, local_chi, local_kappa,local_fcutoff_temp, local_chi_fom, mod_som_efe_obp_ptr);
   return mod_som_efe_obp_encode_status_f(MOD_SOM_STATUS_OK);
 }
 
