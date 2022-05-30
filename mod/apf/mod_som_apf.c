@@ -2510,6 +2510,7 @@ mod_som_apf_status_t mod_som_apf_daq_start_f(uint64_t profile_id){
 //  //ALB Open SD file,
   sprintf(filename, "Profile%lu",(uint32_t) mod_som_apf_ptr->profile_id);
   mod_som_sdio_define_filename_f(filename);
+    mod_som_settings_save_settings_f();
   //ALB write MODSOM settings on the SD file
 //  mod_som_settings_sd_settings_f();
   //ALB initialize Meta_Data Structure, TODO
