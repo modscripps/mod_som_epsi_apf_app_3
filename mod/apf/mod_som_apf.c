@@ -25,7 +25,7 @@
   #include <mod_som_settings.h>
 #endif
 
-#define SOM_APF_NOT_DEBUG_MODE 0  // use this flag to turn on main command for debugging: 0: turn off,1: debug -- mai bui 5 May, 2022
+#define SOM_APF_NOT_DEBUG_MODE 1  // use this flag to turn on main command for debugging: 0: turn off,1: debug -- mai bui 5 May, 2022
 
 #include <efe_obp/mod_som_efe_obp.h>
 
@@ -2558,6 +2558,11 @@ mod_som_apf_status_t mod_som_apf_daq_start_f(uint64_t profile_id){
       //ALB reset voltage
       local_voltage_runtime_ptr->voltage=0;
 
+      //ALB      DC/DC not burst mode  PF10 high
+      GPIO_PinModeSet(MOD_SOM_MAIN_COM_EN_PORT, MOD_SOM_MAIN_COM_EN_PIN,
+                      gpioModePushPull, 0);
+
+
       status|=mod_som_efe_sampling_f();
   }
 
@@ -2607,6 +2612,9 @@ mod_som_apf_status_t mod_som_apf_daq_stop_f(){
   sl_sleeptimer_delay_millisecond(delay);
   mod_som_sdio_disable_hardware_f();
   mod_som_sdio_stop_f();
+  GPIO_PinModeSet(MOD_SOM_MAIN_COM_EN_PORT, MOD_SOM_MAIN_COM_EN_PIN,
+                  gpioModePushPull, 1);
+
 
 
   //reset Daq flags

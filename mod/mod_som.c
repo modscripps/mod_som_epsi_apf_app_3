@@ -245,8 +245,10 @@ mod_som_status_t mod_som_main_init_f(void){
 mod_som_status_t mod_som_main_com_off_f(void){
   mod_som_io_stop_task_f();
   mod_som_shell_stop_f();
-
   RETARGET_SerialdeInit();
+  GPIO_PinModeSet(MOD_SOM_MAIN_COM_EN_PORT, MOD_SOM_MAIN_COM_EN_PIN,
+                  gpioModePushPull, 0);
+
   return mod_som_encode_status_f(MOD_SOM_STATUS_OK);
 }
 /*******************************************************************************
@@ -254,6 +256,9 @@ mod_som_status_t mod_som_main_com_off_f(void){
  *   turn on main com
  ******************************************************************************/
 mod_som_status_t mod_som_main_com_on_f(void){
+  GPIO_PinModeSet(MOD_SOM_MAIN_COM_EN_PORT, MOD_SOM_MAIN_COM_EN_PIN,
+                  gpioModePushPull, 1);
+
   RETARGET_SerialInit();
    mod_som_io_start_f();
    mod_som_shell_start_f();
