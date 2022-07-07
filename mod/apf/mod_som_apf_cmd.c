@@ -28,23 +28,23 @@
 /* @var mod_som_apf_cmd_tbl predefined command table of fixed size        */
 static SHELL_CMD  mod_som_apf_cmd_tbl[] =
 {
-        { "daq",          mod_som_apf_cmd_daq_f },
-        { "daq?",         mod_som_apf_cmd_daq_status_f },
-        { "time",         mod_som_apf_cmd_time_f },
-        { "time?",        mod_som_apf_cmd_time_status_f },
-        { "ok?",          mod_som_apf_cmd_ok_status_f },
-        { "sleep",        mod_som_apf_cmd_sleep_f },
-        { "gate",         mod_som_apf_cmd_gate_f }, // turn on/off the main menu
-        { "fwrev?",       mod_som_apf_cmd_fwrev_status_f },
-        { "upload",       mod_som_apf_cmd_upload_f },
-        { "epsi_no?",     mod_som_apf_cmd_epsi_id_status_f },
-        { "probe_no",     mod_som_apf_cmd_probe_id_f },
-        { "probe_no?",    mod_som_apf_cmd_probe_id_status_f },
-        { "poweroff",     mod_som_apf_cmd_poweroff_f },
-        { "sd_format?",   mod_som_apf_cmd_sd_format_status_f },
-        { "sd_format",    mod_som_apf_cmd_sd_format_f },
-        { "packet_format?", mod_som_apf_cmd_packet_format_status_f },
-        { "packet_format", mod_som_apf_cmd_packet_format_f },
+        { MOD_SOM_APF_DAQ_STR,               mod_som_apf_cmd_daq_f },
+        { MOD_SOM_APF_DAQSTAT_STR,           mod_som_apf_cmd_daq_status_f },
+        { MOD_SOM_APF_TIME_STR,              mod_som_apf_cmd_time_f },
+        { MOD_SOM_APF_TIMESTAT_STR,          mod_som_apf_cmd_time_status_f },
+        { MOD_SOM_APF_OKSTAT_STR,            mod_som_apf_cmd_ok_status_f },
+        { MOD_SOM_APF_SLEEP_STR,             mod_som_apf_cmd_sleep_f },
+        { MOD_SOM_APF_GATE_STR,              mod_som_apf_cmd_gate_f }, // turn on/off the main menu
+        { MOD_SOM_APF_FWREV_STAT_STR,        mod_som_apf_cmd_fwrev_status_f },
+        { MOD_SOM_APF_UPLOAD_STR,            mod_som_apf_cmd_upload_f },
+        { MOD_SOM_APF_EPSINO_STAT_STR,       mod_som_apf_cmd_epsi_id_status_f },
+        { MOD_SOM_APF_PROBENO_STR,           mod_som_apf_cmd_probe_id_f },
+        { MOD_SOM_APF_PROBENO_STAT_STR,      mod_som_apf_cmd_probe_id_status_f },
+        { MOD_SOM_APF_POWEROFF_STR,          mod_som_apf_cmd_poweroff_f },
+        { MOD_SOM_APF_SDFORMAT_STAT_STR,     mod_som_apf_cmd_sd_format_status_f },
+        { MOD_SOM_APF_SDFORMAT_STR,          mod_som_apf_cmd_sd_format_f },
+        { MOD_SOM_APF_PACKETFORMAT_STAT_STR, mod_som_apf_cmd_packet_format_status_f },
+        { MOD_SOM_APF_PACKETFORMAT_STR,      mod_som_apf_cmd_packet_format_f },
         { 0, 0 }
 };
 //{ "EpsiNo", mod_som_apf_cmd_epsi_id_f },
@@ -88,7 +88,7 @@ mod_som_status_t mod_som_apf_init_cmd_f(){
  * @return
  *   apf Command Status
  ******************************************************************************/
-#define MOD_SOM_APF_DAQ_CMMD_LIMIT 65534
+#define MOD_SOM_APF_DAQ_PROFILE_LIMIT 65534
 //uint64_t last_profile_id = 0;
 
 CPU_INT16S mod_som_apf_cmd_daq_f(CPU_INT16U argc,
@@ -113,7 +113,7 @@ CPU_INT16S mod_som_apf_cmd_daq_f(CPU_INT16U argc,
 
   char third_arg[125] = "\0";
   char daq_valid_cmd[] = "valid command: \"daq,stop\" or \"daq,start,profile_id_positive_int_below_65534\"";
-  char daq_stop_valid_cmd[] = "valid command: \"daq,stop\"\n";
+  char daq_stop_valid_cmd[] = "valid command: \"daq,stop\"r\n";
   char daq_start_valid_cmd[] = "valid command: \"daq,start,profile_id_positive_int_below_65534\"";
 //  char input_cmd[125] = "\0";
   char err_str[125] = "\0";
@@ -124,7 +124,8 @@ CPU_INT16S mod_som_apf_cmd_daq_f(CPU_INT16U argc,
   {
     case 1: // input: "daq" -- invalid command, not enough information
       // save time string into the temporary local string - Mai - Nov 18, 2021
-      sprintf(apf_reply_str,"daq,nak,missing arguments -- valid cmd: %s.\r\n",daq_valid_cmd);
+      //ALB changing to %s,%s
+      sprintf(apf_reply_str,"%s,%s,missing arguments -- valid cmd: %s.\r\n",MOD_SOM_APF_DAQ_STR,MOD_SOM_APF_NACK_STR,daq_valid_cmd);
       status |= MOD_SOM_APF_STATUS_WRONG_ARG;
       break;
     case 2: // input: "daq,stop", if "daq,start" or "daq,somethingelse" -> error
@@ -136,7 +137,8 @@ CPU_INT16S mod_som_apf_cmd_daq_f(CPU_INT16U argc,
          if (return_status == MOD_SOM_APF_STATUS_OK)
          {
              // save time string into the temporary local string - Mai - Nov 18, 2021
-             sprintf(apf_reply_str,"daq,stop,ack\r\n");
+             //ALB changing to %s,%s
+             sprintf(apf_reply_str,"%s,stop,%s\r\n",MOD_SOM_APF_DAQ_STR,MOD_SOM_APF_ACK_STR);
              status |= return_status;
              break;
          }
@@ -144,14 +146,14 @@ CPU_INT16S mod_som_apf_cmd_daq_f(CPU_INT16U argc,
       else if (!Str_Cmp(argv[i], "start"))  // "daq,start" => missing profile id
       {
           // save time string into the temporary local string - Mai - Dec 3, 2021
-          sprintf(apf_reply_str,"daq,start,nak,missing profile id -- valid cmd: %s\r\n",daq_start_valid_cmd);
+          sprintf(apf_reply_str,"%s,start,%s,missing profile id -- valid cmd: %s\r\n",MOD_SOM_APF_DAQ_STR,MOD_SOM_APF_NACK_STR,daq_start_valid_cmd);
           status |= MOD_SOM_APF_STATUS_WRONG_ARG;
           break;
       } // end of if (!Str_Cmp(argv[i], "start"))
       else  // not "daq stop" nor "daq start"
       {
               // save time string into the temporary local string - Mai - Nov 18, 2021
-              sprintf(apf_reply_str,"daq,nak,wrong second argument -- valid cmd: %s\r\n",daq_valid_cmd);
+              sprintf(apf_reply_str,"%s,%s,wrong second argument -- valid cmd: %s\r\n",MOD_SOM_APF_DAQ_STR,MOD_SOM_APF_NACK_STR,daq_valid_cmd);
               status |= MOD_SOM_APF_STATUS_ERR;
       }
       break;
@@ -160,7 +162,7 @@ CPU_INT16S mod_som_apf_cmd_daq_f(CPU_INT16U argc,
       if (!Str_Cmp(argv[i], "stop"))  // daq stop arg => wrong stop command
       {
           // save time string into the temporary local string - Mai - Nov 18, 2021
-          sprintf(apf_reply_str,"daq,stop,nak,wrong command -- valid cmd: %s\r\n",daq_stop_valid_cmd);
+          sprintf(apf_reply_str,"%s,stop,%s,wrong command -- valid cmd: %s\r\n",MOD_SOM_APF_DAQ_STR,MOD_SOM_APF_NACK_STR,daq_stop_valid_cmd);
           status |= MOD_SOM_APF_STATUS_ERR;
           break;
       }
@@ -172,7 +174,9 @@ CPU_INT16S mod_som_apf_cmd_daq_f(CPU_INT16U argc,
           if(isalpha(third_arg[0])) // daq start not_integer
           {
               // save time string into the temporary local string - Mai - 11 May, 2022
-              sprintf(apf_reply_str,"daq,start,nak,profile_id is NOT integer -- valid cmd: %s\r\n",daq_start_valid_cmd);
+              sprintf(apf_reply_str,"%s,start,%s,profile_id is NOT integer -- valid cmd: %s\r\n",
+                      MOD_SOM_APF_DAQ_STR,MOD_SOM_APF_NACK_STR,
+                      daq_start_valid_cmd);
               status |= MOD_SOM_APF_STATUS_WRONG_ARG;
               break;
           }
@@ -182,10 +186,12 @@ CPU_INT16S mod_som_apf_cmd_daq_f(CPU_INT16U argc,
           //printf("profile id: %s\n",argv[i+1]);
 
           // profile id is out of the range
-          if (profile_id < 0 || profile_id>MOD_SOM_APF_DAQ_CMMD_LIMIT)
+          if (profile_id < 0 || profile_id>MOD_SOM_APF_DAQ_PROFILE_LIMIT)
           {
                  // save time string into the temporary local string - Mai - Nov 18, 2021
-                 sprintf(apf_reply_str,"daq,start,nak,third arg is NOT in range [0 %d], -- valid cmd: %s\n",MOD_SOM_APF_DAQ_CMMD_LIMIT,daq_start_valid_cmd);
+                 sprintf(apf_reply_str,"%s,start,%s,third arg is NOT in range [0 %d], -- valid cmd: %s\r\n",
+                         MOD_SOM_APF_DAQ_STR,MOD_SOM_APF_NACK_STR,
+                         MOD_SOM_APF_DAQ_PROFILE_LIMIT,daq_start_valid_cmd);
                  status |= MOD_SOM_APF_STATUS_WRONG_ARG;
                  break;
           }
@@ -194,29 +200,37 @@ CPU_INT16S mod_som_apf_cmd_daq_f(CPU_INT16U argc,
           if (profile_id - local_apf_runtime_ptr->profile_id != 1)
             {
                // save time string into the temporary local string - Mai - Nov 18, 2021
-              sprintf(apf_reply_str,"daq,start,nak,wrong profile id,input profile is not continous,last profile id is %lu, must be %lu\r\n",(uint32_t) local_apf_runtime_ptr->profile_id,(uint32_t) local_apf_runtime_ptr->profile_id+1);
+              sprintf(apf_reply_str,"%s,start,%s,wrong profile id,input profile is not continous,last profile id is %lu, must be %lu\r\n",
+                      MOD_SOM_APF_DAQ_STR,MOD_SOM_APF_NACK_STR,
+                      (uint32_t) local_apf_runtime_ptr->profile_id,
+                      (uint32_t) local_apf_runtime_ptr->profile_id+1);
               status |= MOD_SOM_APF_STATUS_WRONG_ARG;
               break;
             }
           // all the bad input are detected, now only have valid command - maibui Aprl 28, 2022
 //          last_profile_id = profile_id;  // update the frofile id
+          //ALB STARTING THE PROFILE HERE
           return_status = mod_som_apf_daq_start_f((uint64_t)profile_id); // execute start()
 
           if (return_status == MOD_SOM_APF_STATUS_NO_CTD_DATA)
           {
               // save time string into the temporary local string - Mai - Nov 18, 2021
-              sprintf(apf_reply_str,"daq,start,nak,not valid CTD data\r\n");
+              sprintf(apf_reply_str,"%s,start,%s,not valid CTD data\r\n",
+                      MOD_SOM_APF_DAQ_STR,MOD_SOM_APF_NACK_STR);
               status |= return_status;
               break;
           }
           // save time string into the temporary local string - Mai - Nov 18, 2021
-          sprintf(apf_reply_str,"daq,start,ack,%lu\r\n",(uint32_t) profile_id);
+          //ALB THIS THE ACK ANSWER
+          sprintf(apf_reply_str,"%s,start,%s,%lu\r\n",(uint32_t) profile_id,
+                  MOD_SOM_APF_DAQ_STR,MOD_SOM_APF_ACK_STR);
           status |= MOD_SOM_APF_STATUS_OK;
         } // if (!Str_Cmp(argv[argc], "start"))
       break;
     default:  // more than 3 argc
       // save time string into the temporary local string - Mai - Nov 18, 2021
-      sprintf(apf_reply_str,"daq,nak,too many arguments -- valid cmd: %s\r\n",daq_valid_cmd);
+      sprintf(apf_reply_str,"%s,%s,too many arguments -- valid cmd: %s\r\n",
+              MOD_SOM_APF_DAQ_STR,MOD_SOM_APF_NACK_STR,daq_valid_cmd);
       status |= MOD_SOM_APF_STATUS_WRONG_ARG;
      break;
   }
@@ -275,14 +289,17 @@ CPU_INT16S mod_som_apf_cmd_daq_status_f(CPU_INT16U argc,
     uint32_t bytes_sent = 0;
 
     if(mod_som_apf_get_daq_f()){ // I comment out this block - mnbui Nov 29, 2021
-        sprintf(apf_reply_str,"daq?,ack,%s\r\n","enabled");
+        sprintf(apf_reply_str,"%s,%s,%s\r\n",
+                MOD_SOM_APF_DAQSTAT_STR,MOD_SOM_APF_ACK_STR,"enabled");
     }else{
-         sprintf(apf_reply_str,"daq?,ack,%s\r\n","disabled");
+         sprintf(apf_reply_str,"%s,%s,%s\r\n",
+                 MOD_SOM_APF_DAQSTAT_STR,MOD_SOM_APF_ACK_STR,"disabled");
    }  // mnbui Nov 29, 2021
 
     //ALB Dana want an error message here but I do not think there is a situation
     if (status!=MOD_SOM_APF_STATUS_OK){
-         sprintf(apf_reply_str,"daq,nak,%lu.\r\n",status);
+         sprintf(apf_reply_str,"%s,%s,%lu.\r\n",
+                 MOD_SOM_APF_DAQSTAT_STR,MOD_SOM_APF_NACK_STR,status);
      }
 
     status=mod_som_io_print_f("%s",apf_reply_str);

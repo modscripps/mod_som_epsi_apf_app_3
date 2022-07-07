@@ -34,15 +34,17 @@
 //------------------------------------------------------------------------------
 #define MOD_SOM_SDIO_STATUS_PREFIX 99U
 
-#define MOD_SOM_SDIO_STATUS_OK 0x0U
-#define MOD_SOM_SDIO_STATUS_FAIL_INIT_CMD 0x1U
-#define MOD_SOM_SDIO_STATUS_FAIL_OPENFILE 0x2U
-#define MOD_SOM_SDIO_STATUS_FAIL_CLOSEFILE 0x3U
-#define MOD_SOM_SDIO_STATUS_FAIL_READFILE 0x4U
-#define MOD_SOM_SDIO_STATUS_FAIL_WRITEFILE 0x5U
+#define MOD_SOM_SDIO_STATUS_OK              0x0U
+#define MOD_SOM_SDIO_STATUS_FAIL_INIT_CMD   0x1U
+#define MOD_SOM_SDIO_STATUS_FAIL_OPENFILE   0x2U
+#define MOD_SOM_SDIO_STATUS_FAIL_CLOSEFILE  0x3U
+#define MOD_SOM_SDIO_STATUS_FAIL_READFILE   0x4U
+#define MOD_SOM_SDIO_STATUS_FAIL_WRITEFILE  0x5U
 #define MOD_SOM_SDIO_STATUS_FAIL_READVOLUME 0x6U
-#define MOD_SOM_SDIO_CANNOT_OPEN_CONF_FILE 0x7U
-#define MOD_SOM_SDIO_CANNOT_OPEN_DATA_FILE 0x8U
+#define MOD_SOM_SDIO_CANNOT_OPEN_CONF_FILE  0x7U
+#define MOD_SOM_SDIO_CANNOT_OPEN_DATA_FILE  0x8U
+#define MOD_SOM_SDIO_OPEN_PREV_PROCESS_FILE 0x9U
+#define MOD_SOM_SDIO_NO_PROCESS_FILE        0x10U
 
 
 /*******************************************************************************
@@ -217,7 +219,8 @@ char path[100];
 char buff_data[MAXBUFLEN];
 char read_buff[MOD_SOM_SDIO_BLOCK_LENGTH];
 
-mod_som_sdio_file_ptr_t data_file_ptr;
+mod_som_sdio_file_ptr_t rawdata_file_ptr;
+mod_som_sdio_file_ptr_t processdata_file_ptr;
 //mod_som_sdio_file_ptr_t config_file_ptr;
 
 //FIL fstrc_config;
@@ -320,7 +323,7 @@ mod_som_sdio_ptr_t mod_som_sdio_get_runtime_ptr_f();
  *   MOD_SOM_STATUS_OK if function execute nicely
  ******************************************************************************/
 mod_som_status_t mod_som_sdio_define_filename_f(CPU_CHAR* filename);
-
+mod_som_status_t mod_som_sdio_open_processfilename_f(CPU_CHAR* filename);
 
 /*******************************************************************************
  * @brief
@@ -361,7 +364,8 @@ mod_som_status_t mod_som_sdio_close_file_f(mod_som_sdio_file_ptr_t mod_som_sdio_
 mod_som_status_t mod_som_sdio_write_config_f(uint8_t *data_ptr,
                                                   uint32_t data_length,
                                                   mod_som_sdio_file_ptr_t file_ptr);
-
+FRESULT mod_som_sdio_write_processdata_f(uint8_t *data_ptr,
+                                             uint32_t data_length);
 /*******************************************************************************
  * @brief
  *   a function to write config file
@@ -401,7 +405,9 @@ mod_som_status_t mod_som_sdio_read_data_sd_f(char * filename,uint32_t number_of_
  ******************************************************************************/
 mod_som_status_t mod_som_sdio_read_file_f(mod_som_sdio_file_ptr_t mod_som_sdio_file_ptr);
 mod_som_status_t mod_som_sdio_read_data_file_f(mod_som_sdio_file_ptr_t mod_som_sdio_file_ptr);
-
+mod_som_status_t mod_som_sdio_read_processfile_f(uint8_t * databuffer,
+                                                 uint32_t obp_file_bytes,
+                                                 uint32_t seek_idx);
 /*******************************************************************************
  * @brief
  *   a function read a file and streaming it to the main comm port

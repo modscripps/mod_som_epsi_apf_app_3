@@ -31,6 +31,28 @@
 #define MOD_SOM_APF_HEADER2              "APF2"
 
 
+#define MOD_SOM_APF_ENDACK_STR            "\r\n"
+#define MOD_SOM_APF_ACK_STR               "ack"
+#define MOD_SOM_APF_NACK_STR              "nak"
+#define MOD_SOM_APF_DAQ_STR               "daq"
+#define MOD_SOM_APF_DAQSTAT_STR           "daq?"
+#define MOD_SOM_APF_TIME_STR              "time"
+#define MOD_SOM_APF_TIMESTAT_STR          "time?"
+#define MOD_SOM_APF_OKSTAT_STR            "ok?"
+#define MOD_SOM_APF_SLEEP_STR             "sleep"
+#define MOD_SOM_APF_GATE_STR              "gate"
+#define MOD_SOM_APF_FWREV_STAT_STR        "fw_rev?"
+#define MOD_SOM_APF_UPLOAD_STR            "upload"
+#define MOD_SOM_APF_EPSINO_STAT_STR       "epsi_no?"
+#define MOD_SOM_APF_PROBENO_STR           "probe_no"
+#define MOD_SOM_APF_PROBENO_STAT_STR      "probe_no?"
+#define MOD_SOM_APF_POWEROFF_STR          "poweroff"
+#define MOD_SOM_APF_SDFORMAT_STAT_STR     "sd_format?"
+#define MOD_SOM_APF_SDFORMAT_STR          "sd_format"
+#define MOD_SOM_APF_PACKETFORMAT_STAT_STR "packet_format?"
+#define MOD_SOM_APF_PACKETFORMAT_STR      "packet_format"
+
+
 #define MOD_SOM_APF_SYNC_LENGTH             1
 #define MOD_SOM_APF_TAG_LENGTH              4
 #define MOD_SOM_APF_MAX_HEADER_SIZE         100
@@ -240,12 +262,11 @@ mod_som_apf_meta_data_t, *mod_som_apf_meta_data_ptr_t;
  * Dacq Stucture.
  *
  */
-typedef struct{
-
-  mod_som_apf_meta_data_t mod_som_apf_meta_data;
-  uint8_t data_acq[MOD_SOM_APF_DACQ_STRUCT_SIZE-MOD_SOM_APF_METADATA_STRUCT_SIZE];
-}
-mod_som_apf_dacq_t, *mod_som_apf_dacq_ptr_t;
+//typedef struct{
+//
+//  mod_som_apf_meta_data_t mod_som_apf_meta_data;
+//}
+//mod_som_apf_dacq_t, *mod_som_apf_dacq_ptr_t;
 
 /*******************************************************************************
  * conversion Structure.
@@ -296,7 +317,9 @@ typedef struct{
 //  float * epsilon;
 //  float * chi;
 
-  mod_som_apf_dacq_t acq_profile;
+//  mod_som_apf_dacq_t acq_profile;
+  mod_som_apf_meta_data_t mod_som_apf_meta_data;
+
   uint8_t * dacq_ptr;
   bool dacq_full;
   uint32_t dacq_size;
@@ -333,7 +356,7 @@ mod_som_apf_upload_packet_t, *mod_som_apf_upload_packet_ptr_t;
 ******************************************************************************/
 typedef struct{
   bool  initialized_flag;
-  bool  started_flg;        //ALB is the APF producer started
+  bool  started_flg;        //ALB is the APF consumer started
 
   uint32_t  dacq_size;
   uint8_t * dacq_ptr;
@@ -989,8 +1012,7 @@ uint32_t mod_som_apf_copy_F1_element_f( uint64_t * curr_avg_timestamp_ptr,
                                     float * curr_epsilon_ptr,
                                     float * curr_chi_ptr,
                                     float * curr_fom_epsi_ptr,
-                                    float * curr_fom_chi_ptr,
-                                    uint8_t * dacq_ptr);
+                                    float * curr_fom_chi_ptr);
 
 
 /*******************************************************************************
@@ -1015,8 +1037,7 @@ uint32_t mod_som_apf_copy_F2_element_f(  uint64_t * curr_avg_timestamp_ptr,
                                 float * curr_fom_chi_ptr,
                                 float * curr_temp_avg_spectra_ptr,
                                 float * curr_shear_avg_spectra_ptr,
-                                float * curr_accel_avg_spectra_ptr,
-                                uint8_t * dacq_ptr);
+                                float * curr_accel_avg_spectra_ptr);
 
 void mod_som_apf_copy_sd_element_f(  uint64_t * curr_avg_timestamp_ptr,
                                      float * curr_avg_pressure_ptr,

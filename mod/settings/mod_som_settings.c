@@ -557,13 +557,13 @@ mod_som_status_t mod_som_settings_sd_settings_f(){
 
       mod_som_sdio_write_config_f((uint8_t*) &header,\
                                        length_header,
-                                       local_sdio_ptr->data_file_ptr);
+                                       local_sdio_ptr->rawdata_file_ptr);
       mod_som_sdio_write_config_f((uint8_t*) &mod_som_settings_struct,
                                        sizeof(mod_som_settings_struct),
-                                       local_sdio_ptr->data_file_ptr);
+                                       local_sdio_ptr->rawdata_file_ptr);
       mod_som_sdio_write_config_f((uint8_t*) &str_payload_chksum,\
                                        MOD_SOM_SETTINGS_PAYLOAD_CHECKSUM_LENGTH,
-                                       local_sdio_ptr->data_file_ptr);
+                                       local_sdio_ptr->rawdata_file_ptr);
 
       return mod_som_settings_encode_status_f(MOD_SOM_STATUS_OK);
 }

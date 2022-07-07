@@ -211,8 +211,8 @@ mod_som_status_t status=0;
       mod_som_sdio_stop_f();
 
       //ALB if loop insde to check if the file is open
-      if(mod_som_sdio_struct.data_file_ptr->is_open_flag==1){
-          mod_som_sdio_close_file_f(mod_som_sdio_struct.data_file_ptr);
+      if(mod_som_sdio_struct.rawdata_file_ptr->is_open_flag==1){
+          mod_som_sdio_close_file_f(mod_som_sdio_struct.rawdata_file_ptr);
       }
 //      //ALB unmount fatfs
       if (mod_som_sdio_struct.fatfs_mounted){
@@ -327,55 +327,108 @@ mod_som_status_t mod_som_sdio_allocate_memory_f(){
 
 
     // ALB save memory space for the data file
-    mod_som_sdio_struct.data_file_ptr =
+    mod_som_sdio_struct.rawdata_file_ptr =
             (void *)Mem_SegAlloc(
                     "MOD SOM SDIO data file handle",DEF_NULL,
                     sizeof(mod_som_sdio_file_t),
                     &err);
     // Check error code
     APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
-    if(mod_som_sdio_struct.data_file_ptr==DEF_NULL)
+    if(mod_som_sdio_struct.rawdata_file_ptr==DEF_NULL)
     {
-    	mod_som_sdio_struct.data_file_ptr = DEF_NULL;
+    	mod_som_sdio_struct.rawdata_file_ptr = DEF_NULL;
         return MOD_SOM_SDIO_CANNOT_OPEN_DATA_FILE;
     }
 
-    mod_som_sdio_struct.data_file_ptr->file_name =
+    mod_som_sdio_struct.rawdata_file_ptr->file_name =
             (char *)Mem_SegAlloc(
                     "MOD SOM SDIO data filename handle",DEF_NULL,
                     MOD_SOM_SDIO_MAX_FILENAME_LENGTH,
                     &err);
     // Check error code
     APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
-    if(mod_som_sdio_struct.data_file_ptr->file_name==DEF_NULL)
+    if(mod_som_sdio_struct.rawdata_file_ptr->file_name==DEF_NULL)
     {
-    	mod_som_sdio_struct.data_file_ptr->file_name = DEF_NULL;
+    	mod_som_sdio_struct.rawdata_file_ptr->file_name = DEF_NULL;
         return MOD_SOM_SDIO_CANNOT_OPEN_CONF_FILE;
     }
 
-    mod_som_sdio_struct.data_file_ptr->fp =
+    mod_som_sdio_struct.rawdata_file_ptr->fp =
             (FIL *)Mem_SegAlloc(
                     "MOD SOM SDIO data fp handle",DEF_NULL,
                     sizeof(FIL),
                     &err);
     // Check error code
     APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
-    if(mod_som_sdio_struct.data_file_ptr->fp==DEF_NULL)
+    if(mod_som_sdio_struct.rawdata_file_ptr->fp==DEF_NULL)
     {
-    	mod_som_sdio_struct.data_file_ptr->fp = DEF_NULL;
+    	mod_som_sdio_struct.rawdata_file_ptr->fp = DEF_NULL;
         return MOD_SOM_SDIO_CANNOT_OPEN_CONF_FILE;
     }
 
-    mod_som_sdio_struct.data_file_ptr->fp->dir_ptr =
+    mod_som_sdio_struct.rawdata_file_ptr->fp->dir_ptr =
             (BYTE *)Mem_SegAlloc(
                     "MOD SOM SDIO fp dir handle",DEF_NULL,
                     sizeof(BYTE),
                     &err);
     // Check error code
     APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
-    if(mod_som_sdio_struct.data_file_ptr->fp->dir_ptr==DEF_NULL)
+    if(mod_som_sdio_struct.rawdata_file_ptr->fp->dir_ptr==DEF_NULL)
     {
-    	mod_som_sdio_struct.data_file_ptr->fp->dir_ptr = DEF_NULL;
+    	mod_som_sdio_struct.rawdata_file_ptr->fp->dir_ptr = DEF_NULL;
+        return MOD_SOM_SDIO_CANNOT_OPEN_CONF_FILE;
+    }
+
+    // ALB save memory space for the proces data file
+    mod_som_sdio_struct.processdata_file_ptr =
+            (void *)Mem_SegAlloc(
+                    "MOD SOM SDIO prodata file handle",DEF_NULL,
+                    sizeof(mod_som_sdio_file_t),
+                    &err);
+    // Check error code
+    APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
+    if(mod_som_sdio_struct.processdata_file_ptr==DEF_NULL)
+    {
+      mod_som_sdio_struct.processdata_file_ptr = DEF_NULL;
+        return MOD_SOM_SDIO_CANNOT_OPEN_DATA_FILE;
+    }
+
+    mod_som_sdio_struct.processdata_file_ptr->file_name =
+            (char *)Mem_SegAlloc(
+                    "MOD SOM SDIO prodata filename handle",DEF_NULL,
+                    MOD_SOM_SDIO_MAX_FILENAME_LENGTH,
+                    &err);
+    // Check error code
+    APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
+    if(mod_som_sdio_struct.processdata_file_ptr->file_name==DEF_NULL)
+    {
+      mod_som_sdio_struct.processdata_file_ptr->file_name = DEF_NULL;
+        return MOD_SOM_SDIO_CANNOT_OPEN_CONF_FILE;
+    }
+
+    mod_som_sdio_struct.processdata_file_ptr->fp =
+            (FIL *)Mem_SegAlloc(
+                    "MOD SOM SDIO prodata fp handle",DEF_NULL,
+                    sizeof(FIL),
+                    &err);
+    // Check error code
+    APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
+    if(mod_som_sdio_struct.processdata_file_ptr->fp==DEF_NULL)
+    {
+      mod_som_sdio_struct.processdata_file_ptr->fp = DEF_NULL;
+        return MOD_SOM_SDIO_CANNOT_OPEN_CONF_FILE;
+    }
+
+    mod_som_sdio_struct.processdata_file_ptr->fp->dir_ptr =
+            (BYTE *)Mem_SegAlloc(
+                    "MOD SOM SDIO profp dir handle",DEF_NULL,
+                    sizeof(BYTE),
+                    &err);
+    // Check error code
+    APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
+    if(mod_som_sdio_struct.processdata_file_ptr->fp->dir_ptr==DEF_NULL)
+    {
+      mod_som_sdio_struct.processdata_file_ptr->fp->dir_ptr = DEF_NULL;
         return MOD_SOM_SDIO_CANNOT_OPEN_CONF_FILE;
     }
 
@@ -457,38 +510,36 @@ mod_som_status_t mod_som_sdio_define_filename_f(CPU_CHAR* filename){
 	sprintf(data_file_buf, "%s_%lu.modraw",filename,mod_som_sdio_struct.file_number);
 //	sprintf(config_file_buf, "%s_config",filename);
 
-    mod_som_sdio_struct.data_file_ptr->len_filename=strlen(data_file_buf);
+    mod_som_sdio_struct.rawdata_file_ptr->len_filename=strlen(data_file_buf);
 //    mod_som_sdio_struct.config_file_ptr->len_filename=strlen(config_file_buf);
 
     //ALB initialize the filename memory to erase previous str
-	memset(mod_som_sdio_struct.data_file_ptr->file_name, 0,strlen(mod_som_sdio_struct.data_file_ptr->file_name));
+	memset(mod_som_sdio_struct.rawdata_file_ptr->file_name, 0,strlen(mod_som_sdio_struct.rawdata_file_ptr->file_name));
 //	memset(mod_som_sdio_struct.config_file_ptr->file_name, 0,strlen(mod_som_sdio_struct.config_file_ptr->file_name));
 
-	memcpy(mod_som_sdio_struct.data_file_ptr->file_name, data_file_buf,mod_som_sdio_struct.data_file_ptr->len_filename);
+	memcpy(mod_som_sdio_struct.rawdata_file_ptr->file_name, data_file_buf,mod_som_sdio_struct.rawdata_file_ptr->len_filename);
 //	memcpy(mod_som_sdio_struct.config_file_ptr->file_name, config_file_buf,mod_som_sdio_struct.config_file_ptr->len_filename);
 
 //	mod_som_sdio_struct.config_file_ptr->initialized_flag=0;
-  mod_som_sdio_struct.data_file_ptr->initialized_flag=0;
+  mod_som_sdio_struct.rawdata_file_ptr->initialized_flag=0;
 
-	status_data=mod_som_sdio_open_file_f(mod_som_sdio_struct.data_file_ptr);
+	status_data=mod_som_sdio_open_file_f(mod_som_sdio_struct.rawdata_file_ptr);
 	mod_som_sdio_struct.open_file_time=mod_som_calendar_get_time_f();
 	//store the date time when we open the file
 //	time_buff=mod_som_calendar_get_datetime_f();
   mod_som_settings_struct_ptr_t local_settings_ptr=
                                           mod_som_settings_get_settings_f();
 
-  printf("sdiototo1\r\n");
 
 	status_data=mod_som_sdio_write_config_f((uint8_t *) local_settings_ptr,\
 	                                        local_settings_ptr->size,
-												   mod_som_sdio_struct.data_file_ptr);
+												   mod_som_sdio_struct.rawdata_file_ptr);
 
-	printf("sdiototo4\r\n");
 
 
 	//ALB sync the file to actually write on the SD card
-    res_sync = f_sync(mod_som_sdio_struct.data_file_ptr->fp);
-	mod_som_sdio_struct.data_file_ptr->initialized_flag=1;
+    res_sync = f_sync(mod_som_sdio_struct.rawdata_file_ptr->fp);
+	mod_som_sdio_struct.rawdata_file_ptr->initialized_flag=1;
 
 	status=status_data & res_sync;
 	if (status!=MOD_SOM_SDIO_STATUS_OK){
@@ -496,6 +547,74 @@ mod_som_status_t mod_som_sdio_define_filename_f(CPU_CHAR* filename){
 	}
 	return mod_som_sdio_encode_status_f(MOD_SOM_STATUS_OK);
 }
+
+/*******************************************************************************
+ * @brief
+ *   a function to open a file with a name from given from the shell
+ *
+ * @return
+ *   MOD_SOM_STATUS_OK if function execute nicely
+ ******************************************************************************/
+mod_som_status_t mod_som_sdio_open_processfilename_f(CPU_CHAR* filename){
+
+  mod_som_status_t status;
+  mod_som_status_t status_data;
+  FRESULT res_sync;
+
+  CPU_CHAR data_file_buf[100];   //ALB with this version of ff.c the filename can *not* be more than 8
+
+  if(!mod_som_sdio_struct.enable_flag){
+      mod_som_sdio_enable_hardware_f();
+  }
+
+  sprintf(data_file_buf, "%s.modraw",filename);
+  mod_som_sdio_struct.processdata_file_ptr->len_filename=strlen(data_file_buf);
+
+    //ALB initialize the filename memory to erase previous str
+  memset(mod_som_sdio_struct.processdata_file_ptr->file_name, 0,strlen(mod_som_sdio_struct.processdata_file_ptr->file_name));
+  memcpy(mod_som_sdio_struct.processdata_file_ptr->file_name, data_file_buf,mod_som_sdio_struct.processdata_file_ptr->len_filename);
+  mod_som_sdio_struct.processdata_file_ptr->initialized_flag=0;
+
+  //ALB open file
+  mod_som_io_print_f("\n[sdio open file]:%s \r\n",(char *) mod_som_sdio_struct.processdata_file_ptr->file_name);
+  mod_som_sdio_struct.processdata_file_ptr->is_open_flag=0;
+
+    TCHAR tchar_filename[100];
+
+    int idx;
+    //mod_som_sdio_file_ptr->file_name is ASCII char, we have to convert into ANSII
+    for (idx = 0; idx < strlen (mod_som_sdio_struct.processdata_file_ptr->file_name); ++idx){
+      tchar_filename[idx] = ff_convert (mod_som_sdio_struct.processdata_file_ptr->file_name[idx], 1);
+    }
+    tchar_filename[idx] = '\0';
+
+    FRESULT res;
+    res = f_open(mod_som_sdio_struct.processdata_file_ptr->fp, \
+        tchar_filename,\
+        FA_OPEN_EXISTING | FA_READ);
+    if (res == FR_OK)
+    {
+        status=MOD_SOM_SDIO_OPEN_PREV_PROCESS_FILE;
+      mod_som_io_print_f("\nopened %s\n",(char *) mod_som_sdio_struct.processdata_file_ptr->file_name);
+
+    }else {
+
+          mod_som_io_print_f("\nFailed to open %s,error %i \n", \
+          (char *) mod_som_sdio_struct.processdata_file_ptr->file_name, res);
+      return MOD_SOM_SDIO_STATUS_FAIL_OPENFILE;
+    }
+    mod_som_sdio_struct.processdata_file_ptr->is_open_flag=1;
+
+//  //ALB sync the file to actually write on the SD card
+//  res_sync = f_sync(mod_som_sdio_struct.processdata_file_ptr->fp);
+//  mod_som_sdio_struct.processdata_file_ptr->initialized_flag=1;
+
+  if ((status>0) & (status<MOD_SOM_SDIO_OPEN_PREV_PROCESS_FILE)){
+    return MOD_SOM_STATUS_NOT_OK;
+  }
+  return status;
+}
+
 
 /*******************************************************************************
  * @brief
@@ -519,28 +638,28 @@ mod_som_status_t mod_som_sdio_open_next_datafile(){
 
 
 //close the previous data file
-	mod_som_sdio_close_file_f(mod_som_sdio_struct.data_file_ptr);
+	mod_som_sdio_close_file_f(mod_som_sdio_struct.rawdata_file_ptr);
 //change the data file ptr with the new name
-    mod_som_sdio_struct.data_file_ptr->len_filename=strlen(data_file_buf);
-	memset(mod_som_sdio_struct.data_file_ptr->file_name, 0,mod_som_sdio_struct.data_file_ptr->len_filename);
-	memcpy(mod_som_sdio_struct.data_file_ptr->file_name, data_file_buf,mod_som_sdio_struct.data_file_ptr->len_filename);
+    mod_som_sdio_struct.rawdata_file_ptr->len_filename=strlen(data_file_buf);
+	memset(mod_som_sdio_struct.rawdata_file_ptr->file_name, 0,mod_som_sdio_struct.rawdata_file_ptr->len_filename);
+	memcpy(mod_som_sdio_struct.rawdata_file_ptr->file_name, data_file_buf,mod_som_sdio_struct.rawdata_file_ptr->len_filename);
 
-	mod_som_sdio_struct.data_file_ptr->initialized_flag=0;
+	mod_som_sdio_struct.rawdata_file_ptr->initialized_flag=0;
 //change the data file ptr with the new name
-//    mod_som_sdio_struct.data_file_ptr->fp = &mod_som_sdio_struct.fstrc_data;
+//    mod_som_sdio_struct.rawdata_file_ptr->fp = &mod_som_sdio_struct.fstrc_data;
 //open the new file
-    status_data=mod_som_sdio_open_file_f(mod_som_sdio_struct.data_file_ptr);
+    status_data=mod_som_sdio_open_file_f(mod_som_sdio_struct.rawdata_file_ptr);
     mod_som_sdio_struct.open_file_time=mod_som_calendar_get_time_f();
 	time_buff=mod_som_calendar_get_datetime_f();
-    res = f_write(mod_som_sdio_struct.data_file_ptr->fp,\
+    res = f_write(mod_som_sdio_struct.rawdata_file_ptr->fp,\
     		time_buff,strlen(time_buff), &byteswritten); /* buffptr = pointer to the data to be written */
-    res_sync=f_sync(mod_som_sdio_struct.data_file_ptr->fp);
+    res_sync=f_sync(mod_som_sdio_struct.rawdata_file_ptr->fp);
 
     if ((res|res_sync)!=FR_OK){
     	printf("can not write date on %s",data_file_buf);
     }
 
-	mod_som_sdio_struct.data_file_ptr->initialized_flag=1;
+	mod_som_sdio_struct.rawdata_file_ptr->initialized_flag=1;
 
 
 	if (status_data!=MOD_SOM_SDIO_STATUS_OK){
@@ -575,7 +694,7 @@ mod_som_status_t mod_som_sdio_open_file_f(mod_som_sdio_file_ptr_t mod_som_sdio_f
     FRESULT res;
     res = f_open(mod_som_sdio_file_ptr->fp, \
     		tchar_filename,\
-			FA_CREATE_ALWAYS | FA_WRITE | FA_READ);
+    		FA_OPEN_APPEND | FA_WRITE | FA_READ);
     if (res == FR_OK)
     {
     	mod_som_io_print_f("\nopened %s\n",(char *) mod_som_sdio_file_ptr->file_name);
@@ -630,6 +749,44 @@ mod_som_status_t mod_som_sdio_close_file_f(mod_som_sdio_file_ptr_t mod_som_sdio_
 
 /*******************************************************************************
  * @brief
+ *   a function to write small data <512 b
+ *   - if file is closed re-open it in F!_OPEN_APPEND mode
+ *   - write the config in the file
+ *   - if the file was closed at the beginning, close it again
+ *
+ * @return
+ *   MOD_SOM_STATUS_OK if function execute nicely
+ ******************************************************************************/
+FRESULT mod_som_sdio_write_processdata_f(uint8_t *data_ptr,
+                                             uint32_t data_length){
+
+  FRESULT res;
+  UINT byteswritten=0;
+  int remaining_bytes=data_length;
+  int bytes_to_send=MOD_SOM_SDIO_BLOCK_LENGTH;
+
+
+  mod_som_sdio_file_ptr_t mod_som_sdio_file_ptr =
+       mod_som_sdio_struct.processdata_file_ptr;
+
+  while(remaining_bytes>0){
+      if (remaining_bytes<MOD_SOM_SDIO_BLOCK_LENGTH){
+          bytes_to_send=remaining_bytes;
+      }
+      res = f_write(mod_som_sdio_file_ptr->fp,data_ptr,data_length,&byteswritten);  /* buffptr = pointer to the data to be written */
+      remaining_bytes=remaining_bytes-byteswritten;
+      if (res != FR_OK){
+          //TODO write an error code
+          return res;
+      }
+  }
+  byteswritten=0;
+  res = f_sync(mod_som_sdio_file_ptr->fp);
+
+  return res;
+}
+/*******************************************************************************
+ * @brief
  *   a function to write config in file_ptr
  *   - if file is closed re-open it in F!_OPEN_APPEND mode
  *   - write the config in the file
@@ -669,8 +826,6 @@ mod_som_status_t mod_som_sdio_write_config_f(uint8_t *data_ptr,
 			tchar_filename[idx] = ff_convert (file_ptr->file_name[idx], 1);
 		}
 		tchar_filename[idx] = '\0';
-
-		printf("sdiototo2\r\n");
 
 		res = f_open(file_ptr->fp, \
 				tchar_filename,\
@@ -723,7 +878,6 @@ mod_som_status_t mod_som_sdio_write_config_f(uint8_t *data_ptr,
 	sprintf((char*) str_payload_chksum,  \
 	        "*%02x\r\n",payload_chksum);
 
-  printf("sdiototo3\r\n");
 
     res = f_write(file_ptr->fp,(uint8_t*) header,length_header,&byteswritten);  /* buffptr = pointer to the data to be written */
 
@@ -742,7 +896,7 @@ mod_som_status_t mod_som_sdio_write_config_f(uint8_t *data_ptr,
     }
     byteswritten=0;
     res = f_write(file_ptr->fp,str_payload_chksum,5,&byteswritten);  /* buffptr = pointer to the data to be written */
-    f_sync(mod_som_sdio_struct.data_file_ptr->fp);
+    f_sync(mod_som_sdio_struct.rawdata_file_ptr->fp);
 
     if(file_ptr->is_open_flag==0){
         mod_som_sdio_close_file_f(file_ptr);
@@ -755,6 +909,73 @@ mod_som_status_t mod_som_sdio_write_config_f(uint8_t *data_ptr,
 	return mod_som_sdio_encode_status_f(MOD_SOM_STATUS_OK);
 }
 
+///*******************************************************************************
+// * @brief
+// *   a function to write config in file_ptr
+// *   - if file is closed re-open it in F!_OPEN_APPEND mode
+// *   - write the config in the file
+// *   - if the file was closed at the beginning, close it again
+// *
+// * @return
+// *   MOD_SOM_STATUS_OK if function execute nicely
+// ******************************************************************************/
+//mod_som_status_t mod_som_sdio_write_processdata_f(uint8_t *data_ptr,
+//                                             uint32_t data_length){
+//
+//  FRESULT res;
+//  UINT byteswritten=0;
+//    int remaining_bytes;
+//    int bytes_to_send=MOD_SOM_SDIO_BLOCK_LENGTH;
+//
+//    mod_som_sdio_file_ptr_t mod_som_sdio_file_ptr =
+//        mod_som_sdio_struct.processdata_file_ptr;
+//
+//
+//  if(mod_som_sdio_file_ptr->is_open_flag==0){
+//
+//    TCHAR tchar_filename[100];   //ALB with this version of ff.c the filename can *not* be more than 8
+//
+//    int idx;
+//    for (idx = 0; idx < strlen (mod_som_sdio_file_ptr->file_name); ++idx){
+//      tchar_filename[idx] = ff_convert (mod_som_sdio_file_ptr->file_name[idx], 1);
+//    }
+//    tchar_filename[idx] = '\0';
+//
+//    res = f_open(mod_som_sdio_file_ptr->fp, \
+//        tchar_filename,\
+//        FA_OPEN_APPEND);
+//    if (res!=FR_OK){
+//      printf("\n can not open %s",mod_som_sdio_file_ptr->file_name);
+//    }
+//  }
+//
+//    //write the settings
+//    byteswritten=0;
+//    remaining_bytes=data_length;
+//    while(remaining_bytes>0){
+//        if (remaining_bytes<MOD_SOM_SDIO_BLOCK_LENGTH){
+//            bytes_to_send=remaining_bytes;
+//        }
+//      res = f_write(mod_som_sdio_file_ptr->fp,data_ptr+byteswritten,bytes_to_send,&byteswritten);  /* buffptr = pointer to the data to be written */
+//        remaining_bytes=remaining_bytes-byteswritten;
+//        if (res != FR_OK){
+//            //TODO write an error code
+//        }
+//    }
+//    f_sync(mod_som_sdio_file_ptr->fp);
+//
+//    if(mod_som_sdio_file_ptr->is_open_flag==0){
+//        mod_som_sdio_close_file_f(mod_som_sdio_file_ptr);
+//    }
+//
+//  if (res != FR_OK){
+//    printf("can not write OBP data in %s",mod_som_sdio_file_ptr->file_name);
+//    return MOD_SOM_SDIO_STATUS_FAIL_WRITEFILE;
+//  }
+//  return mod_som_sdio_encode_status_f(MOD_SOM_STATUS_OK);
+//}
+
+
 /*******************************************************************************
  * @brief
  *   a function to write config file
@@ -765,7 +986,7 @@ mod_som_status_t mod_som_sdio_write_config_f(uint8_t *data_ptr,
 mod_som_status_t mod_som_sdio_stop_store_f(){
 
   //TODO Handle status update.
-	mod_som_sdio_close_file_f(mod_som_sdio_struct.data_file_ptr);
+	mod_som_sdio_close_file_f(mod_som_sdio_struct.rawdata_file_ptr);
 	return mod_som_sdio_encode_status_f(MOD_SOM_STATUS_OK);
 }
 
@@ -784,11 +1005,11 @@ mod_som_status_t mod_som_sdio_read_config_sd_f(char * filename){
 	CPU_CHAR data_file_buf[100];
 
 	sprintf(data_file_buf, "%s",filename);
-	mod_som_sdio_struct.data_file_ptr->len_filename=strlen(data_file_buf);
-    memset(mod_som_sdio_struct.data_file_ptr->file_name,0,strlen(mod_som_sdio_struct.data_file_ptr->file_name));
-    memcpy(mod_som_sdio_struct.data_file_ptr->file_name, data_file_buf,mod_som_sdio_struct.data_file_ptr->len_filename);
+	mod_som_sdio_struct.rawdata_file_ptr->len_filename=strlen(data_file_buf);
+    memset(mod_som_sdio_struct.rawdata_file_ptr->file_name,0,strlen(mod_som_sdio_struct.rawdata_file_ptr->file_name));
+    memcpy(mod_som_sdio_struct.rawdata_file_ptr->file_name, data_file_buf,mod_som_sdio_struct.rawdata_file_ptr->len_filename);
 
-	status=mod_som_sdio_read_file_f(mod_som_sdio_struct.data_file_ptr);
+	status=mod_som_sdio_read_file_f(mod_som_sdio_struct.rawdata_file_ptr);
 
     return status;
 }
@@ -805,16 +1026,16 @@ mod_som_status_t mod_som_sdio_read_data_sd_f(char * filename,uint32_t number_of_
 	CPU_CHAR data_file_buf[100];
 
 	//close the current file if open
-	mod_som_sdio_close_file_f(mod_som_sdio_struct.data_file_ptr);
+	mod_som_sdio_close_file_f(mod_som_sdio_struct.rawdata_file_ptr);
 	//loop through the files,read and stream data
 	for (uint32_t i=0;i<number_of_files+1;i++){
 		sprintf(data_file_buf, "%s%lu",filename,i);
-	    mod_som_sdio_struct.data_file_ptr->len_filename=strlen(data_file_buf);
+	    mod_som_sdio_struct.rawdata_file_ptr->len_filename=strlen(data_file_buf);
 	    //clear file_name. if i<10, tt avoids the 0 in filename07.
-	    memset(mod_som_sdio_struct.data_file_ptr->file_name,0,strlen(mod_som_sdio_struct.data_file_ptr->file_name));
-	    memcpy(mod_som_sdio_struct.data_file_ptr->file_name, data_file_buf,mod_som_sdio_struct.data_file_ptr->len_filename);
+	    memset(mod_som_sdio_struct.rawdata_file_ptr->file_name,0,strlen(mod_som_sdio_struct.rawdata_file_ptr->file_name));
+	    memcpy(mod_som_sdio_struct.rawdata_file_ptr->file_name, data_file_buf,mod_som_sdio_struct.rawdata_file_ptr->len_filename);
 
-		status=mod_som_sdio_read_file_f(mod_som_sdio_struct.data_file_ptr);
+		status=mod_som_sdio_read_file_f(mod_som_sdio_struct.rawdata_file_ptr);
 	}
 
 
@@ -868,6 +1089,64 @@ mod_som_status_t mod_som_sdio_read_file_f(mod_som_sdio_file_ptr_t mod_som_sdio_f
 
     return mod_som_sdio_encode_status_f(MOD_SOM_STATUS_OK);
 }
+
+/*******************************************************************************
+ * @brief
+ * @return
+ *   MOD_SOM_APF_STATUS_OK if function execute nicely
+ ******************************************************************************/
+
+mod_som_status_t mod_som_sdio_read_processfile_f(uint8_t * databuffer,uint32_t obp_file_bytes, uint32_t seek_idx){
+
+  UINT byte_read;
+  FRESULT res;
+  TCHAR tchar_filename[100];
+
+  //ALB length of the obp data collected (if =0 it means that the file is empty i.e. new profile)
+  obp_file_bytes=0;
+
+  //ALB open processfilename
+  uint32_t file_status=mod_som_sdio_open_processfilename_f("OBPdata");
+  if (file_status<MOD_SOM_SDIO_OPEN_PREV_PROCESS_FILE){
+      mod_som_io_print_f("\n no OBPdata.modraw\n");
+      return MOD_SOM_SDIO_NO_PROCESS_FILE;
+  }else{
+
+  mod_som_sdio_file_ptr_t mod_som_sdio_file_ptr =
+      mod_som_sdio_struct.processdata_file_ptr;
+
+if(mod_som_sdio_file_ptr->is_open_flag==0){
+  mod_som_io_print_f("\nReading file %s...\n", \
+      mod_som_sdio_file_ptr->file_name);
+
+  res = f_lseek (mod_som_sdio_file_ptr->fp, seek_idx);
+  int done_reading=0;
+  while(done_reading==0){
+      res = f_read(mod_som_sdio_file_ptr->fp, mod_som_sdio_struct.read_buff, \
+              MOD_SOM_SDIO_BLOCK_LENGTH, &byte_read);
+    if (res == FR_OK){
+     memcpy(databuffer,(uint8_t*)mod_som_sdio_struct.read_buff,byte_read);
+    obp_file_bytes+=byte_read;
+    } else{
+      mod_som_io_print_f("\nRead Failure: %d\n", res);
+    }
+    //ALB feed the WDOG coz sending long files tiggers the WDOG.
+    WDOG_Feed();
+    //ALB check If I am at the end of the file. if yes done_reading=1
+    done_reading=f_eof(mod_som_sdio_file_ptr->fp);
+  }
+} else
+{
+  mod_som_io_print_f("\nRead error data file still open\n");
+}
+res = f_close(mod_som_sdio_file_ptr->fp);
+  }
+
+
+return MOD_SOM_STATUS_OK;
+}
+
+
 
 /*******************************************************************************
  * @brief
@@ -1290,7 +1569,7 @@ static void mod_som_sdio_print_task_f(void *p_arg)
           }else
             {
 
-            if(mod_som_sdio_struct.data_file_ptr->is_open_flag==1)
+            if(mod_som_sdio_struct.rawdata_file_ptr->is_open_flag==1)
               {
                 int remaining_bytes;
                 int bytes_to_send=MOD_SOM_SDIO_BLOCK_LENGTH;
@@ -1304,7 +1583,7 @@ static void mod_som_sdio_print_task_f(void *p_arg)
                       {
                         bytes_to_send=remaining_bytes;
                       }
-                    res = f_write(mod_som_sdio_struct.data_file_ptr->fp,\
+                    res = f_write(mod_som_sdio_struct.rawdata_file_ptr->fp,\
                             &tmp_mod_som_sdio_xfer_item_ptr->data_ptr[tmp_mod_som_sdio_xfer_item_ptr->data_length-remaining_bytes],bytes_to_send, &byteswritten); /* buffptr = pointer to the data to be written */
                     remaining_bytes=remaining_bytes-byteswritten;
                     if (res != FR_OK)
@@ -1312,7 +1591,7 @@ static void mod_som_sdio_print_task_f(void *p_arg)
                         //TODO write an error code
                       }
                   }
-                  f_sync(mod_som_sdio_struct.data_file_ptr->fp);
+                  f_sync(mod_som_sdio_struct.rawdata_file_ptr->fp);
 
                   if (mod_som_calendar_get_time_f()-
                     mod_som_sdio_struct.open_file_time>=
