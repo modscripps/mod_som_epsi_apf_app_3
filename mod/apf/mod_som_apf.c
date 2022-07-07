@@ -1038,12 +1038,12 @@ void mod_som_apf_producer_task_f(void  *p_arg){
 //              //ALB the previous pressure + dz.
                 //ALB if the com is broken between CTD and epsi. I still want to store the data, flag them and
                 //TODO set up a time out
-//              if (*curr_avg_pressure_ptr<=
-//                   mod_som_apf_ptr->dacq_pressure-mod_som_apf_ptr->dacq_dz)
-//                {
-              //ALB fake if loop to test the dacq
-              if (dissrate_avail>0)
+              if (*curr_avg_pressure_ptr<=
+                   mod_som_apf_ptr->dacq_pressure-mod_som_apf_ptr->dacq_dz)
                 {
+              //ALB fake if loop to test the dacq
+//              if (dissrate_avail>0)
+//                {
 
                   mod_som_apf_ptr->dacq_pressure=*curr_avg_pressure_ptr;
 
