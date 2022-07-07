@@ -324,6 +324,7 @@ typedef struct{
   bool dacq_full;
   uint32_t dacq_size;
   uint32_t dacq_element_size;
+  bool done_sd_flag;
   mod_som_apf_decimation_t decim_coef;
 
   uint32_t dissrate_skipped;

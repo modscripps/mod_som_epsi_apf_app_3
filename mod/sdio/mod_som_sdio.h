@@ -364,8 +364,6 @@ mod_som_status_t mod_som_sdio_close_file_f(mod_som_sdio_file_ptr_t mod_som_sdio_
 mod_som_status_t mod_som_sdio_write_config_f(uint8_t *data_ptr,
                                                   uint32_t data_length,
                                                   mod_som_sdio_file_ptr_t file_ptr);
-FRESULT mod_som_sdio_write_processdata_f(uint8_t *data_ptr,
-                                             uint32_t data_length);
 /*******************************************************************************
  * @brief
  *   a function to write config file
@@ -557,6 +555,7 @@ mod_som_status_t mod_som_sdio_stop_f();
  *     status would indicate error in execution
  ******************************************************************************/
 mod_som_status_t mod_som_sdio_write_data_f(
+        mod_som_sdio_file_ptr_t file_ptr,
         const uint8_t *data_ptr, uint32_t data_length,
         volatile bool * done_streaming_flag_ptr);
 

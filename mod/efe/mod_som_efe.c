@@ -883,6 +883,11 @@ static  void  mod_som_efe_consumer_task_f(void  *p_arg){
 
     int padding = MOD_SOM_EFE_CONSUMER_PADDING; // the padding should include the variance.
 
+    mod_som_sdio_ptr_t local_mod_som_sdio_ptr_t=
+        mod_som_sdio_get_runtime_ptr_f();
+
+    mod_som_sdio_file_ptr_t rawfile_ptr =
+        local_mod_som_sdio_ptr_t->rawdata_file_ptr;
 
     //        printf("In Consumer Task 2\n");
     while (DEF_ON) {
@@ -1019,7 +1024,7 @@ static  void  mod_som_efe_consumer_task_f(void  *p_arg){
                     break;
                   case 1:
                     mod_som_efe_ptr->consumer_ptr->consumed_flag=false;
-                    mod_som_sdio_write_data_f(
+                    mod_som_sdio_write_data_f(rawfile_ptr,
                         mod_som_efe_ptr->consumer_ptr->record_data_ptr,
                         mod_som_efe_ptr->consumer_ptr->record_length,
                         &mod_som_efe_ptr->consumer_ptr->consumed_flag);

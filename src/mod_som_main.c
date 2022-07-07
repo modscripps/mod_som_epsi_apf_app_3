@@ -75,6 +75,10 @@
 #if defined(MOD_SOM_SDIO_EN)
 #include "mod_som_sdio.h"
 #endif
+#if defined(MOD_SOM_APF_EN)
+#include "mod_som_apf.h"
+#endif
+
 
 #if defined(MOD_SOM_ACTUATOR_EN)
 #include "mod_som_actuator.h"

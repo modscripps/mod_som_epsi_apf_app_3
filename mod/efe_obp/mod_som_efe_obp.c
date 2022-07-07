@@ -2006,6 +2006,12 @@ void mod_som_efe_obp_consumer_task_f(void  *p_arg){
 
   uint8_t * curr_consumer_record_ptr;
 
+  mod_som_sdio_ptr_t local_mod_som_sdio_ptr_t=
+       mod_som_sdio_get_runtime_ptr_f();
+
+   mod_som_sdio_file_ptr_t rawfile_ptr =
+       local_mod_som_sdio_ptr_t->rawdata_file_ptr;
+
   //        printf("In Consumer Task 2\n");
   while (DEF_ON) {
 
@@ -2264,7 +2270,7 @@ void mod_som_efe_obp_consumer_task_f(void  *p_arg){
             case 1:
               //ALB store
               mod_som_efe_obp_ptr->consumer_ptr->consumed_flag=false;
-              mod_som_sdio_write_data_f(
+              mod_som_sdio_write_data_f(rawfile_ptr,
                   mod_som_efe_obp_ptr->consumer_ptr->record_ptr,
                   mod_som_efe_obp_ptr->consumer_ptr->record_length,
                   &mod_som_efe_obp_ptr->consumer_ptr->consumed_flag);

@@ -53,6 +53,7 @@ typedef struct{
     uint8_t * printf_str_ptr;
     uint32_t printf_str_length;
     bool is_printf_mode;
+    mod_som_sdio_file_ptr_t file_ptr;
     //    const char* format_for_printf;
     //    va_list args_for_printf;
     //    void * next_item_ptr;

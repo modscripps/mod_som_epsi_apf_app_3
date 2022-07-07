@@ -964,6 +964,13 @@ static  void  mod_som_sbe41_consumer_task_f(void  *p_arg){
 
     int padding = MOD_SOM_SBE41_CONSUMER_PADDING; // the padding should include the variance.
 
+    mod_som_sdio_ptr_t local_mod_som_sdio_ptr_t=
+        mod_som_sdio_get_runtime_ptr_f();
+
+    mod_som_sdio_file_ptr_t rawfile_ptr =
+        local_mod_som_sdio_ptr_t->rawdata_file_ptr;
+
+
     while (DEF_ON) {
 
         if (mod_som_sbe41_ptr->collect_data_flag){
@@ -1133,7 +1140,7 @@ static  void  mod_som_sbe41_consumer_task_f(void  *p_arg){
                         &mod_som_sbe41_ptr->consumer_ptr->consumed_flag);
                     break;
                   case 1:
-                    mod_som_sdio_write_data_f(
+                    mod_som_sdio_write_data_f(rawfile_ptr,
                         mod_som_sbe41_ptr->consumer_ptr->record_data_ptr,
                         mod_som_sbe41_ptr->consumer_ptr->record_length,
                         &mod_som_sbe41_ptr->consumer_ptr->consumed_flag);

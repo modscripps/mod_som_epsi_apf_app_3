@@ -463,6 +463,13 @@ void ADC0_IRQHandler(void)
   // Read data from ADC
   data = ADC_DataIdScanGet(ADC0, &id);
 
+  mod_som_sdio_ptr_t local_mod_som_sdio_ptr_t=
+      mod_som_sdio_get_runtime_ptr_f();
+
+  mod_som_sdio_file_ptr_t rawfile_ptr =
+      local_mod_som_sdio_ptr_t->rawdata_file_ptr;
+
+
   // Convert data to mV and store into array
   // 4096 is 2^12 the bit resolution
   // 2500 is 2.5 volts the voltage reference.
@@ -506,9 +513,10 @@ void ADC0_IRQHandler(void)
       break;
     case 1:
       //ALB direct SD store
-      mod_som_sdio_write_data_f((uint8_t*) mod_som_voltage_ptr->str_record, \
-                                 MOD_SOM_VOLTAGE_RECORD_LENGTH,   \
-                                 DEF_NULL);
+      mod_som_sdio_write_data_f(rawfile_ptr,
+                               (uint8_t*) mod_som_voltage_ptr->str_record, \
+                                MOD_SOM_VOLTAGE_RECORD_LENGTH,   \
+                                DEF_NULL);
       break;
     case 2:
       //ALB Aggregator
