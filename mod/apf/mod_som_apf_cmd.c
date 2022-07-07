@@ -222,8 +222,9 @@ CPU_INT16S mod_som_apf_cmd_daq_f(CPU_INT16U argc,
           }
           // save time string into the temporary local string - Mai - Nov 18, 2021
           //ALB THIS THE ACK ANSWER
-          sprintf(apf_reply_str,"%s,start,%s,%lu\r\n",(uint32_t) profile_id,
-                  MOD_SOM_APF_DAQ_STR,MOD_SOM_APF_ACK_STR);
+          sprintf(apf_reply_str,"%s,start,%s,%lu\r\n",
+                  MOD_SOM_APF_DAQ_STR,MOD_SOM_APF_ACK_STR,
+                  (uint32_t) profile_id);
           status |= MOD_SOM_APF_STATUS_OK;
         } // if (!Str_Cmp(argv[argc], "start"))
       break;

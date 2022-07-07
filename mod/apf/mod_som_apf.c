@@ -429,7 +429,7 @@ mod_som_apf_status_t mod_som_apf_construct_producer_ptr_f(){
   mod_som_apf_ptr->producer_ptr->dacq_ptr =
       (uint8_t*)Mem_SegAlloc(
           "MOD SOM APF producer dacq.",DEF_NULL,
-          5*sizeof(float) * MOD_SOM_EFE_OBP_DEFAULT_NFFT,
+          5*sizeof(float) * mod_som_apf_ptr->producer_ptr->nfft_diag,
           &err);
 
 
@@ -510,7 +510,7 @@ mod_som_apf_status_t mod_som_apf_construct_consumer_ptr_f(){
   mod_som_apf_ptr->consumer_ptr->dacq_ptr =
       (uint8_t*)Mem_SegAlloc(
           "MOD SOM APF consumer dacq.",DEF_NULL,
-          5*sizeof(float) * MOD_SOM_EFE_OBP_DEFAULT_NFFT,
+          3*sizeof(float) * MOD_SOM_EFE_OBP_DEFAULT_NFFT,
           &err);
   // Check error code
   APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
@@ -2097,7 +2097,7 @@ uint32_t mod_som_apf_send_line_f(LEUART_TypeDef *leuart_ptr,char * buf, uint32_t
   uint16_t mod_shear_foco, mod_temp_foco, mod_accel_foco;
   uint8_t mod_epsi_fom,mod_chi_fom;
   uint8_t  mod_bit_fom;
-  FRESULT res;
+  FRESULT res=0;
 
 
   uint16_t  local_avg_dissrate_timestamp; //ALB nb of sec since dacq
@@ -2604,8 +2604,12 @@ mod_som_apf_status_t mod_som_apf_daq_start_f(uint64_t profile_id){
   //ALB write MODSOM settings on the SD file
 //  mod_som_settings_sd_settings_f();
 
+  file_status=mod_som_sdio_open_processfilename_f("OBPdata");
 
-	//ALB start ADC master clock timer
+  if (file_status>0){
+      status|=file_status;
+  }
+  //ALB start ADC master clock timer
   mod_som_apf_ptr->daq=true;
 
 

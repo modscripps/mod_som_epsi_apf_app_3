@@ -591,10 +591,10 @@ mod_som_status_t mod_som_sdio_open_processfilename_f(CPU_CHAR* filename){
     FRESULT res;
     res = f_open(mod_som_sdio_struct.processdata_file_ptr->fp, \
         tchar_filename,\
-        FA_OPEN_EXISTING | FA_READ);
+        FA_OPEN_ALWAYS | FA_WRITE | FA_READ);
     if (res == FR_OK)
     {
-        status=MOD_SOM_SDIO_OPEN_PREV_PROCESS_FILE;
+        status=MOD_SOM_SDIO_STATUS_OK;
       mod_som_io_print_f("\nopened %s\n",(char *) mod_som_sdio_struct.processdata_file_ptr->file_name);
 
     }else {
