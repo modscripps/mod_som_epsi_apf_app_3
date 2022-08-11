@@ -186,7 +186,7 @@ CPU_INT16S mod_som_apf_cmd_daq_f(CPU_INT16U argc,
           //printf("profile id: %s\n",argv[i+1]);
 
           // profile id is out of the range
-          if (profile_id < 0 || profile_id>MOD_SOM_APF_DAQ_PROFILE_LIMIT)
+          if (profile_id < 0 || profile_id > MOD_SOM_APF_DAQ_PROFILE_LIMIT)
           {
                  // save time string into the temporary local string - Mai - Nov 18, 2021
                  sprintf(apf_reply_str,"%s,start,%s,third arg is NOT in range [0 %d], -- valid cmd: %s\r\n",
@@ -196,6 +196,7 @@ CPU_INT16S mod_som_apf_cmd_daq_f(CPU_INT16U argc,
                  break;
           }
 
+          /* CAP removing the continuous profile id condition
           // check the profile_id is continous
           if (profile_id - local_apf_runtime_ptr->profile_id != 1)
             {
@@ -207,6 +208,7 @@ CPU_INT16S mod_som_apf_cmd_daq_f(CPU_INT16U argc,
               status |= MOD_SOM_APF_STATUS_WRONG_ARG;
               break;
             }
+            */
           // all the bad input are detected, now only have valid command - maibui Aprl 28, 2022
 //          last_profile_id = profile_id;  // update the frofile id
           //ALB STARTING THE PROFILE HERE
@@ -217,6 +219,7 @@ CPU_INT16S mod_som_apf_cmd_daq_f(CPU_INT16U argc,
               // save time string into the temporary local string - Mai - Nov 18, 2021
               sprintf(apf_reply_str,"%s,start,%s,not valid CTD data\r\n",
                       MOD_SOM_APF_DAQ_STR,MOD_SOM_APF_NACK_STR);
+              mod_som_apf_status_t temp_status = mod_som_apf_daq_stop_f();
               status |= return_status;
               break;
           }

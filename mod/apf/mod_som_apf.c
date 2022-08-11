@@ -1687,6 +1687,11 @@ uint32_t mod_som_apf_convert_string_f(char* data_str_input, uint32_t * bytes_rec
             printf("outptstr: %c\n", *local_str_output_ptr);
             *local_str_output_ptr = ' ';
           }
+        else if(*local_str_input_ptr==' ')
+          {
+            printf("outputstr: %c\n", *local_str_output_ptr);
+            *local_str_output_ptr = '-';
+          }
         else
           *local_str_output_ptr = *local_str_input_ptr;
         local_str_input_ptr++;
@@ -3085,20 +3090,22 @@ mod_som_apf_status_t mod_som_apf_epsi_id_status_f(){
                                           mod_som_settings_get_settings_f();
 
 
-  status|=mod_som_io_print_f("%s,%s,SOM%s,%s,EFE%s,%s\r\n",
+  status|=mod_som_io_print_f("%s,%s,%s%s,%s%s\r\n",
                              MOD_SOM_APF_EPSINO_STAT_STR,
                              MOD_SOM_APF_ACK_STR,
-                             local_settings_ptr->rev,local_settings_ptr->sn,
-                             local_settings_ptr->mod_som_efe_settings.rev,
+                             &local_settings_ptr->rev[3],
+                             local_settings_ptr->sn,
+                             &local_settings_ptr->mod_som_efe_settings.rev[3],
                              local_settings_ptr->mod_som_efe_settings.sn);
   // save the string into the temporary local string - Mai - Nov 18, 2021
 
 
-  sprintf(apf_reply_str,"%s,%s,SOM%s,%s,EFE%s,%s\r\n",
+  sprintf(apf_reply_str,"%s,%s,%s%s,%s%s\r\n",
           MOD_SOM_APF_EPSINO_STAT_STR,
           MOD_SOM_APF_ACK_STR,
-          local_settings_ptr->rev,local_settings_ptr->sn,
-          local_settings_ptr->mod_som_efe_settings.rev,
+          &local_settings_ptr->rev[3],
+          local_settings_ptr->sn,
+          &local_settings_ptr->mod_som_efe_settings.rev[3],
           local_settings_ptr->mod_som_efe_settings.sn);
   reply_str_len = strlen(apf_reply_str);
 
@@ -3192,7 +3199,7 @@ mod_som_apf_status_t mod_som_apf_probe_id_f(CPU_INT16U argc,
   char arg6[16] = "\0";
 
   // probe_no command guide
-  char probe_no_valid_cmmd[] = "\"probe_no,Type1,SerNo1,Coef1,Type2,SerNo2,Coef2\"(Type1 = 's',Type2 = 'f',SerNo1 and SerNo2: 3 digits positive number,Coef1 and Coef2: 2 digits positive number)\n";
+  char probe_no_invalid_input[] = "invalid input";
 
   // for send_string to the port
   uint32_t bytes_sent = 0;
@@ -3214,18 +3221,18 @@ mod_som_apf_status_t mod_som_apf_probe_id_f(CPU_INT16U argc,
        // bad type1
        if(strcmp(argv[1],"s"))
        {
-           sprintf(apf_reply_str,"%s,%s,your input invalid Type1 = %s -- valid command: %s\r\n",
+           sprintf(apf_reply_str,"%s,%s,Type1-%s\r\n",
                    MOD_SOM_APF_PROBENO_STR,MOD_SOM_APF_NACK_STR,
-                   argv[1],probe_no_valid_cmmd);
+                   probe_no_invalid_input);
            status |= MOD_SOM_APF_STATUS_WRONG_ARG;
            break;
        }
        // bad Serial1 number - arg2
        if (arg2[0]=='-') // negative
        {
-          sprintf(apf_reply_str,"%s,%s,input SerialNo1: \"%s\" is NEGATIVE number -- Valid command: %s\r\n",
+          sprintf(apf_reply_str,"%s,%s,SerialNo1-%s\r\n",
                   MOD_SOM_APF_PROBENO_STR,MOD_SOM_APF_NACK_STR,
-                  arg2,probe_no_valid_cmmd);
+                  probe_no_invalid_input);
           status |= MOD_SOM_APF_STATUS_WRONG_ARG;
           break;
        }
@@ -3243,99 +3250,99 @@ mod_som_apf_status_t mod_som_apf_probe_id_f(CPU_INT16U argc,
 
        if (length_argument2!=3) // serial_no1 is NOT 3 digits
        {
-           sprintf(apf_reply_str,"%s,%s,input SerialNo1: \"%s\" is NOT 3 digits number -- Valid command: %s\r\n",
+           sprintf(apf_reply_str,"%s,%s,SerialNo1-%s\r\n",
                    MOD_SOM_APF_PROBENO_STR,MOD_SOM_APF_NACK_STR,
-                   arg2,probe_no_valid_cmmd);
+                   probe_no_invalid_input);
            status |= MOD_SOM_APF_STATUS_WRONG_ARG;
            break;
        }
        if (isNumber(arg2)==0)  // serial_no1 is NOT a number
        {
-           sprintf(apf_reply_str,"%s,%s,input SerialNo1: \"%s\" is NOT a number -- Valid command: %s\r\n",
+           sprintf(apf_reply_str,"%s,%s,SerialNo1-%s\r\n",
                    MOD_SOM_APF_PROBENO_STR,MOD_SOM_APF_NACK_STR,
-                   arg2,probe_no_valid_cmmd);
+                   probe_no_invalid_input);
            status |= MOD_SOM_APF_STATUS_WRONG_ARG;
            break;
        }
        if (arg3[0]=='-')  // Coef1 is NEGATIVE
        {
-           sprintf(apf_reply_str,"%s,%s,input Coef1: \"%s\" is NEGATIVE number -- Valid command: %s\r\n",
+           sprintf(apf_reply_str,"%s,%s,Coef1-%s\r\n",
                    MOD_SOM_APF_PROBENO_STR,MOD_SOM_APF_NACK_STR,
-                   arg3,probe_no_valid_cmmd);
+                   probe_no_invalid_input);
            status |= MOD_SOM_APF_STATUS_WRONG_ARG;
            break;
        }
        if (length_argument3!=2) // Coef1 is NOT 2 digits
        {
-           sprintf(apf_reply_str,"%s,%s,input Coef1 \"%s\" is NOT 2 digits -- Valid command: %s\r\n",
+           sprintf(apf_reply_str,"%s,%s,Coef1-%s\r\n",
                    MOD_SOM_APF_PROBENO_STR,MOD_SOM_APF_NACK_STR,
-                   arg3,probe_no_valid_cmmd);
+                   probe_no_invalid_input);
            status |= MOD_SOM_APF_STATUS_WRONG_ARG;
            break;
        }
        if (isNumber(arg3)==0)  // Coef is NOT a number
        {
-           sprintf(apf_reply_str,"%s,%s,input Coef1 \"%s\" is NOT a number -- Valid command: %s\r\n",
+           sprintf(apf_reply_str,"%s,%s,Coef1-%s\r\n",
                    MOD_SOM_APF_PROBENO_STR,MOD_SOM_APF_NACK_STR,
-                   arg3,probe_no_valid_cmmd);
+                   probe_no_invalid_input);
            status |= MOD_SOM_APF_STATUS_WRONG_ARG;
            break;
        }
        // *** Type 2:
        if(strcmp(argv[4],"f")) // Type2 is not 'f'
        {
-            sprintf(apf_reply_str,"%s,%s,your input invalid Type2 = %s -- valid command: %s\r\n",
+            sprintf(apf_reply_str,"%s,%s,Type2-%s\r\n",
                     MOD_SOM_APF_PROBENO_STR,MOD_SOM_APF_NACK_STR,
-                    argv[4],probe_no_valid_cmmd);
+                    probe_no_invalid_input);
             status |= MOD_SOM_APF_STATUS_WRONG_ARG;
             break;
        }
        if (arg5[0]=='-') // Serial_no2 is negative
        {
-           sprintf(apf_reply_str,"%s,%s,input SerialNo2 \"%s\" is NEGATIVE number -- Valid command: %s\r\n",
+           sprintf(apf_reply_str,"%s,%s,SerialNo2-%s\r\n",
                    MOD_SOM_APF_PROBENO_STR,MOD_SOM_APF_NACK_STR,
-                   arg5,probe_no_valid_cmmd);
+                   probe_no_invalid_input);
            status |= MOD_SOM_APF_STATUS_WRONG_ARG;
            break;
        }
        if (length_argument5!=3) // Serial_no2 does NOT have 3 digits
        {
-           sprintf(apf_reply_str,"%s,%s,input SerialNo2 \"%s\" is NOT 3 digits nunber -- Valid command: %s\r\n",
+           sprintf(apf_reply_str,"%s,%s,SerialNo2-%s\r\n",
                    MOD_SOM_APF_PROBENO_STR,MOD_SOM_APF_NACK_STR,
-                   arg5,probe_no_valid_cmmd);
+                   probe_no_invalid_input);
            status |= MOD_SOM_APF_STATUS_WRONG_ARG;
            break;
        }
        if (isNumber(arg5)==0) // Serial_no2 is NOT a number
        {
-           sprintf(apf_reply_str,"%s,%s,input SerialNo2 \"%s\" is NOT a number -- Valid command: %s\r\n",
+           sprintf(apf_reply_str,"%s,%s,SerialNo2-%s\r\n",
                    MOD_SOM_APF_PROBENO_STR,MOD_SOM_APF_NACK_STR,
-                   arg5,probe_no_valid_cmmd);
+                   probe_no_invalid_input);
            status |= MOD_SOM_APF_STATUS_WRONG_ARG;
            break;
        }
        if (arg6[0]=='-')// Coef2 number is NEGATIVE
        {
           // save to the local string for sending out - Mai- May 3, 2022
-          sprintf(apf_reply_str,"%s,%s,input Coef2 \"%s\" is NEGATIVE -- Valid command: %s\r\n",
+          sprintf(apf_reply_str,"%s,%s,Coef2-%s\r\n",
                   MOD_SOM_APF_PROBENO_STR,MOD_SOM_APF_NACK_STR,
-                  arg6,probe_no_valid_cmmd);
+                  probe_no_invalid_input);
           status |= MOD_SOM_APF_STATUS_WRONG_ARG;
           break;
        }
        if (length_argument6!=2) // Coef2 number is NOT 2 digits
        {
-           sprintf(apf_reply_str,"%s,%s,input Coef2 \"%s\" is NOT 2 digits number -- Valid command: %s\r\n",
+           sprintf(apf_reply_str,"%s,%s,Coef2-%s\r\n",
                    MOD_SOM_APF_PROBENO_STR,MOD_SOM_APF_NACK_STR,
-                   arg6,probe_no_valid_cmmd);
+                   probe_no_invalid_input);
            status |= MOD_SOM_APF_STATUS_WRONG_ARG;
            break;
        }
        if (isNumber(arg6)==0)  //Coef2 number is NOT a number
        {
-           sprintf(apf_reply_str,"%s,%s,input Coef2 \"%s\" is NOT a number -- Valid command: %s\r\n",
+           sprintf(apf_reply_str,"%s,%s,Coef2-%s\r\n",
                    MOD_SOM_APF_PROBENO_STR,MOD_SOM_APF_NACK_STR,
-                   arg6,probe_no_valid_cmmd);
+                   probe_no_invalid_input);
            status |= MOD_SOM_APF_STATUS_WRONG_ARG;
            break;
        }
@@ -3373,9 +3380,8 @@ mod_som_apf_status_t mod_som_apf_probe_id_f(CPU_INT16U argc,
       break;  // argc == 7
     default:  // argc != 7
       // save to the local string for sending out - Mai- May 3, 2022
-      sprintf(apf_reply_str,"%s,%s,not enough arguments -- valid cmmd: %s\r\n",
-              MOD_SOM_APF_PROBENO_STR,MOD_SOM_APF_NACK_STR,
-              probe_no_valid_cmmd);
+      sprintf(apf_reply_str,"%s,%s,not enough arguments\r\n",
+              MOD_SOM_APF_PROBENO_STR,MOD_SOM_APF_NACK_STR);
       status|= MOD_SOM_APF_STATUS_WRONG_ARG;
       break;
   } // end of switch (args)
@@ -4076,7 +4082,7 @@ mod_som_apf_status_t mod_som_apf_sd_format_f(CPU_INT16U argc,
   // get the port's fd
   apf_leuart_ptr = (LEUART_TypeDef *)mod_som_apf_ptr->com_prf_ptr->handle_port;
 
-  char sd_format_valid_cmmd[] = "sd_format format_id (format_id is 1 or 2)\r\n";
+  //char sd_format_valid_cmmd[] = "sd_format format_id (format_id is 1 or 2)\r\n";
 
     //ALB switch statement easy to handle all user input cases.
     // command must only 2 arguments, otherwise send 'nak' to SOM and message to APF's port - maibui April 27, 2022
@@ -4087,9 +4093,8 @@ mod_som_apf_status_t mod_som_apf_sd_format_f(CPU_INT16U argc,
       strcpy(second_arg,argv[1]);
       if (isalpha(second_arg[0]))
       {
-          sprintf(apf_reply_str,"%s,%s,sd_format_number is NOT integer -- valid cmmd: %s\r\n",
-                  MOD_SOM_APF_SDFORMAT_STR,MOD_SOM_APF_NACK_STR,
-                  sd_format_valid_cmmd);
+          sprintf(apf_reply_str,"%s,%s,invalid input\r\n",
+                  MOD_SOM_APF_SDFORMAT_STR,MOD_SOM_APF_NACK_STR);
           status |= MOD_SOM_APF_STATUS_WRONG_ARG;
           break;
      }
@@ -4110,18 +4115,16 @@ mod_som_apf_status_t mod_som_apf_sd_format_f(CPU_INT16U argc,
       else  // not 1 or 2
       {
           // save to the local string for sending out - Mai-Nov 18, 2021
-          sprintf(apf_reply_str,"%s,%s,%lu,wrong format_number,your input sd's format must be 1 or 2\r\n",
-                  MOD_SOM_APF_SDFORMAT_STR,MOD_SOM_APF_NACK_STR,
-                  status);
+          sprintf(apf_reply_str,"%s,%s,invalid input\r\n",
+                  MOD_SOM_APF_SDFORMAT_STR,MOD_SOM_APF_NACK_STR);
           status |= MOD_SOM_APF_STATUS_WRONG_ARG;
       }
       break;
     // not 2 arguments
     default:  // command does NOT have 2 arguments: set the status, send 'nak' message to som
       // save to the local string for sending out - Mai-Nov 18, 2021
-      sprintf(apf_reply_str,"%s,%s,wrong command -- valid cmmd: %s\r\n",
-              MOD_SOM_APF_SDFORMAT_STR,MOD_SOM_APF_NACK_STR,
-              sd_format_valid_cmmd);
+      sprintf(apf_reply_str,"%s,%s,invalid input\r\n",
+              MOD_SOM_APF_SDFORMAT_STR,MOD_SOM_APF_NACK_STR);
       status |= MOD_SOM_APF_STATUS_WRONG_ARG;
       break;
     } // end of switch case of number of arguments

@@ -41,7 +41,7 @@
 #define MOD_SOM_APF_OKSTAT_STR            "ok?"
 #define MOD_SOM_APF_SLEEP_STR             "sleep"
 #define MOD_SOM_APF_GATE_STR              "gate"
-#define MOD_SOM_APF_FWREV_STAT_STR        "fw_rev?"
+#define MOD_SOM_APF_FWREV_STAT_STR        "frw_rev?"
 #define MOD_SOM_APF_UPLOAD_STR            "upload"
 #define MOD_SOM_APF_EPSINO_STAT_STR       "epsi_no?"
 #define MOD_SOM_APF_PROBENO_STR           "probe_no"
