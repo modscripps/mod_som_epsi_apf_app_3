@@ -3199,7 +3199,8 @@ mod_som_apf_status_t mod_som_apf_probe_id_f(CPU_INT16U argc,
   char arg6[16] = "\0";
 
   // probe_no command guide
-  char probe_no_invalid_input[] = "invalid input";
+  char probe_no_invalid_input[] = "probe_no,nak,invalid input type";
+  int invalid_command = 0;
 
   // for send_string to the port
   uint32_t bytes_sent = 0;
@@ -3221,20 +3222,12 @@ mod_som_apf_status_t mod_som_apf_probe_id_f(CPU_INT16U argc,
        // bad type1
        if(strcmp(argv[1],"s"))
        {
-           sprintf(apf_reply_str,"%s,%s,Type1-%s\r\n",
-                   MOD_SOM_APF_PROBENO_STR,MOD_SOM_APF_NACK_STR,
-                   probe_no_invalid_input);
-           status |= MOD_SOM_APF_STATUS_WRONG_ARG;
-           break;
+           invalid_command = 1;
        }
        // bad Serial1 number - arg2
        if (arg2[0]=='-') // negative
        {
-          sprintf(apf_reply_str,"%s,%s,SerialNo1-%s\r\n",
-                  MOD_SOM_APF_PROBENO_STR,MOD_SOM_APF_NACK_STR,
-                  probe_no_invalid_input);
-          status |= MOD_SOM_APF_STATUS_WRONG_ARG;
-          break;
+           invalid_command = 1;
        }
         // get the length of the rest of arguments - mai bui May 3rd, 2022
        length_argument2 = strlen(argv[2]); //SerNo1
@@ -3250,99 +3243,57 @@ mod_som_apf_status_t mod_som_apf_probe_id_f(CPU_INT16U argc,
 
        if (length_argument2!=3) // serial_no1 is NOT 3 digits
        {
-           sprintf(apf_reply_str,"%s,%s,SerialNo1-%s\r\n",
-                   MOD_SOM_APF_PROBENO_STR,MOD_SOM_APF_NACK_STR,
-                   probe_no_invalid_input);
-           status |= MOD_SOM_APF_STATUS_WRONG_ARG;
-           break;
+           invalid_command = 1;
        }
        if (isNumber(arg2)==0)  // serial_no1 is NOT a number
        {
-           sprintf(apf_reply_str,"%s,%s,SerialNo1-%s\r\n",
-                   MOD_SOM_APF_PROBENO_STR,MOD_SOM_APF_NACK_STR,
-                   probe_no_invalid_input);
-           status |= MOD_SOM_APF_STATUS_WRONG_ARG;
-           break;
+           invalid_command = 1;
        }
        if (arg3[0]=='-')  // Coef1 is NEGATIVE
        {
-           sprintf(apf_reply_str,"%s,%s,Coef1-%s\r\n",
-                   MOD_SOM_APF_PROBENO_STR,MOD_SOM_APF_NACK_STR,
-                   probe_no_invalid_input);
-           status |= MOD_SOM_APF_STATUS_WRONG_ARG;
-           break;
+           invalid_command = 1;
        }
        if (length_argument3!=2) // Coef1 is NOT 2 digits
        {
-           sprintf(apf_reply_str,"%s,%s,Coef1-%s\r\n",
-                   MOD_SOM_APF_PROBENO_STR,MOD_SOM_APF_NACK_STR,
-                   probe_no_invalid_input);
-           status |= MOD_SOM_APF_STATUS_WRONG_ARG;
-           break;
+           invalid_command = 1;
        }
        if (isNumber(arg3)==0)  // Coef is NOT a number
        {
-           sprintf(apf_reply_str,"%s,%s,Coef1-%s\r\n",
-                   MOD_SOM_APF_PROBENO_STR,MOD_SOM_APF_NACK_STR,
-                   probe_no_invalid_input);
-           status |= MOD_SOM_APF_STATUS_WRONG_ARG;
-           break;
+           invalid_command = 1;
        }
        // *** Type 2:
        if(strcmp(argv[4],"f")) // Type2 is not 'f'
        {
-            sprintf(apf_reply_str,"%s,%s,Type2-%s\r\n",
-                    MOD_SOM_APF_PROBENO_STR,MOD_SOM_APF_NACK_STR,
-                    probe_no_invalid_input);
-            status |= MOD_SOM_APF_STATUS_WRONG_ARG;
-            break;
+           invalid_command = 1;
        }
        if (arg5[0]=='-') // Serial_no2 is negative
        {
-           sprintf(apf_reply_str,"%s,%s,SerialNo2-%s\r\n",
-                   MOD_SOM_APF_PROBENO_STR,MOD_SOM_APF_NACK_STR,
-                   probe_no_invalid_input);
-           status |= MOD_SOM_APF_STATUS_WRONG_ARG;
-           break;
+           invalid_command = 1;
        }
        if (length_argument5!=3) // Serial_no2 does NOT have 3 digits
        {
-           sprintf(apf_reply_str,"%s,%s,SerialNo2-%s\r\n",
-                   MOD_SOM_APF_PROBENO_STR,MOD_SOM_APF_NACK_STR,
-                   probe_no_invalid_input);
-           status |= MOD_SOM_APF_STATUS_WRONG_ARG;
-           break;
+           invalid_command = 1;
        }
        if (isNumber(arg5)==0) // Serial_no2 is NOT a number
        {
-           sprintf(apf_reply_str,"%s,%s,SerialNo2-%s\r\n",
-                   MOD_SOM_APF_PROBENO_STR,MOD_SOM_APF_NACK_STR,
-                   probe_no_invalid_input);
-           status |= MOD_SOM_APF_STATUS_WRONG_ARG;
-           break;
+           invalid_command = 1;
        }
        if (arg6[0]=='-')// Coef2 number is NEGATIVE
        {
-          // save to the local string for sending out - Mai- May 3, 2022
-          sprintf(apf_reply_str,"%s,%s,Coef2-%s\r\n",
-                  MOD_SOM_APF_PROBENO_STR,MOD_SOM_APF_NACK_STR,
-                  probe_no_invalid_input);
-          status |= MOD_SOM_APF_STATUS_WRONG_ARG;
-          break;
+           invalid_command = 1;
        }
        if (length_argument6!=2) // Coef2 number is NOT 2 digits
        {
-           sprintf(apf_reply_str,"%s,%s,Coef2-%s\r\n",
-                   MOD_SOM_APF_PROBENO_STR,MOD_SOM_APF_NACK_STR,
-                   probe_no_invalid_input);
-           status |= MOD_SOM_APF_STATUS_WRONG_ARG;
-           break;
+           invalid_command = 1;
        }
        if (isNumber(arg6)==0)  //Coef2 number is NOT a number
        {
-           sprintf(apf_reply_str,"%s,%s,Coef2-%s\r\n",
-                   MOD_SOM_APF_PROBENO_STR,MOD_SOM_APF_NACK_STR,
-                   probe_no_invalid_input);
+           invalid_command = 1;
+       }
+       if (invalid_command)
+       {
+           // send out a short error message - maibui 16Aug2022
+           sprintf(apf_reply_str,"%s\r\n",probe_no_invalid_input);
            status |= MOD_SOM_APF_STATUS_WRONG_ARG;
            break;
        }
@@ -3697,6 +3648,8 @@ mod_som_apf_status_t mod_som_apf_time_f(CPU_INT16U argc,
   char second_arg[25] = "\0";
  // uint64_t time_unix = 0;
   char time_valid_cmmd[] = "time,posixtime(>01-01-2020)"; // unixEpoch time range [1575205200  12345678901] (from Jan,1 2020)
+  char invalid_time_cmmd[] = "time,nak,wrong input time";
+  int invalid_command = 0;
 
   switch(argc)
   {
@@ -3707,28 +3660,21 @@ mod_som_apf_status_t mod_som_apf_time_f(CPU_INT16U argc,
       // bad Coef1 number - arg3
       if (second_arg[0]=='-')  // NEGATIVE
       {
-          sprintf(apf_reply_str,"%s,%s, wrong input time: NEGATIVE number -- Valid command: %s\r\n",
-                  MOD_SOM_APF_TIME_STR,MOD_SOM_APF_NACK_STR,
-                  time_valid_cmmd);
-          status |= MOD_SOM_APF_STATUS_WRONG_ARG;
-          break;
+          invalid_command = 1;
       }
-      // big number, more than 10 digits
+      // big number, more than 20 digits
       else if (strlen(second_arg) > 20)
       {
-          sprintf(apf_reply_str,"%s,%s, the input time is more than 20 digits -- Valid command: %s\r\n",
-                  MOD_SOM_APF_TIME_STR,MOD_SOM_APF_NACK_STR,
-                  time_valid_cmmd);
-          status |= MOD_SOM_APF_STATUS_WRONG_ARG;
-          break;
-
+          invalid_command = 1;
       }
       // the input time is not the number
       else if (isNumber(second_arg)== 0)  // NOT a number
       {
-          sprintf(apf_reply_str,"%s,%s,UnixEpoch time is NOT integer -- Valid command: %s\r\n",
-                  MOD_SOM_APF_TIME_STR,MOD_SOM_APF_NACK_STR,
-                  time_valid_cmmd);
+          invalid_command = 1;
+      }
+      if (invalid_command)
+      {
+          sprintf(apf_reply_str,"%s\r\n", time_valid_cmmd);
           status |= MOD_SOM_APF_STATUS_WRONG_ARG;
           break;
       }
@@ -3894,6 +3840,8 @@ mod_som_apf_status_t mod_som_apf_packet_format_f(CPU_INT16U argc,
 
   char second_arg[25] = "\0";
   char valid_packet_format[] = "packet_format format (format is 1 or 2)";
+  char invalid_packet_format[] = "packet_format,nak,invalid format_number";
+  int invalid_command = 0;
 
     //ALB switch statement easy to handle all user input cases.
     switch (argc){
@@ -3903,24 +3851,19 @@ mod_som_apf_status_t mod_som_apf_packet_format_f(CPU_INT16U argc,
       // detect for not integer, only need check the first element of the third argument
       if(isalpha(second_arg[0]))  // format is not integer
       {
-          sprintf(apf_reply_str,"%s,%s,format is NOT integer - valid cmmd: %s\r\n",
-                  MOD_SOM_APF_PACKETFORMAT_STR,MOD_SOM_APF_NACK_STR,
-                  valid_packet_format);
-          reply_str_len = strlen(apf_reply_str);
-          status |= MOD_SOM_APF_STATUS_WRONG_ARG;
-          break;
-      }
+          invalid_command = 1;
+       }
 
       mode = strtol(argv[1],NULL,10);
       // not 1 or 2
       if (mode!=1 || mode!=2)// not 1 or 2
       {
-          // save to the local string for sending out - Mai-Nov 18, 2021
-          sprintf(apf_reply_str,"%s,%s, wrong format_number: MUST 1 or 2 -- valid cmmd: %s\r\n",
-                  MOD_SOM_APF_PACKETFORMAT_STR,MOD_SOM_APF_NACK_STR,
-                  valid_packet_format);
-          //ALB I handled the error coms. I should put status back to 0
-//          status = 0;
+          invalid_command = 1;
+      }
+      if (invalid_command)
+      {
+          // use the short invalid command error message - maibui 16Aug2022
+          sprintf(apf_reply_str,"%s\r\n",invalid_packet_format);
           status |= MOD_SOM_APF_STATUS_WRONG_ARG;
           break;
       }
@@ -3937,9 +3880,9 @@ mod_som_apf_status_t mod_som_apf_packet_format_f(CPU_INT16U argc,
       }
       break;  // end off args = 2
   default:  // not 2 arguments
-      sprintf(apf_reply_str,"%s,%s,wrong command -- Valid cmmd: %s\r\n",
-              MOD_SOM_APF_PACKETFORMAT_STR,MOD_SOM_APF_NACK_STR,
-              valid_packet_format);
+      // use the short invalid command error message - maibui 16Aug2022
+      sprintf(apf_reply_str,"%s\r\n",
+             invalid_packet_format);
       status |= MOD_SOM_APF_STATUS_WRONG_ARG;
       break;
  }  // end of  switch (argc)

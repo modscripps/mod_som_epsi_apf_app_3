@@ -560,5 +560,40 @@
 			<type>1</type>
 			<locationURI>STUDIO_SDK_LOC/platform/micrium_os/ports/source/gnu/armv7m_os_cpu_c.c</locationURI>
 		</link>
+		<link>
+			<name>bsp/siliconlabs/generic/source/bsp_can.c</name>
+			<type>1</type>
+			<locationURI>STUDIO_SDK_LOC/platform/micrium_os/bsp/siliconlabs/generic/source/bsp_can.c</locationURI>
+		</link>
+		<link>
+			<name>bsp/siliconlabs/generic/source/bsp_fs_nor_quad_spi.c</name>
+			<type>1</type>
+			<locationURI>STUDIO_SDK_LOC/platform/micrium_os/bsp/siliconlabs/generic/source/bsp_fs_nor_quad_spi.c</locationURI>
+		</link>
+		<link>
+			<name>bsp/siliconlabs/generic/source/bsp_fs_nor_spi.c</name>
+			<type>1</type>
+			<locationURI>STUDIO_SDK_LOC/platform/micrium_os/bsp/siliconlabs/generic/source/bsp_fs_nor_spi.c</locationURI>
+		</link>
+		<link>
+			<name>bsp/siliconlabs/generic/source/bsp_net_ether_gem.c</name>
+			<type>1</type>
+			<locationURI>STUDIO_SDK_LOC/platform/micrium_os/bsp/siliconlabs/generic/source/bsp_net_ether_gem.c</locationURI>
+		</link>
+		<link>
+			<name>bsp/siliconlabs/generic/source/bsp_sd_hc.c</name>
+			<type>1</type>
+			<locationURI>STUDIO_SDK_LOC/platform/micrium_os/bsp/siliconlabs/generic/source/bsp_sd_hc.c</locationURI>
+		</link>
+		<link>
+			<name>bsp/siliconlabs/generic/source/bsp_usb_dev.c</name>
+			<type>1</type>
+			<locationURI>STUDIO_SDK_LOC/platform/micrium_os/bsp/siliconlabs/generic/source/bsp_usb_dev.c</locationURI>
+		</link>
+		<link>
+			<name>bsp/siliconlabs/generic/source/bsp_usb_host_pbhcd.c</name>
+			<type>1</type>
+			<locationURI>STUDIO_SDK_LOC/platform/micrium_os/bsp/siliconlabs/generic/source/bsp_usb_host_pbhcd.c</locationURI>
+		</link>
 	</linkedResources>
 </projectDescription>
