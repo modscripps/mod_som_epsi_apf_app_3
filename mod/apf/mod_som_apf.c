@@ -2741,6 +2741,7 @@ mod_som_apf_status_t mod_som_apf_daq_stop_f(){
   mod_som_apf_status_t status;
   status=MOD_SOM_APF_STATUS_OK;
 
+  // from the spec, it
 	// stop ADC master clock timer
   status|= mod_som_efe_stop_sampling_f();
 
@@ -3447,7 +3448,9 @@ mod_som_apf_status_t mod_som_apf_probe_id_status_f(){
  *   This command puts the Epsilometer back to sleep.
  *   If the sensor happened to be in DAQ mode when it was awakened,
  *   the sleep command has the e ect of resuming the DAQ period
- *   already in progress.
+ *   already in progress. ???
+ *   Mike's note: this one is not clear
+ *
  *   If the sensor was not in DAQ mode, then the sleep command has the
  *   effect of inducing the Epsilometer into its low-power sleep state.
  *   The sensor should respond with sleep,ack\r\n.
@@ -3465,6 +3468,8 @@ mod_som_apf_status_t mod_som_apf_sleep_f(){
   LEUART_TypeDef* apf_leuart_ptr;
   // get the port's fd
   apf_leuart_ptr = (LEUART_TypeDef *)mod_som_apf_ptr->com_prf_ptr->handle_port;
+  char reply_str[] = "sleep,ack\r\n";
+
 
  if (!mod_som_apf_ptr->daq){
       //ALB we are not in daq mode make sure
@@ -3499,8 +3504,9 @@ mod_som_apf_status_t mod_som_apf_sleep_f(){
           mod_som_apf_ptr->sleep_flag=1;
 //          status|=mod_som_io_print_f("sleep,ack\r\n");
           // save to the local string for sending out - Mai-Nov 18, 2021
-          sprintf(apf_reply_str,"%s,%s\r\n"
-                  MOD_SOM_APF_SLEEP_STR,MOD_SOM_APF_ACK_STR);
+//          sprintf(apf_reply_str,"%s,%s\r\n"
+//                  MOD_SOM_APF_SLEEP_STR,MOD_SOM_APF_ACK_STR);
+          sprintf(apf_reply_str,"%s",reply_str); // maibui 25Aug2022
       }else{
 //          status|=mod_som_io_print_f("sleep,nak,%lu\r\n",status);
           // save to the local string for sending out - Mai-Nov 18, 2021
@@ -3642,13 +3648,13 @@ mod_som_apf_status_t mod_som_apf_time_f(CPU_INT16U argc,
   // get the port's fd
   apf_leuart_ptr = (LEUART_TypeDef *)mod_som_apf_ptr->com_prf_ptr->handle_port;
 
-  int apex_time=0;
+  unsigned long apex_time=0;
   sl_sleeptimer_timestamp_t time;
   mod_som_apf_status_t status = 0;
   char second_arg[25] = "\0";
  // uint64_t time_unix = 0;
-  char time_valid_cmmd[] = "time,posixtime(>01-01-2020)"; // unixEpoch time range [1575205200  12345678901] (from Jan,1 2020)
-  char invalid_time_cmmd[] = "time,nak,wrong input time";
+//  char time_valid_cmmd[] = "time,posixtime(>01-01-2020)"; // unixEpoch time range [1575205200  12345678901] (from Jan,1 2020)
+  char invalid_time_cmmd[] = "time, nak, wrong input time";
   int invalid_command = 0;
 
   switch(argc)
@@ -3674,30 +3680,28 @@ mod_som_apf_status_t mod_som_apf_time_f(CPU_INT16U argc,
       }
       if (invalid_command)
       {
-          sprintf(apf_reply_str,"%s\r\n", time_valid_cmmd);
+          sprintf(apf_reply_str,"%s\r\n", invalid_time_cmmd);
           status |= MOD_SOM_APF_STATUS_WRONG_ARG;
           break;
       }
       // get the apex_time
-      apex_time = strtol(argv[1],NULL,10);
+      apex_time = strtoul(argv[1],NULL,10);
 //      mod_som_io_print_f("apex_time %ld\r\n",apex_time);
 //      apex_time = shellStrtol(argv[1],&p_err);
 //      time = (int32_t) apex_time;
-      if(apex_time>ULONG_MAX)
+      if(apex_time>=ULONG_MAX)
       {
-           sprintf(apf_reply_str,"%s,%s,UnixEpoch time is too big number -- valid cmmd: %s\r\n",
-                   MOD_SOM_APF_TIME_STR,MOD_SOM_APF_NACK_STR,
-                   time_valid_cmmd);
-           status |= MOD_SOM_APF_STATUS_WRONG_ARG;
-         break;
+          invalid_command = 1;
       }
       if(apex_time<TIME_MIN)  // before Jan 1, 2020 = 155205199
       {
-           sprintf(apf_reply_str,"%s,%s, UnixEpoch time is less than 1575205199 -- valid cmmd: %s\r\n",
-                   MOD_SOM_APF_TIME_STR,MOD_SOM_APF_NACK_STR,
-                   time_valid_cmmd);
-           status |= MOD_SOM_APF_STATUS_WRONG_ARG;
-         break;
+          invalid_command = 1;
+      }
+      if (invalid_command)
+      {
+          sprintf(apf_reply_str,"%s\r\n", invalid_time_cmmd);
+          status |= MOD_SOM_APF_STATUS_WRONG_ARG;
+          break;
       }
 
       // valid command: "time,1234567\r"
@@ -3718,11 +3722,8 @@ mod_som_apf_status_t mod_som_apf_time_f(CPU_INT16U argc,
 
       break;
     default:  // not 2 agurments
-         sprintf(apf_reply_str,"%s,%s,wrong time command -- valid time commd: %s\r\n",
-                 MOD_SOM_APF_TIME_STR,MOD_SOM_APF_NACK_STR,
-                 time_valid_cmmd);
-
-         status |= MOD_SOM_APF_STATUS_WRONG_ARG;
+      sprintf(apf_reply_str,"%s\r\n", invalid_time_cmmd);
+      status |= MOD_SOM_APF_STATUS_WRONG_ARG;
       break;
   }
 
@@ -3765,24 +3766,30 @@ mod_som_apf_status_t mod_som_apf_time_status_f(){
 
   //TODO add a checker for that cmd
   time= mod_som_calendar_get_time_f();
+
   //TODO add a checker for that cmd
   tick=sl_sleeptimer_get_tick_count64();
 
-  mod_som_calendar_settings_ptr_t local_cal_setting =
-      mod_som_calendar_get_settings_ptr_f();
+  mod_som_calendar_settings_ptr_t local_cal_setting = mod_som_calendar_get_settings_ptr_f();
   time1=tick-local_cal_setting->poweron_offset_ms;
+
+  time1 = local_cal_setting->poweron_offset_ms;
+
+  // save time string into the temporary local string - Mai - Nov 18, 2021
+/*  sprintf(apf_reply_str,"time?,ack,%lu\r\n",
+          MOD_SOM_APF_TIMESTAT_STR,MOD_SOM_APF_ACK_STR,
+          (unsigned long)time);
+ */ sprintf(apf_reply_str,"time?,ack,%lu\r\n",time);
+  reply_str_len = strlen(apf_reply_str);
+
+
   //ALB  send out "time,ak,time\r\n"
   //TODO Bring the ack/ nack acknowledgment out of the scope of this function.
   //TODO Doing this for all the apf cmds
-  status|=mod_som_io_print_f("time?,ack,%lu\r\n",
-                             MOD_SOM_APF_TIMESTAT_STR,MOD_SOM_APF_ACK_STR,
-                             time);
-
-  // save time string into the temporary local string - Mai - Nov 18, 2021
-  sprintf(apf_reply_str,"time?,ack,%lu\r\n",
-          MOD_SOM_APF_TIMESTAT_STR,MOD_SOM_APF_ACK_STR,
-          (unsigned long)time);
-  reply_str_len = strlen(apf_reply_str);
+//  status|=mod_som_io_print_f("time?,ack,%lu\r\n",
+//                             MOD_SOM_APF_TIMESTAT_STR,MOD_SOM_APF_ACK_STR,
+//                             time1);
+  status|=mod_som_io_print_f("%s\r\n",apf_reply_str);
 
   // sending the above string to the APF port - Mai - Nov 18, 2021
   bytes_sent = mod_som_apf_send_line_f(apf_leuart_ptr,apf_reply_str, reply_str_len);
@@ -3842,6 +3849,7 @@ mod_som_apf_status_t mod_som_apf_packet_format_f(CPU_INT16U argc,
   char valid_packet_format[] = "packet_format format (format is 1 or 2)";
   char invalid_packet_format[] = "packet_format,nak,invalid format_number";
   int invalid_command = 0;
+  uint8_t mode_val = 0;
 
     //ALB switch statement easy to handle all user input cases.
     switch (argc){
@@ -3851,32 +3859,29 @@ mod_som_apf_status_t mod_som_apf_packet_format_f(CPU_INT16U argc,
       // detect for not integer, only need check the first element of the third argument
       if(isalpha(second_arg[0]))  // format is not integer
       {
-          invalid_command = 1;
+          // use the short invalid command error message - maibui 16Aug2022
+          sprintf(apf_reply_str,"%s\r\n",invalid_packet_format);
+          status |= MOD_SOM_APF_STATUS_WRONG_ARG;
        }
 
-      mode = strtol(argv[1],NULL,10);
-      // not 1 or 2
-      if (mode!=1 || mode!=2)// not 1 or 2
+      mode_val = atoi(argv[1]);
+      if ((mode_val==1) || (mode_val==2))// mode is either 1 or 2 -> valid - maibui 23Aug2022
       {
-          invalid_command = 1;
+         mod_som_apf_ptr->settings_ptr->comm_telemetry_packet_format = mode_val;
+         mod_som_settings_save_settings_f();
+
+         // save to the local string for sending out - Mai-Nov 18, 2021
+         sprintf(apf_reply_str,"%s,%s,%u\r\n",
+                 MOD_SOM_APF_PACKETFORMAT_STR,MOD_SOM_APF_ACK_STR,
+                 mode_val);
+         status |= MOD_SOM_APF_STATUS_OK;
+         break;
       }
-      if (invalid_command)
+     else// invalid_command
       {
           // use the short invalid command error message - maibui 16Aug2022
           sprintf(apf_reply_str,"%s\r\n",invalid_packet_format);
           status |= MOD_SOM_APF_STATUS_WRONG_ARG;
-          break;
-      }
-      else  // valid input
-      {
-          mod_som_apf_ptr->settings_ptr->comm_telemetry_packet_format = mode;
-          mod_som_settings_save_settings_f();
-
-          // save to the local string for sending out - Mai-Nov 18, 2021
-          sprintf(apf_reply_str,"%s,%s,%u\r\n",
-                  MOD_SOM_APF_PACKETFORMAT_STR,MOD_SOM_APF_ACK_STR,
-                  mode);
-          status |= MOD_SOM_APF_STATUS_OK;
       }
       break;  // end off args = 2
   default:  // not 2 arguments

@@ -815,18 +815,20 @@ mod_som_status_t  mod_som_efe_start_consumer_task_f(){
  * @return
  *   MOD_SOM_STATUS_OK if initialization goes well
  *   or otherwise
+ *   Mike's note:   MOD_SOM_STATUS_OK if deletion is successful
  ******************************************************************************/
 
 mod_som_status_t  mod_som_efe_stop_consumer_task_f(){
 
-  mod_som_status_t status=MOD_SOM_STATUS_OK;
+  mod_som_status_t status = MOD_SOM_STATUS_OK;
   RTOS_ERR err;
 
+  // delete the task
   OSTaskDel(&efe_consumer_task_tcb,
             &err);
 
   if(RTOS_ERR_CODE_GET(err) != RTOS_ERR_NONE)
-    status=1;
+    status = 1;
 
   return status;
 }

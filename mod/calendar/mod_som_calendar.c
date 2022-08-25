@@ -292,6 +292,9 @@ sl_status_t  mod_som_calendar_set_time_f(sl_sleeptimer_timestamp_t time){
 
   //MHA: great, now the offset is stored in poweron_offset_ms in the calendar structure.
   mod_som_calendar_ptr->mod_som_calendar_settings_ptr->poweron_offset_ms=offset_ms;
+
+  // debug - maibui
+  printf(".... offset_ms = %d\n", mod_som_calendar_ptr->mod_som_calendar_settings_ptr->poweron_offset_ms);
   return status;
 }
 

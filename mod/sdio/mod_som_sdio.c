@@ -725,7 +725,9 @@ mod_som_status_t mod_som_sdio_close_file_f(mod_som_sdio_file_ptr_t mod_som_sdio_
 	    //ALB Add a delay because sometime the closing process get hangup
 	    //ALB because (i think) the file close while trying to write in the writing task
 	    // close the file
-	    res=f_close(mod_som_sdio_file_ptr->fp);
+	    // TODO: why this one is hang (need to add watch dog?),
+	    //       add a delay to verify all pointers - mike, san - Aug 24, 2022
+	    res = f_close(mod_som_sdio_file_ptr->fp);
 	    //ALB clear fp
 //	    for (int i=1;i<sizeof(FIL);i++){
 //	        mod_som_sdio_file_ptr->fp[i]=0;
@@ -735,6 +737,7 @@ mod_som_status_t mod_som_sdio_close_file_f(mod_som_sdio_file_ptr_t mod_som_sdio_
 		if (res == FR_OK)
 		{
 			mod_som_io_print_f("closed %s\r\n",mod_som_sdio_file_ptr->file_name);
+//	    mod_som_sdio_file_ptr->is_open_flag=0;
 		} else{
 			mod_som_io_print_f("Failed to close %s, error %i\r\n", \
 					mod_som_sdio_file_ptr->file_name,res);
