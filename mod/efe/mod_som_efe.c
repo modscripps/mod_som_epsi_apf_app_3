@@ -2256,7 +2256,7 @@ mod_som_status_t mod_som_efe_stop_sampling_f()
 	mod_som_efe_ptr->sampling_flag = 0;
 	mod_som_efe_ptr->data_ready_flag=0;
 
-  //ALB turn on EFE hardware
+  //ALB turn off EFE hardware
   mod_som_efe_disable_hardware_f();
 
 	//MHA kluge for FCTD

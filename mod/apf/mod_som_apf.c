@@ -3446,6 +3446,27 @@ mod_som_apf_status_t mod_som_apf_probe_id_status_f(){
  *   put SOM to sleep
  *   should return an apf status.
  *   This command puts the Epsilometer back to sleep.
+ *
+ *   // 25 Aug, 2022: Arnaud, Mike: able to start acquisition, the whole system is awake.
+ *   // With a "sleep" command
+ *   // we stop acquistion and turn off everything off
+ *   // put all data files in pending
+ *
+ *   // there are many ways to do: after checking the daq's mode:
+ *   // Option 1: if in the daq mode, have to wait for finishing collect the last load of epsi data
+ *   // and save that data into the file and close all datafile. (?)
+ *
+ *   // Option 2: using the daq modes to define (idle, sleep, shutdown)
+ *   //       1. if NOT in daq mode -> shutdown, sleep (current version - send to Dana)
+ *   //       2. if in daq mode -> (idle, shutdown, sleep):
+ *   //         a. sleep & CTD, sleep efe + sniffing CTD (everthing need to sleep except CTD)
+ *   //         b. sleep and timer
+ *   //             (checking the postion of the equipment, reach to the surface, and save data)
+ *
+ *   // Conclusion: in acquistion mode or not:
+ *   // 1. turn off everything to save power
+ *   // 2. have a delay to save data into the file before close the data file
+ *
  *   If the sensor happened to be in DAQ mode when it was awakened,
  *   the sleep command has the e ect of resuming the DAQ period
  *   already in progress. ???
@@ -3472,6 +3493,7 @@ mod_som_apf_status_t mod_som_apf_sleep_f(){
 
 
  if (!mod_som_apf_ptr->daq){
+     // at this point, it is not in daq mode, nothing running, but for safety, we turn off everything
       //ALB we are not in daq mode make sure
       //ALB efe,sdio,efe obp,sbe-sniffer are asleep
       // stop ADC master clock timer
