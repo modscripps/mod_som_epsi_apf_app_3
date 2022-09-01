@@ -273,9 +273,9 @@ mod_som_status_t mod_som_sbe41_init_f(){
 
 
 #ifdef  RTOS_MODULE_COMMON_SHELL_AVAIL
-//    mod_som_sbe41_ptr->status = mod_som_sbe41_init_cmd_f();
-//    if(mod_som_sbe41_ptr->status != MOD_SOM_STATUS_OK)
-//      return mod_som_sbe41_encode_status_f(MOD_SOM_SBE41_STATUS_FAIL_INIT_CMD);
+    mod_som_sbe41_ptr->status = mod_som_sbe41_init_cmd_f();
+    if(mod_som_sbe41_ptr->status != MOD_SOM_STATUS_OK)
+      return mod_som_sbe41_encode_status_f(MOD_SOM_SBE41_STATUS_FAIL_INIT_CMD);
 #endif
 
 

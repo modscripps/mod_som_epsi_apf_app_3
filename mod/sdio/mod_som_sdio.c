@@ -1064,10 +1064,10 @@ mod_som_status_t mod_som_sdio_read_file_f(mod_som_sdio_file_ptr_t mod_som_sdio_f
 
 mod_som_status_t mod_som_sdio_read_processfile_f(uint8_t * databuffer,uint32_t obp_file_bytes, uint32_t seek_idx){
 
-  UINT byte_read;
-  UINT byte_to_read=0;
+  UINT byte_read    = 0;//ALB nb of bytes read by f_read
+  UINT byte_to_read = 0;//ALB remaining nb of bytes to read
+  UINT idx_read     = 0;//ALB index to where the data should be written in databuffer
   FRESULT res;
-  TCHAR tchar_filename[100];
   uint32_t done_reading=0;
 
   //ALB open processfilename
@@ -1086,17 +1086,20 @@ if(mod_som_sdio_file_ptr->is_open_flag==0){
   mod_som_io_print_f("\nReading file %s...\n", \
       mod_som_sdio_file_ptr->file_name);
 
+  //ALB position the SD read idx. Usefull when we nee to send again a packet
   res = f_lseek (mod_som_sdio_file_ptr->fp, seek_idx);
 //  int done_reading=0;
   while(obp_file_bytes>0){
       byte_to_read=MIN(MOD_SOM_SDIO_BLOCK_LENGTH,obp_file_bytes);
       res = f_read(mod_som_sdio_file_ptr->fp, mod_som_sdio_struct.read_buff, \
                    byte_to_read, &byte_read);
-    if (res == FR_OK){
-     memcpy(databuffer,(uint8_t*)mod_som_sdio_struct.read_buff,byte_read);
+    if ((res == FR_OK) & (byte_read>0)){
+     memcpy(databuffer+idx_read,(uint8_t*)mod_som_sdio_struct.read_buff,byte_read);
      obp_file_bytes-=byte_read;
+     idx_read =byte_read; //ALB index to where the data should be written in databuffer
     } else{
       mod_som_io_print_f("\nRead Failure: %d\n", res);
+      return MOD_SOM_STATUS_NOT_OK;
     }
     //ALB feed the WDOG coz sending long files triggers the WDOG.
     WDOG_Feed();

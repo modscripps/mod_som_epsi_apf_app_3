@@ -2639,10 +2639,10 @@ mod_som_apf_status_t mod_som_apf_daq_start_f(uint64_t profile_id){
   }
 
   //ALB initialize Meta_Data Structure, TODO
+  mod_som_apf_ptr->profile_id=profile_id;
   mod_som_apf_init_meta_data(&mod_som_apf_ptr->producer_ptr->
                              mod_som_apf_meta_data);
 
-  mod_som_apf_ptr->profile_id=profile_id;
 //  //ALB Open SD file,
   sprintf(filename, "Profile%lu",(uint32_t) mod_som_apf_ptr->profile_id);
   mod_som_sdio_define_filename_f(filename);
@@ -3491,9 +3491,8 @@ mod_som_apf_status_t mod_som_apf_sleep_f(){
   apf_leuart_ptr = (LEUART_TypeDef *)mod_som_apf_ptr->com_prf_ptr->handle_port;
   char reply_str[] = "sleep,ack\r\n";
 
-
- if (!mod_som_apf_ptr->daq){
-     // at this point, it is not in daq mode, nothing running, but for safety, we turn off everything
+//ALB IDLE SLEEP
+ if (!mod_som_apf_ptr->daq & mod_som_apf_ptr->sleep_flag==0){
       //ALB we are not in daq mode make sure
       //ALB efe,sdio,efe obp,sbe-sniffer are asleep
       // stop ADC master clock timer
@@ -3520,6 +3519,11 @@ mod_som_apf_status_t mod_som_apf_sleep_f(){
       mod_som_sdio_disable_hardware_f();
 
       mod_som_main_sleep_f();
+ }
+ else{
+     //ALB place holder for the other modes
+     //TODO mode DAQ pressure - SLEEP
+     //TODO mode DAQ time - SLEEP
  }
 
       if (status==0){
@@ -3715,10 +3719,10 @@ mod_som_apf_status_t mod_som_apf_time_f(CPU_INT16U argc,
       {
           invalid_command = 1;
       }
-      if(apex_time<TIME_MIN)  // before Jan 1, 2020 = 155205199
-      {
-          invalid_command = 1;
-      }
+//      if(apex_time<TIME_MIN)  // before Jan 1, 2020 = 155205199
+//      {
+//          invalid_command = 1;
+//      }
       if (invalid_command)
       {
           sprintf(apf_reply_str,"%s\r\n", invalid_time_cmmd);
@@ -4393,7 +4397,7 @@ mod_som_apf_status_t mod_som_apf_upload_f(){
                   mod_som_apf_ptr->consumer_ptr->daq_remaining_bytes+=
                                                              dacq_bytes_to_sent;
                   status=MOD_SOM_APF_STATUS_FAIL_SEND_PACKET;
-                  dacq_bytes_sent=0;
+//                  dacq_bytes_sent=0;
                   break; //Break the while loop to try again
               }//ALB end of if
               read_char=0;
