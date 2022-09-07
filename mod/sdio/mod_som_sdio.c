@@ -523,6 +523,8 @@ mod_som_status_t mod_som_sdio_define_filename_f(CPU_CHAR* filename){
 //	mod_som_sdio_struct.config_file_ptr->initialized_flag=0;
   mod_som_sdio_struct.rawdata_file_ptr->initialized_flag=0;
 
+  //ALB I am using FA_OPEN_APPEND when I open the raw file so I am alsways keeping the previsous data.
+  //ALB every time I open that file the settings are saved first.
 	status_data=mod_som_sdio_open_file_f(mod_som_sdio_struct.rawdata_file_ptr);
 	mod_som_sdio_struct.open_file_time=mod_som_calendar_get_time_f();
 	//store the date time when we open the file
@@ -531,7 +533,8 @@ mod_som_status_t mod_som_sdio_define_filename_f(CPU_CHAR* filename){
                                           mod_som_settings_get_settings_f();
 
 
-	status_data=mod_som_sdio_write_config_f((uint8_t *) local_settings_ptr,\
+  //ALB every time I open that file the settings are saved first.
+    status_data=mod_som_sdio_write_config_f((uint8_t *) local_settings_ptr,\
 	                                        local_settings_ptr->size,
 												   mod_som_sdio_struct.rawdata_file_ptr);
 
@@ -740,7 +743,7 @@ mod_som_status_t mod_som_sdio_open_file_f(mod_som_sdio_file_ptr_t mod_som_sdio_f
     FRESULT res;
     res = f_open(mod_som_sdio_file_ptr->fp, \
     		tchar_filename,\
-    		FA_OPEN_ALWAYS | FA_WRITE | FA_READ);
+    		FA_OPEN_APPEND | FA_WRITE | FA_READ);
     if (res == FR_OK)
     {
     	mod_som_io_print_f("\nopened %s\n",(char *) mod_som_sdio_file_ptr->file_name);
