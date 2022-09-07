@@ -558,8 +558,9 @@ mod_som_status_t mod_som_sdio_define_filename_f(CPU_CHAR* filename){
 mod_som_status_t mod_som_sdio_open_processfilename_f(CPU_CHAR* filename){
 
   mod_som_status_t status;
-  mod_som_status_t status_data;
-  FRESULT res_sync;
+  UINT byteswritten=0;
+
+
 
   CPU_CHAR data_file_buf[100];   //ALB with this version of ff.c the filename can *not* be more than 8
 
@@ -591,12 +592,13 @@ mod_som_status_t mod_som_sdio_open_processfilename_f(CPU_CHAR* filename){
     FRESULT res;
     res = f_open(mod_som_sdio_struct.processdata_file_ptr->fp, \
         tchar_filename,\
-        FA_OPEN_ALWAYS | FA_WRITE | FA_READ);
+        FA_OPEN_APPEND | FA_WRITE | FA_READ);
     if (res == FR_OK)
     {
-        status=MOD_SOM_SDIO_STATUS_OK;
-      mod_som_io_print_f("\nopened %s\n",(char *) mod_som_sdio_struct.processdata_file_ptr->file_name);
 
+        status=MOD_SOM_SDIO_STATUS_OK;
+        mod_som_io_print_f("\nopened %s\n",
+                           (char *) mod_som_sdio_struct.processdata_file_ptr->file_name);
     }else {
 
           mod_som_io_print_f("\nFailed to open %s,error %i \n", \
@@ -614,6 +616,50 @@ mod_som_status_t mod_som_sdio_open_processfilename_f(CPU_CHAR* filename){
   }
   return status;
 }
+
+/*******************************************************************************
+ * @brief
+ *   Read the meta data from the on board processing file.
+ *   - f_seek the read_pointer at the begining of the file
+ *   - read the sizeof(metadata) and store the data
+ *   - set back the read_pointer to the previous location (i.e., the end of the file)
+ *
+ *   - Note sizeof metadata < 512 so I can read the data in 1 chunk
+ *
+ * @return
+ *   MOD_SOM_STATUS_OK if function execute nicely
+ ******************************************************************************/
+mod_som_status_t mod_som_sdio_read_OBPfile_metadata(
+     mod_som_sdio_file_ptr_t processdata_file_ptr){
+
+  FRESULT res;
+  UINT byte_read;
+  mod_som_status_t status=MOD_SOM_STATUS_OK;
+  uint32_t read_ptr=0;
+
+
+  mod_som_apf_meta_data_ptr_t local_meta_data;
+  local_meta_data=mod_som_apf_get_meta_data_ptr();
+
+  //ALB f_eof get current the position of the pointer
+  read_ptr = f_tell (processdata_file_ptr->fp);
+  //ALB f_seek the read_pointer at the begining of the file
+  res = f_lseek (processdata_file_ptr->fp, 0);
+  //ALB I read the metadata of the previous
+  res = f_read(processdata_file_ptr->fp, mod_som_sdio_struct.read_buff, \
+               sizeof(mod_som_apf_meta_data_t), &byte_read);
+  if ((res == FR_OK) & (byte_read>0)){
+      memcpy((uint8_t*) local_meta_data,(uint8_t*)mod_som_sdio_struct.read_buff,byte_read);
+  } else{
+      mod_som_io_print_f("\nRead Failure: %d\n", res);
+      status=MOD_SOM_STATUS_NOT_OK;
+  }
+
+  //ALB return to previous read ptr position
+  res = f_lseek (processdata_file_ptr->fp, read_ptr);
+  return status;
+}
+
 
 
 /*******************************************************************************

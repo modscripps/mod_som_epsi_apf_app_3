@@ -29,6 +29,11 @@
 #include "mod_som_efe.h"
 #endif
 
+#ifdef MOD_SOM_APF_EN
+#include "mod_som_apf.h"
+#endif
+
+
 //------------------------------------------------------------------------------
 // DEFINES
 //------------------------------------------------------------------------------
@@ -324,6 +329,21 @@ mod_som_sdio_ptr_t mod_som_sdio_get_runtime_ptr_f();
  ******************************************************************************/
 mod_som_status_t mod_som_sdio_define_filename_f(CPU_CHAR* filename);
 mod_som_status_t mod_som_sdio_open_processfilename_f(CPU_CHAR* filename);
+
+/*******************************************************************************
+ * @brief
+ *   Read the meta data from the on board processing file.
+ *   - f_seek the read_pointer at the begining of the file
+ *   - read the sizeof(metadata) and store the data
+ *   - set back the read_pointer to the previous location (i.e., the end of the file)
+ *
+ *   - Note sizeof metadata < 512 so I can read the data in 1 chunk
+ *
+ * @return
+ *   MOD_SOM_STATUS_OK if function execute nicely
+ ******************************************************************************/
+mod_som_status_t mod_som_sdio_read_OBPfile_metadata(
+     mod_som_sdio_file_ptr_t processdata_file_ptr);
 
 /*******************************************************************************
  * @brief

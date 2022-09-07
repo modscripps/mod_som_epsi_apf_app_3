@@ -487,6 +487,7 @@ typedef struct{
 typedef struct{
    uint32_t initialize_flag;
    uint32_t sleep_flag;
+   uint32_t upload_flag;
    mod_som_status_t status;
 
 
@@ -684,6 +685,15 @@ mod_som_apf_status_t mod_som_apf_fubar_f();
  *   MOD_SOM_APF_STATUS_OK if function execute nicely
  ******************************************************************************/
 mod_som_apf_status_t mod_som_apf_fubar_status_f();
+
+/*******************************************************************************
+ * @brief
+ *    get meta data ptr
+ *
+ * @return
+ *   mod_som_apf_meta_data_ptr_t
+ ******************************************************************************/
+mod_som_apf_meta_data_ptr_t mod_som_apf_get_meta_data_ptr();
 
 /*******************************************************************************
  * @brief

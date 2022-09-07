@@ -200,6 +200,7 @@ mod_som_apf_status_t mod_som_apf_init_f(){
 
     //ALB initialize mod_som_apf_ptr params
     mod_som_apf_ptr->sleep_flag=0;
+    mod_som_apf_ptr->upload_flag=0;
     mod_som_apf_ptr->profile_id=0;
     mod_som_apf_ptr->daq=false;
     mod_som_apf_ptr->dacq_start_pressure=0;
@@ -736,8 +737,13 @@ mod_som_apf_status_t mod_som_apf_start_producer_task_f(){
 //  mod_som_apf_ptr->producer_ptr->avg_timestamp        = 0;
   mod_som_apf_ptr->producer_ptr->dissrate_skipped     = 0;
   mod_som_apf_ptr->producer_ptr->dissrates_cnt        = 0;
-  mod_som_apf_ptr->producer_ptr->stored_dissrates_cnt = 0;
   mod_som_apf_ptr->producer_ptr->dissrates_cnt        = 0;
+  //ALB watch out: I do not initialize stored_dissrates_cnt to 0
+  //ALB because we could be restarting a profile
+  //ALB (case where daq stop was issued but we want to continue the profile i.e.,
+  //ALB same profile id).TODO make sure stored_dissrates_cnt when starting a new profile
+  mod_som_apf_ptr->producer_ptr->stored_dissrates_cnt =
+      mod_som_apf_ptr->producer_ptr->mod_som_apf_meta_data.sample_cnt;
 
   mod_som_apf_ptr->producer_ptr->initialized_flag     = false;
   mod_som_apf_ptr->producer_ptr->collect_flg          = false;
@@ -984,7 +990,8 @@ void mod_som_apf_producer_task_f(void  *p_arg){
           dissrate_avail = mod_som_efe_obp_ptr->sample_count -
               mod_som_apf_ptr->producer_ptr->dissrates_cnt;  //calculate number of elements available have been produced
 
-          //ALB User stopped efe. I need to reset the obp producers count
+          //ALB dissrate_avail<0
+          //ALB User stopped efe (daq stop)
           if(dissrate_avail<0){
               mod_som_apf_ptr->producer_ptr->dissrates_cnt = 0;
           }
@@ -1598,6 +1605,7 @@ void mod_som_apf_shell_task_f(void  *p_arg){
   uint32_t bytes_sent;
   uint32_t reply_str_len;
   uint32_t input_buf_len;
+  uint32_t delay10ms=10;
 
   mod_som_apf_status_t status=0;
   //TODO This is very hardware dependent
@@ -2634,66 +2642,94 @@ mod_som_apf_status_t mod_som_apf_daq_start_f(uint64_t profile_id){
   ////  //ALB enable SDIO hardware
   mod_som_sdio_enable_hardware_f();
 
-  for(int i=0;i<3;i++){
+  for(int i=0;i<2;i++){
       sl_sleeptimer_delay_millisecond(delay1s);
   }
 
-  //ALB initialize Meta_Data Structure, TODO
-  mod_som_apf_ptr->profile_id=profile_id;
-  mod_som_apf_init_meta_data(&mod_som_apf_ptr->producer_ptr->
-                             mod_som_apf_meta_data);
-
-//  //ALB Open SD file,
-  sprintf(filename, "Profile%lu",(uint32_t) mod_som_apf_ptr->profile_id);
-  mod_som_sdio_define_filename_f(filename);
-  mod_som_settings_save_settings_f();
-  //ALB write MODSOM settings on the SD file
-//  mod_som_settings_sd_settings_f();
-
-  file_status=mod_som_sdio_open_processfilename_f("OBPdata");
-  mod_som_sdio_ptr_t local_mod_som_sdio_ptr_t=
-      mod_som_sdio_get_runtime_ptr_f();
-
-  mod_som_sdio_file_ptr_t processfile_ptr =
-      local_mod_som_sdio_ptr_t->processdata_file_ptr;
-
-  mod_som_apf_ptr->producer_ptr->done_sd_flag=false;
-  mod_som_sdio_write_data_f(processfile_ptr,
-                            (uint8_t*) &mod_som_apf_ptr->producer_ptr->
-                            mod_som_apf_meta_data,
-                            sizeof(mod_som_apf_meta_data_t),
-                            &mod_som_apf_ptr->producer_ptr->done_sd_flag);
-
-
-  if (file_status>0){
-      status|=file_status;
-  }
-  //ALB start ADC master clock timer
-  mod_som_apf_ptr->daq=true;
-
-
-
-//ALB start turbulence processing task
- status|= mod_som_efe_obp_start_fill_segment_task_f();
- status|= mod_som_efe_obp_start_cpt_spectra_task_f();
- status|= mod_som_efe_obp_start_cpt_dissrate_task_f();
-// status|= mod_som_efe_obp_start_consumer_task_f();
-
 
   //ALB I am getting a pressure sample
-  sl_sleeptimer_delay_millisecond(delay1s);
   while(local_sbe41_runtime_ptr->consumer_ptr->record_pressure[1]==0){
       sl_sleeptimer_delay_millisecond(delay10ms);
       get_ctd_count++;
       if (get_ctd_count>50){
           //ALB no CTD sample. Status no CTD data
           status|=MOD_SOM_APF_STATUS_NO_CTD_DATA;
-          mod_som_apf_ptr->profile_id--;
           get_ctd_count=0;
           break;
       }
   }
+
+
   if (status==MOD_SOM_APF_STATUS_OK){
+      uint32_t obpfile_size;
+
+      //ALB initialize Meta_Data Structure, TODO
+      mod_som_apf_ptr->profile_id=profile_id;
+
+      //ALB Open raw SD file,
+      sprintf(filename, "Profile%lu",(uint32_t) mod_som_apf_ptr->profile_id);
+      mod_som_sdio_define_filename_f(filename);
+      mod_som_settings_save_settings_f();
+
+
+      //ALB Open on board processed data file:
+      //ALB If this is a new profile a new file is created because
+      //ALB the previous upload would have removed (~sdio.rm) it.
+      //ALB If we continue to a profile but the SOM had to restart for some reasons
+      //ALB If need to append the new data.
+      file_status=mod_som_sdio_open_processfilename_f("OBPdata");
+      mod_som_sdio_ptr_t local_mod_som_sdio_ptr_t=
+          mod_som_sdio_get_runtime_ptr_f();
+
+      mod_som_sdio_file_ptr_t processfile_ptr =
+          local_mod_som_sdio_ptr_t->processdata_file_ptr;
+
+      obpfile_size=f_size(processfile_ptr->fp);
+      //ALB obpfile_size>0 means there is already an OBP file.
+      if(obpfile_size>0){
+        //ALB read the metadata from the OBP file
+        status=mod_som_sdio_read_OBPfile_metadata(processfile_ptr);
+      }
+
+
+      //ALB Metadata is filled up if OBPdata file already exist on the SD card.
+      //ALB during mod_som_sdio_open_processfilename_f.
+      //ALB now I compare mod_som_apf_meta_data.profile_id!=profile_id
+      //ALB to know if this a new new profile or if we continue profile.
+      if (mod_som_apf_ptr->producer_ptr->
+          mod_som_apf_meta_data.profile_id!=profile_id){
+          FRESULT res;
+
+          mod_som_apf_ptr->producer_ptr->stored_dissrates_cnt=0;
+          mod_som_apf_init_meta_data(&mod_som_apf_ptr->producer_ptr->
+                                     mod_som_apf_meta_data);
+          res = f_lseek (processfile_ptr->fp, 0);
+
+          mod_som_apf_ptr->producer_ptr->done_sd_flag=false;
+          mod_som_sdio_write_data_f(processfile_ptr,
+                                    (uint8_t*) &mod_som_apf_ptr->producer_ptr->
+                                    mod_som_apf_meta_data,
+                                    sizeof(mod_som_apf_meta_data_t),
+                                    &mod_som_apf_ptr->producer_ptr->done_sd_flag);
+      }
+
+
+      if (file_status>0){
+          status|=file_status;
+      }
+      //ALB start ADC master clock timer
+      mod_som_apf_ptr->daq=true;
+
+
+
+    //ALB start turbulence processing task
+     status|= mod_som_efe_obp_start_fill_segment_task_f();
+     status|= mod_som_efe_obp_start_cpt_spectra_task_f();
+     status|= mod_som_efe_obp_start_cpt_dissrate_task_f();
+    // status|= mod_som_efe_obp_start_consumer_task_f();
+
+
+
 
     //  //ALB start APF producer task
       status |= mod_som_apf_start_producer_task_f();
@@ -2886,6 +2922,18 @@ void mod_som_apf_init_meta_data(mod_som_apf_meta_data_ptr_t mod_som_apf_meta_dat
 //          &mod_som_apf_ptr->consumer_ptr->consumed_flag);
 //  }
 
+}
+
+/*******************************************************************************
+ * @brief
+ *    get meta data ptr
+ *
+ * @return
+ *   mod_som_apf_meta_data_ptr_t
+ ******************************************************************************/
+mod_som_apf_meta_data_ptr_t mod_som_apf_get_meta_data_ptr()
+{
+  return &mod_som_apf_ptr->producer_ptr->mod_som_apf_meta_data;
 }
 
 
@@ -4306,12 +4354,13 @@ mod_som_apf_status_t mod_som_apf_upload_f(){
                      &eot_byte,
                      dacq_bytes_to_sent);
 
+          }else{
+              //ALB copy the dacq bytes in the packet payload structure.
+              mod_som_sdio_read_processfile_f(
+                  (uint8_t*) &mod_som_apf_ptr->consumer_ptr->packet.payload,
+                  dacq_bytes_to_sent,
+                  dacq_bytes_sent);
           }
-          //ALB copy the dacq bytes in the packet payload structure.
-          mod_som_sdio_read_processfile_f(
-              (uint8_t*) &mod_som_apf_ptr->consumer_ptr->packet.payload,
-              dacq_bytes_to_sent,
-              dacq_bytes_sent);
 
           //ALB compute the packet CRC
           //TODO
@@ -4421,20 +4470,47 @@ mod_som_apf_status_t mod_som_apf_upload_f(){
   }//ALB end if daq
 
   //ALB end of upload send the upload status
-  if(status!=MOD_SOM_APF_STATUS_OK){
-      mod_som_io_print_f("%s,%s,%lu\r\n",
+  switch (status){
+    case MOD_SOM_APF_STATUS_DAQ_IS_RUNNING:
+      mod_som_io_print_f("%s,%s,%s\r\n",
                          MOD_SOM_APF_UPLOAD_STR,MOD_SOM_APF_NACK_STR,
-                         status);
+                         "daq is still running");
       // save to the local string for sending out - Mai-Nov 18, 2021
-      sprintf(apf_reply_str,"%s,%s,%lu\r\n",
+      sprintf(apf_reply_str,"%s,%s,%s\r\n",
               MOD_SOM_APF_UPLOAD_STR,MOD_SOM_APF_NACK_STR,
-              status);
-  }else{
+              "daq is still running");
+      break;
+    case MOD_SOM_APF_STATUS_FAIL_SEND_PACKET:
+      mod_som_io_print_f("%s,%s,%s\r\n",
+                         MOD_SOM_APF_UPLOAD_STR,MOD_SOM_APF_NACK_STR,
+                         "fail sending packets");
+      // save to the local string for sending out - Mai-Nov 18, 2021
+      sprintf(apf_reply_str,"%s,%s,%s\r\n",
+              MOD_SOM_APF_UPLOAD_STR,MOD_SOM_APF_NACK_STR,
+              "fail sending packets");
+      break;
+    case MOD_SOM_APF_STATUS_OK:
       mod_som_io_print_f("%s,%s,success\r\n",
                          MOD_SOM_APF_UPLOAD_STR,MOD_SOM_APF_ACK_STR);
       // save to the local string for sending out - Mai-Nov 18, 2021
       sprintf(apf_reply_str,"%s,%s,success\r\n",
               MOD_SOM_APF_UPLOAD_STR,MOD_SOM_APF_ACK_STR);
+      //ALB remove OBPdata file
+      //ALB actually I do not think I need to remove the OBPdata file
+//      mod_som_sdio_rm_sd_f("OBPdata");
+      break;
+    default:
+      mod_som_io_print_f("%s,%s,%s\r\n",
+                         MOD_SOM_APF_UPLOAD_STR,MOD_SOM_APF_NACK_STR,
+                         "unknown error");
+      // save to the local string for sending out - Mai-Nov 18, 2021
+      sprintf(apf_reply_str,"%s,%s,%s\r\n",
+              MOD_SOM_APF_UPLOAD_STR,MOD_SOM_APF_NACK_STR,
+              "unknown error");
+
+      break;
+
+
   }
   reply_str_len = strlen(apf_reply_str);
   // sending the above string to the APF port - Mai - Nov 18, 2021
