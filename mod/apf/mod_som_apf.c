@@ -188,7 +188,9 @@ mod_som_apf_status_t mod_som_apf_init_f(){
         //ALB sending the above string to the APF port -
         sl_sleeptimer_delay_millisecond(10);
         bytes_sent = mod_som_apf_send_line_f(apf_leuart_ptr,apf_reply_str, reply_str_len);
-
+        if (bytes_sent==0){
+            status= MOD_SOM_STATUS_NOT_OK;
+        }
     }
 
 
@@ -738,6 +740,7 @@ mod_som_apf_status_t mod_som_apf_start_producer_task_f(){
   mod_som_apf_ptr->producer_ptr->dissrate_skipped     = 0;
   mod_som_apf_ptr->producer_ptr->dissrates_cnt        = 0;
   mod_som_apf_ptr->producer_ptr->dissrates_cnt        = 0;
+  mod_som_apf_ptr->producer_ptr->dacq_size            = 0;
   //ALB watch out: I do not initialize stored_dissrates_cnt to 0
   //ALB because we could be restarting a profile
   //ALB (case where daq stop was issued but we want to continue the profile i.e.,
@@ -751,7 +754,6 @@ mod_som_apf_status_t mod_som_apf_start_producer_task_f(){
 
 //  mod_som_apf_ptr->producer_ptr->dacq_ptr     =
 //      &mod_som_apf_ptr->producer_ptr->acq_profile.data_acq[0];
-  mod_som_apf_ptr->producer_ptr->dacq_size            = 0;
 
   mod_som_apf_ptr->producer_ptr->started_flg          = true;
 
@@ -780,6 +782,7 @@ mod_som_apf_status_t mod_som_apf_start_producer_task_f(){
 
       break;
   }
+
 
   //ALB get a P reading and define the dz to get 25kB in the producer->dacq_profile
   //ALB the dz will depends on the comm_packet_format.
@@ -963,11 +966,11 @@ void mod_som_apf_producer_task_f(void  *p_arg){
 
   // parameters for send commands out to APF - mai - Nov 22, 2021
   uint32_t bytes_sent = 0;
-  char apf_reply_str[MOD_SOM_SHELL_INPUT_BUF_SIZE]="\0";
-  uint32_t reply_str_len = 0;
-  LEUART_TypeDef* apf_leuart_ptr;
+//  char apf_reply_str[MOD_SOM_SHELL_INPUT_BUF_SIZE]="\0";
+//  uint32_t reply_str_len = 0;
+//  LEUART_TypeDef* apf_leuart_ptr;
   // get the port's fd
-  apf_leuart_ptr = (LEUART_TypeDef *)mod_som_apf_ptr->com_prf_ptr->handle_port;
+//  apf_leuart_ptr = (LEUART_TypeDef *)mod_som_apf_ptr->com_prf_ptr->handle_port;
 
 
   int padding = 1; // the padding should be big enough to include the time variance.
@@ -1018,15 +1021,6 @@ void mod_som_apf_producer_task_f(void  *p_arg){
                       (uint32_t)mod_som_apf_ptr->producer_ptr->dissrates_cnt, \
                       (uint32_t)mod_som_apf_ptr->producer_ptr->dissrate_skipped);
 
-//                  // save time string into the temporary local string - Mai - Nov 18, 2021
-//                  sprintf(apf_reply_str,"\n apf obp prod task: CB overflow: sample count = %lu,"
-//                          "cnsmr_cnt = %lu,skipped %lu elements \r\n ", \
-//                          (uint32_t)mod_som_efe_obp_ptr->sample_count, \
-//                          (uint32_t)mod_som_apf_ptr->producer_ptr->dissrates_cnt, \
-//                          (uint32_t)mod_som_apf_ptr->producer_ptr->dissrate_skipped);
-//                  reply_str_len = strlen(apf_reply_str);
-//                  // sending the above string to the APF port - Mai - Nov 18, 2021
-//                  bytes_sent = mod_som_apf_send_line_f(apf_leuart_ptr,apf_reply_str, reply_str_len);
                   if (bytes_sent==0){
                       //TODO handle error
                   }
@@ -1139,6 +1133,7 @@ void mod_som_apf_producer_task_f(void  *p_arg){
                   }//end switch format
 
                   //ALB update dacq_size
+                  //ALB dacq_size is not used anymore. 09/08/2022
 //                  mod_som_apf_ptr->producer_ptr->dacq_ptr=
 //                      &mod_som_apf_ptr->producer_ptr->acq_profile.data_acq[0]+
 //                       mod_som_apf_ptr->producer_ptr->dacq_size;
@@ -1174,7 +1169,7 @@ void mod_som_apf_producer_task_f(void  *p_arg){
               //ALB raise flag and stop producer if profile is full (size(dacq)>=25kB)
               //ALB update the number of sample
               //ALB I should also update mod_som_apf_meta_data.sample_cnt in stop producer task i.e. after
-              if (mod_som_apf_ptr->producer_ptr->dacq_size+
+              if ((mod_som_apf_ptr->producer_ptr->stored_dissrates_cnt+1)*
                   mod_som_apf_ptr->producer_ptr->dacq_element_size+
                   sizeof(mod_som_apf_meta_data_t)>=
                   MOD_SOM_APF_DACQ_STRUCT_SIZE)
@@ -1182,8 +1177,6 @@ void mod_som_apf_producer_task_f(void  *p_arg){
                   mod_som_apf_ptr->producer_ptr->dacq_full=true;
                   mod_som_apf_ptr->producer_ptr->mod_som_apf_meta_data.sample_cnt=
                       mod_som_apf_ptr->producer_ptr->stored_dissrates_cnt;
-                  //ALB reset stored dissrates
-                  mod_som_apf_ptr->producer_ptr->stored_dissrates_cnt=0;
                 }
             }  // end of while (dissrate_avail > 0)
           // ALB done with segment storing.
@@ -1250,20 +1243,20 @@ void mod_som_apf_consumer_task_f(void  *p_arg){
 //  float * curr_epsi_fom_ptr;
 //  float * curr_chi_fom_ptr;
   uint64_t tick;
-  uint8_t * curr_consumer_record_ptr;
+//  uint8_t * curr_consumer_record_ptr;
 
 
   // parameters for send commands out to APF - mai - Nov 22, 2021
   uint32_t bytes_send;
-  char apf_reply_str[MOD_SOM_SHELL_INPUT_BUF_SIZE]="\0";
-  uint32_t reply_str_len = 0;
-  LEUART_TypeDef* apf_leuart_ptr;
+//  char apf_reply_str[MOD_SOM_SHELL_INPUT_BUF_SIZE]="\0";
+//  uint32_t reply_str_len = 0;
+//  LEUART_TypeDef* apf_leuart_ptr;
   // get the port's fd
-  apf_leuart_ptr = (LEUART_TypeDef *)mod_som_apf_ptr->com_prf_ptr->handle_port;
+//  apf_leuart_ptr = (LEUART_TypeDef *)mod_som_apf_ptr->com_prf_ptr->handle_port;
 
   int padding = 1; // the padding should be big enough to include the time variance.
 
-  char chksum_str[5];
+//  char chksum_str[5];
 
   mod_som_efe_obp_ptr_t mod_som_efe_obp_ptr=
                                           mod_som_efe_obp_get_runtime_ptr_f();
@@ -1309,15 +1302,6 @@ void mod_som_apf_consumer_task_f(void  *p_arg){
                           (uint32_t)mod_som_apf_ptr->consumer_ptr->dissrates_cnt, \
                           (uint32_t)mod_som_apf_ptr->consumer_ptr->dissrate_skipped);
 
-//                      // save time string into the temporary local string - Mai - Nov 18, 2021
-//                      sprintf(apf_reply_str,"\n apf obp consumer task: CB overflow: sample count = %lu,"
-//                              "cnsmr_cnt = %lu,skipped %lu elements \r\n ", \
-//                              (uint32_t)mod_som_efe_obp_ptr->sample_count, \
-//                              (uint32_t)mod_som_apf_ptr->consumer_ptr->dissrates_cnt, \
-//                              (uint32_t)mod_som_apf_ptr->consumer_ptr->dissrate_skipped);
-//                      reply_str_len = strlen(apf_reply_str);
-//                      // sending the above string to the APF port - Mai - Nov 18, 2021
-//                      bytes_send = mod_som_apf_send_line_f(apf_leuart_ptr,apf_reply_str, reply_str_len);
                       if (bytes_send==0){
                           //TODO handle the error
                       }
@@ -1448,64 +1432,6 @@ void mod_som_apf_consumer_task_f(void  *p_arg){
 
 
 
-//                  if(mod_som_apf_ptr->producer_ptr->dacq_full & (mod_som_apf_ptr->settings_ptr->sd_packet_format==2)){
-//                      //get the timestamp for the record header
-//                      tick=sl_sleeptimer_get_tick_count64();
-//                      mystatus = sl_sleeptimer_tick64_to_ms(tick,\
-//                                       &mod_som_apf_ptr->consumer_ptr->record_timestamp);
-//
-//                      //MHA: Now augment timestamp by poweron_offset_ms
-////                      mod_som_calendar_settings=mod_som_calendar_get_settings_f(); //get the calendar settings pointer
-//                      mod_som_apf_ptr->consumer_ptr->record_timestamp +=
-//                                                mod_som_calendar_settings.poweron_offset_ms;
-//
-//
-//                      mod_som_apf_ptr->consumer_ptr->payload_length=
-//                                       mod_som_apf_ptr->producer_ptr->dacq_size+
-//                                       sizeof(mod_som_apf_ptr->producer_ptr->mod_som_apf_meta_data);
-//
-//                      //ALB create header
-//                      if (mod_som_apf_ptr->settings_ptr->comm_telemetry_packet_format==1){
-//                          mod_som_apf_header_f(mod_som_apf_ptr->consumer_ptr,0);
-//                      }else{
-//                          mod_som_apf_header_f(mod_som_apf_ptr->consumer_ptr,1);
-//                      }
-//
-//
-//                      //ALB compute checksum
-//                      curr_consumer_record_ptr=mod_som_apf_ptr->producer_ptr->dacq_ptr;
-//
-//                      mod_som_apf_ptr->consumer_ptr->chksum=0;
-//                      for(int i=0;i<mod_som_apf_ptr->consumer_ptr->payload_length;i++)
-//                        {
-//                          mod_som_apf_ptr->consumer_ptr->chksum ^=\
-//                              curr_consumer_record_ptr[i];
-//                        }
-//
-//                      sprintf(chksum_str,"*%x\r\n",mod_som_apf_ptr->consumer_ptr->chksum);
-//                      //ALB stream
-//                      mod_som_apf_ptr->consumer_ptr->consumed_flag=false;
-//                      mod_som_io_stream_data_f(
-//                          mod_som_apf_ptr->consumer_ptr->header,
-//                          mod_som_apf_ptr->consumer_ptr->length_header,
-//                          &mod_som_apf_ptr->consumer_ptr->consumed_flag);
-//                      mod_som_apf_ptr->consumer_ptr->consumed_flag=false;
-//                      mod_som_io_stream_data_f(
-//                          curr_consumer_record_ptr,
-//                          mod_som_apf_ptr->consumer_ptr->payload_length,
-//                          &mod_som_apf_ptr->consumer_ptr->consumed_flag);
-//                      mod_som_apf_ptr->consumer_ptr->consumed_flag=false;
-//                      mod_som_io_stream_data_f(
-//                          (uint8_t * )chksum_str,
-//                          MOD_SOM_APF_CONSUMER_CHECKSUM_SIZE,
-//                          &mod_som_apf_ptr->consumer_ptr->consumed_flag);
-//
-//                      mod_som_apf_ptr->producer_ptr->dacq_full=false;
-//                      mod_som_apf_ptr->producer_ptr->dacq_size=0;
-////                      mod_som_apf_ptr->producer_ptr->dacq_ptr     =
-////                                                &mod_som_apf_ptr->producer_ptr->acq_profile.data_acq[0];
-//                  } //endif full true
-              // ALB done with segment storing.
               mod_som_apf_ptr->consumer_ptr->dissrate_skipped = 0;
           } //end if started
       // Delay Start Task execution for
@@ -1605,7 +1531,6 @@ void mod_som_apf_shell_task_f(void  *p_arg){
   uint32_t bytes_sent;
   uint32_t reply_str_len;
   uint32_t input_buf_len;
-  uint32_t delay10ms=10;
 
   mod_som_apf_status_t status=0;
   //TODO This is very hardware dependent
@@ -1697,6 +1622,8 @@ uint32_t mod_som_apf_convert_string_f(char* data_str_input, uint32_t * bytes_rec
           }
         else if(*local_str_input_ptr==' ')
           {
+            //CAP adding hyphen instead of space when reading the input
+
             printf("outputstr: %c\n", *local_str_output_ptr);
             *local_str_output_ptr = '-';
           }
@@ -2460,26 +2387,6 @@ void mod_som_apf_copy_sd_element_f(  uint64_t * curr_avg_timestamp_ptr,
          MOD_SOM_APF_DACQ_FLOAT_SIZE);
   dacq_ptr+=MOD_SOM_APF_DACQ_FLOAT_SIZE;
 
-  //ALB get the size of the data we just filled up.
-//  payload_length= dacq_ptr -
-//                  mod_som_apf_ptr->consumer_ptr->dacq_ptr-
-//                  mod_som_apf_ptr->consumer_ptr->length_header;
-
-//  mod_som_apf_ptr->consumer_ptr->chksum=0;
-//  for(int i=0;i<payload_length;i++)
-//    {
-//      mod_som_apf_ptr->consumer_ptr->chksum ^=\
-//          mod_som_apf_ptr->consumer_ptr->dacq_ptr[i+mod_som_apf_ptr->consumer_ptr->length_header];
-//    }
-//
-//
-//  mod_som_apf_ptr->consumer_ptr->consumed_flag=false;
-//  mod_som_sdio_write_data_f(
-//      mod_som_apf_ptr->consumer_ptr->dacq_ptr,
-//      payload_length,
-//      &mod_som_apf_ptr->consumer_ptr->consumed_flag);
-
-//  dacq_ptr=mod_som_apf_ptr->consumer_ptr->dacq_ptr;
 
   //ALB Now I am using payload_length just to get the size a 1 spectrum in uint8_t
   spectra_length=sizeof(float)*mod_som_apf_ptr->producer_ptr->
@@ -2668,6 +2575,11 @@ mod_som_apf_status_t mod_som_apf_daq_start_f(uint64_t profile_id){
 
 
 
+      //ALB Always open raw SD file, in append write mode
+      sprintf(filename, "Profile%lu",(uint32_t) mod_som_apf_ptr->profile_id);
+      mod_som_sdio_define_filename_f(filename);
+      mod_som_settings_save_settings_f();
+
       //ALB Open on board processed data file:
       //ALB If this is a new profile a new file is created because
       //ALB the previous upload would have removed (~sdio.rm) it.
@@ -2694,12 +2606,12 @@ mod_som_apf_status_t mod_som_apf_daq_start_f(uint64_t profile_id){
       //ALB to know if this a new new profile or if we continue profile.
       if (mod_som_apf_ptr->producer_ptr->
           mod_som_apf_meta_data.profile_id!=profile_id){
-          FRESULT res;
+//          FRESULT res;
 
           mod_som_apf_ptr->producer_ptr->stored_dissrates_cnt=0;
           mod_som_apf_init_meta_data(&mod_som_apf_ptr->producer_ptr->
                                      mod_som_apf_meta_data);
-          res = f_lseek (processfile_ptr->fp, 0);
+          f_lseek (processfile_ptr->fp, 0);
 
           mod_som_apf_ptr->producer_ptr->done_sd_flag=false;
           mod_som_sdio_write_data_f(processfile_ptr,
@@ -2708,10 +2620,6 @@ mod_som_apf_status_t mod_som_apf_daq_start_f(uint64_t profile_id){
                                     sizeof(mod_som_apf_meta_data_t),
                                     &mod_som_apf_ptr->producer_ptr->done_sd_flag);
 
-          //ALB Open raw SD file,
-          sprintf(filename, "Profile%lu",(uint32_t) mod_som_apf_ptr->profile_id);
-          mod_som_sdio_define_filename_f(filename);
-          mod_som_settings_save_settings_f();
 
       }
 
@@ -2775,7 +2683,7 @@ mod_som_apf_status_t mod_som_apf_daq_start_f(uint64_t profile_id){
 
 mod_som_apf_status_t mod_som_apf_daq_stop_f(){
   int delay =100; //0.1 sec
-  FRESULT res=0;
+//  FRESULT res=0;
   mod_som_apf_status_t status;
   status=MOD_SOM_APF_STATUS_OK;
 
@@ -2807,7 +2715,7 @@ mod_som_apf_status_t mod_som_apf_daq_stop_f(){
 
   mod_som_apf_ptr->producer_ptr->done_sd_flag=false;
   //ALB place the idx at the beginning of the file
-  res = f_lseek (processfile_ptr->fp, 0);
+  f_lseek (processfile_ptr->fp, 0);
 
   //ALB write new updated metadata on the SD
   //This is the only place where I update metadata_sample_cnt.
@@ -2824,8 +2732,6 @@ mod_som_apf_status_t mod_som_apf_daq_stop_f(){
   sl_sleeptimer_delay_millisecond(delay);
   mod_som_sdio_disable_hardware_f();
   mod_som_sdio_stop_f();
-  GPIO_PinModeSet(MOD_SOM_MAIN_COM_EN_PORT, MOD_SOM_MAIN_COM_EN_PIN,
-                  gpioModePushPull, 1);
 
 
 
@@ -2952,7 +2858,7 @@ mod_som_apf_meta_data_ptr_t mod_som_apf_get_meta_data_ptr()
  ******************************************************************************/
 mod_som_apf_status_t mod_som_apf_fwrev_status_f(){
 
-  mod_som_apf_status_t status=0;
+  mod_som_apf_status_t status = MOD_SOM_APF_STATUS_OK;
   uint32_t bytes_send;
 
   char apf_reply_str[MOD_SOM_SHELL_INPUT_BUF_SIZE]="\0";
@@ -2968,17 +2874,19 @@ mod_som_apf_status_t mod_som_apf_fwrev_status_f(){
 
   //ALB NOTE: We are keeping the ack/nack at this scope because we need to grab
   //ALB       the firmware rev at this level also. SO we can not just return the ack/nack
-
+  //ALB In a normal config the return status should be MOD_SOM_IO_STATUS_ERR_NOT_STARTED
   status|= mod_som_io_print_f("%s,%s,%s\r\n",MOD_SOM_APF_FWREV_STAT_STR,MOD_SOM_APF_ACK_STR,
                               local_settings_ptr->gitid);
 
   // save time string into the temporary local string - Mai - Nov 18, 2021
+  //ALB there is no error status here
   sprintf(apf_reply_str,"%s,%s,%s\r\n",
           MOD_SOM_APF_FWREV_STAT_STR,MOD_SOM_APF_ACK_STR,
           local_settings_ptr->gitid);
   reply_str_len = strlen(apf_reply_str);
   // sending the above string to the APF port - Mai - Nov 18, 2021
   bytes_send = mod_som_apf_send_line_f(apf_leuart_ptr,apf_reply_str, reply_str_len);
+
   if (bytes_send!=reply_str_len){
       status=MOD_SOM_APF_STATUS_FAIL_SEND_MS;
   }
@@ -2990,15 +2898,17 @@ mod_som_apf_status_t mod_som_apf_fwrev_status_f(){
           apf_reply_str[i]=0;
       }
 
-      sprintf(apf_reply_str,"%s,%s,%lu\r\n",
-              MOD_SOM_APF_FWREV_STAT_STR,MOD_SOM_APF_NACK_STR,status);
-      reply_str_len = strlen(apf_reply_str);
-      // sending the above string to the APF port - Mai - Nov 18, 2021
-      bytes_send = mod_som_apf_send_line_f(apf_leuart_ptr,apf_reply_str, reply_str_len);
+      status = MOD_SOM_APF_STATUS_OK; //ALB setting the status t
 
-      if(bytes_send==0){
-          status=MOD_SOM_APF_STATUS_FAIL_SEND_MS;
-      }
+//      sprintf(apf_reply_str,"%s,%s,%lu\r\n",
+//              MOD_SOM_APF_FWREV_STAT_STR,MOD_SOM_APF_NACK_STR,status);
+//      reply_str_len = strlen(apf_reply_str);
+//      // sending the above string to the APF port - Mai - Nov 18, 2021
+//      bytes_send = mod_som_apf_send_line_f(apf_leuart_ptr,apf_reply_str, reply_str_len);
+//
+//      if(bytes_send==0){
+//          status=MOD_SOM_APF_STATUS_FAIL_SEND_MS;
+//      }
   }
 
 	return status;
@@ -3052,8 +2962,8 @@ mod_som_apf_status_t mod_som_apf_ok_status_f(){
       mod_som_io_print_f("%s,%s,%lu\r\n",
                          MOD_SOM_APF_OKSTAT_STR,MOD_SOM_APF_NACK_STR,status);
 
-      sprintf(apf_reply_str,"%s,%s,%lu\r\n",
-              MOD_SOM_APF_OKSTAT_STR,MOD_SOM_APF_NACK_STR,status);
+      sprintf(apf_reply_str,"%s,%s,improper wake up\r\n",
+              MOD_SOM_APF_OKSTAT_STR,MOD_SOM_APF_NACK_STR);
       reply_str_len = strlen(apf_reply_str);
       // sending the above string to the APF port - Mai - Nov 18, 2021
       bytes_sent = mod_som_apf_send_line_f(apf_leuart_ptr,apf_reply_str, reply_str_len);
@@ -3062,7 +2972,7 @@ mod_som_apf_status_t mod_som_apf_ok_status_f(){
           status=MOD_SOM_APF_STATUS_FAIL_SEND_MS;
       }
   }else{
-      sprintf(apf_reply_str,"%s,ack\r\n",
+      sprintf(apf_reply_str,"%s,%s\r\n",
               MOD_SOM_APF_OKSTAT_STR,MOD_SOM_APF_ACK_STR);
       reply_str_len = strlen(apf_reply_str);
       mod_som_apf_ptr->sleep_flag=0;
@@ -3134,14 +3044,14 @@ mod_som_apf_status_t mod_som_apf_epsi_id_status_f(){
 
   // get the port's fd
   apf_leuart_ptr = (LEUART_TypeDef *)mod_som_apf_ptr->com_prf_ptr->handle_port;
-  uint32_t bytes_sent = 0;
+//  uint32_t bytes_sent = 0;
 
   mod_som_apf_status_t status = 0;
   mod_som_settings_struct_ptr_t local_settings_ptr=
                                           mod_som_settings_get_settings_f();
 
 
-  status|=mod_som_io_print_f("%s,%s,%s%s,%s%s\r\n",
+  mod_som_io_print_f("%s,%s,%s%s,%s%s\r\n",
                              MOD_SOM_APF_EPSINO_STAT_STR,
                              MOD_SOM_APF_ACK_STR,
                              &local_settings_ptr->rev[3],
@@ -3150,40 +3060,44 @@ mod_som_apf_status_t mod_som_apf_epsi_id_status_f(){
                              local_settings_ptr->mod_som_efe_settings.sn);
   // save the string into the temporary local string - Mai - Nov 18, 2021
 
+//ALB-CAP There is not error status here
 
-  sprintf(apf_reply_str,"%s,%s,%s%s,%s%s\r\n",
-          MOD_SOM_APF_EPSINO_STAT_STR,
-          MOD_SOM_APF_ACK_STR,
-          &local_settings_ptr->rev[3],
-          local_settings_ptr->sn,
-          &local_settings_ptr->mod_som_efe_settings.rev[3],
-          local_settings_ptr->mod_som_efe_settings.sn);
-  reply_str_len = strlen(apf_reply_str);
+  if ( (strtol(&local_settings_ptr->rev[3],NULL,10)>99) |
+       (strtol(local_settings_ptr->sn,NULL,10)>999)    |
+       (strtol(&local_settings_ptr->mod_som_efe_settings.rev[3],NULL,10)>99) |
+       (strtol(local_settings_ptr->sn,NULL,10)>999) )
+      {
+      status=MOD_SOM_APF_STATUS_ERR;
+  }
 
-  // sending the above string to the APF port - Mai - Nov 18, 2021
-  bytes_sent = mod_som_apf_send_line_f(apf_leuart_ptr,apf_reply_str, reply_str_len);
+  if(status==MOD_SOM_APF_STATUS_OK){
 
-if (status!=0 || bytes_sent==0)
-{
-    mod_som_io_print_f("%s,%s,%lu\r\n",
-                       MOD_SOM_APF_EPSINO_STAT_STR,
-                       MOD_SOM_APF_NACK_STR,
-                       status);
+      sprintf(apf_reply_str,"%s,%s,%s%s,%s%s\r\n",
+              MOD_SOM_APF_EPSINO_STAT_STR,
+              MOD_SOM_APF_ACK_STR,
+              &local_settings_ptr->rev[3],
+              local_settings_ptr->sn,
+              &local_settings_ptr->mod_som_efe_settings.rev[3],
+              local_settings_ptr->mod_som_efe_settings.sn);
+      reply_str_len = strlen(apf_reply_str);
 
-    sprintf(apf_reply_str,"%s,%s,%lu\r\n",
-            MOD_SOM_APF_EPSINO_STAT_STR,
-            MOD_SOM_APF_ACK_STR,
-            status);
-    reply_str_len = strlen(apf_reply_str);
-    // sending the above string to the APF port - Mai - Nov 18, 2021
-    bytes_sent = mod_som_apf_send_line_f(apf_leuart_ptr,apf_reply_str, reply_str_len);
+      // sending the above string to the APF port - Mai - Nov 18, 2021
+      mod_som_apf_send_line_f(apf_leuart_ptr,apf_reply_str, reply_str_len);
 
-    if(bytes_sent==0){
-        status=MOD_SOM_APF_STATUS_FAIL_SEND_MS;
-    }
+  }else{
 
-}
-	return mod_som_apf_encode_status_f(MOD_SOM_APF_STATUS_OK);
+      sprintf(apf_reply_str,"%s,%s,%s\r\n",
+              MOD_SOM_APF_EPSINO_STAT_STR,
+              MOD_SOM_APF_NACK_STR,
+              "Issue with saved rev and SSN");
+
+      reply_str_len = strlen(apf_reply_str);
+      // sending the above string to the APF port - Mai - Nov 18, 2021
+      mod_som_apf_send_line_f(apf_leuart_ptr,apf_reply_str, reply_str_len);
+
+  }
+
+	return mod_som_apf_encode_status_f(status);
 }
 
 
@@ -3430,64 +3344,76 @@ mod_som_apf_status_t mod_som_apf_probe_id_status_f(){
   // get the port's fd
   apf_leuart_ptr = (LEUART_TypeDef *)mod_som_apf_ptr->com_prf_ptr->handle_port;
 
-//  char *endptr1;
+  char *endptr1;
 
   mod_som_efe_settings_ptr_t local_efe_settings_ptr=
       mod_som_efe_get_settings_ptr_f();
 
-//  uint16_t sn_temp   = (uint16_t) strtoul(local_efe_settings_ptr->sensors[0].sn,&endptr1,10) ;
-//  uint16_t sn_shear  = (uint16_t) strtoul(local_efe_settings_ptr->sensors[1].sn,&endptr1,10) ;
-//  uint16_t cal_temp  = (uint16_t) local_efe_settings_ptr->sensors[0].cal;
-//  uint16_t cal_shear = (uint16_t) local_efe_settings_ptr->sensors[1].cal;
+  uint16_t sn_temp   = (uint16_t) strtoul(local_efe_settings_ptr->sensors[0].sn,&endptr1,10) ;
+  uint16_t sn_shear  = (uint16_t) strtoul(local_efe_settings_ptr->sensors[1].sn,&endptr1,10) ;
+  uint16_t cal_temp  = (uint16_t) local_efe_settings_ptr->sensors[0].cal;
+  uint16_t cal_shear = (uint16_t) local_efe_settings_ptr->sensors[1].cal;
 
-  status|= mod_som_io_print_f("%s,%s,%s,%s,%lu,%s,%s,%lu\r\n",
-                              MOD_SOM_APF_PROBENO_STAT_STR,MOD_SOM_APF_ACK_STR,
-                              "S",
-                              local_efe_settings_ptr->sensors[1].sn,
-                              (uint32_t)local_efe_settings_ptr->sensors[1].cal,
-                              "F",
-                              local_efe_settings_ptr->sensors[0].sn,
-                              (uint32_t)local_efe_settings_ptr->sensors[0].cal);
-
-// save to the local string for sending out - Mai-Nov 18, 2021
- sprintf(apf_reply_str,"%s,%s,%s,%s,%lu,%s,%s,%lu\r\n",
-         MOD_SOM_APF_PROBENO_STAT_STR,MOD_SOM_APF_ACK_STR,
-          "S",
-          local_efe_settings_ptr->sensors[1].sn,
-          (uint32_t)local_efe_settings_ptr->sensors[1].cal,
-          "F",
-          local_efe_settings_ptr->sensors[0].sn,
-          (uint32_t)local_efe_settings_ptr->sensors[0].cal);
-
-  reply_str_len = strlen(apf_reply_str);
-
-  // sending the above string to the APF port - Mai - Nov 18, 2021
-  bytes_sent = mod_som_apf_send_line_f(apf_leuart_ptr,apf_reply_str, reply_str_len);
-
-  if(bytes_sent==0){
-      //TODO handle the error
+  //ALB check errors on the sn and cal
+  if ( (sn_temp>999) |
+       (sn_shear>999)    |
+       (cal_temp>99) |
+       (cal_shear>99) )
+      {
+      status=MOD_SOM_APF_STATUS_ERR;
   }
 
 
-  if(status!=0) // error
-    {
-      mod_som_io_print_f("%s,%s,%lu\r\n",
-                         MOD_SOM_APF_PROBENO_STAT_STR,MOD_SOM_APF_NACK_STR,
-                         status);
-      // save to the local string for sending out - Mai-Nov 18, 2021
-      sprintf(apf_reply_str,"%s,%s,%lu\r\n",
-              MOD_SOM_APF_PROBENO_STAT_STR,MOD_SOM_APF_NACK_STR,
-              status);
-      reply_str_len = strlen(apf_reply_str);
-      // sending the above string to the APF port - Mai - Nov 18, 2021
-      bytes_sent = mod_som_apf_send_line_f(apf_leuart_ptr,apf_reply_str, reply_str_len);
-      if(bytes_sent==0){
-          //TODO handle the error
-      }
+if (status==MOD_SOM_APF_STATUS_OK){
+    //ALB good case
 
-  }
+    mod_som_io_print_f("%s,%s,%s,%s,%lu,%s,%s,%lu\r\n",
+                       MOD_SOM_APF_PROBENO_STAT_STR,MOD_SOM_APF_ACK_STR,
+                       "S",
+                       local_efe_settings_ptr->sensors[1].sn,
+                       (uint32_t)local_efe_settings_ptr->sensors[1].cal,
+                       "F",
+                       local_efe_settings_ptr->sensors[0].sn,
+                       (uint32_t)local_efe_settings_ptr->sensors[0].cal);
 
-	return mod_som_apf_encode_status_f(MOD_SOM_APF_STATUS_OK);
+  // save to the local string for sending out - Mai-Nov 18, 2021
+   sprintf(apf_reply_str,"%s,%s,%s,%s,%lu,%s,%s,%lu\r\n",
+           MOD_SOM_APF_PROBENO_STAT_STR,MOD_SOM_APF_ACK_STR,
+            "S",
+            local_efe_settings_ptr->sensors[1].sn,
+            (uint32_t)local_efe_settings_ptr->sensors[1].cal,
+            "F",
+            local_efe_settings_ptr->sensors[0].sn,
+            (uint32_t)local_efe_settings_ptr->sensors[0].cal);
+
+    reply_str_len = strlen(apf_reply_str);
+
+    // sending the above string to the APF port - Mai - Nov 18, 2021
+    bytes_sent = mod_som_apf_send_line_f(apf_leuart_ptr,apf_reply_str, reply_str_len);
+
+    if(bytes_sent==0){
+        status=MOD_SOM_APF_STATUS_ERR;
+    }
+
+}else{
+    //ALB case if there is an error
+    mod_som_io_print_f("%s,%s,%lu\r\n",
+                       MOD_SOM_APF_PROBENO_STAT_STR,MOD_SOM_APF_NACK_STR,
+                       status);
+    // save to the local string for sending out - Mai-Nov 18, 2021
+    sprintf(apf_reply_str,"%s,%s,%lu\r\n",
+            MOD_SOM_APF_PROBENO_STAT_STR,MOD_SOM_APF_NACK_STR,
+            status);
+    reply_str_len = strlen(apf_reply_str);
+    // sending the above string to the APF port - Mai - Nov 18, 2021
+    bytes_sent = mod_som_apf_send_line_f(apf_leuart_ptr,apf_reply_str, reply_str_len);
+    if(bytes_sent==0){
+        status=MOD_SOM_APF_STATUS_ERR;
+    }
+
+}
+
+	return mod_som_apf_encode_status_f(status);
 }
 
 /*******************************************************************************
@@ -3542,7 +3468,7 @@ mod_som_apf_status_t mod_som_apf_sleep_f(){
   char reply_str[] = "sleep,ack\r\n";
 
 //ALB IDLE SLEEP
- if (!mod_som_apf_ptr->daq & mod_som_apf_ptr->sleep_flag==0){
+ if ((!mod_som_apf_ptr->daq) & (mod_som_apf_ptr->sleep_flag==0)){
       //ALB we are not in daq mode make sure
       //ALB efe,sdio,efe obp,sbe-sniffer are asleep
       // stop ADC master clock timer
@@ -3708,7 +3634,7 @@ mod_som_apf_status_t mod_som_apf_gate_f(CPU_INT16U argc,
  ******************************************************************************/
 mod_som_apf_status_t mod_som_apf_time_f(CPU_INT16U argc,
                                         CPU_CHAR *argv[]){
-  RTOS_ERR  p_err;
+//  RTOS_ERR  p_err;
 //  uint16_t year;
 //  uint8_t month;
 //  uint8_t month_day;
@@ -3716,7 +3642,7 @@ mod_som_apf_status_t mod_som_apf_time_f(CPU_INT16U argc,
 //  uint8_t min;
 //  uint8_t sec;
 
-  uint32_t bytes_sent = 0;
+//  uint32_t bytes_sent = 0;
   // paramters for send_line_f()
   char apf_reply_str[MOD_SOM_SHELL_INPUT_BUF_SIZE]="\0";
   size_t reply_str_len = 0;
@@ -3725,7 +3651,7 @@ mod_som_apf_status_t mod_som_apf_time_f(CPU_INT16U argc,
   apf_leuart_ptr = (LEUART_TypeDef *)mod_som_apf_ptr->com_prf_ptr->handle_port;
 
   unsigned long apex_time=0;
-  sl_sleeptimer_timestamp_t time;
+//  sl_sleeptimer_timestamp_t time;
   mod_som_apf_status_t status = 0;
   char second_arg[25] = "\0";
  // uint64_t time_unix = 0;
@@ -3806,7 +3732,7 @@ mod_som_apf_status_t mod_som_apf_time_f(CPU_INT16U argc,
   mod_som_io_print_f("%s\r\n",apf_reply_str);
   reply_str_len = strlen(apf_reply_str);
   // sending the above string to the APF port - Mai - Nov 18, 2021
-  bytes_sent = mod_som_apf_send_line_f(apf_leuart_ptr,apf_reply_str, reply_str_len);
+  mod_som_apf_send_line_f(apf_leuart_ptr,apf_reply_str, reply_str_len);
 
   return status;
   //  return mod_som_apf_encode_status_f(MOD_SOM_APF_STATUS_OK);
@@ -3830,13 +3756,13 @@ mod_som_apf_status_t mod_som_apf_time_status_f(){
 
   mod_som_apf_status_t status = 0;
   sl_sleeptimer_timestamp_t time;
-  sl_sleeptimer_timestamp_t time1;
+//  sl_sleeptimer_timestamp_t time1;
 
   char apf_reply_str[MOD_SOM_SHELL_INPUT_BUF_SIZE]="\0";
   size_t reply_str_len = 0;
   LEUART_TypeDef* apf_leuart_ptr;
   uint32_t bytes_sent = 0;
-  uint64_t tick=0;
+//  uint64_t tick=0;
   // get the port's fd
   apf_leuart_ptr = (LEUART_TypeDef *)mod_som_apf_ptr->com_prf_ptr->handle_port;
 
@@ -3844,12 +3770,12 @@ mod_som_apf_status_t mod_som_apf_time_status_f(){
   time= mod_som_calendar_get_time_f();
 
   //TODO add a checker for that cmd
-  tick=sl_sleeptimer_get_tick_count64();
+  sl_sleeptimer_get_tick_count64();
 
-  mod_som_calendar_settings_ptr_t local_cal_setting = mod_som_calendar_get_settings_ptr_f();
-  time1=tick-local_cal_setting->poweron_offset_ms;
-
-  time1 = local_cal_setting->poweron_offset_ms;
+//  mod_som_calendar_settings_ptr_t local_cal_setting = mod_som_calendar_get_settings_ptr_f();
+//  time1=tick-local_cal_setting->poweron_offset_ms;
+//
+//  time1 = local_cal_setting->poweron_offset_ms;
 
   // save time string into the temporary local string - Mai - Nov 18, 2021
 /*  sprintf(apf_reply_str,"time?,ack,%lu\r\n",
@@ -3860,8 +3786,6 @@ mod_som_apf_status_t mod_som_apf_time_status_f(){
 
 
   //ALB  send out "time,ak,time\r\n"
-  //TODO Bring the ack/ nack acknowledgment out of the scope of this function.
-  //TODO Doing this for all the apf cmds
 //  status|=mod_som_io_print_f("time?,ack,%lu\r\n",
 //                             MOD_SOM_APF_TIMESTAT_STR,MOD_SOM_APF_ACK_STR,
 //                             time1);
@@ -3880,9 +3804,11 @@ mod_som_apf_status_t mod_som_apf_time_status_f(){
 //	}
    if(bytes_sent==0){
        //TODO handle the error
+       status=MOD_SOM_APF_STATUS_ERR;
+
    }
 
-	return mod_som_apf_encode_status_f(MOD_SOM_APF_STATUS_OK);
+	return mod_som_apf_encode_status_f(status);
 }
 
 
@@ -3909,11 +3835,11 @@ mod_som_apf_status_t mod_som_apf_time_status_f(){
 mod_som_apf_status_t mod_som_apf_packet_format_f(CPU_INT16U argc,
                                                       CPU_CHAR *argv[])
 {
-  RTOS_ERR  p_err;
-  uint8_t mode;
+//  RTOS_ERR  p_err;
+//  uint8_t mode;
   mod_som_apf_status_t status=0;
 
-  uint32_t bytes_sent = 0;
+//  uint32_t bytes_sent = 0;
   // for send_string to the port
   char apf_reply_str[MOD_SOM_SHELL_INPUT_BUF_SIZE]="\0";
   size_t reply_str_len = 0;
@@ -3922,9 +3848,7 @@ mod_som_apf_status_t mod_som_apf_packet_format_f(CPU_INT16U argc,
   apf_leuart_ptr = (LEUART_TypeDef *)mod_som_apf_ptr->com_prf_ptr->handle_port;
 
   char second_arg[25] = "\0";
-  char valid_packet_format[] = "packet_format format (format is 1 or 2)";
   char invalid_packet_format[] = "packet_format,nak,invalid format_number";
-  int invalid_command = 0;
   uint8_t mode_val = 0;
 
     //ALB switch statement easy to handle all user input cases.
@@ -3972,7 +3896,7 @@ mod_som_apf_status_t mod_som_apf_packet_format_f(CPU_INT16U argc,
     // save to the local string for sending out - Mai-Nov 18, 2021
     reply_str_len = strlen(apf_reply_str);
     // sending the above string to the APF port - Mai - Nov 18, 2021
-    bytes_sent = mod_som_apf_send_line_f(apf_leuart_ptr,apf_reply_str, reply_str_len);
+    mod_som_apf_send_line_f(apf_leuart_ptr,apf_reply_str, reply_str_len);
 
   switch (mod_som_apf_ptr->settings_ptr->comm_telemetry_packet_format)
   {
@@ -4027,32 +3951,43 @@ mod_som_apf_status_t mod_som_apf_packet_format_status_f(){
 
   uint32_t mode=mod_som_apf_ptr->settings_ptr->comm_telemetry_packet_format;
 
-  status|= mod_som_io_print_f("%s,%s,%lu\r\n",
-                              MOD_SOM_APF_PACKETFORMAT_STAT_STR,MOD_SOM_APF_ACK_STR,
-                              mode);
-  // save to the local string for sending out - Mai-Dec 1, 2021
-  sprintf(apf_reply_str,"%s,%s,%lu\r\n",
-          MOD_SOM_APF_PACKETFORMAT_STAT_STR,MOD_SOM_APF_ACK_STR,
-          mode);
-  reply_str_len = strlen(apf_reply_str);
-  // sending the above string to the APF port - Mai - Dec 1, 2021
-  bytes_sent = mod_som_apf_send_line_f(apf_leuart_ptr,apf_reply_str, reply_str_len);
+  if ( (mode<0) | (mode>2)){
+      status=MOD_SOM_APF_STATUS_ERR;
+  }
 
-   if(status>0){
+
+  if (status==MOD_SOM_APF_STATUS_OK){
+      //ALB good case
+      mod_som_io_print_f("%s,%s,%lu\r\n",
+                         MOD_SOM_APF_PACKETFORMAT_STAT_STR,MOD_SOM_APF_ACK_STR,
+                         mode);
+
+      // save to the local string for sending out - Mai-Dec 1, 2021
+      sprintf(apf_reply_str,"%s,%s,%lu\r\n",
+              MOD_SOM_APF_PACKETFORMAT_STAT_STR,MOD_SOM_APF_ACK_STR,
+              mode);
+      reply_str_len = strlen(apf_reply_str);
+      // sending the above string to the APF port - Mai - Dec 1, 2021
+      bytes_sent = mod_som_apf_send_line_f(apf_leuart_ptr,apf_reply_str, reply_str_len);
+
+
+  }else{
+      //ALB bad case
       mod_som_io_print_f("%s,%s,%lu\r\n",
                          MOD_SOM_APF_PACKETFORMAT_STAT_STR,MOD_SOM_APF_NACK_STR,
                          status);
       // save to the local string for sending out - Mai- Dec 1, 2021
-      sprintf(apf_reply_str,"%s,%s,%lu\r\n",
-              MOD_SOM_APF_PACKETFORMAT_STAT_STR,MOD_SOM_APF_NACK_STR,
-              status);
+      sprintf(apf_reply_str,"%s,%s,error while reading the mode\r\n",
+              MOD_SOM_APF_PACKETFORMAT_STAT_STR,MOD_SOM_APF_NACK_STR);
       reply_str_len = strlen(apf_reply_str);
       // sending the above string to the APF port - Mai - Dec 1, 2021
       bytes_sent = mod_som_apf_send_line_f(apf_leuart_ptr,apf_reply_str, reply_str_len);
   }
-   if(bytes_sent==0){
-       //TODO handle the error
-   }
+
+  if(bytes_sent==0){
+      //TODO handle the error
+      status=MOD_SOM_APF_STATUS_ERR;
+  }
 
   return mod_som_apf_encode_status_f(MOD_SOM_APF_STATUS_OK);
 }
@@ -4084,7 +4019,7 @@ mod_som_apf_status_t mod_som_apf_sd_format_f(CPU_INT16U argc,
   mod_som_apf_status_t status=0;
   char *endptr;
   uint8_t mode = 0;
-  bool good_argument=false;
+//  bool good_argument=false;
 //  CPU_INT16U argc_sbe41 = 2;
 //  CPU_CHAR   *argv_sbe41_sd[2]={"sbe.mode" ,"1"};
 //  CPU_CHAR   *argv_sbe41_off[2]={"sbe.mode" ,"2"};
@@ -4193,7 +4128,7 @@ mod_som_apf_status_t mod_som_apf_sd_format_status_f(CPU_INT16U argc,
                                                       CPU_CHAR *argv[])
 {
   mod_som_apf_status_t status = 0;
-  uint32_t bytes_sent = 0;
+//  uint32_t bytes_sent = 0;
   // for send_string to the port
   char apf_reply_str[MOD_SOM_SHELL_INPUT_BUF_SIZE]="\0";
   size_t reply_str_len = 0;
@@ -4201,7 +4136,18 @@ mod_som_apf_status_t mod_som_apf_sd_format_status_f(CPU_INT16U argc,
   // get the port's fd
   apf_leuart_ptr = (LEUART_TypeDef *)mod_som_apf_ptr->com_prf_ptr->handle_port;
 
-      status = mod_som_io_print_f("%s,%s,%lu\r\n",
+
+
+  uint32_t mode=mod_som_apf_ptr->settings_ptr->comm_telemetry_packet_format;
+
+  if ( (mode<0) | (mode>2)){
+      status=MOD_SOM_APF_STATUS_ERR;
+  }
+
+
+  if (status==MOD_SOM_APF_STATUS_OK){
+      //ALB good case
+      mod_som_io_print_f("%s,%s,%lu\r\n",
                                   MOD_SOM_APF_SDFORMAT_STAT_STR,MOD_SOM_APF_ACK_STR,
                                   mod_som_apf_ptr->settings_ptr->sd_packet_format);
       // save to the local string for sending out - Mai-Nov 18, 2021
@@ -4210,9 +4156,10 @@ mod_som_apf_status_t mod_som_apf_sd_format_status_f(CPU_INT16U argc,
               mod_som_apf_ptr->settings_ptr->sd_packet_format);
       reply_str_len = strlen(apf_reply_str);
       // sending the above string to the APF port - Mai - Nov 18, 2021
-      bytes_sent = mod_som_apf_send_line_f(apf_leuart_ptr,apf_reply_str, reply_str_len);
+      mod_som_apf_send_line_f(apf_leuart_ptr,apf_reply_str, reply_str_len);
 
-  if (status!=0){
+  }else{
+      //ALB bad case
       mod_som_io_print_f("%s,%s,%lu\r\n",
                          MOD_SOM_APF_SDFORMAT_STAT_STR,MOD_SOM_APF_NACK_STR,
                          status);
@@ -4222,10 +4169,8 @@ mod_som_apf_status_t mod_som_apf_sd_format_status_f(CPU_INT16U argc,
               status);
       reply_str_len = strlen(apf_reply_str);
       // sending the above string to the APF port - Mai - Nov 18, 2021
-      bytes_sent = mod_som_apf_send_line_f(apf_leuart_ptr,apf_reply_str, reply_str_len);
- }
-  if(bytes_sent==0){
-      //TODO handle the error
+      mod_som_apf_send_line_f(apf_leuart_ptr,apf_reply_str, reply_str_len);
+
   }
 
   return status;
@@ -4250,7 +4195,7 @@ mod_som_apf_status_t mod_som_apf_sd_format_status_f(CPU_INT16U argc,
 mod_som_apf_status_t mod_som_apf_upload_f(){
 
   mod_som_apf_status_t status = MOD_SOM_APF_STATUS_OK;
-  FRESULT res=0;
+//  FRESULT res=0;
   uint32_t delay=MOD_SOM_APF_UPLOAD_DELAY;
 
   uint32_t bytes_sent = 0;
@@ -4275,6 +4220,7 @@ mod_som_apf_status_t mod_som_apf_upload_f(){
 //  uint8_t *  current_data_ptr=
 //      mod_som_apf_ptr->producer_ptr->dacq_ptr;
   uint8_t    eot_byte = MOD_SOM_APF_UPLOAD_EOT_BYTE;
+  uint32_t cnt=0;
 
 
   //ALB start transmit the packets
@@ -4284,26 +4230,21 @@ mod_som_apf_status_t mod_som_apf_upload_f(){
       /*********/
       //ALB if this a reboot dacq_size=0
       if(mod_som_apf_ptr->producer_ptr->dacq_size==0){
-          uint32_t cnt=0;
           ////  //ALB enable SDIO hardware
           mod_som_sdio_enable_hardware_f();
 
           sl_sleeptimer_delay_millisecond(500);
-
           //ALB file not open
           mod_som_sdio_open_processfilename_f("OBPdata");
-
-          mod_som_sdio_ptr_t local_mod_som_sdio_ptr_t=
-              mod_som_sdio_get_runtime_ptr_f();
-
-          mod_som_sdio_file_ptr_t processfile_ptr =
-              local_mod_som_sdio_ptr_t->processdata_file_ptr;
-
-
-          cnt=f_size(processfile_ptr->fp);
-          mod_som_apf_ptr->producer_ptr->dacq_size    = cnt;
       }
 
+      mod_som_sdio_ptr_t local_mod_som_sdio_ptr_t=
+          mod_som_sdio_get_runtime_ptr_f();
+      mod_som_sdio_file_ptr_t processfile_ptr =
+          local_mod_som_sdio_ptr_t->processdata_file_ptr;
+
+      cnt=f_size(processfile_ptr->fp);
+      mod_som_apf_ptr->consumer_ptr->daq_remaining_bytes   = cnt;
 
       //ALB upload cmd received
       //ALB send msg back
@@ -4324,9 +4265,9 @@ mod_som_apf_status_t mod_som_apf_upload_f(){
       mod_som_apf_ptr->consumer_ptr->nb_packet_sent      = 0;
       mod_som_apf_ptr->consumer_ptr->packet.CRC          = 0;
       mod_som_apf_ptr->consumer_ptr->packet.counters     = 0;
-      mod_som_apf_ptr->consumer_ptr->daq_remaining_bytes =
-          mod_som_apf_ptr->producer_ptr->dacq_size+
-          sizeof(mod_som_apf_meta_data_t);
+//      mod_som_apf_ptr->consumer_ptr->daq_remaining_bytes =
+//          mod_som_apf_ptr->producer_ptr->dacq_size+
+//          sizeof(mod_som_apf_meta_data_t);
 
       //ALB split acq_profile into 990 bytes packets:
       //ALB count how bytes are left to send out.
@@ -4357,6 +4298,9 @@ mod_som_apf_status_t mod_som_apf_upload_f(){
                      dacq_bytes_to_sent);
 
           }else{
+              printf("Bytes to send %lu\r\n",dacq_bytes_to_sent);
+              printf("Bytes sent %lu\r\n",dacq_bytes_sent);
+
               //ALB copy the dacq bytes in the packet payload structure.
               mod_som_sdio_read_processfile_f(
                   (uint8_t*) &mod_som_apf_ptr->consumer_ptr->packet.payload,
@@ -4369,11 +4313,15 @@ mod_som_apf_status_t mod_som_apf_upload_f(){
           crc=Crc16Bit((unsigned char *) mod_som_apf_ptr->consumer_ptr->packet.payload,
                        dacq_bytes_to_sent);
 
+//          printf("crc %u\r\n",crc);
+
           mod_som_apf_ptr->consumer_ptr->packet.CRC=crc;
           //ALB compute the counters
           //TODO finalize the bitshifting to add the remaining number of bytes to send
           mod_som_apf_ptr->consumer_ptr->packet.counters=
               (uint16_t) mod_som_apf_ptr->consumer_ptr->nb_packet_sent;
+
+//          printf("packet.counters %u\r\n",mod_som_apf_ptr->consumer_ptr->packet.counters);
 
           //ALB bitshift packet.counters
           mod_som_apf_ptr->consumer_ptr->packet.counters=

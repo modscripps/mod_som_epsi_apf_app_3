@@ -50,7 +50,7 @@
 #endif
 
 
-#define MOD_SOM_EFE_DEFAULT_EFE_SN           "000"
+#define MOD_SOM_EFE_DEFAULT_EFE_SN           "001"
 
 
 

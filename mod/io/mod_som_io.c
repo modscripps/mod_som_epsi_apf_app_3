@@ -289,6 +289,8 @@ mod_som_status_t  mod_som_io_stop_task_f(){
 
   if(RTOS_ERR_CODE_GET(err) != RTOS_ERR_NONE)
     status=1;
+  //ALB turning off the flag.
+  mod_som_io_struct.started_flag = false;
 
   return status;
 }
@@ -332,7 +334,7 @@ mod_som_status_t mod_som_io_print_f(const char *format, ...){
 
     mod_som_status = mod_som_io_add_to_queue_f(mod_som_io_xfer_item_ptr);
     if(mod_som_status != MOD_SOM_STATUS_OK){
-        mod_som_io_free_xfer_item_f(mod_som_io_xfer_item_ptr);
+      mod_som_io_free_xfer_item_f(mod_som_io_xfer_item_ptr);
         return mod_som_io_encode_status_f(MOD_SOM_IO_STATUS_ERR_FAIL_TO_ENQUEUE);
     }
     return mod_som_io_encode_status_f(MOD_SOM_STATUS_OK);
@@ -653,13 +655,14 @@ mod_som_status_t mod_som_io_add_to_queue_f(mod_som_io_xfer_ptr_t xfer_item_ptr){
         return mod_som_io_encode_status_f(MOD_SOM_IO_STATUS_ERR_NOT_STARTED);
 
     RTOS_ERR err;
-    if(mod_som_io_struct.msg_queue.MsgQ.NbrEntries>OVF_MSG_LIST_THERSHOLD){
+    if(mod_som_io_struct.msg_queue.MsgQ.NbrEntries>=OVF_MSG_LIST_THERSHOLD){
     	mod_som_io_struct.listoverflow_flag=true;
     	//ALB TODO say How I want to handle the overflow?
     	//ALB TODO check for ovf.
     	//ALB TODO handle ovf.
     	//ALB TODO flag the ovf.
     	//ALB TODO So the user knows how much time or sample we missed
+      mod_som_io_free_xfer_item_f(xfer_item_ptr);
     }else{
     	mod_som_io_struct.listoverflow_flag=false;
     }

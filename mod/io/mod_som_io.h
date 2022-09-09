@@ -42,7 +42,7 @@
 #define MOD_SOM_IO_TASK_STK_SIZE 128u
 #endif
 
-#define OVF_MSG_LIST_THERSHOLD 125
+#define OVF_MSG_LIST_THERSHOLD 64
 /*******************************************************************************
  * @define MOD_SOM_IO_STATUS_PREFIX
  *     16 bit identifying prefix for MOD SOM I/O status
