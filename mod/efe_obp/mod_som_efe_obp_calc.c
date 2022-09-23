@@ -189,6 +189,13 @@ void mod_som_epsiobp_init_f(mod_som_efe_obp_config_ptr_t config_ptr_in, mod_som_
           &err);
   // Check error code
   APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
+  vals->fp07_cutoff =
+      (uint16_t *)Mem_SegAlloc(
+          "MOD SOM EFE OBP vals fp07_cutoff.",DEF_NULL,
+          sizeof(uint16_t),
+          &err);
+  // Check error code
+  APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
   vals->hamming_window =
       (float *)Mem_SegAlloc(
           "MOD SOM EFE OBP vals hamming_window.",DEF_NULL,
@@ -426,9 +433,9 @@ void mod_som_efe_obp_shear_spectrum_f(float *seg_buffer, int spectra_offset, mod
       //ALB move the level up to be able to compute chi and epsilon
       if (mod_som_efe_obp_ptr->cpt_spectra_ptr->dof==0){
           //ALB move the level up to be able to compute chi and epsilon
-          *(mod_som_efe_obp_ptr->cpt_spectra_ptr->spec_shear_ptr+spectra_offset+i) = 1000000*spectrum_buffer[i]/(float)mod_som_efe_obp_ptr->settings_ptr->degrees_of_freedom;
+          *(mod_som_efe_obp_ptr->cpt_spectra_ptr->spec_shear_ptr+spectra_offset+i) = spectrum_buffer[i]/(float)mod_som_efe_obp_ptr->settings_ptr->degrees_of_freedom;
       }else{
-          *(mod_som_efe_obp_ptr->cpt_spectra_ptr->spec_shear_ptr+spectra_offset+i) += 1000000*spectrum_buffer[i]/(float)mod_som_efe_obp_ptr->settings_ptr->degrees_of_freedom;
+          *(mod_som_efe_obp_ptr->cpt_spectra_ptr->spec_shear_ptr+spectra_offset+i) += spectrum_buffer[i]/(float)mod_som_efe_obp_ptr->settings_ptr->degrees_of_freedom;
       }
 //      *(mod_som_efe_obp_ptr->cpt_spectra_ptr->spec_shear_ptr+spectra_offset+i) += 100000*spectrum_buffer[i];
   }
@@ -488,9 +495,9 @@ void mod_som_efe_obp_temp_spectrum_f(float *seg_buffer, int spectra_offset, mod_
       //ALB move the level up to be able to compute chi and epsilon
       if (mod_som_efe_obp_ptr->cpt_spectra_ptr->dof==0){
           //ALB move the level up to be able to compute chi and epsilon
-          *(mod_som_efe_obp_ptr->cpt_spectra_ptr->spec_temp_ptr+spectra_offset+i) =1000000*spectrum_buffer[i]/(float)mod_som_efe_obp_ptr->settings_ptr->degrees_of_freedom;
+          *(mod_som_efe_obp_ptr->cpt_spectra_ptr->spec_temp_ptr+spectra_offset+i) =spectrum_buffer[i]/(float)mod_som_efe_obp_ptr->settings_ptr->degrees_of_freedom;
       }else{
-          *(mod_som_efe_obp_ptr->cpt_spectra_ptr->spec_temp_ptr+spectra_offset+i) +=1000000*spectrum_buffer[i]/(float)mod_som_efe_obp_ptr->settings_ptr->degrees_of_freedom;
+          *(mod_som_efe_obp_ptr->cpt_spectra_ptr->spec_temp_ptr+spectra_offset+i) +=spectrum_buffer[i]/(float)mod_som_efe_obp_ptr->settings_ptr->degrees_of_freedom;
       }
 //   *(mod_som_efe_obp_ptr->cpt_spectra_ptr->spec_temp_ptr+spectra_offset+i) += 100000 * spectrum_buffer[i];
   }
@@ -743,10 +750,10 @@ void mod_som_efe_obp_calc_chi_f(float *local_epsilon, float *local_chi,
     float chi;
 
 
-    //ALB get cut off
-    *(vals->fp07_cutoff) = mod_som_epsiobp_fp07_cutoff_f(
-        mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_spec_temp_ptr,
-        settings->nfft/2);
+//    //ALB get cut off
+//    *(vals->fp07_cutoff) = mod_som_epsiobp_fp07_cutoff_f(
+//        mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_spec_temp_ptr,
+//        settings->nfft/2);
 
     local_avg_spec_temp_ptr=
         mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_spec_temp_ptr;
@@ -770,7 +777,7 @@ void mod_som_efe_obp_calc_chi_f(float *local_epsilon, float *local_chi,
     //ALB modify
 //    float batchelor_spec[settings->nfft/2];
     kvis = seawater_kinematic_viscosity_f(S, T, P);
-    *fcutoff=*(vals->fp07_cutoff);
+    *fcutoff=vals->freq[*(vals->fp07_cutoff)];
 
     //ALB compute FOM
     *fom = fom_batchelor_f(local_avg_spec_temp_ptr,*local_epsilon, chi, kvis, *kappa_t, *(vals->fp07_cutoff), theospec_ptr->batchelor_spec);
@@ -783,10 +790,15 @@ void mod_som_efe_obp_correct_convert_avg_spectra_f(float * temp_spectrum,
                                                float * accel_spectrum,
                                                float   fall_rate){
 
+  uint16_t fp07_cutoff=0;
   mod_som_epsiobp_shear_filters_f(filters_ptr->shear_filter, fall_rate);
   mod_som_epsiobp_fp07_filters_f(filters_ptr->fp07_filter, fall_rate);
-  //init cutoff to end so no funny business
-  *(vals->fp07_cutoff) = settings->nfft/2;
+  //init cutoff to end so no funny business. We need to get the freq cutoff in the frequency domain
+//  *(vals->fp07_cutoff) = settings->nfft/2;
+  fp07_cutoff = mod_som_epsiobp_fp07_cutoff_f(
+      temp_spectrum,
+      settings->nfft/2);
+  *(vals->fp07_cutoff)=fp07_cutoff;
 
   for (uint16_t i = 0; i < settings->nfft/2; i++) {
       //Make the k vector from the freq vector with the appropriate fall speed
@@ -901,12 +913,18 @@ uint16_t mod_som_epsiobp_fp07_cutoff_f(float *fp07_spectrum, uint16_t size)
   uint16_t window = 15; //this is arbitrary, determined in processing before this
   float threshold;
   uint16_t cutoff = size;
+  float adjust_noise=0;
 //  float fp07_smoothed[size];
   // smooth data
   smooth_movingmean_f(fp07_spectrum, fft_ptr->fp07_smoothed, size, window);
-  // loop to find cutoff
-  for (uint16_t i = 0; i < size; i++) {
-    threshold = signal_noise_ratio*pow(10, vals->fp07_noise[i]);
+  for (uint16_t i = size-10; i < size; i++) {
+      adjust_noise+=fft_ptr->fp07_smoothed[i]/vals->fp07_noise[i];
+  }
+  adjust_noise=adjust_noise/10;
+
+  // loop to find cutoff, starting at the 5th FOCO
+  for (uint16_t i = 5; i < size; i++) {
+    threshold = signal_noise_ratio*vals->fp07_noise[i]*adjust_noise;
     if (fft_ptr->fp07_smoothed[i] < threshold) {
       cutoff = i;
       break;
@@ -1440,10 +1458,13 @@ float fom_batchelor_f(float *temp_spec, float epsilon, float chi, float kvis, fl
   float average  =0;
 
   //ALB Figure of Merit buisness
-  float sig_lnS = 5/4 * settings->degrees_of_freedom^(-7/9);
+  float sig_c1 =  5.0/4.0;
+  float sig_c2 = -7.0/9.0;
+  float sig_lnS = sig_c1 * pow((float)settings->degrees_of_freedom,sig_c2);
+
   float sum1;
   float fom;
-
+  uint16_t fom_cutoff=cutoff;
 
   // calculate spectrum
   for (uint16_t i = 0; i < cutoff; i++) {
@@ -1451,19 +1472,23 @@ float fom_batchelor_f(float *temp_spec, float epsilon, float chi, float kvis, fl
       uppera = erf(a/sqrt(2.0))*sqrt(M_PI/2);
       g_b = 2*M_PI*a*(exp(-pow(a, 2.0)/2) - a*uppera);
 //      batchelor_spec[i] = sqrt(q/2)*(chi/kb/kappa)*g_b;
-      batchelor_spec[i] =log10(temp_spec[i]/(sqrt(q/2)*(chi/kb/kappa)*g_b));
-
+      batchelor_spec[i] =log(temp_spec[i]/(sqrt(q/2)*(chi/kb/kappa)*g_b));
+      if (isnan(batchelor_spec[i])){
+          //ALB end of the inegration
+          fom_cutoff=i;
+          break;
+      }
 //      integral = integral + batchelor_spec[i]*dk;
       integral = integral + batchelor_spec[i];
   }
 
-  average = integral / (float) cutoff;
+  average = integral / (float) fom_cutoff;
   /*  Compute  variance*/
-  for (uint16_t i = 0; i < cutoff; i++) {
+  for (uint16_t i = 0; i < fom_cutoff; i++) {
       {
         sum1 = sum1 + pow((batchelor_spec[i] - average), 2);
       }
-      fom = sum1 / (float)cutoff;
+      fom = sum1 / (float)(fom_cutoff-1);
       fom = fom /sig_lnS;
   }
 

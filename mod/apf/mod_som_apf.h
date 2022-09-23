@@ -119,6 +119,7 @@
 #define MOD_SOM_APF_SHELL_TASK_PRIO              20u
 #define MOD_SOM_APF_SHELL_TASK_STK_SIZE          1024u
 #define MOD_SOM_APF_SHELL_DELAY                  1      // delay for fill segment task
+#define MOD_SOM_APF_SHELL_TIMEOUT                30      // delay for fill segment task
 //#define MOD_SOM_APF_SHELL_SAMPLE_LASTCHAR        '\r'
 
 #define MOD_SOM_APF_STATUS_OK   0

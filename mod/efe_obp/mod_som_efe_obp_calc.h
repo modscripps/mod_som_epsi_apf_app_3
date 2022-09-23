@@ -44,7 +44,7 @@ typedef struct{
   float *hamming_window; // hamming window weights vector
   float normalization; // normalization vector
   float *fp07_noise;
-  uint16_t *fp07_cutoff; // index for temperature integration cutoff to calculate chi
+  uint16_t * fp07_cutoff; // index for temperature integration cutoff to calculate chi
   float *epsi_spectrum_buffer; // buffer for all of the shear calculated spectra in a block
   float *chi_spectrum_buffer; //
   float *epsi_averaged_spectrum; // buffer for the averaged shear spectrum

@@ -253,15 +253,15 @@ sl_status_t  mod_som_calendar_set_time_f(sl_sleeptimer_timestamp_t time){
 //
 //  //MHA Now we need to compute the number of seconds since power on.
 //  //MHA The offset we add then to the timestamp will be that times 1000.
-//  uint64_t tick,settime_delay,offset_ms; //MHA: tick is 50-MHz ticks since power on; settime_delay is ms since power on.
+  uint64_t tick,settime_delay,offset_ms; //MHA: tick is 50-MHz ticks since power on; settime_delay is ms since power on.
 //  //MHA: offset_ms is the number of millisec of power on since 1/1/1970 (1000*unix time).
 ////  sl_status_t mystatus;
 //  //&mod_som_calendar_ptr->poweron_offset_ms
 //
 //
-//  tick=sl_sleeptimer_get_tick_count64();
-//  status = sl_sleeptimer_tick64_to_ms(tick,\
-//                                      &settime_delay);
+  tick=sl_sleeptimer_get_tick_count64();
+  status = sl_sleeptimer_tick64_to_ms(tick,\
+                                      &settime_delay);
 //
 //  //MHA settime_delay now contains the number of ms since poweron.
 //
@@ -288,13 +288,13 @@ sl_status_t  mod_som_calendar_set_time_f(sl_sleeptimer_timestamp_t time){
 //  //MHA: OK, confirmed that the timestamp is in fact relative to Jan 1, 1970 0:0:0 which is month 0, day 1, 0:0:0.
 //
 //  //So the next step is to compute the timestamp in secs at power on.
-//  offset_ms=(uint64_t)1000 * time - settime_delay;
+  offset_ms=(uint64_t)1000 * time - settime_delay;
 //
 //  //MHA: great, now the offset is stored in poweron_offset_ms in the calendar structure.
-//  mod_som_calendar_ptr->mod_som_calendar_settings_ptr->poweron_offset_ms=offset_ms;
+  mod_som_calendar_ptr->mod_som_calendar_settings_ptr->poweron_offset_ms=offset_ms;
 
   // debug - maibui
-  printf(".... offset_ms = %d\n", mod_som_calendar_ptr->mod_som_calendar_settings_ptr->poweron_offset_ms);
+//  printf(".... offset_ms = %d\n", mod_som_calendar_ptr->mod_som_calendar_settings_ptr->poweron_offset_ms);
   return status;
 }
 

@@ -189,11 +189,11 @@ mod_som_status_t mod_som_efe_obp_init_f(){
     // ALB Allocate memory for the consumer_ptr,
     // ALB contains the consumer stream data_ptr and stream_data length.
     // ALB This pointer is also used to store the data on the SD card
-//      status |= mod_som_efe_obp_construct_consumer_ptr_f();
-//    if (status!=MOD_SOM_STATUS_OK){
-//      printf("EFE OBP not initialized\n");
-//      return status;
-//    }
+      status |= mod_som_efe_obp_construct_consumer_ptr_f();
+    if (status!=MOD_SOM_STATUS_OK){
+      printf("EFE OBP not initialized\n");
+      return status;
+    }
 
     mod_som_epsiobp_init_f(mod_som_efe_obp_ptr->config_ptr,
                            mod_som_efe_obp_ptr->settings_ptr,
@@ -293,7 +293,7 @@ mod_som_status_t mod_som_efe_obp_default_settings_f(
   settings_ptr->channels_id[1]     = 1 ; //select channel s1
   settings_ptr->channels_id[2]     = 2 ; //select channel a3
 
-  settings_ptr->mode=0;
+  settings_ptr->mode=1;
   settings_ptr->format=1;
   settings_ptr->channel=0;
 
@@ -1271,7 +1271,7 @@ void mod_som_efe_obp_fill_segment_task_f(void  *p_arg){
               }
 
 
-              //ALB get the timestamp PTS at half of the segment
+              //ALB get the timestamp, PTS at half of the segment
               if(((mod_som_efe_obp_ptr->fill_segment_ptr->efe_element_cnt %
                   (mod_som_efe_obp_ptr->settings_ptr->nfft/2)) ==0)){
 
@@ -1586,7 +1586,7 @@ void mod_som_efe_obp_cpt_spectra_task_f(void  *p_arg){
 
 
               mod_som_efe_obp_ptr->cpt_spectra_ptr->avg_spectrum_cnt++;
-              mod_som_efe_obp_ptr->settings_ptr->format=3;
+//              mod_som_efe_obp_ptr->settings_ptr->format=3;
 
               //ALB reset avg ctd data
               //ALB NB: I do not reset the FOCO since the reset is embedded
@@ -1895,7 +1895,7 @@ mod_som_status_t mod_som_efe_obp_compute_dissrate_data_f(
 {
 
   //CAP
-  mod_som_efe_obp_calc_epsilon_f(local_epsilon, local_nu, local_kcutoff_shear,local_epsi_fom, mod_som_efe_obp_ptr);
+  mod_som_efe_obp_calc_epsilon_f(local_epsilon, local_nu, local_epsi_fom, local_kcutoff_shear, mod_som_efe_obp_ptr);
   mod_som_efe_obp_calc_chi_f(local_epsilon, local_chi, local_kappa,local_fcutoff_temp, local_chi_fom, mod_som_efe_obp_ptr);
   return mod_som_efe_obp_encode_status_f(MOD_SOM_STATUS_OK);
 }
@@ -1964,7 +1964,7 @@ mod_som_status_t mod_som_efe_obp_stop_consumer_task_f(){
              &err);
 
   mod_som_efe_obp_ptr->started_flag=false;
-
+  mod_som_efe_obp_ptr->settings_ptr->format=1;
 
   if(RTOS_ERR_CODE_GET(err) != RTOS_ERR_NONE)
     return (mod_som_efe_obp_ptr->status = mod_som_efe_encode_status_f(MOD_SOM_EFE_OPB_STATUS_FAIL_TO_START_CONSUMER_TASK));
@@ -2256,6 +2256,7 @@ void mod_som_efe_obp_consumer_task_f(void  *p_arg){
 
 
 
+
           switch(mod_som_efe_obp_ptr->settings_ptr->mode){
             case 0:
               //ALB stream
@@ -2275,12 +2276,14 @@ void mod_som_efe_obp_consumer_task_f(void  *p_arg){
                   mod_som_efe_obp_ptr->consumer_ptr->record_length,
                   &mod_som_efe_obp_ptr->consumer_ptr->consumed_flag);
 
+
               break;
             case 2:
               //ALB stream and store
               break;
 
           }//end switch efe_obp mode
+          while(!mod_som_efe_obp_ptr->consumer_ptr->consumed_flag){};
           payload_length=0;
           //ALB small code to switch between spectrum and shear output
           switch(mod_som_efe_obp_ptr->settings_ptr->format){
@@ -2288,16 +2291,15 @@ void mod_som_efe_obp_consumer_task_f(void  *p_arg){
               mod_som_efe_obp_ptr->settings_ptr->format=2;
               break;
             case 2:
-//              if(mod_som_efe_obp_ptr->cpt_dissrate_ptr->dissrates_cnt-
-//              mod_som_efe_obp_ptr->consumer_ptr->avgspec_cnt){
-//                  mod_som_efe_obp_ptr->settings_ptr->format=3;
-//              }else{
-//                  mod_som_efe_obp_ptr->settings_ptr->format=1;
-//              }
-//              mod_som_efe_obp_ptr->settings_ptr->format=3;
+              if(mod_som_efe_obp_ptr->cpt_dissrate_ptr->dissrates_cnt-
+              mod_som_efe_obp_ptr->consumer_ptr->avgspec_cnt){
+                  mod_som_efe_obp_ptr->settings_ptr->format=3;
+              }else{
+                  mod_som_efe_obp_ptr->settings_ptr->format=1;
+              }
               break;
             case 3:
-              mod_som_efe_obp_ptr->settings_ptr->format=2;
+              mod_som_efe_obp_ptr->settings_ptr->format=1;
               break;
             default:
               mod_som_efe_obp_ptr->settings_ptr->format=1;

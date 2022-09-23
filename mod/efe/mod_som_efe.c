@@ -247,13 +247,13 @@ mod_som_status_t mod_som_efe_init_f(){
 	//ALB TODO I want to simply initialize the CMDs and let the user or the default process initalizing the module
 
 #ifdef  RTOS_MODULE_COMMON_SHELL_AVAIL
-//	status = mod_som_efe_init_shellcmd_f();
-//	//ALB checking if the shell comds are initalized. return a error if shell cmd initialization failed.
-//	if(status != MOD_SOM_STATUS_OK){
-//	    //ALB change the printf to a report status function.
-//	    printf("%s not initialized\n",MOD_SOM_EFE_HEADER);
-//		return mod_som_efe_encode_status_f(MOD_SOM_EFE_STATUS_FAIL_INIT_CMD);
-//	}
+	status = mod_som_efe_init_shellcmd_f();
+	//ALB checking if the shell comds are initalized. return a error if shell cmd initialization failed.
+	if(status != MOD_SOM_STATUS_OK){
+	    //ALB change the printf to a report status function.
+	    printf("%s not initialized\n",MOD_SOM_EFE_HEADER);
+		return mod_som_efe_encode_status_f(MOD_SOM_EFE_STATUS_FAIL_INIT_CMD);
+	}
 #endif
 
 
@@ -383,7 +383,7 @@ mod_som_status_t mod_som_efe_init_f(){
 
 	//ALB initialize the runtime flags
 	mod_som_efe_ptr->sample_count=0;
-	mod_som_efe_ptr->consumer_mode=1; //3=do nothing
+	mod_som_efe_ptr->consumer_mode=2; //3=do nothing
 	mod_som_efe_ptr->sampling_flag=0;
 	mod_som_efe_ptr->data_ready_flag=0;
   mod_som_efe_ptr->error_flag=0;
@@ -2250,7 +2250,16 @@ mod_som_status_t mod_som_efe_stop_sampling_f()
   RTOS_ERR  err;
 
 	// Stop the timer drive the master clock controlling the ADCs
-  status = mod_som_efe_stop_consumer_task_f();
+
+  switch (mod_som_efe_ptr->consumer_mode){
+    case 2:
+      //ALB on board processing do nothing
+      break;
+    default:
+      status = mod_som_efe_stop_consumer_task_f();
+      break;
+  }
+
   mod_som_efe_stop_mclock_f(mod_som_efe_ptr);
 	// lower all the pertinent flags
 	mod_som_efe_ptr->sampling_flag = 0;

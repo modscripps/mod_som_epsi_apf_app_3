@@ -1132,6 +1132,7 @@ static  void  mod_som_sbe41_consumer_task_f(void  *p_arg){
 
                 // ALB Do we want to send a fix length block or send a variable length block
                 //
+                mod_som_sbe41_ptr->consumer_ptr->consumed_flag=false;
                 switch(mod_som_sbe41_ptr->consumer_mode){
                   case 0:
                     mod_som_io_stream_data_f(
@@ -1147,11 +1148,13 @@ static  void  mod_som_sbe41_consumer_task_f(void  *p_arg){
                     break;
                   case 2:
                     printf("On board processing. Work in progress\r\n");
+                    mod_som_sbe41_ptr->consumer_ptr->consumed_flag=true;
                     break;
                   default:
                     printf("wrong sbe.mode\r\n");
                     break;
                 }
+                while(!mod_som_sbe41_ptr->consumer_ptr->consumed_flag){};
 
                 mod_som_sbe41_ptr->consumer_ptr->elmnts_skipped = 0;
                 // reset the stream ptr.
