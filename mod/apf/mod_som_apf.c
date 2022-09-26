@@ -3060,6 +3060,20 @@ mod_som_apf_status_t mod_som_apf_poweroff_f(){
  *   command shell for EpsiNo? command
  *   get the SOM and EFE SN
  *   should return an apf status.
+ *
+ *   The sensor should respond with: epsi no?,ack,ctlserno,feserno\r\n
+ *   where ctlserno and feserno occupy 16-bits each. The high-order nibble represents a revision
+ *   number and the low-order 3-nibbles represent a 12-bit serial number.
+ *
+ *
+ *   For example, for ctlserno, if the revision number is 5 (hex: 0x5)
+ *   and the serial number is 17 (hex: 0x11) then that would be encoded
+ *   as the 16-bit hex value of 0x5011 which is decimal 20497.
+ *   Similarly, for the feserno, if the revision is 11 (hex: 0xb) and
+ *   the serial number is 3201 (hex: 0xc81) then that would be encoded
+ *   as 0xbc81 which is decimal 48257.  So the command-response would
+ *   be: epsi_no?,ack,20497,48257
+ *
  * @return
  *   MOD_SOM_APF_STATUS_OK if function execute nicely
  ******************************************************************************/
@@ -3067,6 +3081,9 @@ mod_som_apf_status_t mod_som_apf_epsi_id_status_f(){
   char apf_reply_str[MOD_SOM_SHELL_INPUT_BUF_SIZE]="\0";
   size_t reply_str_len = 0;
   LEUART_TypeDef* apf_leuart_ptr;
+
+  uint16_t ctlserno=0;
+  uint16_t feserno=0;
 
   // get the port's fd
   apf_leuart_ptr = (LEUART_TypeDef *)mod_som_apf_ptr->com_prf_ptr->handle_port;
@@ -3076,14 +3093,27 @@ mod_som_apf_status_t mod_som_apf_epsi_id_status_f(){
   mod_som_settings_struct_ptr_t local_settings_ptr=
                                           mod_som_settings_get_settings_f();
 
+  //ALB encode ctlserno. 0 < rev < 9 and 000 < sn < 999
+  uint32_t som_rev = strtoul(&local_settings_ptr->rev[3],NULL,10);
+  uint32_t som_sn  = strtoul(local_settings_ptr->sn,NULL,10);
 
-  mod_som_io_print_f("%s,%s,%s%s,%s%s\r\n",
+  ctlserno =  som_rev << 12; // High order nibble is rev no
+  ctlserno =  ctlserno | (som_sn & 0xFFF); // first 3 nibbles are sn no
+
+  //ALB encode feserno. 0 < rev < 9 and 000 < sn < 999
+  uint32_t efe_rev = strtoul(&local_settings_ptr->mod_som_efe_settings.rev[3],NULL,10);
+  uint32_t efe_sn  = strtoul(local_settings_ptr->mod_som_efe_settings.sn,NULL,10);
+
+  feserno =  efe_rev << 12; // High order nibble is rev no
+  feserno =  feserno | (efe_sn & 0xFFF); // first 3 nibbles are sn no
+
+
+
+  mod_som_io_print_f("%s,%s,%hu,%hu\r\n",
                              MOD_SOM_APF_EPSINO_STAT_STR,
                              MOD_SOM_APF_ACK_STR,
-                             &local_settings_ptr->rev[3],
-                             local_settings_ptr->sn,
-                             &local_settings_ptr->mod_som_efe_settings.rev[3],
-                             local_settings_ptr->mod_som_efe_settings.sn);
+                             ctlserno,
+                             feserno);
   // save the string into the temporary local string - Mai - Nov 18, 2021
 
 //ALB-CAP There is not error status here
@@ -3098,13 +3128,11 @@ mod_som_apf_status_t mod_som_apf_epsi_id_status_f(){
 
   if(status==MOD_SOM_APF_STATUS_OK){
 
-      sprintf(apf_reply_str,"%s,%s,%s%s,%s%s\r\n",
+      sprintf(apf_reply_str,"%s,%s,%hu,%hu\r\n",
               MOD_SOM_APF_EPSINO_STAT_STR,
               MOD_SOM_APF_ACK_STR,
-              &local_settings_ptr->rev[3],
-              local_settings_ptr->sn,
-              &local_settings_ptr->mod_som_efe_settings.rev[3],
-              local_settings_ptr->mod_som_efe_settings.sn);
+              ctlserno,
+              feserno);
       reply_str_len = strlen(apf_reply_str);
 
       // sending the above string to the APF port - Mai - Nov 18, 2021
