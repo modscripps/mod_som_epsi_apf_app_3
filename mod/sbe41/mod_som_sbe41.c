@@ -869,6 +869,9 @@ mod_som_status_t  mod_som_sbe41_start_consumer_task_f(){
   mod_som_sbe41_ptr->sample_count=0;
   mod_som_sbe41_ptr->consumer_ptr->cnsmr_cnt=0;
   mod_som_sbe41_ptr->consumer_ptr->consumed_flag=true;
+  mod_som_sbe41_ptr->consumer_ptr->record_pressure[0]=0; //ALB I need to initialize these becasue I use record_pressure in daq_start
+  mod_som_sbe41_ptr->consumer_ptr->record_pressure[1]=0;
+  mod_som_sbe41_ptr->sample_timeout = false;
 
   // Consumer Task 2
    OSTaskCreate(&sbe41_consumer_task_tcb,
@@ -956,6 +959,9 @@ static  void  mod_som_sbe41_consumer_task_f(void  *p_arg){
     uint64_t tick;
 
     mod_som_sbe41_sample_t curr_sbe_sample;
+    static sl_sleeptimer_timestamp_t time0=0;
+    sl_sleeptimer_timestamp_t        time1=0;
+
 
 
     int elmnts_avail=0, reset_cnsmr_cnt=0;
@@ -975,6 +981,12 @@ static  void  mod_som_sbe41_consumer_task_f(void  *p_arg){
 
         if (mod_som_sbe41_ptr->collect_data_flag){
             elmnts_avail = mod_som_sbe41_ptr->sample_count - mod_som_sbe41_ptr->consumer_ptr->cnsmr_cnt;  //calculate number of elements available have been produced
+            //ALB check if we still receive data
+            time1= mod_som_calendar_get_time_f();
+            if (time1-time0>MOD_SOM_SBE41_SAMPLE_TIMEOUT){
+                mod_som_sbe41_ptr->sample_timeout=true;
+            }
+
             // LOOP without delay until caught up to latest produced element
             while (elmnts_avail > 0)
               {
@@ -997,6 +1009,8 @@ static  void  mod_som_sbe41_consumer_task_f(void  *p_arg){
                     mod_som_sbe41_ptr->consumer_ptr->cnsmr_cnt = reset_cnsmr_cnt;
 //                    printf("new cns_cnt: %lu\n",(uint32_t) cnsmr_cnt);
                 }
+                time0= mod_som_calendar_get_time_f();
+                mod_som_sbe41_ptr->sample_timeout=false;
 
                 // calculate the offset for current pointer
                 data_elmnts_offset     = mod_som_sbe41_ptr->consumer_ptr->cnsmr_cnt % mod_som_sbe41_ptr->config_ptr->elements_per_buffer;

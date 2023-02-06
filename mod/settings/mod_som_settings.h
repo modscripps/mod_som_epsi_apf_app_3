@@ -85,7 +85,9 @@
 //------------------------------------------------------------------------------
 typedef struct{
 	uint32_t size;
-	char     header[MOD_SOM_SETTINGS_DEFAULT_STR_LENGTH];
+  char     name_var[8];
+  char     var[MOD_SOM_SETTINGS_DEFAULT_STR_LENGTH];
+  char     header[MOD_SOM_SETTINGS_DEFAULT_STR_LENGTH];
 	char     mission_name[MOD_SOM_SETTINGS_DEFAULT_NAME_LENGTH];
 	char     vehicle_name[MOD_SOM_SETTINGS_DEFAULT_NAME_LENGTH];
 	char     firmware[MOD_SOM_SETTINGS_DEFAULT_FIRMWARE_LENGTH];

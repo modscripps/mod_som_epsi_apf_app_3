@@ -68,7 +68,8 @@
 #define MOD_SOM_SBE41_CONSUMER_TASK_PRIO             18u
 #define MOD_SOM_SBE41_CONSUMER_TASK_STK_SIZE        512u
 #define MOD_SOM_SBE41_CONSUMER_DELAY                  1      // delay for consumer 2 (ex: 4000 = 1 time / 4 secs).
-#define MOD_SOM_SBE41_CONSUMER_PADDING                 5      // number of elements for padding for data consumer.
+#define MOD_SOM_SBE41_CONSUMER_PADDING                5      // number of elements for padding for data consumer.
+#define MOD_SOM_SBE41_SAMPLE_TIMEOUT                  5
 #define MOD_SOM_SBE41_STATUS_FAIL_TO_START_CONSUMER_TASK 0x02u
 
 //LDMA
@@ -292,6 +293,7 @@ typedef struct{
     mod_som_sbe41_prf_ptr_t com_prf_ptr;
     bool initialized_flag;
     bool connected_flag;
+    bool sample_timeout;
     uint8_t  consumer_mode;  //0:streaming, 1:SD_store, 2: on_board processing
     uint64_t timestamp;
     uint64_t sample_count;

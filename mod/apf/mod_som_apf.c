@@ -2581,7 +2581,8 @@ mod_som_apf_status_t mod_som_apf_daq_start_f(uint64_t profile_id){
   while(local_sbe41_runtime_ptr->consumer_ptr->record_pressure[1]==0){
       sl_sleeptimer_delay_millisecond(delay10ms);
       get_ctd_count++;
-      if (get_ctd_count>50){
+      //ALB SBE41 is 1Hz 300 counts x 10 ms is 3 seconds
+      if (get_ctd_count>300){
           //ALB no CTD sample. Status no CTD data
           status|=MOD_SOM_APF_STATUS_NO_CTD_DATA;
           get_ctd_count=0;

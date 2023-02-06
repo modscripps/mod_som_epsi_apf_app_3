@@ -228,8 +228,8 @@ mod_som_apf_probe_t, *mod_som_apf_probe_ptr_t;
 10-13  Firmware revision. ALB: I would recommend the latest github commit number like 6e92d93  (could be 4 bytes in hex)
 14-15  Nfft  (2 bytes) ALB not a param the user can change
 16-17  Nfftdiag  (2 bytes) ALB not a param the user can change
-18-23  <ProbeType1><ProbeSerNo1><ProbeCalcoef1> (2+2 +2 bytes)
-24-29  <ProbeType2><ProbeSerNo2><ProbeCalcoef2>(2+2 +2 bytes)
+18-22  <ProbeType1><ProbeSerNo1><ProbeCalcoef1> (1+2 +2 bytes)
+23-27  <ProbeType2><ProbeSerNo2><ProbeCalcoef2>(1+2 +2 bytes)
 
 30      comm_telemetry_packet_format (1 byte)
 31      sd_format (1 byte)

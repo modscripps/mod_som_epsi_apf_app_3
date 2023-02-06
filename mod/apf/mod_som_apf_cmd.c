@@ -310,7 +310,9 @@ CPU_INT16S mod_som_apf_cmd_daq_status_f(CPU_INT16U argc,
     reply_str_len = strlen(apf_reply_str);
     // sending the above string to the APF port - Mai - Nov 18, 2021
     bytes_sent = mod_som_apf_send_line_f(apf_leuart_ptr,apf_reply_str, reply_str_len);
-
+    if (bytes_sent==reply_str_len){
+        status = MOD_SOM_APF_STATUS_OK;
+    }
     if(status != MOD_SOM_APF_STATUS_OK)
         return SHELL_EXEC_ERR;
     return SHELL_EXEC_ERR_NONE;
