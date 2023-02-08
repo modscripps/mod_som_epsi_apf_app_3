@@ -242,7 +242,7 @@ mod_som_apf_probe_t, *mod_som_apf_probe_ptr_t;
 38-39   0xFFFF
 ******************************************************************************/
 
-#pragma pack(1)
+//#pragma pack(1)
 typedef struct{
 
   uint32_t daq_timestamp; //
@@ -262,7 +262,7 @@ typedef struct{
 }
 mod_som_apf_meta_data_t, *mod_som_apf_meta_data_ptr_t;
 
-#pragma pack(4)
+//#pragma pack(4)
 
 /*******************************************************************************
  * Dacq Stucture.

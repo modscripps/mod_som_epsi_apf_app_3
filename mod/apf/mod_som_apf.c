@@ -4293,11 +4293,12 @@ mod_som_apf_status_t mod_som_apf_upload_f(){
   //ALB check if daq is stopped
   if(!mod_som_apf_ptr->daq & !mod_som_apf_ptr->sleep_flag){
 
+      ////  //ALB enable SDIO hardware
+      mod_som_sdio_enable_hardware_f();
+
       /*********/
       //ALB if this a reboot dacq_size=0
       if(mod_som_apf_ptr->producer_ptr->dacq_size==0){
-          ////  //ALB enable SDIO hardware
-          mod_som_sdio_enable_hardware_f();
 
           sl_sleeptimer_delay_millisecond(500);
           //ALB file not open
