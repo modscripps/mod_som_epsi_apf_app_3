@@ -2547,7 +2547,8 @@ mod_som_apf_status_t mod_som_apf_encode_status_f(uint8_t mod_som_apf_status){
 mod_som_apf_status_t mod_som_apf_daq_start_f(uint64_t profile_id){
   mod_som_apf_status_t status=0;
   uint32_t delay1s=1000;
-  uint32_t delay10ms=10;
+  uint32_t delay2s=2000;
+    uint32_t delay10ms=10;
   uint32_t get_ctd_count=0;
   CPU_CHAR filename[100];
   uint32_t file_status;
@@ -2572,9 +2573,7 @@ mod_som_apf_status_t mod_som_apf_daq_start_f(uint64_t profile_id){
   ////  //ALB enable SDIO hardware
   mod_som_sdio_enable_hardware_f();
 
-  for(int i=0;i<2;i++){
-      sl_sleeptimer_delay_millisecond(delay1s);
-  }
+  sl_sleeptimer_delay_millisecond(delay2s);
 
 
   //ALB I am getting a pressure sample
@@ -3520,6 +3519,8 @@ mod_som_apf_status_t mod_som_apf_sleep_f(){
   LEUART_TypeDef* apf_leuart_ptr;
   // get the port's fd
   apf_leuart_ptr = (LEUART_TypeDef *)mod_som_apf_ptr->com_prf_ptr->handle_port;
+
+  //ALB TODO move "sleep,ack\r\n" in the upper level (####_cmd.c)
   char reply_str[] = "sleep,ack\r\n";
 
 //ALB IDLE SLEEP
@@ -4289,7 +4290,7 @@ mod_som_apf_status_t mod_som_apf_upload_f(){
 
   //ALB start transmit the packets
   //ALB check if daq is stopped
-  if(!mod_som_apf_ptr->daq){
+  if(!mod_som_apf_ptr->daq & !mod_som_apf_ptr->sleep_flag){
 
       /*********/
       //ALB if this a reboot dacq_size=0
@@ -4479,8 +4480,14 @@ mod_som_apf_status_t mod_som_apf_upload_f(){
 
   }//ALB end if(!mod_som_apf_ptr->daq)
   else{
-      //ALB daq is still running
-      status=MOD_SOM_APF_STATUS_DAQ_IS_RUNNING;
+      if(!mod_som_apf_ptr->daq){
+          //ALB daq is still running
+          status=MOD_SOM_APF_STATUS_DAQ_IS_RUNNING;
+      }
+      if(!mod_som_apf_ptr->sleep_flag){
+          status=MOD_SOM_APF_STATUS_SLEEPING;
+      }
+
   }//ALB end if daq
 
   //ALB end of upload send the upload status
@@ -4489,6 +4496,15 @@ mod_som_apf_status_t mod_som_apf_upload_f(){
       mod_som_io_print_f("%s,%s,%s\r\n",
                          MOD_SOM_APF_UPLOAD_STR,MOD_SOM_APF_NACK_STR,
                          "daq is still running");
+      // save to the local string for sending out - Mai-Nov 18, 2021
+      sprintf(apf_reply_str,"%s,%s,%s\r\n",
+              MOD_SOM_APF_UPLOAD_STR,MOD_SOM_APF_NACK_STR,
+              "daq is still running");
+      break;
+    case MOD_SOM_APF_STATUS_SLEEPING:
+      mod_som_io_print_f("%s,%s,%s\r\n",
+                         MOD_SOM_APF_UPLOAD_STR,MOD_SOM_APF_NACK_STR,
+                         "epsi sleeping");
       // save to the local string for sending out - Mai-Nov 18, 2021
       sprintf(apf_reply_str,"%s,%s,%s\r\n",
               MOD_SOM_APF_UPLOAD_STR,MOD_SOM_APF_NACK_STR,

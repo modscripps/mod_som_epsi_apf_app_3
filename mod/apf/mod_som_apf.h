@@ -141,6 +141,7 @@
 #define MOD_SOM_APF_STATUS_ARG_TOO_HIGH                         0x14U
 #define MOD_SOM_APF_STATUS_BUFFER_OVFLW                         0x15U
 #define MOD_SOM_APF_STATUS_NO_CTD_DATA                          0x16U
+#define MOD_SOM_APF_STATUS_SLEEPING                             0x17U
 
 
 #define MOD_SOM_APF_UPLOAD_DELAY                  500      // 500 ms delay upon reception of the upload cmd
@@ -239,6 +240,7 @@ mod_som_apf_probe_t, *mod_som_apf_probe_ptr_t;
 38-39   0xFFFF
 ******************************************************************************/
 
+//#pragma pack(1)
 typedef struct{
 
   uint32_t daq_timestamp; //
@@ -258,6 +260,7 @@ typedef struct{
 }
 mod_som_apf_meta_data_t, *mod_som_apf_meta_data_ptr_t;
 
+//#pragma pack(4)
 
 /*******************************************************************************
  * Dacq Stucture.
