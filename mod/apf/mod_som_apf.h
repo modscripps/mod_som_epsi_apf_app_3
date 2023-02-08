@@ -142,6 +142,8 @@
 #define MOD_SOM_APF_STATUS_BUFFER_OVFLW                         0x15U
 #define MOD_SOM_APF_STATUS_NO_CTD_DATA                          0x16U
 #define MOD_SOM_APF_STATUS_SLEEPING                             0x17U
+#define MOD_SOM_APF_STATUS_NO_DATA                              0x18U
+#define MOD_SOM_APF_STATUS_CANNOT_OPENFILE                      0x19U
 
 
 #define MOD_SOM_APF_UPLOAD_DELAY                  500      // 500 ms delay upon reception of the upload cmd

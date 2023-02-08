@@ -1543,7 +1543,6 @@ void mod_som_apf_shell_task_f(void  *p_arg){
   LEUART_TypeDef* apf_leuart_ptr;
   apf_leuart_ptr =(LEUART_TypeDef *) mod_som_apf_get_port_ptr_f();
 
-
   while (DEF_ON) {
 
 
@@ -1583,7 +1582,8 @@ void mod_som_apf_shell_task_f(void  *p_arg){
           status = mod_som_apf_convert_string_f(input_buf,&input_buf_len, output_buf);   // convert the input string to the right format: cap -> uncap, coma -> space
           status = mod_som_shell_execute_input_f(output_buf,input_buf_len);   // execute the appropriate routine base on the command. Return the mod_som_status
 
-          if (status>0){
+
+          if ((status>0) & !mod_som_apf_ptr->sleep_flag){
               sprintf(apf_reply_str,"nak,%s\r\n",output_buf);
               reply_str_len = strlen(apf_reply_str);
               // sending the above string to the APF port - Mai - Nov 18, 2021
@@ -1738,7 +1738,8 @@ mod_som_apf_status_t mod_som_apf_shell_get_line_f(char *buf, uint32_t * bytes_re
 //            buf[i] = '\0';
             break;
         }
-        else if (!(read_char>31 && read_char<127)){ // check for printable characters
+        //ALB check for printable characters (excluding space character ' '=32)
+        else if (!(read_char>32 && read_char<127)){ // check for printable characters
                     i--;
                     continue;
                 }
@@ -4300,7 +4301,10 @@ mod_som_apf_status_t mod_som_apf_upload_f(){
 
           sl_sleeptimer_delay_millisecond(500);
           //ALB file not open
-          mod_som_sdio_open_processfilename_f("OBPdata");
+          status = mod_som_sdio_open_processfilename_f("OBPdata");
+          if (status==0x2u){
+              status=MOD_SOM_APF_STATUS_CANNOT_OPENFILE;
+          }
       }
 
       mod_som_sdio_ptr_t local_mod_som_sdio_ptr_t=
@@ -4311,6 +4315,11 @@ mod_som_apf_status_t mod_som_apf_upload_f(){
       cnt=f_size(processfile_ptr->fp);
       mod_som_apf_ptr->consumer_ptr->daq_remaining_bytes   = cnt;
 
+      if(cnt==0){ //ALB no data
+          status = MOD_SOM_APF_STATUS_NO_DATA;
+      }
+
+      if (status == MOD_SOM_APF_STATUS_OK){
       //ALB upload cmd received
       //ALB send msg back
       mod_som_io_print_f("%s,%s,start\r\n",
@@ -4478,6 +4487,7 @@ mod_som_apf_status_t mod_som_apf_upload_f(){
 
       }//ALB end of while bytes available
 
+      }//ALB end if MOD_SOM_OK
   }//ALB end if(!mod_som_apf_ptr->daq)
   else{
       if(!mod_som_apf_ptr->daq){
@@ -4487,11 +4497,33 @@ mod_som_apf_status_t mod_som_apf_upload_f(){
       if(!mod_som_apf_ptr->sleep_flag){
           status=MOD_SOM_APF_STATUS_SLEEPING;
       }
-
   }//ALB end if daq
 
   //ALB end of upload send the upload status
+
   switch (status){
+    case MOD_SOM_APF_STATUS_CANNOT_OPENFILE:
+      mod_som_io_print_f("%s,%s,%s\r\n",
+                         MOD_SOM_APF_UPLOAD_STR,MOD_SOM_APF_NACK_STR,
+                         "can not open file");
+      // save to the local string for sending out - Mai-Nov 18, 2021
+      sprintf(apf_reply_str,"%s,%s,%s\r\n",
+              MOD_SOM_APF_UPLOAD_STR,MOD_SOM_APF_NACK_STR,
+              "can not open file");
+      status = MOD_SOM_APF_STATUS_OK;
+      break;
+
+    case MOD_SOM_APF_STATUS_NO_DATA:
+      mod_som_io_print_f("%s,%s,%s\r\n",
+                         MOD_SOM_APF_UPLOAD_STR,MOD_SOM_APF_NACK_STR,
+                         "no data");
+      // save to the local string for sending out - Mai-Nov 18, 2021
+      sprintf(apf_reply_str,"%s,%s,%s\r\n",
+              MOD_SOM_APF_UPLOAD_STR,MOD_SOM_APF_NACK_STR,
+              "no data");
+      status = MOD_SOM_APF_STATUS_OK;
+
+      break;
     case MOD_SOM_APF_STATUS_DAQ_IS_RUNNING:
       mod_som_io_print_f("%s,%s,%s\r\n",
                          MOD_SOM_APF_UPLOAD_STR,MOD_SOM_APF_NACK_STR,
@@ -4500,6 +4532,7 @@ mod_som_apf_status_t mod_som_apf_upload_f(){
       sprintf(apf_reply_str,"%s,%s,%s\r\n",
               MOD_SOM_APF_UPLOAD_STR,MOD_SOM_APF_NACK_STR,
               "daq is still running");
+      status = MOD_SOM_APF_STATUS_OK;
       break;
     case MOD_SOM_APF_STATUS_SLEEPING:
       mod_som_io_print_f("%s,%s,%s\r\n",
@@ -4518,6 +4551,7 @@ mod_som_apf_status_t mod_som_apf_upload_f(){
       sprintf(apf_reply_str,"%s,%s,%s\r\n",
               MOD_SOM_APF_UPLOAD_STR,MOD_SOM_APF_NACK_STR,
               "fail sending packets");
+      status = MOD_SOM_APF_STATUS_OK;
       break;
     case MOD_SOM_APF_STATUS_OK:
       mod_som_io_print_f("%s,%s,success\r\n",
@@ -4528,6 +4562,7 @@ mod_som_apf_status_t mod_som_apf_upload_f(){
       //ALB remove OBPdata file
       //ALB actually I do not think I need to remove the OBPdata file
 //      mod_som_sdio_rm_sd_f("OBPdata");
+      status = MOD_SOM_APF_STATUS_OK;
       break;
     default:
       mod_som_io_print_f("%s,%s,%s\r\n",
@@ -4538,6 +4573,7 @@ mod_som_apf_status_t mod_som_apf_upload_f(){
               MOD_SOM_APF_UPLOAD_STR,MOD_SOM_APF_NACK_STR,
               "unknown error");
 
+      status = MOD_SOM_APF_STATUS_OK;
       break;
 
 
@@ -4549,7 +4585,6 @@ mod_som_apf_status_t mod_som_apf_upload_f(){
   if(bytes_sent==0){
       //TODO handle the error
   }
-
 
   return mod_som_apf_encode_status_f(status);
 }

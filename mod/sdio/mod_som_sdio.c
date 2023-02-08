@@ -147,7 +147,6 @@ mod_som_status_t mod_som_sdio_enable_hardware_f(){
   int delay=100; //ALB .1sec
 
   if(!mod_som_sdio_struct.enable_flag){
-      mod_som_sdio_struct.enable_flag=true;
   CMU_ClockEnable(cmuClock_GPIO, true);
 
 
@@ -182,6 +181,7 @@ mod_som_status_t mod_som_sdio_enable_hardware_f(){
     //    //ALB start the SDIO task.
 //        mod_som_sdio_start_f();
 
+    mod_som_sdio_struct.enable_flag=true;
 
   }
 
