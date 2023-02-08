@@ -4579,6 +4579,7 @@ mod_som_apf_status_t mod_som_apf_upload_f(){
       status = MOD_SOM_APF_STATUS_OK;
       break;
 
+      mod_som_sdio_disable_hardware_f();
 
   }
   reply_str_len = strlen(apf_reply_str);
