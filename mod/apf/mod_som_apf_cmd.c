@@ -127,7 +127,7 @@ CPU_INT16S mod_som_apf_cmd_daq_f(CPU_INT16U argc,
     case 1: // input: "daq" -- invalid command, not enough information
       // save time string into the temporary local string - Mai - Nov 18, 2021
       //ALB changing to %s,%s
-      sprintf(apf_reply_str,"%s,%s,missing arguments -- valid cmd: %s.\r\n",MOD_SOM_APF_DAQ_STR,MOD_SOM_APF_NACK_STR,daq_valid_cmd);
+      sprintf(apf_reply_str,"%s,%s,wrong arguments.\r\n",MOD_SOM_APF_DAQ_STR,MOD_SOM_APF_NACK_STR);
       status |= MOD_SOM_APF_STATUS_WRONG_ARG;
       break;
     case 2: // input: "daq,stop", if "daq,start" or "daq,somethingelse" -> error
@@ -148,14 +148,14 @@ CPU_INT16S mod_som_apf_cmd_daq_f(CPU_INT16U argc,
       else if (!Str_Cmp(argv[i], "start"))  // "daq,start" => missing profile id
       {
           // save time string into the temporary local string - Mai - Dec 3, 2021
-          sprintf(apf_reply_str,"%s,start,%s,missing profile id -- valid cmd: %s\r\n",MOD_SOM_APF_DAQ_STR,MOD_SOM_APF_NACK_STR,daq_start_valid_cmd);
+          sprintf(apf_reply_str,"%s,start,%s,wrong arguments\r\n",MOD_SOM_APF_DAQ_STR,MOD_SOM_APF_NACK_STR);
           status |= MOD_SOM_APF_STATUS_WRONG_ARG;
           break;
       } // end of if (!Str_Cmp(argv[i], "start"))
       else  // not "daq stop" nor "daq start"
       {
               // save time string into the temporary local string - Mai - Nov 18, 2021
-              sprintf(apf_reply_str,"%s,%s,wrong second argument -- valid cmd: %s\r\n",MOD_SOM_APF_DAQ_STR,MOD_SOM_APF_NACK_STR,daq_valid_cmd);
+              sprintf(apf_reply_str,"%s,%s,wrong arguments\r\n",MOD_SOM_APF_DAQ_STR,MOD_SOM_APF_NACK_STR);
               status |= MOD_SOM_APF_STATUS_ERR;
       }
       break;
@@ -164,7 +164,7 @@ CPU_INT16S mod_som_apf_cmd_daq_f(CPU_INT16U argc,
       if (!Str_Cmp(argv[i], "stop"))  // daq stop arg => wrong stop command
       {
           // save time string into the temporary local string - Mai - Nov 18, 2021
-          sprintf(apf_reply_str,"%s,stop,%s,wrong command -- valid cmd: %s\r\n",MOD_SOM_APF_DAQ_STR,MOD_SOM_APF_NACK_STR,daq_stop_valid_cmd);
+          sprintf(apf_reply_str,"%s,stop,%s,wrong command\r\n",MOD_SOM_APF_DAQ_STR,MOD_SOM_APF_NACK_STR);
           status |= MOD_SOM_APF_STATUS_ERR;
           break;
       }
@@ -176,9 +176,8 @@ CPU_INT16S mod_som_apf_cmd_daq_f(CPU_INT16U argc,
           if(isalpha(third_arg[0])) // daq start not_integer
           {
               // save time string into the temporary local string - Mai - 11 May, 2022
-              sprintf(apf_reply_str,"%s,start,%s,profile_id is NOT integer -- valid cmd: %s\r\n",
-                      MOD_SOM_APF_DAQ_STR,MOD_SOM_APF_NACK_STR,
-                      daq_start_valid_cmd);
+              sprintf(apf_reply_str,"%s,start,%s,wrong arguments\r\n",
+                      MOD_SOM_APF_DAQ_STR,MOD_SOM_APF_NACK_STR);
               status |= MOD_SOM_APF_STATUS_WRONG_ARG;
               break;
           }
@@ -191,9 +190,9 @@ CPU_INT16S mod_som_apf_cmd_daq_f(CPU_INT16U argc,
           if (profile_id < 0 || profile_id > MOD_SOM_APF_DAQ_PROFILE_LIMIT)
           {
                  // save time string into the temporary local string - Mai - Nov 18, 2021
-                 sprintf(apf_reply_str,"%s,start,%s,third arg is NOT in range [0 %d], -- valid cmd: %s\r\n",
+                 sprintf(apf_reply_str,"%s,start,%s,wrong arguments\r\n",
                          MOD_SOM_APF_DAQ_STR,MOD_SOM_APF_NACK_STR,
-                         MOD_SOM_APF_DAQ_PROFILE_LIMIT,daq_start_valid_cmd);
+                         MOD_SOM_APF_DAQ_PROFILE_LIMIT);
                  status |= MOD_SOM_APF_STATUS_WRONG_ARG;
                  break;
           }
@@ -235,8 +234,8 @@ CPU_INT16S mod_som_apf_cmd_daq_f(CPU_INT16U argc,
       break;
     default:  // more than 3 argc
       // save time string into the temporary local string - Mai - Nov 18, 2021
-      sprintf(apf_reply_str,"%s,%s,too many arguments -- valid cmd: %s\r\n",
-              MOD_SOM_APF_DAQ_STR,MOD_SOM_APF_NACK_STR,daq_valid_cmd);
+      sprintf(apf_reply_str,"%s,%s,wrong arguments\r\n",
+              MOD_SOM_APF_DAQ_STR,MOD_SOM_APF_NACK_STR);
       status |= MOD_SOM_APF_STATUS_WRONG_ARG;
      break;
   }

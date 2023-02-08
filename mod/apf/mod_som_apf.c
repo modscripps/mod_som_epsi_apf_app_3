@@ -4289,7 +4289,7 @@ mod_som_apf_status_t mod_som_apf_upload_f(){
   uint32_t cnt=0;
 
 
-  //ALB start transmit the packets
+  //ALB start transmit the packet
   //ALB check if daq is stopped
   if(!mod_som_apf_ptr->daq & !mod_som_apf_ptr->sleep_flag){
 
@@ -4490,11 +4490,11 @@ mod_som_apf_status_t mod_som_apf_upload_f(){
       }//ALB end if MOD_SOM_OK
   }//ALB end if(!mod_som_apf_ptr->daq)
   else{
-      if(!mod_som_apf_ptr->daq){
+      if(mod_som_apf_ptr->daq){
           //ALB daq is still running
           status=MOD_SOM_APF_STATUS_DAQ_IS_RUNNING;
       }
-      if(!mod_som_apf_ptr->sleep_flag){
+      if(mod_som_apf_ptr->sleep_flag){
           status=MOD_SOM_APF_STATUS_SLEEPING;
       }
   }//ALB end if daq
@@ -4537,11 +4537,13 @@ mod_som_apf_status_t mod_som_apf_upload_f(){
     case MOD_SOM_APF_STATUS_SLEEPING:
       mod_som_io_print_f("%s,%s,%s\r\n",
                          MOD_SOM_APF_UPLOAD_STR,MOD_SOM_APF_NACK_STR,
-                         "epsi sleeping");
+                         "epsi is sleeping");
       // save to the local string for sending out - Mai-Nov 18, 2021
       sprintf(apf_reply_str,"%s,%s,%s\r\n",
               MOD_SOM_APF_UPLOAD_STR,MOD_SOM_APF_NACK_STR,
-              "daq is still running");
+              "epsi is sleeping");
+
+      status = MOD_SOM_APF_STATUS_OK;
       break;
     case MOD_SOM_APF_STATUS_FAIL_SEND_PACKET:
       mod_som_io_print_f("%s,%s,%s\r\n",
