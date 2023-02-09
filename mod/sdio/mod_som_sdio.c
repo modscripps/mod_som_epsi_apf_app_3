@@ -63,7 +63,7 @@ DWORD get_fattime(void)
 mod_som_status_t mod_som_sdio_init_f(){
     mod_som_status_t status;
     RTOS_ERR  err;
-    int delay=5000; //5 seconds
+    int delay=1000; //5 seconds
 //    mod_som_sdio_ptr_t mod_som_sdio_struct_ptr=&mod_som_sdio_struct;
 
     //ALB initialize the SDIO module commands
@@ -114,10 +114,10 @@ mod_som_status_t mod_som_sdio_init_f(){
     //allocate memory
     mod_som_sdio_allocate_memory_f();
 //    //ALB enable hardware
-//    mod_som_sdio_enable_hardware_f();
-//    //ALB Only APEX epsi and becasue of the big cap.
+    mod_som_sdio_enable_hardware_f();
+//    //ALB Only APEX epsi and because of the big cap.
 //    //ALB I need to charge it
-//    sl_sleeptimer_delay_millisecond(delay);
+    sl_sleeptimer_delay_millisecond(delay);
 
     //ALB initialize runtime param initialized flag
     mod_som_sdio_struct.initialized_flag = true;
@@ -126,7 +126,7 @@ mod_som_status_t mod_som_sdio_init_f(){
 //    mod_som_sdio_start_f();
 
 //    //ALB disable hardware
-//    mod_som_sdio_disable_hardware_f();
+    mod_som_sdio_disable_hardware_f();
 
     // return default mod som OK.
     //TODO handle error from the previous calls.
