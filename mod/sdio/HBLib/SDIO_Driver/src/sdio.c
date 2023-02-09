@@ -323,6 +323,8 @@ uint32_t SDIO_S_SendCMDWithOutDAT(SDIO_TypeDef *sdio_t,
 
   // Sequence to Finalize Command
   // 1. Wait for Command Complete
+  //SAN added to ensure no hanging
+  SDIO_S_TimeoutSettingonDATLine(sdio_t);
   while (!(sdio_t->IFCR & _SDIO_IFCR_CMDCOM_MASK));
   // 2. clear previous command complete int
   while ((sdio_t->IFCR & _SDIO_IFCR_CMDCOM_MASK))
