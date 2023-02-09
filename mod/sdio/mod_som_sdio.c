@@ -595,7 +595,14 @@ mod_som_status_t mod_som_sdio_open_processfilename_f(CPU_CHAR* filename){
     FRESULT res;
     res = f_open(mod_som_sdio_struct.processdata_file_ptr->fp, \
         tchar_filename,\
-        FA_OPEN_APPEND | FA_WRITE | FA_READ);
+        FA_CREATE_ALWAYS | FA_WRITE | FA_READ);
+
+    //ALB APPEND if we want to keep the previous data (i.e., if epsi turned off/on during a profile)
+    //ALB TODO figure out a way to either append or erase the previous data through software
+
+//    res = f_open(mod_som_sdio_struct.processdata_file_ptr->fp, \
+//        tchar_filename,\
+//        FA_OPEN_APPEND | FA_WRITE | FA_READ);
     if (res == FR_OK)
     {
 
@@ -743,7 +750,12 @@ mod_som_status_t mod_som_sdio_open_file_f(mod_som_sdio_file_ptr_t mod_som_sdio_f
     FRESULT res;
     res = f_open(mod_som_sdio_file_ptr->fp, \
     		tchar_filename,\
-    		FA_OPEN_APPEND | FA_WRITE | FA_READ);
+    		FA_CREATE_ALWAYS | FA_WRITE | FA_READ);
+    //ALB APPEND if we want to keep the previous data (i.e., if epsi turned off/on during a profile)
+    //ALB TODO figure out a way to either append or erase the previous data through software
+//    res = f_open(mod_som_sdio_file_ptr->fp, \
+//        tchar_filename,\
+//        FA_OPEN_APPEND | FA_WRITE | FA_READ);
     if (res == FR_OK)
     {
     	mod_som_io_print_f("\nopened %s\n",(char *) mod_som_sdio_file_ptr->file_name);
