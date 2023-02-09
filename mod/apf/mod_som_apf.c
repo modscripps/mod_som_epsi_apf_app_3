@@ -750,7 +750,6 @@ mod_som_apf_status_t mod_som_apf_start_producer_task_f(){
   mod_som_apf_ptr->producer_ptr->dissrates_cnt        = 0;
   mod_som_apf_ptr->producer_ptr->dacq_size            = 0;
   mod_som_apf_ptr->producer_ptr->stored_dissrates_cnt = 0;
-
   //ALB watch out: I do not initialize stored_dissrates_cnt to 0
   //ALB because we could be restarting a profile
   //ALB (case where daq stop was issued but we want to continue the profile i.e.,
@@ -2726,6 +2725,9 @@ mod_som_apf_status_t mod_som_apf_daq_stop_f(){
   mod_som_apf_status_t status;
   status=MOD_SOM_APF_STATUS_OK;
 
+  if(mod_som_apf_ptr->daq){
+
+
   // from the spec, it
 	// stop ADC master clock timer
   status|= mod_som_efe_stop_sampling_f();
@@ -2770,13 +2772,15 @@ mod_som_apf_status_t mod_som_apf_daq_stop_f(){
   //ALB disable SDIO hardware
   status |=mod_som_sdio_stop_store_f();
   sl_sleeptimer_delay_millisecond(delay);
-  mod_som_sdio_disable_hardware_f();
   mod_som_sdio_stop_f();
+  mod_som_sdio_disable_hardware_f();
 
 
 
   //reset Daq flags
   mod_som_apf_ptr->daq=false;
+  }
+
 
 	return status;
 }

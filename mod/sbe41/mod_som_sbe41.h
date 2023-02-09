@@ -29,6 +29,7 @@
 //------------------------------------------------------------------------------
 // DEFINES
 //------------------------------------------------------------------------------
+//#define MOD_SOM_SBE41_OUTPUT0_SAMPLE_DATA_LENGTH    28
 #define MOD_SOM_SBE41_OUTPUT0_SAMPLE_DATA_LENGTH    28
 #define MOD_SOM_SBE41_OUTPUT1_SAMPLE_DATA_LENGTH    24
 #define MOD_SOM_SBE41_OUTPUT2_SAMPLE_DATA_LENGTH    24
