@@ -224,6 +224,8 @@ mod_som_status_t status=0;
         status=1;
       }
 
+
+
     //TODO use bsp_som variables to initialize the SD card.
     // Soldered sdCard slot
     GPIO_PinModeSet(gpioPortB, 10, gpioModeInput, 0);             // SDIO_CD
@@ -238,9 +240,9 @@ mod_som_status_t status=0;
     sl_sleeptimer_delay_millisecond(delay);
     GPIO_PinModeSet(gpioPortD, 6u, gpioModePushPull, 0); //SD_EN
 
-
     //ALB Software reset of SDIO
     SDIO->CLOCKCTRL|=(_SDIO_CLOCKCTRL_SFTRSTA_MASK & SDIO_CLOCKCTRL_SFTRSTA);
+
 
   }else{
       status=1;

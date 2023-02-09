@@ -4507,6 +4507,8 @@ mod_som_apf_status_t mod_som_apf_upload_f(){
       }//ALB end of while bytes available
 
       }//ALB end if MOD_SOM_OK
+      mod_som_sdio_disable_hardware_f();
+
   }//ALB end if(!mod_som_apf_ptr->daq)
   else{
       if(mod_som_apf_ptr->daq){
@@ -4596,10 +4598,8 @@ mod_som_apf_status_t mod_som_apf_upload_f(){
 
       status = MOD_SOM_APF_STATUS_OK;
       break;
-
-      mod_som_sdio_disable_hardware_f();
-
   }
+
   reply_str_len = strlen(apf_reply_str);
   // sending the above string to the APF port - Mai - Nov 18, 2021
   bytes_sent = mod_som_apf_send_line_f(apf_leuart_ptr,apf_reply_str, reply_str_len);
