@@ -626,6 +626,82 @@ mod_som_status_t mod_som_sdio_open_processfilename_f(CPU_CHAR* filename){
   }
   return status;
 }
+/*******************************************************************************
+ * @brief
+ *   a function to open a file with a name from given from the shell
+ *
+ * @return
+ *   MOD_SOM_STATUS_OK if function execute nicely
+ ******************************************************************************/
+mod_som_status_t mod_som_sdio_opentoread_processfilename_f(CPU_CHAR* filename){
+
+  mod_som_status_t status;
+  UINT byteswritten=0;
+
+
+
+  CPU_CHAR data_file_buf[100];   //ALB with this version of ff.c the filename can *not* be more than 8
+
+  if(!mod_som_sdio_struct.enable_flag){
+      mod_som_sdio_enable_hardware_f();
+  }
+
+  sprintf(data_file_buf, "%s.modraw",filename);
+  mod_som_sdio_struct.processdata_file_ptr->len_filename=strlen(data_file_buf);
+
+    //ALB initialize the filename memory to erase previous str
+  memset(mod_som_sdio_struct.processdata_file_ptr->file_name, 0,strlen(mod_som_sdio_struct.processdata_file_ptr->file_name));
+  memcpy(mod_som_sdio_struct.processdata_file_ptr->file_name, data_file_buf,mod_som_sdio_struct.processdata_file_ptr->len_filename);
+  mod_som_sdio_struct.processdata_file_ptr->initialized_flag=0;
+
+  //ALB open file
+  mod_som_io_print_f("\n[sdio open file]:%s \r\n",(char *) mod_som_sdio_struct.processdata_file_ptr->file_name);
+  mod_som_sdio_struct.processdata_file_ptr->is_open_flag=0;
+
+    TCHAR tchar_filename[100];
+
+    int idx;
+    //mod_som_sdio_file_ptr->file_name is ASCII char, we have to convert into ANSII
+    for (idx = 0; idx < strlen (mod_som_sdio_struct.processdata_file_ptr->file_name); ++idx){
+      tchar_filename[idx] = ff_convert (mod_som_sdio_struct.processdata_file_ptr->file_name[idx], 1);
+    }
+    tchar_filename[idx] = '\0';
+
+    FRESULT res;
+    res = f_open(mod_som_sdio_struct.processdata_file_ptr->fp, \
+        tchar_filename,\
+        FA_OPEN_ALWAYS | FA_READ);
+
+    //ALB APPEND if we want to keep the previous data (i.e., if epsi turned off/on during a profile)
+    //ALB TODO figure out a way to either append or erase the previous data through software
+
+//    res = f_open(mod_som_sdio_struct.processdata_file_ptr->fp, \
+//        tchar_filename,\
+//        FA_OPEN_APPEND | FA_WRITE | FA_READ);
+    if (res == FR_OK)
+    {
+
+        status=MOD_SOM_SDIO_STATUS_OK;
+        mod_som_io_print_f("\nopened %s\n",
+                           (char *) mod_som_sdio_struct.processdata_file_ptr->file_name);
+    }else {
+
+          mod_som_io_print_f("\nFailed to open %s,error %i \n", \
+          (char *) mod_som_sdio_struct.processdata_file_ptr->file_name, res);
+      return MOD_SOM_SDIO_STATUS_FAIL_OPENFILE;
+    }
+    mod_som_sdio_struct.processdata_file_ptr->is_open_flag=1;
+
+//  //ALB sync the file to actually write on the SD card
+//  res_sync = f_sync(mod_som_sdio_struct.processdata_file_ptr->fp);
+//  mod_som_sdio_struct.processdata_file_ptr->initialized_flag=1;
+
+  if ((status>0) & (status<MOD_SOM_SDIO_OPEN_PREV_PROCESS_FILE)){
+    return MOD_SOM_STATUS_NOT_OK;
+  }
+  return status;
+}
+
 
 /*******************************************************************************
  * @brief
@@ -1142,7 +1218,7 @@ mod_som_status_t mod_som_sdio_read_processfile_f(uint8_t * databuffer,uint32_t o
 
 if(mod_som_sdio_file_ptr->is_open_flag==0){
     //ALB file not open
-    mod_som_sdio_open_processfilename_f("OBPdata");
+    mod_som_sdio_opentoread_processfilename_f("OBPdata");
 }
   mod_som_io_print_f("\nReading file %s...\n", \
       mod_som_sdio_file_ptr->file_name);

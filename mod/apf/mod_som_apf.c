@@ -153,6 +153,8 @@ mod_som_apf_status_t mod_som_apf_init_f(){
       return status;
     }
 
+
+
     //ALB Allocate memory for the producer pointer,
     //ALB using the settings_ptr variable
     status |= mod_som_apf_construct_producer_ptr_f();
@@ -435,6 +437,12 @@ mod_som_apf_status_t mod_som_apf_construct_producer_ptr_f(){
       (uint8_t*)Mem_SegAlloc(
           "MOD SOM APF producer dacq.",DEF_NULL,
           5*sizeof(float) * mod_som_apf_ptr->producer_ptr->nfft_diag,
+          &err);
+
+  mod_som_apf_ptr->producer_ptr->meta_data_buffer_ptr =
+      (uint8_t*)Mem_SegAlloc(
+          "MOD SOM APF producer meta buffer.",DEF_NULL,
+          MOD_SOM_APF_METADATA_SIZE,
           &err);
 
 
@@ -741,12 +749,14 @@ mod_som_apf_status_t mod_som_apf_start_producer_task_f(){
   mod_som_apf_ptr->producer_ptr->dissrate_skipped     = 0;
   mod_som_apf_ptr->producer_ptr->dissrates_cnt        = 0;
   mod_som_apf_ptr->producer_ptr->dacq_size            = 0;
+  mod_som_apf_ptr->producer_ptr->stored_dissrates_cnt = 0;
+
   //ALB watch out: I do not initialize stored_dissrates_cnt to 0
   //ALB because we could be restarting a profile
   //ALB (case where daq stop was issued but we want to continue the profile i.e.,
   //ALB same profile id).TODO make sure stored_dissrates_cnt when starting a new profile
-  mod_som_apf_ptr->producer_ptr->stored_dissrates_cnt =
-      mod_som_apf_ptr->producer_ptr->mod_som_apf_meta_data.sample_cnt;
+//  mod_som_apf_ptr->producer_ptr->stored_dissrates_cnt =
+//      mod_som_apf_ptr->producer_ptr->mod_som_apf_meta_data.sample_cnt;
 
   mod_som_apf_ptr->producer_ptr->initialized_flag     = false;
   mod_som_apf_ptr->producer_ptr->collect_flg          = false;
@@ -2625,7 +2635,9 @@ mod_som_apf_status_t mod_som_apf_daq_start_f(uint64_t profile_id){
           mod_som_apf_ptr->producer_ptr->
                     mod_som_apf_meta_data.profile_id=0;
       }
-
+      //ALB As of now a new daq erase the previous data (consistent with the specs)
+      //ALB Be careful if we want to keep the the previous data we need to keep
+      //ALB sample count, profile id and so on consistent.
 
       //ALB Metadata is filled up if OBPdata file already exist on the SD card.
       //ALB during mod_som_sdio_open_processfilename_f.
@@ -2746,6 +2758,7 @@ mod_som_apf_status_t mod_som_apf_daq_stop_f(){
 
   //ALB write new updated metadata on the SD
   //This is the only place where I update metadata_sample_cnt.
+
   //if sample_cnt is wrong we still can get it with simple math afterwork.
   mod_som_sdio_write_data_f(processfile_ptr,
                             (uint8_t*) &mod_som_apf_ptr->producer_ptr->
@@ -4297,22 +4310,23 @@ mod_som_apf_status_t mod_som_apf_upload_f(){
       mod_som_sdio_enable_hardware_f();
 
       /*********/
-      //ALB if this a reboot dacq_size=0
-      if(mod_som_apf_ptr->producer_ptr->dacq_size==0){
+//      //ALB if this a reboot dacq_size=0
+//      if(mod_som_apf_ptr->producer_ptr->dacq_size==0){
 
-          sl_sleeptimer_delay_millisecond(500);
+//          sl_sleeptimer_delay_millisecond(500);
           //ALB file not open
-          status = mod_som_sdio_open_processfilename_f("OBPdata");
-          if (status==0x2u){
-              status=MOD_SOM_APF_STATUS_CANNOT_OPENFILE;
-          }
-      }
+          status = mod_som_sdio_opentoread_processfilename_f("OBPdata");
+//          if (status==0x2u){
+//              status=MOD_SOM_APF_STATUS_CANNOT_OPENFILE;
+//          }
+//      }
 
       mod_som_sdio_ptr_t local_mod_som_sdio_ptr_t=
           mod_som_sdio_get_runtime_ptr_f();
       mod_som_sdio_file_ptr_t processfile_ptr =
           local_mod_som_sdio_ptr_t->processdata_file_ptr;
 
+      f_lseek (processfile_ptr->fp, 0);
       cnt=f_size(processfile_ptr->fp);
       mod_som_apf_ptr->consumer_ptr->daq_remaining_bytes   = cnt;
 

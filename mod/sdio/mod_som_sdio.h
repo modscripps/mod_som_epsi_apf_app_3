@@ -329,6 +329,14 @@ mod_som_sdio_ptr_t mod_som_sdio_get_runtime_ptr_f();
  ******************************************************************************/
 mod_som_status_t mod_som_sdio_define_filename_f(CPU_CHAR* filename);
 mod_som_status_t mod_som_sdio_open_processfilename_f(CPU_CHAR* filename);
+/*******************************************************************************
+ * @brief
+ *   a function to open a file with a name from given from the shell
+ *
+ * @return
+ *   MOD_SOM_STATUS_OK if function execute nicely
+ ******************************************************************************/
+mod_som_status_t mod_som_sdio_opentoread_processfilename_f(CPU_CHAR* filename);
 
 /*******************************************************************************
  * @brief

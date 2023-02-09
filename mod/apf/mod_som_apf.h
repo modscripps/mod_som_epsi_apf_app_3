@@ -72,6 +72,7 @@
 #define MOD_SOM_APF_DACQ_STRUCT_SIZE         25000
 //ALB test with a smaller payload
 //#define MOD_SOM_APF_DACQ_STRUCT_SIZE         2500
+#define MOD_SOM_APF_METADATA_SIZE            43
 #define MOD_SOM_APF_DACQ_TIMESTAMP_SIZE      2
 #define MOD_SOM_APF_DACQ_DISSRATE_SIZE       3
 #define MOD_SOM_APF_DACQ_PRESSURE_SIZE       4
@@ -325,6 +326,8 @@ typedef struct{
 
 //  mod_som_apf_dacq_t acq_profile;
   mod_som_apf_meta_data_t mod_som_apf_meta_data;
+
+  uint8_t * meta_data_buffer_ptr;
 
   uint8_t * dacq_ptr;
   bool dacq_full;
