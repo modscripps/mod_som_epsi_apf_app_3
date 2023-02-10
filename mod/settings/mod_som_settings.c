@@ -49,16 +49,54 @@ mod_som_status_t mod_som_settings_init_f(){
 
     //ALB read the first 2 bytes of the UserData page
 	mod_som_settings_struct.size= (uint32_t) (*userDataPage_ptr);
+  user_page_offset++;
+
+  memcpy(mod_som_settings_struct.header, \
+         (char*) &userDataPage_ptr[user_page_offset],\
+         MOD_SOM_SETTINGS_DEFAULT_STR_LENGTH);
+  user_page_offset+=MOD_SOM_SETTINGS_DEFAULT_STR_LENGTH/sizeof(uint32_t)+ \
+      (MOD_SOM_SETTINGS_DEFAULT_STR_LENGTH % sizeof(uint32_t));
+
+  memcpy(mod_som_settings_struct.mission_name, \
+         (uint8_t*) &userDataPage_ptr[user_page_offset], \
+         MOD_SOM_SETTINGS_DEFAULT_NAME_LENGTH);
+  user_page_offset+=MOD_SOM_SETTINGS_DEFAULT_NAME_LENGTH/sizeof(uint32_t)+ \
+      (MOD_SOM_SETTINGS_DEFAULT_NAME_LENGTH % sizeof(uint32_t));
+
+  memcpy(mod_som_settings_struct.vehicle_name,\
+         (uint8_t*) &userDataPage_ptr[user_page_offset],\
+         MOD_SOM_SETTINGS_DEFAULT_NAME_LENGTH);
+  user_page_offset+=MOD_SOM_SETTINGS_DEFAULT_NAME_LENGTH/sizeof(uint32_t)+ \
+      (MOD_SOM_SETTINGS_DEFAULT_NAME_LENGTH % sizeof(uint32_t));
+
+
+  memcpy(mod_som_settings_struct.firmware,\
+         (uint8_t*) &userDataPage_ptr[user_page_offset],\
+         MOD_SOM_SETTINGS_DEFAULT_FIRMWARE_LENGTH);
+  user_page_offset+=MOD_SOM_SETTINGS_DEFAULT_FIRMWARE_LENGTH/sizeof(uint32_t)+ \
+      (MOD_SOM_SETTINGS_DEFAULT_FIRMWARE_LENGTH % sizeof(uint32_t));
+
+  memcpy(mod_som_settings_struct.gitid,\
+         (uint8_t*) &userDataPage_ptr[user_page_offset],\
+         MOD_SOM_SETTINGS_DEFAULT_NAME_LENGTH);
+  user_page_offset+=MOD_SOM_SETTINGS_DEFAULT_NAME_LENGTH/sizeof(uint32_t)+ \
+      (MOD_SOM_SETTINGS_DEFAULT_NAME_LENGTH % sizeof(uint32_t));
+
+
 
 	//ALB Work around until I am sure re-using previous settings is safe.
 	//ALB right now I am ALWAYS starting from the default settings
-	mod_som_settings_struct.size=0xFFFFFFFF;
+	//mod_som_settings_struct.size=0xFFFFFFFF;
 
-	if(mod_som_settings_struct.size==0xFFFFFFFF){
+	if(strcmp(mod_som_settings_struct.gitid,
+	          MOD_SOM_SETTINGS_DEFAULT_FIRMWARE_GITID)!=0)
+	  {
 		//ALB case where the UserData page is already empty
 		//ALB
 		//ALB We will initialize the module with default settings and then save the the settings in the UserData page
 		mod_som_settings_struct.initialized_flag=false;
+
+    MSC_ErasePage(userDataPage_ptr);
 
     //ALB get the settings header
     strncpy(mod_som_settings_struct.header,
@@ -134,10 +172,10 @@ mod_som_status_t mod_som_settings_init_f(){
 #endif
 
 
-
 	}
 	else{
 	    //ALB TODO: #define the structure offsets.
+	    user_page_offset=0;
 	    mod_som_settings_struct.size=(uint32_t) (*userDataPage_ptr);
 	    user_page_offset++;
 
