@@ -353,8 +353,8 @@ mod_som_status_t mod_som_main_wake_up_f()
 //      CMU_ClockEnable(cmuClock_CORELE, true);
 
 
-//      //ALB Software reset of SDIO
-//      SDIO->CLOCKCTRL|=(_SDIO_CLOCKCTRL_SFTRSTA_MASK & SDIO_CLOCKCTRL_SFTRSTA);
+      //ALB Software reset of SDIO
+      SDIO->CLOCKCTRL|=(_SDIO_CLOCKCTRL_SFTRSTA_MASK & SDIO_CLOCKCTRL_SFTRSTA);
 
       sl_sleeptimer_delay_millisecond(delay);
 

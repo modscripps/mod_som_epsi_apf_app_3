@@ -3358,6 +3358,9 @@ mod_som_apf_status_t mod_som_apf_probe_id_f(CPU_INT16U argc,
                                       (uint32_t)local_efe_settings_ptr->sensors[1].cal,
                                       local_efe_settings_ptr->sensors[0].sn,
                                       (uint32_t)local_efe_settings_ptr->sensors[0].cal);
+       if (status==MOD_SOM_IO_STATUS_ERR_NOT_STARTED){
+           status=MOD_SOM_APF_STATUS_OK;
+       }
 
        sprintf(apf_reply_str,"%s,%s,s,%s,%lu,f,%s,%lu\r\n",
                   MOD_SOM_APF_PROBENO_STR,MOD_SOM_APF_ACK_STR,
@@ -3829,7 +3832,7 @@ mod_som_apf_status_t mod_som_apf_time_f(CPU_INT16U argc,
  ******************************************************************************/
 mod_som_apf_status_t mod_som_apf_time_status_f(){
 
-  mod_som_apf_status_t status = 0;
+  mod_som_apf_status_t status = MOD_SOM_APF_STATUS_OK;
   sl_sleeptimer_timestamp_t time;
 //  sl_sleeptimer_timestamp_t time1;
 
@@ -3865,6 +3868,9 @@ mod_som_apf_status_t mod_som_apf_time_status_f(){
 //                             MOD_SOM_APF_TIMESTAT_STR,MOD_SOM_APF_ACK_STR,
 //                             time1);
   status|=mod_som_io_print_f("%s\r\n",apf_reply_str);
+  if (status==MOD_SOM_IO_STATUS_ERR_NOT_STARTED){
+      status=MOD_SOM_APF_STATUS_OK;
+  }
 
   // sending the above string to the APF port - Mai - Nov 18, 2021
   bytes_sent = mod_som_apf_send_line_f(apf_leuart_ptr,apf_reply_str, reply_str_len);

@@ -314,7 +314,8 @@ mod_som_status_t mod_som_io_print_f(const char *format, ...){
         return mod_som_io_encode_status_f(MOD_SOM_IO_STATUS_ERR_NOT_INITIALIZED);
 
     if(!mod_som_io_struct.started_flag)
-        return mod_som_io_encode_status_f(MOD_SOM_IO_STATUS_ERR_NOT_STARTED);
+//        return mod_som_io_encode_status_f(MOD_SOM_IO_STATUS_ERR_NOT_STARTED);
+          return MOD_SOM_IO_STATUS_ERR_NOT_STARTED;
 
     mod_som_io_xfer_ptr_t mod_som_io_xfer_item_ptr;
     mod_som_status_t mod_som_status;
