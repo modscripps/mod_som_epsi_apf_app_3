@@ -11,6 +11,7 @@
 #include <limits.h>
 
 #ifdef MOD_SOM_APF_EN
+#include <string.h>  //SAN to use memcpy
 
 #include "mod_som_io.h"
 #include "math.h"
@@ -61,6 +62,24 @@ sl_status_t mystatus;
 
 #define MOD_SOM_APF_SD_FORMAT_CMMD_LIMIT 255
 #define TIME_MIN 1575205199
+
+
+/*******************************************************************************
+ * PROTOTYPES
+ ******************************************************************************/
+/*******************************************************************************
+ * @brief
+ *   produce meta data bytes (compactly) by copying byte by bytes
+ *
+ * @return
+ *   number of bytes
+ ******************************************************************************/
+
+int32_t mod_som_apf_meta_data_pack_f(uint8_t * buff, uint8_t max_buff_len);
+
+/*******************************************************************************
+ * END PROTOTYPES
+ ******************************************************************************/
 
 /*******************************************************************************
  * @brief
@@ -2652,11 +2671,27 @@ mod_som_apf_status_t mod_som_apf_daq_start_f(uint64_t profile_id){
           f_lseek (processfile_ptr->fp, 0);
 
           mod_som_apf_ptr->producer_ptr->done_sd_flag=false;
+          //SAN making packed meta_data_buff
+          mod_som_apf_ptr->producer_ptr->meta_data_buffer_byte_cnt = mod_som_apf_meta_data_pack_f(
+              mod_som_apf_ptr->producer_ptr->meta_data_buffer_ptr, sizeof(mod_som_apf_meta_data_t));
+
+          if(mod_som_apf_ptr->producer_ptr->meta_data_buffer_byte_cnt<=0)
+            status |= mod_som_apf_ptr->producer_ptr->meta_data_buffer_byte_cnt;
+          else{
+              //if sample_cnt is wrong we still can get it with simple math afterwork.
+              mod_som_sdio_write_data_f(processfile_ptr,
+                                        mod_som_apf_ptr->producer_ptr->meta_data_buffer_ptr,
+                                        mod_som_apf_ptr->producer_ptr->meta_data_buffer_byte_cnt,
+                                        &mod_som_apf_ptr->producer_ptr->done_sd_flag);
+          }
+
+          /*
           mod_som_sdio_write_data_f(processfile_ptr,
                                     (uint8_t*) &mod_som_apf_ptr->producer_ptr->
                                     mod_som_apf_meta_data,
                                     sizeof(mod_som_apf_meta_data_t),
                                     &mod_som_apf_ptr->producer_ptr->done_sd_flag);
+                                    */
 
 
       }
@@ -2761,12 +2796,29 @@ mod_som_apf_status_t mod_som_apf_daq_stop_f(){
   //ALB write new updated metadata on the SD
   //This is the only place where I update metadata_sample_cnt.
 
+
+  //SAN making packed meta_data_buff
+  mod_som_apf_ptr->producer_ptr->meta_data_buffer_byte_cnt = mod_som_apf_meta_data_pack_f(
+      mod_som_apf_ptr->producer_ptr->meta_data_buffer_ptr, sizeof(mod_som_apf_meta_data_t));
+
+  if(mod_som_apf_ptr->producer_ptr->meta_data_buffer_byte_cnt<=0)
+    status |= mod_som_apf_ptr->producer_ptr->meta_data_buffer_byte_cnt;
+  else{
+      //if sample_cnt is wrong we still can get it with simple math afterwork.
+      mod_som_sdio_write_data_f(processfile_ptr,
+                                mod_som_apf_ptr->producer_ptr->meta_data_buffer_ptr,
+                                mod_som_apf_ptr->producer_ptr->meta_data_buffer_byte_cnt,
+                                &mod_som_apf_ptr->producer_ptr->done_sd_flag);
+  }
+  /*
   //if sample_cnt is wrong we still can get it with simple math afterwork.
   mod_som_sdio_write_data_f(processfile_ptr,
                             (uint8_t*) &mod_som_apf_ptr->producer_ptr->
                             mod_som_apf_meta_data,
                             sizeof(mod_som_apf_meta_data_t),
                             &mod_som_apf_ptr->producer_ptr->done_sd_flag);
+
+  */
 
 
   //ALB disable SDIO hardware
@@ -4668,6 +4720,181 @@ void LEUART0_IRQHandler(){
 }
 
 
+/*******************************************************************************
+ * @brief
+ *   produce meta data bytes (compactly) by copying byte by bytes
+ *
+ * @return
+ *   number of bytes
+ ******************************************************************************/
+
+int32_t mod_som_apf_meta_data_pack_f(uint8_t * buff, uint8_t max_buff_len)
+{
+  int32_t buf_len = 0;
+  int32_t element_size = 0;
+  uint8_t probe_type;
+
+  /*
+   *   uint32_t daq_timestamp; //
+  uint8_t  profile_id;
+  uint16_t modsom_sn;
+  uint16_t efe_sn;
+  uint32_t firmware_rev;
+  uint16_t nfft;
+  uint16_t nfftdiag;
+  mod_som_apf_probe_t  probe1;
+  mod_som_apf_probe_t  probe2;
+  uint8_t  comm_telemetry_packet_format;
+  uint8_t  sd_format;
+  uint16_t sample_cnt;
+  uint32_t voltage;
+  uint16_t end_metadata; //always 0xFFFF;
+   */
+  // 0
+  element_size = sizeof(mod_som_apf_ptr->producer_ptr->mod_som_apf_meta_data.daq_timestamp);
+  if((buf_len+element_size)>max_buff_len)
+    return -1;
+  memcpy(buff+buf_len,&mod_som_apf_ptr->producer_ptr->mod_som_apf_meta_data.daq_timestamp,element_size);
+  buf_len += element_size;
+
+  //4
+  element_size = sizeof(mod_som_apf_ptr->producer_ptr->mod_som_apf_meta_data.profile_id);
+  if((buf_len+element_size)>max_buff_len)
+    return -1;
+  memcpy(buff+buf_len,&mod_som_apf_ptr->producer_ptr->mod_som_apf_meta_data.profile_id,element_size);
+  buf_len += element_size;
+
+  //5
+  element_size = sizeof(mod_som_apf_ptr->producer_ptr->mod_som_apf_meta_data.modsom_sn);
+  if((buf_len+element_size)>max_buff_len)
+    return -1;
+  memcpy(buff+buf_len,&mod_som_apf_ptr->producer_ptr->mod_som_apf_meta_data.modsom_sn,element_size);
+  buf_len += element_size;
+
+  //7
+  element_size = sizeof(mod_som_apf_ptr->producer_ptr->mod_som_apf_meta_data.efe_sn);
+  if((buf_len+element_size)>max_buff_len)
+    return -1;
+  memcpy(buff+buf_len,&mod_som_apf_ptr->producer_ptr->mod_som_apf_meta_data.efe_sn,element_size);
+  buf_len += element_size;
+
+  //9
+  element_size = sizeof(mod_som_apf_ptr->producer_ptr->mod_som_apf_meta_data.firmware_rev);
+  if((buf_len+element_size)>max_buff_len)
+    return -1;
+  memcpy(buff+buf_len,&mod_som_apf_ptr->producer_ptr->mod_som_apf_meta_data.firmware_rev,element_size);
+  buf_len += element_size;
+
+  //13
+  element_size = sizeof(mod_som_apf_ptr->producer_ptr->mod_som_apf_meta_data.nfft);
+  if((buf_len+element_size)>max_buff_len)
+    return -1;
+  memcpy(buff+buf_len,&mod_som_apf_ptr->producer_ptr->mod_som_apf_meta_data.nfft,element_size);
+  buf_len += element_size;
+
+  //15
+  element_size = sizeof(mod_som_apf_ptr->producer_ptr->mod_som_apf_meta_data.nfftdiag);
+  if((buf_len+element_size)>max_buff_len)
+    return -1;
+  memcpy(buff+buf_len,&mod_som_apf_ptr->producer_ptr->mod_som_apf_meta_data.nfftdiag,element_size);
+  buf_len += element_size;
+
+  //17
+//  element_size = sizeof(mod_som_apf_ptr->producer_ptr->mod_som_apf_meta_data.probe1.type);
+//  if((buf_len+element_size)>max_buff_len)
+//    return -1;
+//  memcpy(buff+buf_len,&mod_som_apf_ptr->producer_ptr->mod_som_apf_meta_data.probe1.type,element_size);
+//  buf_len += element_size;
+
+  probe_type = mod_som_apf_ptr->producer_ptr->mod_som_apf_meta_data.probe1.type;
+  element_size = 1;
+  if((buf_len+element_size)>max_buff_len)
+    return -1;
+  memcpy(buff+buf_len,&probe_type,element_size);
+  buf_len += element_size;
+
+  //18
+  element_size = sizeof(mod_som_apf_ptr->producer_ptr->mod_som_apf_meta_data.probe1.sn);
+  if((buf_len+element_size)>max_buff_len)
+    return -1;
+  memcpy(buff+buf_len,&mod_som_apf_ptr->producer_ptr->mod_som_apf_meta_data.probe1.sn,element_size);
+  buf_len += element_size;
+
+  //20
+  element_size = sizeof(mod_som_apf_ptr->producer_ptr->mod_som_apf_meta_data.probe1.cal);
+  if((buf_len+element_size)>max_buff_len)
+    return -1;
+  memcpy(buff+buf_len,&mod_som_apf_ptr->producer_ptr->mod_som_apf_meta_data.probe1.cal,element_size);
+  buf_len += element_size;
+
+  //22
+//  element_size = sizeof(mod_som_apf_ptr->producer_ptr->mod_som_apf_meta_data.probe2.type);
+//  if((buf_len+element_size)>max_buff_len)
+//    return -1;
+//  memcpy(buff+buf_len,&mod_som_apf_ptr->producer_ptr->mod_som_apf_meta_data.probe2.type,element_size);
+//  buf_len += element_size;
+
+  probe_type = mod_som_apf_ptr->producer_ptr->mod_som_apf_meta_data.probe1.type;
+  element_size = 1;
+  if((buf_len+element_size)>max_buff_len)
+    return -1;
+  memcpy(buff+buf_len,&probe_type,element_size);
+  buf_len += element_size;
+
+  //23
+  element_size = sizeof(mod_som_apf_ptr->producer_ptr->mod_som_apf_meta_data.probe2.sn);
+  if((buf_len+element_size)>max_buff_len)
+    return -1;
+  memcpy(buff+buf_len,&mod_som_apf_ptr->producer_ptr->mod_som_apf_meta_data.probe2.sn,element_size);
+  buf_len += element_size;
+
+  //25
+  element_size = sizeof(mod_som_apf_ptr->producer_ptr->mod_som_apf_meta_data.probe2.cal);
+  if((buf_len+element_size)>max_buff_len)
+    return -1;
+  memcpy(buff+buf_len,&mod_som_apf_ptr->producer_ptr->mod_som_apf_meta_data.probe2.cal,element_size);
+  buf_len += element_size;
+
+  //27
+  element_size = sizeof(mod_som_apf_ptr->producer_ptr->mod_som_apf_meta_data.comm_telemetry_packet_format);
+  if((buf_len+element_size)>max_buff_len)
+    return -1;
+  memcpy(buff+buf_len,&mod_som_apf_ptr->producer_ptr->mod_som_apf_meta_data.comm_telemetry_packet_format,element_size);
+  buf_len += element_size;
+
+  //28
+  element_size = sizeof(mod_som_apf_ptr->producer_ptr->mod_som_apf_meta_data.sd_format);
+  if((buf_len+element_size)>max_buff_len)
+    return -1;
+  memcpy(buff+buf_len,&mod_som_apf_ptr->producer_ptr->mod_som_apf_meta_data.sd_format,element_size);
+  buf_len += element_size;
+
+  //29
+  element_size = sizeof(mod_som_apf_ptr->producer_ptr->mod_som_apf_meta_data.sample_cnt);
+  if((buf_len+element_size)>max_buff_len)
+    return -1;
+  memcpy(buff+buf_len,&mod_som_apf_ptr->producer_ptr->mod_som_apf_meta_data.sample_cnt,element_size);
+  buf_len += element_size;
+
+  //31
+  element_size = sizeof(mod_som_apf_ptr->producer_ptr->mod_som_apf_meta_data.voltage);
+  if((buf_len+element_size)>max_buff_len)
+    return -1;
+  memcpy(buff+buf_len,&mod_som_apf_ptr->producer_ptr->mod_som_apf_meta_data.voltage,element_size);
+  buf_len += element_size;
+
+  //35
+  element_size = sizeof(mod_som_apf_ptr->producer_ptr->mod_som_apf_meta_data.end_metadata);
+  if((buf_len+element_size)>max_buff_len)
+    return -1;
+  memcpy(buff+buf_len,&mod_som_apf_ptr->producer_ptr->mod_som_apf_meta_data.end_metadata,element_size);
+  buf_len += element_size;
+
+  //43
+
+  return buf_len;
+
+}
 
 
 #endif

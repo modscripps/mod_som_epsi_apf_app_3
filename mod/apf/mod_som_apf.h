@@ -326,6 +326,7 @@ typedef struct{
 
 //  mod_som_apf_dacq_t acq_profile;
   mod_som_apf_meta_data_t mod_som_apf_meta_data;
+  int32_t meta_data_buffer_byte_cnt;
 
   uint8_t * meta_data_buffer_ptr;
 
