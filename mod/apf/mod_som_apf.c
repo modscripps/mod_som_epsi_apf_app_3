@@ -2671,7 +2671,7 @@ mod_som_apf_status_t mod_som_apf_daq_start_f(uint64_t profile_id){
           f_lseek (processfile_ptr->fp, 0);
 
           mod_som_apf_ptr->producer_ptr->done_sd_flag=false;
-          //SAN making packed meta_data_buff
+          //SN making packed meta_data_buff
           mod_som_apf_ptr->producer_ptr->meta_data_buffer_byte_cnt = mod_som_apf_meta_data_pack_f(
               mod_som_apf_ptr->producer_ptr->meta_data_buffer_ptr, sizeof(mod_som_apf_meta_data_t));
 
@@ -3058,7 +3058,7 @@ mod_som_apf_status_t mod_som_apf_ok_status_f(){
       mod_som_io_print_f("%s,%s,%lu\r\n",
                          MOD_SOM_APF_OKSTAT_STR,MOD_SOM_APF_NACK_STR,status);
 
-      sprintf(apf_reply_str,"%s,%s,improper wake up\r\n",
+      sprintf(apf_reply_str,"%s,%s,issue with wake up\r\n",
               MOD_SOM_APF_OKSTAT_STR,MOD_SOM_APF_NACK_STR);
       reply_str_len = strlen(apf_reply_str);
       // sending the above string to the APF port - Mai - Nov 18, 2021
@@ -3288,7 +3288,7 @@ mod_som_apf_status_t mod_som_apf_probe_id_f(CPU_INT16U argc,
   char arg6[16] = "\0";
 
   // probe_no command guide
-  char probe_no_invalid_input[] = "probe_no,nak,invalid input type";
+  char probe_no_invalid_input[] = "probe_no,nak,invalid input";
   int invalid_command = 0;
 
   // for send_string to the port
@@ -3981,7 +3981,7 @@ mod_som_apf_status_t mod_som_apf_packet_format_f(CPU_INT16U argc,
   apf_leuart_ptr = (LEUART_TypeDef *)mod_som_apf_ptr->com_prf_ptr->handle_port;
 
   char second_arg[25] = "\0";
-  char invalid_packet_format[] = "packet_format,nak,invalid format_number";
+  char invalid_packet_format[] = "packet_format,nak,invalid format";
   uint8_t mode_val = 0;
 
 
@@ -4565,6 +4565,8 @@ mod_som_apf_status_t mod_som_apf_upload_f(){
       }//ALB end of while bytes available
 
       }//ALB end if MOD_SOM_OK
+
+      mod_som_sdio_close_file_f(processfile_ptr);
       mod_som_sdio_disable_hardware_f();
 
   }//ALB end if(!mod_som_apf_ptr->daq)
@@ -4834,7 +4836,7 @@ int32_t mod_som_apf_meta_data_pack_f(uint8_t * buff, uint8_t max_buff_len)
 //  memcpy(buff+buf_len,&mod_som_apf_ptr->producer_ptr->mod_som_apf_meta_data.probe2.type,element_size);
 //  buf_len += element_size;
 
-  probe_type = mod_som_apf_ptr->producer_ptr->mod_som_apf_meta_data.probe1.type;
+  probe_type = mod_som_apf_ptr->producer_ptr->mod_som_apf_meta_data.probe2.type;
   element_size = 1;
   if((buf_len+element_size)>max_buff_len)
     return -1;

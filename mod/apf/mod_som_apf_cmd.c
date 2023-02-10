@@ -218,7 +218,7 @@ CPU_INT16S mod_som_apf_cmd_daq_f(CPU_INT16U argc,
           if (return_status == MOD_SOM_APF_STATUS_NO_CTD_DATA)
           {
               // save time string into the temporary local string - Mai - Nov 18, 2021
-              sprintf(apf_reply_str,"%s,start,%s,not valid CTD data\r\n",
+              sprintf(apf_reply_str,"%s,start,%s,no valid CTD data\r\n",
                       MOD_SOM_APF_DAQ_STR,MOD_SOM_APF_NACK_STR);
               mod_som_apf_status_t temp_status = mod_som_apf_daq_stop_f();
               status |= return_status;

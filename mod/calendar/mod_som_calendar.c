@@ -25,6 +25,9 @@ mod_som_calendar_ptr_t mod_som_calendar_ptr;
  * @brief
  *   Initialize calendar module, if shell is available, then the command table is added
  *
+ * The calendar module is also used to set time. We do NOT have a RTCC running in BU domain
+ * consequently the user needs to set the time every power up.
+ *
  * @return
  *   MOD_SOM_STATUS_OK if initialization goes well
  *   or otherwise
