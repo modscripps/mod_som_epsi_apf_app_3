@@ -110,9 +110,9 @@ CPU_INT16S mod_som_apf_cmd_daq_f(CPU_INT16U argc,
   CPU_INT16U i = argc;
 
   char third_arg[125] = "\0";
-  char daq_valid_cmd[] = "valid command: \"daq,stop\" or \"daq,start,profile_id_positive_int_below_65534\"";
-  char daq_stop_valid_cmd[] = "valid command: \"daq,stop\"r\n";
-  char daq_start_valid_cmd[] = "valid command: \"daq,start,profile_id_positive_int_below_65534\"";
+//  char daq_valid_cmd[] = "valid command: \"daq,stop\" or \"daq,start,profile_id_positive_int_below_65534\"";
+//  char daq_stop_valid_cmd[] = "valid command: \"daq,stop\"r\n";
+//  char daq_start_valid_cmd[] = "valid command: \"daq,start,profile_id_positive_int_below_65534\"";
 //  char input_cmd[125] = "\0";
 //  char err_str[125] = "\0";
 

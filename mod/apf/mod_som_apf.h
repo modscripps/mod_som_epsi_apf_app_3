@@ -247,7 +247,7 @@ mod_som_apf_probe_t, *mod_som_apf_probe_ptr_t;
 typedef struct{
 
   uint32_t daq_timestamp; //
-  uint8_t  profile_id;
+  uint16_t  profile_id;
   uint16_t modsom_sn;
   uint16_t efe_sn;
   uint32_t firmware_rev;
