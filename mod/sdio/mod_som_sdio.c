@@ -174,6 +174,7 @@ mod_som_status_t mod_som_sdio_enable_hardware_f(){
         mod_som_sdio_struct.fatfs_mounted=true;
        //
     }
+    sl_sleeptimer_delay_millisecond(delay);
     mod_som_sdio_start_f();
       //ALB CDSIGDET should trigger the toggling of the register CDTSTLLVL
 //    SDIO->HOSTCTRL1|=(_SDIO_HOSTCTRL1_CDSIGDET_MASK & SDIO_HOSTCTRL1_CDSIGDET);
@@ -1661,6 +1662,11 @@ static void mod_som_sdio_print_task_f(void *p_arg)
                         &tmp_mod_som_sdio_xfer_item_size,
                         &time_passed_msg_pend,
                         &err);
+        //SAN 20230213 check if file system is mounted
+        if(!mod_som_sdio_struct.fatfs_mounted){
+            mod_som_io_print_f("$ERR: file system not mounted\n");
+            continue;
+        }
 
         if (mod_som_sdio_struct.new_file_flag)
           {
