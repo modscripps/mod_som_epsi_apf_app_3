@@ -1924,142 +1924,268 @@ uint32_t mod_som_apf_send_line_f(LEUART_TypeDef *leuart_ptr,char * buf, uint32_t
   {
 
 
-  uint32_t dacq_size=0;
-  uint32_t mod_epsilon, mod_chi;
-  uint8_t mod_epsi_fom,mod_chi_fom;
-  uint16_t local_avg_dissrate_timestamp; //ALB nb of sec since dacq
-  FRESULT res=0;
 
 
-  mod_som_sdio_ptr_t local_mod_som_sdio_ptr_t=
-      mod_som_sdio_get_runtime_ptr_f();
+    //ALB declare the local parameters
+    uint32_t mod_epsilon, mod_chi;
+    uint8_t mod_epsi_fom,mod_chi_fom;
+    uint8_t  mod_bit_fom;
 
-  mod_som_sdio_file_ptr_t processfile_ptr =
-      local_mod_som_sdio_ptr_t->processdata_file_ptr;
+    mod_som_sdio_ptr_t local_mod_som_sdio_ptr_t=
+        mod_som_sdio_get_runtime_ptr_f();
 
-  float local_epsilon   = log10(*curr_epsilon_ptr);
-  float local_chi       = log10(*curr_chi_ptr);
-  float local_epsi_fom  = *curr_fom_epsi_ptr;
-  float local_chi_fom   = *curr_fom_chi_ptr;
-
-
-  uint8_t  mod_bit_dissrates[MOD_SOM_APF_PRODUCER_DISSRATE_RES] = {0};
-  uint8_t  mod_bit_fom;
-
-  float min_dissrate=log10(MOD_SOM_APF_PRODUCER_MIN_DISSRATE);
-  float max_dissrate=log10(MOD_SOM_APF_PRODUCER_MAX_DISSRATE);
-
-  float min_fom=MOD_SOM_APF_PRODUCER_MIN_FOM;
-  float max_fom=MOD_SOM_APF_PRODUCER_MAX_FOM;
+    mod_som_sdio_file_ptr_t processfile_ptr =
+        local_mod_som_sdio_ptr_t->processdata_file_ptr;
 
 
+    uint16_t  local_avg_dissrate_timestamp; //ALB nb of sec since dacq
+    uint8_t   mod_bit_dissrates[MOD_SOM_APF_PRODUCER_DISSRATE_RES] = {0};
+    uint32_t  dacq_size=0;
+    uint32_t  dacq_size1=0;
+    uint32_t  dacq_size2=0;
+    uint8_t * dacq_ptr=mod_som_apf_ptr->producer_ptr->dacq_ptr;
 
-  //ALB decimate timestamps and store it
-  // dissrate timestamp - dacq start timestamp -> 2bytes (65000 sec)
-  local_avg_dissrate_timestamp =(uint16_t)((*curr_avg_timestamp_ptr -
-      (uint64_t)(mod_som_apf_ptr->producer_ptr->
-                                   mod_som_apf_meta_data.daq_timestamp)*1000)/1000);
+
+    //ALB store the dissrate and foco values in local params.
+    float local_epsilon        = log10(*curr_epsilon_ptr);
+    float local_chi            = log10(*curr_chi_ptr);
+    float local_epsi_fom       = *curr_fom_epsi_ptr;
+    float local_chi_fom        = *curr_fom_chi_ptr;
 
 
-  //ALB min out the local epsilon and chi to -12
-  local_epsilon = MAX(local_epsilon,min_dissrate);
-  local_chi     = MAX(local_chi,min_dissrate);
 
-  //ALB max out the local epsilon and chi to -3
-  local_epsilon = MIN(local_epsilon,max_dissrate);
-  local_chi     = MIN(local_chi,max_dissrate);
 
-  //ALB min out the local fom to 0
-  local_epsi_fom     = MAX(local_epsi_fom,min_fom);
-  local_chi_fom      = MAX(local_chi_fom,min_fom);
+    //ALB store the max min dissrate and foco values in local params.
+    //ALB TODO this could be done with macro and not waste CPU time
+    float min_dissrate = log10(MOD_SOM_APF_PRODUCER_MIN_DISSRATE);
+    float max_dissrate = log10(MOD_SOM_APF_PRODUCER_MAX_DISSRATE);
+    float min_fom      = MOD_SOM_APF_PRODUCER_MIN_FOM;
+    float max_fom      = MOD_SOM_APF_PRODUCER_MAX_FOM;
 
-  //ALB max out the local fom to 10
-  local_epsi_fom     = MIN(local_epsi_fom,max_fom);
-  local_chi_fom      = MIN(local_chi_fom,max_fom);
 
-  //ALB decimate log10 epsilon with 12 bits (3 bytes)
-  mod_epsilon  = (uint32_t) ceil(local_epsilon*
-           mod_som_apf_ptr->producer_ptr->decim_coef.dissrate_per_bit+
-           mod_som_apf_ptr->producer_ptr->decim_coef.dissrate_counts_at_origin);
+    //ALB decimate timestamps and store it
+    //ALB dissrate timestamp - dacq start timestamp -> 2bytes (65000 sec)
+    local_avg_dissrate_timestamp =(uint16_t)((*curr_avg_timestamp_ptr -
+        (uint64_t)(mod_som_apf_ptr->producer_ptr->
+            mod_som_apf_meta_data.daq_timestamp)*1000)/1000);
 
-  //ALB decimate log10 chi with 12 bits (3 bytes)
-  mod_chi      = (uint32_t) ceil(local_chi*
-           mod_som_apf_ptr->producer_ptr->decim_coef.dissrate_per_bit+
-           mod_som_apf_ptr->producer_ptr->decim_coef.dissrate_counts_at_origin);
+    //ALB decimate dissrates,
+    //ALB first make sure it is above the min values
+    local_epsilon = MAX(local_epsilon,min_dissrate);
+    local_chi     = MAX(local_chi,min_dissrate);
 
-  //ALB decimate fom with 8 bits (1 bytes)
-  mod_epsi_fom  = (uint8_t) ceil(local_epsi_fom*
-                     mod_som_apf_ptr->producer_ptr->decim_coef.fom_per_bit+
-                     mod_som_apf_ptr->producer_ptr->decim_coef.fom_counts_at_origin) ;
-  mod_chi_fom   = (uint8_t) ceil(local_chi_fom*
+    //ALB then make sure it is below the max values
+    local_epsilon = MIN(local_epsilon,max_dissrate);
+    local_chi     = MIN(local_chi,max_dissrate);
+
+    //ALB min out the local fom to 0
+    local_epsi_fom     = MAX(local_epsi_fom,min_fom);
+    local_chi_fom      = MAX(local_chi_fom,min_fom);
+    //ALB max out the local fom to 10
+    local_epsi_fom     = MIN(local_epsi_fom,max_fom);
+    local_chi_fom      = MIN(local_chi_fom,max_fom);
+
+
+    //ALB then digitize on a 12bits number
+    mod_epsilon  = (uint32_t) ceil(local_epsilon*
+             mod_som_apf_ptr->producer_ptr->decim_coef.dissrate_per_bit+
+             mod_som_apf_ptr->producer_ptr->decim_coef.dissrate_counts_at_origin);
+
+    mod_chi      = (uint32_t) ceil(local_chi*
+             mod_som_apf_ptr->producer_ptr->decim_coef.dissrate_per_bit+
+             mod_som_apf_ptr->producer_ptr->decim_coef.dissrate_counts_at_origin);
+
+
+    //ALB then store epsi and chi in a 3 bytes array
+    mod_bit_dissrates[0]= (uint8_t) (mod_epsilon>>4);
+    mod_bit_dissrates[1]= (uint8_t) (mod_epsilon << 4);
+    mod_bit_dissrates[1]= (uint8_t) (mod_bit_dissrates[1] | (mod_chi>>8));
+    mod_bit_dissrates[2]= (uint8_t) mod_chi;
+
+    //ALB decimate fom with 8 bits (1 bytes)
+    mod_epsi_fom  = (uint8_t) ceil(local_epsi_fom*
                        mod_som_apf_ptr->producer_ptr->decim_coef.fom_per_bit+
                        mod_som_apf_ptr->producer_ptr->decim_coef.fom_counts_at_origin) ;
+    mod_chi_fom   = (uint8_t) ceil(local_chi_fom*
+                         mod_som_apf_ptr->producer_ptr->decim_coef.fom_per_bit+
+                         mod_som_apf_ptr->producer_ptr->decim_coef.fom_counts_at_origin) ;
 
-  //ALB bit shifting to build mod_bit_fom.
-  mod_bit_fom = (mod_epsi_fom<<4) + mod_chi_fom;
-
-  //ALB bit shifting to mod_bit_dissrates.
-  mod_bit_dissrates[0]= (uint8_t) (mod_epsilon>>4);
-  mod_bit_dissrates[1]= (uint8_t) (mod_epsilon<<4);
-  mod_bit_dissrates[1]= (uint8_t) (mod_bit_dissrates[1] & (mod_chi>>8));
-  mod_bit_dissrates[2]= (uint8_t) mod_chi;
+    //ALB bit shifting to build mod_bit_fom.
+    mod_bit_fom = (mod_epsi_fom<<4) + mod_chi_fom;
 
 
-  //ALB copy the data in the acq profile structure
-  //ALB TODO check the dacq_ptr update and its value when out of that function
+    //ALB copy the data in the acq profile structure
+    //ALB TODO check the dacq_ptr update and its value when out of that function
+    memcpy(dacq_ptr,
+           &local_avg_dissrate_timestamp,
+           MOD_SOM_APF_DACQ_TIMESTAMP_SIZE);
+    dacq_ptr+=MOD_SOM_APF_DACQ_TIMESTAMP_SIZE;
+    memcpy(dacq_ptr,
+           curr_avg_pressure_ptr,
+           MOD_SOM_APF_DACQ_PRESSURE_SIZE);
+    dacq_ptr+=MOD_SOM_APF_DACQ_PRESSURE_SIZE;
+    memcpy(dacq_ptr,
+           &mod_bit_dissrates,
+           MOD_SOM_APF_PRODUCER_DISSRATE_RES);
+    dacq_ptr+=MOD_SOM_APF_PRODUCER_DISSRATE_RES;
+    memcpy(dacq_ptr,
+           &mod_bit_fom,
+           MOD_SOM_APF_PRODUCER_FOM_RES);
+    dacq_ptr+=MOD_SOM_APF_PRODUCER_FOM_RES;
+
+    dacq_size1=dacq_ptr-mod_som_apf_ptr->producer_ptr->dacq_ptr;
+
+    mod_som_apf_ptr->producer_ptr->done_sd_flag=false;
+    mod_som_sdio_write_data_f(processfile_ptr,
+                              mod_som_apf_ptr->producer_ptr->dacq_ptr,
+                              dacq_size1,
+                              &mod_som_apf_ptr->producer_ptr->done_sd_flag);
 
 
-//  memcpy(dacq_ptr,
-//         &local_avg_dissrate_timestamp,
-//         MOD_SOM_APF_DACQ_TIMESTAMP_SIZE);
-//  dacq_ptr+=MOD_SOM_APF_DACQ_TIMESTAMP_SIZE;
+    while(!mod_som_apf_ptr->producer_ptr->done_sd_flag){};
+    dacq_size=dacq_size1;
 
-//  memcpy(dacq_ptr,
-//         curr_avg_pressure_ptr,
-//         MOD_SOM_APF_DACQ_PRESSURE_SIZE);
-//  dacq_ptr+=MOD_SOM_APF_DACQ_PRESSURE_SIZE;
-//  memcpy(dacq_ptr,
-//         &mod_bit_dissrates,
-//         MOD_SOM_APF_PRODUCER_DISSRATE_RES);
-//  dacq_ptr+=MOD_SOM_APF_PRODUCER_DISSRATE_RES;
-//  memcpy(dacq_ptr,
-//         &mod_bit_fom,
-//         MOD_SOM_APF_PRODUCER_FOM_RES);
+    return dacq_size;
+    ////////// old F1
+
+
+//  uint32_t dacq_size=0;
+//  uint32_t mod_epsilon, mod_chi;
+//  uint8_t mod_epsi_fom,mod_chi_fom;
+//  uint16_t local_avg_dissrate_timestamp; //ALB nb of sec since dacq
+//  FRESULT res=0;
 //
-//  dacq_size=dacq_ptr-&mod_som_apf_ptr->producer_ptr->acq_profile.data_acq[0];
-  mod_som_apf_ptr->producer_ptr->done_sd_flag=false;
-  mod_som_sdio_write_data_f(processfile_ptr,
-                                 (uint8_t*) &local_avg_dissrate_timestamp,
-                                 MOD_SOM_APF_DACQ_TIMESTAMP_SIZE,
-                                 &mod_som_apf_ptr->producer_ptr->done_sd_flag);
-  dacq_size+=MOD_SOM_APF_DACQ_TIMESTAMP_SIZE;
-  while(!mod_som_apf_ptr->producer_ptr->done_sd_flag){};
-  mod_som_apf_ptr->producer_ptr->done_sd_flag=false;
-mod_som_sdio_write_data_f(processfile_ptr,
-                                 (uint8_t*) curr_avg_pressure_ptr,
-                                 MOD_SOM_APF_DACQ_PRESSURE_SIZE,
-                                 &mod_som_apf_ptr->producer_ptr->done_sd_flag);
-  dacq_size+=MOD_SOM_APF_DACQ_PRESSURE_SIZE;
-  while(!mod_som_apf_ptr->producer_ptr->done_sd_flag){};
-  mod_som_apf_ptr->producer_ptr->done_sd_flag=false;
-  mod_som_sdio_write_data_f(processfile_ptr,
-                                 (uint8_t*) &mod_bit_dissrates,
-                                 MOD_SOM_APF_PRODUCER_DISSRATE_RES,
-                                 &mod_som_apf_ptr->producer_ptr->done_sd_flag);
-  dacq_size+=MOD_SOM_APF_PRODUCER_DISSRATE_RES;
-  while(!mod_som_apf_ptr->producer_ptr->done_sd_flag){};
-  mod_som_apf_ptr->producer_ptr->done_sd_flag=false;
-  mod_som_sdio_write_data_f(processfile_ptr,
-                                 (uint8_t*) &mod_bit_fom,
-                                 MOD_SOM_APF_PRODUCER_FOM_RES,
-                                 &mod_som_apf_ptr->producer_ptr->done_sd_flag);
-  while(!mod_som_apf_ptr->producer_ptr->done_sd_flag){};
-  dacq_size+=MOD_SOM_APF_PRODUCER_FOM_RES;
+//
+//  mod_som_sdio_ptr_t local_mod_som_sdio_ptr_t=
+//      mod_som_sdio_get_runtime_ptr_f();
+//
+//  mod_som_sdio_file_ptr_t processfile_ptr =
+//      local_mod_som_sdio_ptr_t->processdata_file_ptr;
+//
+//  float local_epsilon   = log10(*curr_epsilon_ptr);
+//  float local_chi       = log10(*curr_chi_ptr);
+//  float local_epsi_fom  = *curr_fom_epsi_ptr;
+//  float local_chi_fom   = *curr_fom_chi_ptr;
+//
+//
+//  uint8_t  mod_bit_dissrates[MOD_SOM_APF_PRODUCER_DISSRATE_RES] = {0};
+//  uint8_t  mod_bit_fom;
+//
+//  float min_dissrate=log10(MOD_SOM_APF_PRODUCER_MIN_DISSRATE);
+//  float max_dissrate=log10(MOD_SOM_APF_PRODUCER_MAX_DISSRATE);
+//
+//  float min_fom=MOD_SOM_APF_PRODUCER_MIN_FOM;
+//  float max_fom=MOD_SOM_APF_PRODUCER_MAX_FOM;
+//
+//
+//
+//  //ALB decimate timestamps and store it
+//  // dissrate timestamp - dacq start timestamp -> 2bytes (65000 sec)
+//  local_avg_dissrate_timestamp =(uint16_t)((*curr_avg_timestamp_ptr -
+//      (uint64_t)(mod_som_apf_ptr->producer_ptr->
+//                                   mod_som_apf_meta_data.daq_timestamp)*1000)/1000);
+//
+//
+//  //ALB min out the local epsilon and chi to -12
+//  local_epsilon = MAX(local_epsilon,min_dissrate);
+//  local_chi     = MAX(local_chi,min_dissrate);
+//
+//  //ALB max out the local epsilon and chi to -3
+//  local_epsilon = MIN(local_epsilon,max_dissrate);
+//  local_chi     = MIN(local_chi,max_dissrate);
+//
+//  //ALB min out the local fom to 0
+//  local_epsi_fom     = MAX(local_epsi_fom,min_fom);
+//  local_chi_fom      = MAX(local_chi_fom,min_fom);
+//
+//  //ALB max out the local fom to 10
+//  local_epsi_fom     = MIN(local_epsi_fom,max_fom);
+//  local_chi_fom      = MIN(local_chi_fom,max_fom);
+//
+//  //ALB decimate log10 epsilon with 12 bits (3 bytes)
+//  mod_epsilon  = (uint32_t) ceil(local_epsilon*
+//           mod_som_apf_ptr->producer_ptr->decim_coef.dissrate_per_bit+
+//           mod_som_apf_ptr->producer_ptr->decim_coef.dissrate_counts_at_origin);
+//
+//  //ALB decimate log10 chi with 12 bits (3 bytes)
+//  mod_chi      = (uint32_t) ceil(local_chi*
+//           mod_som_apf_ptr->producer_ptr->decim_coef.dissrate_per_bit+
+//           mod_som_apf_ptr->producer_ptr->decim_coef.dissrate_counts_at_origin);
+//
+//  //ALB decimate fom with 8 bits (1 bytes)
+//  mod_epsi_fom  = (uint8_t) ceil(local_epsi_fom*
+//                     mod_som_apf_ptr->producer_ptr->decim_coef.fom_per_bit+
+//                     mod_som_apf_ptr->producer_ptr->decim_coef.fom_counts_at_origin) ;
+//  mod_chi_fom   = (uint8_t) ceil(local_chi_fom*
+//                       mod_som_apf_ptr->producer_ptr->decim_coef.fom_per_bit+
+//                       mod_som_apf_ptr->producer_ptr->decim_coef.fom_counts_at_origin) ;
+//
+//  //ALB bit shifting to build mod_bit_fom.
+//  mod_bit_fom = (mod_epsi_fom<<4) + mod_chi_fom;
+//
+//  //ALB bit shifting to mod_bit_dissrates.
+//  mod_bit_dissrates[0]= (uint8_t) (mod_epsilon>>4);
+//  mod_bit_dissrates[1]= (uint8_t) (mod_epsilon<<4);
+//  mod_bit_dissrates[1]= (uint8_t) (mod_bit_dissrates[1] & (mod_chi>>8));
+//  mod_bit_dissrates[2]= (uint8_t) mod_chi;
+//
+//
+//  //ALB copy the data in the acq profile structure
+//  //ALB TODO check the dacq_ptr update and its value when out of that function
+//
+//
+////  memcpy(dacq_ptr,
+////         &local_avg_dissrate_timestamp,
+////         MOD_SOM_APF_DACQ_TIMESTAMP_SIZE);
+////  dacq_ptr+=MOD_SOM_APF_DACQ_TIMESTAMP_SIZE;
+//
+////  memcpy(dacq_ptr,
+////         curr_avg_pressure_ptr,
+////         MOD_SOM_APF_DACQ_PRESSURE_SIZE);
+////  dacq_ptr+=MOD_SOM_APF_DACQ_PRESSURE_SIZE;
+////  memcpy(dacq_ptr,
+////         &mod_bit_dissrates,
+////         MOD_SOM_APF_PRODUCER_DISSRATE_RES);
+////  dacq_ptr+=MOD_SOM_APF_PRODUCER_DISSRATE_RES;
+////  memcpy(dacq_ptr,
+////         &mod_bit_fom,
+////         MOD_SOM_APF_PRODUCER_FOM_RES);
+////
+////  dacq_size=dacq_ptr-&mod_som_apf_ptr->producer_ptr->acq_profile.data_acq[0];
+//  mod_som_apf_ptr->producer_ptr->done_sd_flag=false;
+//  mod_som_sdio_write_data_f(processfile_ptr,
+//                                 (uint8_t*) &local_avg_dissrate_timestamp,
+//                                 MOD_SOM_APF_DACQ_TIMESTAMP_SIZE,
+//                                 &mod_som_apf_ptr->producer_ptr->done_sd_flag);
+//  dacq_size+=MOD_SOM_APF_DACQ_TIMESTAMP_SIZE;
+//  while(!mod_som_apf_ptr->producer_ptr->done_sd_flag){};
+//  mod_som_apf_ptr->producer_ptr->done_sd_flag=false;
+//mod_som_sdio_write_data_f(processfile_ptr,
+//                                 (uint8_t*) curr_avg_pressure_ptr,
+//                                 MOD_SOM_APF_DACQ_PRESSURE_SIZE,
+//                                 &mod_som_apf_ptr->producer_ptr->done_sd_flag);
+//  dacq_size+=MOD_SOM_APF_DACQ_PRESSURE_SIZE;
+//  while(!mod_som_apf_ptr->producer_ptr->done_sd_flag){};
+//  mod_som_apf_ptr->producer_ptr->done_sd_flag=false;
+//  mod_som_sdio_write_data_f(processfile_ptr,
+//                                 (uint8_t*) &mod_bit_dissrates,
+//                                 MOD_SOM_APF_PRODUCER_DISSRATE_RES,
+//                                 &mod_som_apf_ptr->producer_ptr->done_sd_flag);
+//  dacq_size+=MOD_SOM_APF_PRODUCER_DISSRATE_RES;
+//  while(!mod_som_apf_ptr->producer_ptr->done_sd_flag){};
+//  mod_som_apf_ptr->producer_ptr->done_sd_flag=false;
+//  mod_som_sdio_write_data_f(processfile_ptr,
+//                                 (uint8_t*) &mod_bit_fom,
+//                                 MOD_SOM_APF_PRODUCER_FOM_RES,
+//                                 &mod_som_apf_ptr->producer_ptr->done_sd_flag);
+//  while(!mod_som_apf_ptr->producer_ptr->done_sd_flag){};
+//  dacq_size+=MOD_SOM_APF_PRODUCER_FOM_RES;
+//
+//  if(res!=FR_OK){
+//      return -1;
+//  }
+//  return dacq_size;
 
-  if(res!=FR_OK){
-      return -1;
-  }
-  return dacq_size;
 }
 
 
@@ -2328,9 +2454,10 @@ mod_som_sdio_write_data_f(processfile_ptr,
              MOD_SOM_APF_PRODUCER_FOCO_RES);
       dacq_ptr+=MOD_SOM_APF_PRODUCER_FOCO_RES;
 
-      local_shear_avg_fft   = log10(*(curr_shear_avg_spectra_ptr+i));
-      local_temp_avg_fft    = log10(*(curr_temp_avg_spectra_ptr+i));
-      local_accel_avg_fft   = log10(*(curr_accel_avg_spectra_ptr+i));
+      //ALB i+i-1 = every other foco
+      local_shear_avg_fft   = log10(*(curr_shear_avg_spectra_ptr+2*i-1));
+      local_temp_avg_fft    = log10(*(curr_temp_avg_spectra_ptr+2*i-1));
+      local_accel_avg_fft   = log10(*(curr_accel_avg_spectra_ptr+2*i-1));
 
   }
   dacq_size2=dacq_ptr-mod_som_apf_ptr->producer_ptr->dacq_ptr;
@@ -2341,6 +2468,7 @@ mod_som_sdio_write_data_f(processfile_ptr,
                             dacq_size2,
                             &mod_som_apf_ptr->producer_ptr->done_sd_flag);
   dacq_size=dacq_size1+dacq_size2;
+  while(!mod_som_apf_ptr->producer_ptr->done_sd_flag){};
 
   return dacq_size;
 
