@@ -1647,18 +1647,14 @@ uint32_t mod_som_apf_convert_string_f(char* data_str_input, uint32_t * bytes_rec
         if (*local_str_input_ptr >= 'A' && *local_str_input_ptr <= 'Z')
           {
               *local_str_output_ptr = *local_str_input_ptr+32;
-              printf("outptstr: %c\n", *local_str_output_ptr);
           }
         else if(*local_str_input_ptr==',')
           {
-            printf("outptstr: %c\n", *local_str_output_ptr);
             *local_str_output_ptr = ' ';
           }
         else if(*local_str_input_ptr==' ')
           {
             //CAP adding hyphen instead of space when reading the input
-
-            printf("outputstr: %c\n", *local_str_output_ptr);
             *local_str_output_ptr = '-';
           }
         else
@@ -1666,7 +1662,6 @@ uint32_t mod_som_apf_convert_string_f(char* data_str_input, uint32_t * bytes_rec
         local_str_input_ptr++;
         local_str_output_ptr++;
     }
-    printf("outptstr: %s\n", data_str_output);
 
 
     return retval;
@@ -3416,7 +3411,7 @@ mod_som_apf_status_t mod_som_apf_probe_id_f(CPU_INT16U argc,
   char arg6[16] = "\0";
 
   // probe_no command guide
-  char probe_no_invalid_input[] = "probe_no,nak,invalid input";
+  char probe_no_invalid_input[] = "probe_no,nak,invalid input(s)";
   int invalid_command = 0;
 
   // for send_string to the port
@@ -3815,15 +3810,15 @@ mod_som_apf_status_t mod_som_apf_gate_f(CPU_INT16U argc,
 
 
   if (argc == 2) // valid command: "gate on gate off\r"
-  {
+    {
 
       if (strcmp(argv[1],"on")==0){
-      //ALB turn on RS232 driver
+          //ALB turn on RS232 driver
           mod_som_main_com_on_f();
           sprintf(apf_reply_str,"%s,on,%s\r\n",
                   MOD_SOM_APF_GATE_STR,MOD_SOM_APF_ACK_STR);
       }else if (strcmp(argv[1],"off")==0){
-      //ALB turn off RS232 driver
+          //ALB turn off RS232 driver
           mod_som_main_com_off_f();
           sprintf(apf_reply_str,"%s,off,%s\r\n",
                   MOD_SOM_APF_GATE_STR,MOD_SOM_APF_ACK_STR);
@@ -3832,31 +3827,31 @@ mod_som_apf_status_t mod_som_apf_gate_f(CPU_INT16U argc,
           status=MOD_SOM_APF_STATUS_WRONG_ARG;
       }
 
-      }else{
-          //ALB ERROR
-          status=MOD_SOM_APF_STATUS_WRONG_ARG;
-      }
+    }else{
+        //ALB ERROR
+        status=MOD_SOM_APF_STATUS_WRONG_ARG;
+    }
 
 
-      if (status==MOD_SOM_APF_STATUS_OK){
-          status|=mod_som_io_print_f("%s,%s\r\n",
-                                     MOD_SOM_APF_GATE_STR,MOD_SOM_APF_ACK_STR);
-          // save to the local string for sending out - Mai-Nov 18, 2021
-      }else{
-          status|=mod_som_io_print_f("%s,%s,%lu\r\n",
-                                     MOD_SOM_APF_GATE_STR,MOD_SOM_APF_ACK_STR,
-                                     status);
-          // save to the local string for sending out - Mai-Nov 18, 2021
-          sprintf(apf_reply_str,"%s,%s,%lu\r\n",
-                  MOD_SOM_APF_GATE_STR,MOD_SOM_APF_ACK_STR,
-                  status);
-     }
-      reply_str_len = strlen(apf_reply_str);
-      // sending the above string to the APF port - Mai - Nov 18, 2021
-      bytes_sent = mod_som_apf_send_line_f(apf_leuart_ptr,apf_reply_str, reply_str_len);
-      if(bytes_sent==0){
-          //TODO handle the error
-      }
+  if (status==MOD_SOM_APF_STATUS_OK){
+      status|=mod_som_io_print_f("%s,%s\r\n",
+                                 MOD_SOM_APF_GATE_STR,MOD_SOM_APF_ACK_STR);
+      // save to the local string for sending out - Mai-Nov 18, 2021
+  }else{
+      status|=mod_som_io_print_f("%s,%s,%lu\r\n",
+                                 MOD_SOM_APF_GATE_STR,MOD_SOM_APF_ACK_STR,
+                                 status);
+      // save to the local string for sending out - Mai-Nov 18, 2021
+      sprintf(apf_reply_str,"%s,%s,%lu\r\n",
+              MOD_SOM_APF_GATE_STR,MOD_SOM_APF_ACK_STR,
+              status);
+  }
+  reply_str_len = strlen(apf_reply_str);
+  // sending the above string to the APF port - Mai - Nov 18, 2021
+  bytes_sent = mod_som_apf_send_line_f(apf_leuart_ptr,apf_reply_str, reply_str_len);
+  if(bytes_sent==0){
+      //TODO handle the error
+  }
 
 
   return mod_som_apf_encode_status_f(status);
@@ -3889,6 +3884,7 @@ mod_som_apf_status_t mod_som_apf_gate_f(CPU_INT16U argc,
  *       or "time,nak,error-description\r\n"
  * @return
  *   MOD_SOM_APF_STATUS_OK if function execute nicely
+ *   TODO move this to CMD portion
  ******************************************************************************/
 mod_som_apf_status_t mod_som_apf_time_f(CPU_INT16U argc,
                                         CPU_CHAR *argv[]){
@@ -3914,7 +3910,7 @@ mod_som_apf_status_t mod_som_apf_time_f(CPU_INT16U argc,
   char second_arg[25] = "\0";
  // uint64_t time_unix = 0;
 //  char time_valid_cmmd[] = "time,posixtime(>01-01-2020)"; // unixEpoch time range [1575205200  12345678901] (from Jan,1 2020)
-  char invalid_time_cmmd[] = "time, nak, wrong input time";
+  char invalid_time_cmmd[] = "time,nak,invalid input(s)";
   int invalid_command = 0;
 
   switch(argc)

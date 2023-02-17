@@ -20,6 +20,7 @@
 #include  <common/source/shell/shell_priv.h>
 
 #include <ctype.h>
+#include <string.h>
 //ALB
 
 //------------------------------------------------------------------------------
@@ -127,7 +128,7 @@ CPU_INT16S mod_som_apf_cmd_daq_f(CPU_INT16U argc,
     case 1: // input: "daq" -- invalid command, not enough information
       // save time string into the temporary local string - Mai - Nov 18, 2021
       //ALB changing to %s,%s
-      sprintf(apf_reply_str,"%s,%s,wrong arguments.\r\n",MOD_SOM_APF_DAQ_STR,MOD_SOM_APF_NACK_STR);
+      sprintf(apf_reply_str,"%s,%s,invalid input(s)\r\n",MOD_SOM_APF_DAQ_STR,MOD_SOM_APF_NACK_STR);
       status |= MOD_SOM_APF_STATUS_WRONG_ARG;
       break;
     case 2: // input: "daq,stop", if "daq,start" or "daq,somethingelse" -> error
@@ -148,14 +149,14 @@ CPU_INT16S mod_som_apf_cmd_daq_f(CPU_INT16U argc,
       else if (!Str_Cmp(argv[i], "start"))  // "daq,start" => missing profile id
       {
           // save time string into the temporary local string - Mai - Dec 3, 2021
-          sprintf(apf_reply_str,"%s,start,%s,wrong arguments\r\n",MOD_SOM_APF_DAQ_STR,MOD_SOM_APF_NACK_STR);
+          sprintf(apf_reply_str,"%s,start,%s,invalid input(s)\r\n",MOD_SOM_APF_DAQ_STR,MOD_SOM_APF_NACK_STR);
           status |= MOD_SOM_APF_STATUS_WRONG_ARG;
           break;
       } // end of if (!Str_Cmp(argv[i], "start"))
       else  // not "daq stop" nor "daq start"
       {
               // save time string into the temporary local string - Mai - Nov 18, 2021
-              sprintf(apf_reply_str,"%s,%s,wrong arguments\r\n",MOD_SOM_APF_DAQ_STR,MOD_SOM_APF_NACK_STR);
+              sprintf(apf_reply_str,"%s,%s,invalid input(s)\r\n",MOD_SOM_APF_DAQ_STR,MOD_SOM_APF_NACK_STR);
               status |= MOD_SOM_APF_STATUS_ERR;
       }
       break;
@@ -164,7 +165,7 @@ CPU_INT16S mod_som_apf_cmd_daq_f(CPU_INT16U argc,
       if (!Str_Cmp(argv[i], "stop"))  // daq stop arg => wrong stop command
       {
           // save time string into the temporary local string - Mai - Nov 18, 2021
-          sprintf(apf_reply_str,"%s,stop,%s,wrong command\r\n",MOD_SOM_APF_DAQ_STR,MOD_SOM_APF_NACK_STR);
+          sprintf(apf_reply_str,"%s,stop,%s,invalid input(s)\r\n",MOD_SOM_APF_DAQ_STR,MOD_SOM_APF_NACK_STR);
           status |= MOD_SOM_APF_STATUS_ERR;
           break;
       }
@@ -176,7 +177,7 @@ CPU_INT16S mod_som_apf_cmd_daq_f(CPU_INT16U argc,
           if(isalpha(third_arg[0])) // daq start not_integer
           {
               // save time string into the temporary local string - Mai - 11 May, 2022
-              sprintf(apf_reply_str,"%s,start,%s,wrong arguments\r\n",
+              sprintf(apf_reply_str,"%s,start,%s,invalid input(s)\r\n",
                       MOD_SOM_APF_DAQ_STR,MOD_SOM_APF_NACK_STR);
               status |= MOD_SOM_APF_STATUS_WRONG_ARG;
               break;
@@ -190,7 +191,7 @@ CPU_INT16S mod_som_apf_cmd_daq_f(CPU_INT16U argc,
           if (profile_id < 0 || profile_id > MOD_SOM_APF_DAQ_PROFILE_LIMIT)
           {
                  // save time string into the temporary local string - Mai - Nov 18, 2021
-                 sprintf(apf_reply_str,"%s,start,%s,wrong arguments\r\n",
+                 sprintf(apf_reply_str,"%s,start,%s,invalid input(s)\r\n",
                          MOD_SOM_APF_DAQ_STR,MOD_SOM_APF_NACK_STR,
                          MOD_SOM_APF_DAQ_PROFILE_LIMIT);
                  status |= MOD_SOM_APF_STATUS_WRONG_ARG;
@@ -234,7 +235,7 @@ CPU_INT16S mod_som_apf_cmd_daq_f(CPU_INT16U argc,
       break;
     default:  // more than 3 argc
       // save time string into the temporary local string - Mai - Nov 18, 2021
-      sprintf(apf_reply_str,"%s,%s,wrong arguments\r\n",
+      sprintf(apf_reply_str,"%s,%s,invalid input(s)\r\n",
               MOD_SOM_APF_DAQ_STR,MOD_SOM_APF_NACK_STR);
       status |= MOD_SOM_APF_STATUS_WRONG_ARG;
      break;
@@ -298,6 +299,16 @@ CPU_INT16S mod_som_apf_cmd_daq_status_f(CPU_INT16U argc,
 
     if (local_apf_runtime_ptr->sleep_flag){
         status=MOD_SOM_APF_STATUS_OK;
+    }else if(argc>1){ //SAN 2023 02 16 added to ensure zero arguments
+        sprintf(apf_reply_str,"%s,%s,%s\r\n",
+                MOD_SOM_APF_DAQSTAT_STR,MOD_SOM_APF_NACK_STR,"invalid input(s)");
+        reply_str_len = strlen(apf_reply_str);
+        apf_leuart_ptr =(LEUART_TypeDef *) mod_som_apf_get_port_ptr_f();
+        mod_som_apf_send_line_f(apf_leuart_ptr,apf_reply_str, reply_str_len);
+        //            if (bytes_sent==reply_str_len){
+        //                status = MOD_SOM_APF_STATUS_OK;
+        //            }
+        return SHELL_EXEC_ERR;
     }else{
 
     if(mod_som_apf_get_daq_f()){ // I comment out this block - mnbui Nov 29, 2021
@@ -351,9 +362,23 @@ CPU_INT16S mod_som_apf_cmd_fwrev_status_f(CPU_INT16U argc,
 
   mod_som_apf_status_t status;
   mod_som_apf_ptr_t local_apf_runtime_ptr = mod_som_apf_get_runtime_ptr_f();
+  char apf_reply_str[MOD_SOM_SHELL_INPUT_BUF_SIZE]="\0";
+  size_t reply_str_len = 0;
+  //uint32_t bytes_sent;
+  LEUART_TypeDef* apf_leuart_ptr;
 
   if (local_apf_runtime_ptr->sleep_flag){
       status=MOD_SOM_APF_STATUS_OK;
+  }else if(argc>1){ //SAN 2023 02 16 added to ensure zero arguments
+      sprintf(apf_reply_str,"%s,%s,%s\r\n",
+              MOD_SOM_APF_FWREV_STAT_STR,MOD_SOM_APF_NACK_STR,"invalid input(s)");
+      reply_str_len = strlen(apf_reply_str);
+      apf_leuart_ptr =(LEUART_TypeDef *) mod_som_apf_get_port_ptr_f();
+      mod_som_apf_send_line_f(apf_leuart_ptr,apf_reply_str, reply_str_len);
+      //            if (bytes_sent==reply_str_len){
+      //                status = MOD_SOM_APF_STATUS_OK;
+      //            }
+      return SHELL_EXEC_ERR;
   }else{
 
     status = mod_som_apf_fwrev_status_f();
@@ -385,8 +410,25 @@ CPU_INT16S mod_som_apf_cmd_ok_status_f(CPU_INT16U argc,
         SHELL_OUT_FNCT out_put_f,
         SHELL_CMD_PARAM *cmd_param){
 
-    mod_som_apf_status_t status = mod_som_apf_ok_status_f();
+    mod_som_apf_status_t status;
+    mod_som_apf_ptr_t local_apf_runtime_ptr = mod_som_apf_get_runtime_ptr_f();
+    char apf_reply_str[MOD_SOM_SHELL_INPUT_BUF_SIZE]="\0";
+    size_t reply_str_len = 0;
+    //uint32_t bytes_sent;
+    LEUART_TypeDef* apf_leuart_ptr;
 
+    if(argc>1 && !(local_apf_runtime_ptr->sleep_flag)){ //SAN 2023 02 16 added to ensure zero arguments
+        sprintf(apf_reply_str,"%s,%s,%s\r\n",
+                MOD_SOM_APF_OKSTAT_STR,MOD_SOM_APF_NACK_STR,"invalid input(s)");
+        reply_str_len = strlen(apf_reply_str);
+        apf_leuart_ptr =(LEUART_TypeDef *) mod_som_apf_get_port_ptr_f();
+        mod_som_apf_send_line_f(apf_leuart_ptr,apf_reply_str, reply_str_len);
+        //            if (bytes_sent==reply_str_len){
+        //                status = MOD_SOM_APF_STATUS_OK;
+        //            }
+        return SHELL_EXEC_ERR;
+    }
+    status = mod_som_apf_ok_status_f();
     if(status != MOD_SOM_APF_STATUS_OK)
         return SHELL_EXEC_ERR;
     return SHELL_EXEC_ERR_NONE;
@@ -424,12 +466,26 @@ CPU_INT16S mod_som_apf_cmd_poweroff_f(CPU_INT16U argc,
         SHELL_CMD_PARAM *cmd_param){
 
   mod_som_apf_status_t status;
-    mod_som_apf_ptr_t local_apf_runtime_ptr = mod_som_apf_get_runtime_ptr_f();
+  mod_som_apf_ptr_t local_apf_runtime_ptr = mod_som_apf_get_runtime_ptr_f();
+  char apf_reply_str[MOD_SOM_SHELL_INPUT_BUF_SIZE]="\0";
+  size_t reply_str_len = 0;
+  //uint32_t bytes_sent;
+  LEUART_TypeDef* apf_leuart_ptr;
 
     if (local_apf_runtime_ptr->sleep_flag){
         status=MOD_SOM_APF_STATUS_OK;
+    }else if(argc>1){ //SAN 2023 02 16 added to ensure zero arguments
+        sprintf(apf_reply_str,"%s,%s,%s\r\n",
+                MOD_SOM_APF_POWEROFF_STR,MOD_SOM_APF_NACK_STR,"invalid input(s)");
+        reply_str_len = strlen(apf_reply_str);
+        apf_leuart_ptr =(LEUART_TypeDef *) mod_som_apf_get_port_ptr_f();
+        mod_som_apf_send_line_f(apf_leuart_ptr,apf_reply_str, reply_str_len);
+        //            if (bytes_sent==reply_str_len){
+        //                status = MOD_SOM_APF_STATUS_OK;
+        //            }
+        return SHELL_EXEC_ERR;
     }else{
-   status = mod_som_apf_poweroff_f();
+        status = mod_som_apf_poweroff_f();
     }
     if(status != MOD_SOM_APF_STATUS_OK)
         return SHELL_EXEC_ERR;
@@ -490,9 +546,23 @@ CPU_INT16S mod_som_apf_cmd_epsi_id_status_f(CPU_INT16U argc,
 
   mod_som_apf_status_t status;
     mod_som_apf_ptr_t local_apf_runtime_ptr = mod_som_apf_get_runtime_ptr_f();
+    char apf_reply_str[MOD_SOM_SHELL_INPUT_BUF_SIZE]="\0";
+    size_t reply_str_len = 0;
+    //uint32_t bytes_sent;
+    LEUART_TypeDef* apf_leuart_ptr;
 
     if (local_apf_runtime_ptr->sleep_flag){
         status=MOD_SOM_APF_STATUS_OK;
+    }else if(argc>1){ //SAN 2023 02 16 added to ensure zero arguments
+        sprintf(apf_reply_str,"%s,%s,%s\r\n",
+                MOD_SOM_APF_EPSINO_STAT_STR,MOD_SOM_APF_NACK_STR,"invalid input(s)");
+        reply_str_len = strlen(apf_reply_str);
+        apf_leuart_ptr =(LEUART_TypeDef *) mod_som_apf_get_port_ptr_f();
+        mod_som_apf_send_line_f(apf_leuart_ptr,apf_reply_str, reply_str_len);
+        //            if (bytes_sent==reply_str_len){
+        //                status = MOD_SOM_APF_STATUS_OK;
+        //            }
+        return SHELL_EXEC_ERR;
     }else{
         status = mod_som_apf_epsi_id_status_f();
     }
@@ -563,9 +633,23 @@ CPU_INT16S mod_som_apf_cmd_probe_id_status_f(CPU_INT16U argc,
 
   mod_som_apf_status_t status;
   mod_som_apf_ptr_t local_apf_runtime_ptr = mod_som_apf_get_runtime_ptr_f();
+  char apf_reply_str[MOD_SOM_SHELL_INPUT_BUF_SIZE]="\0";
+        size_t reply_str_len = 0;
+        //uint32_t bytes_sent;
+        LEUART_TypeDef* apf_leuart_ptr;
 
   if (local_apf_runtime_ptr->sleep_flag){
       status=MOD_SOM_APF_STATUS_OK;
+  }else if(argc>1){ //SAN 2023 02 16 added to ensure zero arguments
+      sprintf(apf_reply_str,"%s,%s,%s\r\n",
+              MOD_SOM_APF_PROBENO_STAT_STR,MOD_SOM_APF_NACK_STR,"invalid input(s)");
+      reply_str_len = strlen(apf_reply_str);
+      apf_leuart_ptr =(LEUART_TypeDef *) mod_som_apf_get_port_ptr_f();
+      mod_som_apf_send_line_f(apf_leuart_ptr,apf_reply_str, reply_str_len);
+      //            if (bytes_sent==reply_str_len){
+      //                status = MOD_SOM_APF_STATUS_OK;
+      //            }
+      return SHELL_EXEC_ERR;
   }else{
       status = mod_som_apf_probe_id_status_f();
   }
@@ -599,9 +683,23 @@ CPU_INT16S mod_som_apf_cmd_sleep_f(CPU_INT16U argc,
 
   mod_som_apf_status_t status;
   mod_som_apf_ptr_t local_apf_runtime_ptr = mod_som_apf_get_runtime_ptr_f();
+  char apf_reply_str[MOD_SOM_SHELL_INPUT_BUF_SIZE]="\0";
+  size_t reply_str_len = 0;
+  //uint32_t bytes_sent;
+  LEUART_TypeDef* apf_leuart_ptr;
 
   if (local_apf_runtime_ptr->sleep_flag){
       status=MOD_SOM_APF_STATUS_OK;
+  }else if(argc>1){ //SAN 2023 02 16 added to ensure zero arguments
+      sprintf(apf_reply_str,"%s,%s,%s\r\n",
+              MOD_SOM_APF_SLEEP_STR,MOD_SOM_APF_NACK_STR,"invalid input(s)");
+      reply_str_len = strlen(apf_reply_str);
+      apf_leuart_ptr =(LEUART_TypeDef *) mod_som_apf_get_port_ptr_f();
+      mod_som_apf_send_line_f(apf_leuart_ptr,apf_reply_str, reply_str_len);
+      //            if (bytes_sent==reply_str_len){
+      //                status = MOD_SOM_APF_STATUS_OK;
+      //            }
+      return SHELL_EXEC_ERR;
   }else{
       status = mod_som_apf_sleep_f();
   }
@@ -702,9 +800,23 @@ CPU_INT16S mod_som_apf_cmd_time_status_f(CPU_INT16U argc,
 
   mod_som_apf_status_t status;
   mod_som_apf_ptr_t local_apf_runtime_ptr = mod_som_apf_get_runtime_ptr_f();
+  char apf_reply_str[MOD_SOM_SHELL_INPUT_BUF_SIZE]="\0";
+        size_t reply_str_len = 0;
+        //uint32_t bytes_sent;
+        LEUART_TypeDef* apf_leuart_ptr;
 
   if (local_apf_runtime_ptr->sleep_flag){
       status=MOD_SOM_APF_STATUS_OK;
+  }else if(argc>1){ //SAN 2023 02 16 added to ensure zero arguments
+      sprintf(apf_reply_str,"%s,%s,%s\r\n",
+              MOD_SOM_APF_TIMESTAT_STR,MOD_SOM_APF_NACK_STR,"invalid input(s)");
+      reply_str_len = strlen(apf_reply_str);
+      apf_leuart_ptr =(LEUART_TypeDef *) mod_som_apf_get_port_ptr_f();
+      mod_som_apf_send_line_f(apf_leuart_ptr,apf_reply_str, reply_str_len);
+      //            if (bytes_sent==reply_str_len){
+      //                status = MOD_SOM_APF_STATUS_OK;
+      //            }
+      return SHELL_EXEC_ERR;
   }else{
       status = mod_som_apf_time_status_f();
   }
@@ -757,9 +869,23 @@ CPU_INT16S mod_som_apf_cmd_packet_format_status_f(CPU_INT16U argc,
 
   mod_som_apf_status_t status;
     mod_som_apf_ptr_t local_apf_runtime_ptr = mod_som_apf_get_runtime_ptr_f();
+    char apf_reply_str[MOD_SOM_SHELL_INPUT_BUF_SIZE]="\0";
+          size_t reply_str_len = 0;
+          //uint32_t bytes_sent;
+          LEUART_TypeDef* apf_leuart_ptr;
 
     if (local_apf_runtime_ptr->sleep_flag){
         status=MOD_SOM_APF_STATUS_OK;
+    }else if(argc>1){ //SAN 2023 02 16 added to ensure zero arguments
+        sprintf(apf_reply_str,"%s,%s,%s\r\n",
+                MOD_SOM_APF_PACKETFORMAT_STAT_STR,MOD_SOM_APF_NACK_STR,"invalid input(s)");
+        reply_str_len = strlen(apf_reply_str);
+        apf_leuart_ptr =(LEUART_TypeDef *) mod_som_apf_get_port_ptr_f();
+        mod_som_apf_send_line_f(apf_leuart_ptr,apf_reply_str, reply_str_len);
+        //            if (bytes_sent==reply_str_len){
+        //                status = MOD_SOM_APF_STATUS_OK;
+        //            }
+        return SHELL_EXEC_ERR;
     }else{
         status = mod_som_apf_packet_format_status_f(argc,argv);
     }
@@ -838,9 +964,24 @@ CPU_INT16S mod_som_apf_cmd_sd_format_status_f(CPU_INT16U argc,
 
   mod_som_apf_status_t status;
     mod_som_apf_ptr_t local_apf_runtime_ptr = mod_som_apf_get_runtime_ptr_f();
+    char apf_reply_str[MOD_SOM_SHELL_INPUT_BUF_SIZE]="\0";
+      size_t reply_str_len = 0;
+      //uint32_t bytes_sent;
+      LEUART_TypeDef* apf_leuart_ptr;
+
 
     if (local_apf_runtime_ptr->sleep_flag){
         status=MOD_SOM_APF_STATUS_OK;
+    }else if(argc>1){ //SAN 2023 02 16 added to ensure zero arguments
+        sprintf(apf_reply_str,"%s,%s,%s\r\n",
+                         MOD_SOM_APF_SDFORMAT_STAT_STR,MOD_SOM_APF_NACK_STR,"invalid input(s)");
+        reply_str_len = strlen(apf_reply_str);
+        apf_leuart_ptr =(LEUART_TypeDef *) mod_som_apf_get_port_ptr_f();
+        mod_som_apf_send_line_f(apf_leuart_ptr,apf_reply_str, reply_str_len);
+        //            if (bytes_sent==reply_str_len){
+        //                status = MOD_SOM_APF_STATUS_OK;
+        //            }
+        return SHELL_EXEC_ERR;
     }else{
     status = mod_som_apf_sd_format_status_f(argc,argv);
     }
@@ -875,9 +1016,23 @@ CPU_INT16S mod_som_apf_cmd_upload_f(CPU_INT16U argc,
 
   mod_som_apf_status_t status;
     mod_som_apf_ptr_t local_apf_runtime_ptr = mod_som_apf_get_runtime_ptr_f();
+    char apf_reply_str[MOD_SOM_SHELL_INPUT_BUF_SIZE]="\0";
+      size_t reply_str_len = 0;
+      //uint32_t bytes_sent;
+      LEUART_TypeDef* apf_leuart_ptr;
 
     if (local_apf_runtime_ptr->sleep_flag){
         status=MOD_SOM_APF_STATUS_OK;
+    }else if(argc>1){ //SAN 2023 02 16 added to ensure zero arguments
+        sprintf(apf_reply_str,"%s,%s,%s\r\n",
+                MOD_SOM_APF_UPLOAD_STR,MOD_SOM_APF_NACK_STR,"invalid input(s)");
+        reply_str_len = strlen(apf_reply_str);
+        apf_leuart_ptr =(LEUART_TypeDef *) mod_som_apf_get_port_ptr_f();
+        mod_som_apf_send_line_f(apf_leuart_ptr,apf_reply_str, reply_str_len);
+        //            if (bytes_sent==reply_str_len){
+        //                status = MOD_SOM_APF_STATUS_OK;
+        //            }
+        return SHELL_EXEC_ERR;
     }else{
         status = mod_som_apf_upload_f();
     }
