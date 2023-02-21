@@ -4111,14 +4111,20 @@ mod_som_apf_status_t mod_som_apf_packet_format_f(CPU_INT16U argc,
   apf_leuart_ptr = (LEUART_TypeDef *)mod_som_apf_ptr->com_prf_ptr->handle_port;
 
   char second_arg[25] = "\0";
-  char invalid_packet_format[] = "packet_format,nak,invalid format";
+  char invalid_packet_format[] = "packet_format,nak,invalid input(s)";
   uint8_t mode_val = 0;
 
 
   if(mod_som_apf_ptr->daq){
             sprintf(apf_reply_str,"%s\r\n",
-             "daq is running");
+             "packet_format,nak,daq is running");
       status |= MOD_SOM_APF_STATUS_WRONG_ARG;
+      mod_som_io_print_f("%s\r\n",apf_reply_str);
+      // save to the local string for sending out - Mai-Nov 18, 2021
+      reply_str_len = strlen(apf_reply_str);
+      // sending the above string to the APF port - Mai - Nov 18, 2021
+      mod_som_apf_send_line_f(apf_leuart_ptr,apf_reply_str, reply_str_len);
+      return status;
 
   }else{
 
@@ -4133,6 +4139,12 @@ mod_som_apf_status_t mod_som_apf_packet_format_f(CPU_INT16U argc,
           // use the short invalid command error message - maibui 16Aug2022
           sprintf(apf_reply_str,"%s\r\n",invalid_packet_format);
           status |= MOD_SOM_APF_STATUS_WRONG_ARG;
+          mod_som_io_print_f("%s\r\n",apf_reply_str);
+          // save to the local string for sending out - Mai-Nov 18, 2021
+          reply_str_len = strlen(apf_reply_str);
+          // sending the above string to the APF port - Mai - Nov 18, 2021
+          mod_som_apf_send_line_f(apf_leuart_ptr,apf_reply_str, reply_str_len);
+          return status;
        }
 
       mode_val = atoi(argv[1]);
@@ -4151,8 +4163,14 @@ mod_som_apf_status_t mod_som_apf_packet_format_f(CPU_INT16U argc,
      else// invalid_command
       {
           // use the short invalid command error message - maibui 16Aug2022
-          sprintf(apf_reply_str,"%s\r\n",invalid_packet_format);
-          status |= MOD_SOM_APF_STATUS_WRONG_ARG;
+         sprintf(apf_reply_str,"%s\r\n",invalid_packet_format);
+         status |= MOD_SOM_APF_STATUS_WRONG_ARG;
+         mod_som_io_print_f("%s\r\n",apf_reply_str);
+         // save to the local string for sending out - Mai-Nov 18, 2021
+         reply_str_len = strlen(apf_reply_str);
+         // sending the above string to the APF port - Mai - Nov 18, 2021
+         mod_som_apf_send_line_f(apf_leuart_ptr,apf_reply_str, reply_str_len);
+         return status;
       }
       break;  // end off args = 2
   default:  // not 2 arguments
@@ -4160,6 +4178,12 @@ mod_som_apf_status_t mod_som_apf_packet_format_f(CPU_INT16U argc,
       sprintf(apf_reply_str,"%s\r\n",
              invalid_packet_format);
       status |= MOD_SOM_APF_STATUS_WRONG_ARG;
+      mod_som_io_print_f("%s\r\n",apf_reply_str);
+            // save to the local string for sending out - Mai-Nov 18, 2021
+            reply_str_len = strlen(apf_reply_str);
+            // sending the above string to the APF port - Mai - Nov 18, 2021
+            mod_som_apf_send_line_f(apf_leuart_ptr,apf_reply_str, reply_str_len);
+            return status;
       break;
  }  // end of  switch (argc)
   }
@@ -4194,8 +4218,8 @@ mod_som_apf_status_t mod_som_apf_packet_format_f(CPU_INT16U argc,
     default:
       break;
   }
-  if(status != MOD_SOM_APF_STATUS_OK)
-      return MOD_SOM_APF_STATUS_ERR;
+//  if(status != MOD_SOM_APF_STATUS_OK)
+//      return MOD_SOM_APF_STATUS_ERR;
 
   return status;
 }
@@ -4312,6 +4336,20 @@ mod_som_apf_status_t mod_som_apf_sd_format_f(CPU_INT16U argc,
   // get the port's fd
   apf_leuart_ptr = (LEUART_TypeDef *)mod_som_apf_ptr->com_prf_ptr->handle_port;
 
+  //SAN 2023 02 20 added this to make sure SD card doesn't update when daq is running
+  if(mod_som_apf_ptr->daq){
+      sprintf(apf_reply_str,"%s\r\n",
+              "sd_format,nak,daq is running");
+      status |= MOD_SOM_APF_STATUS_WRONG_ARG;
+      mod_som_io_print_f("%s\r\n",apf_reply_str);
+      // save to the local string for sending out - Mai-Nov 18, 2021
+      reply_str_len = strlen(apf_reply_str);
+      // sending the above string to the APF port - Mai - Nov 18, 2021
+      mod_som_apf_send_line_f(apf_leuart_ptr,apf_reply_str, reply_str_len);
+      return status;
+
+  }
+
   //char sd_format_valid_cmmd[] = "sd_format format_id (format_id is 1 or 2)\r\n";
 
     //ALB switch statement easy to handle all user input cases.
@@ -4323,7 +4361,7 @@ mod_som_apf_status_t mod_som_apf_sd_format_f(CPU_INT16U argc,
       strcpy(second_arg,argv[1]);
       if (isalpha(second_arg[0]))
       {
-          sprintf(apf_reply_str,"%s,%s,invalid input\r\n",
+          sprintf(apf_reply_str,"%s,%s,invalid input(s)\r\n",
                   MOD_SOM_APF_SDFORMAT_STR,MOD_SOM_APF_NACK_STR);
           status |= MOD_SOM_APF_STATUS_WRONG_ARG;
           break;
@@ -4345,7 +4383,7 @@ mod_som_apf_status_t mod_som_apf_sd_format_f(CPU_INT16U argc,
       else  // not 1 or 2
       {
           // save to the local string for sending out - Mai-Nov 18, 2021
-          sprintf(apf_reply_str,"%s,%s,invalid input\r\n",
+          sprintf(apf_reply_str,"%s,%s,invalid input(s)\r\n",
                   MOD_SOM_APF_SDFORMAT_STR,MOD_SOM_APF_NACK_STR);
           status |= MOD_SOM_APF_STATUS_WRONG_ARG;
       }
@@ -4353,7 +4391,7 @@ mod_som_apf_status_t mod_som_apf_sd_format_f(CPU_INT16U argc,
     // not 2 arguments
     default:  // command does NOT have 2 arguments: set the status, send 'nak' message to som
       // save to the local string for sending out - Mai-Nov 18, 2021
-      sprintf(apf_reply_str,"%s,%s,invalid input\r\n",
+      sprintf(apf_reply_str,"%s,%s,invalid input(s)\r\n",
               MOD_SOM_APF_SDFORMAT_STR,MOD_SOM_APF_NACK_STR);
       status |= MOD_SOM_APF_STATUS_WRONG_ARG;
       break;
