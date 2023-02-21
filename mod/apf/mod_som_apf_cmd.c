@@ -158,6 +158,7 @@ CPU_INT16S mod_som_apf_cmd_daq_f(CPU_INT16U argc,
               // save time string into the temporary local string - Mai - Nov 18, 2021
               sprintf(apf_reply_str,"%s,%s,invalid input(s)\r\n",MOD_SOM_APF_DAQ_STR,MOD_SOM_APF_NACK_STR);
               status |= MOD_SOM_APF_STATUS_ERR;
+              break;
       }
       break;
     case 3: // command: "daq,start,proid"
@@ -231,6 +232,13 @@ CPU_INT16S mod_som_apf_cmd_daq_f(CPU_INT16U argc,
                   (uint32_t) profile_id);
           status |= MOD_SOM_APF_STATUS_OK;
         } // if (!Str_Cmp(argv[argc], "start"))
+      else  // not "daq stop" nor "daq start"
+        {
+          // save time string into the temporary local string - Mai - Nov 18, 2021
+          sprintf(apf_reply_str,"%s,%s,invalid input(s)\r\n",MOD_SOM_APF_DAQ_STR,MOD_SOM_APF_NACK_STR);
+          status |= MOD_SOM_APF_STATUS_ERR;
+          break;
+        }
       break;
     default:  // more than 3 argc
       // save time string into the temporary local string - Mai - Nov 18, 2021

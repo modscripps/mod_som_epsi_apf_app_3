@@ -508,7 +508,7 @@ typedef struct{
    mod_som_apf_prf_ptr_t      com_prf_ptr;
 
    uint64_t profile_id;
-   bool     daq;
+   uint32_t     daq;
    float    dacq_start_pressure;
    float    dacq_pressure;
    float    dacq_dz;

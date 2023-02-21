@@ -2719,8 +2719,8 @@ mod_som_apf_status_t mod_som_apf_daq_start_f(uint64_t profile_id){
       mod_som_sbe41_get_runtime_ptr_f();
 
   //ALB start collecting CTD.
-  status |= mod_som_sbe41_connect_f();
-  status |= mod_som_sbe41_start_collect_data_f();
+  status = mod_som_sbe41_connect_f();
+  status = mod_som_sbe41_start_collect_data_f();
 
   ////  //ALB enable SDIO hardware
   mod_som_sdio_enable_hardware_f();
@@ -2735,14 +2735,17 @@ mod_som_apf_status_t mod_som_apf_daq_start_f(uint64_t profile_id){
       //ALB SBE41 is 1Hz 300 counts x 10 ms is 3 seconds
       if (get_ctd_count>300){
           //ALB no CTD sample. Status no CTD data
-          status|=MOD_SOM_APF_STATUS_NO_CTD_DATA;
+          status = MOD_SOM_APF_STATUS_NO_CTD_DATA;
           get_ctd_count=0;
           break;
       }
   }
+  //SAN 2023 02 20 correct for something funny status not working properly
+  if(status == MOD_SOM_APF_STATUS_NO_CTD_DATA)
+    return status;
 
-
-  if (status==MOD_SOM_APF_STATUS_OK){
+  //SAN 2023 02 20 correct for something funny status not working properly
+//  if (status==MOD_SOM_APF_STATUS_OK){
       uint32_t obpfile_size;
 
       //ALB initialize Meta_Data Structure, TODO
@@ -2856,7 +2859,10 @@ mod_som_apf_status_t mod_som_apf_daq_start_f(uint64_t profile_id){
 
 
       status|=mod_som_efe_sampling_f();
-  }
+
+      //SAN 2023 02 20 added this to make sure daq is enabled
+      mod_som_apf_ptr->daq=true;
+//  }
 
 	return status;
 }
