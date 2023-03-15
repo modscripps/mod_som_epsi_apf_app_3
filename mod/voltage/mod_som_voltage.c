@@ -37,6 +37,9 @@ mod_som_calendar_settings_t mod_som_calendar_settings;
 static CPU_STK voltage_scan_task_stk[MOD_SOM_VOLTAGE_SCAN_STK_SIZE];
 static OS_TCB  voltage_scan_task_tcb;
 
+static CPU_STK voltage_adc1_scan_task_stk[MOD_SOM_VOLTAGE_SCAN_STK_SIZE];
+static OS_TCB  voltage_adc1_scan_task_tcb;
+
 //ALB EFE STATUS
 sl_status_t mystatus;
 
@@ -120,14 +123,20 @@ mod_som_status_t mod_som_voltage_init_f(){
     // Enable ADC0 clock
     CMU_ClockEnable(cmuClock_ADC0, true);
 
+    // Enable ADC1 clock
+    CMU_ClockEnable(cmuClock_ADC1, true);
+
     // Declare init structs
     //ALB I do not know why I can not directly
     //    define init
     ADC_Init_TypeDef init= ADC_INIT_DEFAULT;
     ADC_InitScan_TypeDef initScan=ADC_INITSCAN_DEFAULT;
+    ADC_InitSingle_TypeDef initSingle1=ADC_INITSINGLE_DEFAULT;
 
     init     = init;
-    initScan = initScan;
+    //ADC0 stuff
+
+    initScan  = initScan;
 
     // Modify init structs
     init.prescale   = ADC_PrescaleCalc(ADCFREQ, 0);
@@ -138,6 +147,7 @@ mod_som_status_t mod_som_voltage_init_f(){
     initScan.resolution = adcRes12Bit;  // 12-bit resolution
     initScan.acqTime    = adcAcqTime256;  // set acquisition time to meet minimum requirement
     initScan.fifoOverwrite = true;      // FIFO overflow overwrites old data
+
 
     // Select ADC inputs. See README for corresponding EXP header pin.
     // *Note that internal channels are unavailable in ADC scan mode
@@ -161,6 +171,42 @@ mod_som_status_t mod_som_voltage_init_f(){
     // Enable ADC interrupts
     NVIC_ClearPendingIRQ(ADC0_IRQn);
     NVIC_EnableIRQ(ADC0_IRQn);
+
+    //ADC1 stuff
+    initSingle1 = initSingle1;
+    // Modify init structs
+
+    initSingle1.diff       = 0;            // single ended
+    initSingle1.reference  = adcRefVDD;    // internal 3.3 reference
+    initSingle1.resolution = adcRes12Bit;  // 12-bit resolution
+    initSingle1.acqTime    = adcAcqTime256;  // set acquisition time to meet minimum requirement
+    initSingle1.fifoOverwrite = true;      // FIFO overflow overwrites old data
+    initSingle1.posSel     = adcPosSelAPORT1XCH8;
+
+    // Select ADC inputs. See README for corresponding EXP header pin.
+    // *Note that internal channels are unavailable in ADC scan mode
+//    ADC_ScanSingleEndedInputAdd(&(initSingle1), \
+//                                adcScanInputGroup0, \
+//                                adcPosSelAPORT1XCH8);
+
+
+    // Set scan data valid level (DVL) to 2
+//    ADC1->SINGLECTRLX |= (NUM_INPUTS - 1) << _ADC_SINGLECTRLX_DVL_SHIFT;
+
+    // Clear ADC Scan fifo
+    ADC1->SINGLEFIFOCLEAR = ADC_SINGLEFIFOCLEAR_SINGLEFIFOCLEAR;
+
+    // Initialize ADC and Scan
+    ADC_Init(ADC1, &init);
+//    ADC_InitScan(ADC1, &initScan1);
+    ADC_InitSingle(ADC1, &initSingle1);
+
+    // Enable Scan interrupts
+    ADC_IntEnable(ADC1, ADC_IEN_SINGLE);
+
+    // Enable ADC interrupts
+    NVIC_ClearPendingIRQ(ADC1_IRQn);
+    NVIC_EnableIRQ(ADC1_IRQn);
 
     mod_som_voltage_ptr->initialized_flag=true;
     printf("%s initialized\r\n",MOD_SOM_VOLTAGE_HEADER);
@@ -296,6 +342,35 @@ mod_som_status_t mod_som_voltage_encode_status_f(uint8_t mod_som_io_status){
  *     MOD SOM status code
  ******************************************************************************/
 
+mod_som_status_t mod_som_voltage_start_adc1_scan_task_f(){
+
+
+  RTOS_ERR err;
+  // Consumer Task 2
+   OSTaskCreate(&voltage_adc1_scan_task_tcb,
+                        "voltage adc1 scan task",
+                        mod_som_voltage_adc1_scan_task_f,
+                        DEF_NULL,
+                        MOD_SOM_VOLTAGE_SCAN_TASK_PRIO,
+            &voltage_adc1_scan_task_stk[0],
+            (MOD_SOM_VOLTAGE_SCAN_TASK_STK_SIZE / 10u),
+            MOD_SOM_VOLTAGE_SCAN_TASK_STK_SIZE,
+            0u,
+            0u,
+            DEF_NULL,
+            (OS_OPT_TASK_STK_CLR),
+            &err);
+
+  // Check error code
+  APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
+  if(RTOS_ERR_CODE_GET(err) != RTOS_ERR_NONE)
+    return (mod_som_voltage_ptr->status = mod_som_voltage_encode_status_f(MOD_SOM_VOLTAGE_STATUS_FAIL_TO_START_STORE_TASK));
+  return mod_som_efe_encode_status_f(MOD_SOM_STATUS_OK);
+
+
+  return mod_som_voltage_encode_status_f(MOD_SOM_STATUS_OK);
+}
+
 mod_som_status_t mod_som_voltage_start_scan_task_f(){
 
 
@@ -346,6 +421,28 @@ mod_som_status_t mod_som_voltage_stop_scan_task_f(){
 
   return mod_som_voltage_encode_status_f(MOD_SOM_STATUS_OK);
 }
+/*******************************************************************************
+ * @brief
+ *   mod_som_voltage_stop_task_f
+ *   stop the voltage_scan_task
+ *   TODO check if multiple start-stop cycles creates memory leaks
+ *
+ * @return
+ *   MOD_SOM_STATUS_OK if initialization goes well
+ *   or otherwise
+ ******************************************************************************/
+
+mod_som_status_t mod_som_voltage_stop_adc1_scan_task_f(){
+
+  RTOS_ERR err;
+
+    OSTaskDel(&voltage_adc1_scan_task_tcb,
+              &err);
+
+  return mod_som_voltage_encode_status_f(MOD_SOM_STATUS_OK);
+}
+
+
 
 /*******************************************************************************
  * @brief
@@ -407,10 +504,43 @@ mod_som_status_t mod_som_voltage_scan_f(void){
   mod_som_calendar_settings=mod_som_calendar_get_settings_f(); //get the calendar settings pointer
   mod_som_voltage_ptr->timestamp += mod_som_calendar_settings.poweron_offset_ms;
 
+  mod_som_voltage_ptr->voltage=0;
+
   ADC_Start(ADC0, adcStartScan);
 
   return mod_som_voltage_encode_status_f(MOD_SOM_STATUS_OK);
 }
+
+/*******************************************************************************
+ * @brief
+ *   mod_som_voltage_scan_f
+ *   scan the GG11 ADC0 on GPIO PD0
+ *   I grab the time stamp here to reduce the time in the IRQ Handler but the stream
+ *   So be aware the time stamp is not super precise here.
+ *   There is a lag between the voltage measurement and the timestamp.
+ * @return
+ *   MOD_SOM_STATUS_OK if initialization goes well
+ *   or otherwise
+ ******************************************************************************/
+
+mod_som_status_t mod_som_voltage_adc1_scan_f(void){
+
+  uint64_t tick;
+
+  //ALB get timestamp here right before gathering ADC samples
+  tick=sl_sleeptimer_get_tick_count64();
+  mystatus = sl_sleeptimer_tick64_to_ms(tick,\
+         &mod_som_voltage_ptr->timestamp_adc1);
+
+  //MHA: Now augment timestamp by poweron_offset_ms
+  mod_som_calendar_settings=mod_som_calendar_get_settings_f(); //get the calendar settings pointer
+  mod_som_voltage_ptr->timestamp_adc1 += mod_som_calendar_settings.poweron_offset_ms;
+
+  ADC_Start(ADC1, adcStartSingle);
+
+  return mod_som_voltage_encode_status_f(MOD_SOM_STATUS_OK);
+}
+
 
 /*******************************************************************************
  * @brief
@@ -444,6 +574,37 @@ void mod_som_voltage_scan_task_f(void  *p_arg){
 
 }
 
+/*******************************************************************************
+ * @brief
+ *   mod_som_voltage_scan_task_f
+ *   scan_task
+ *
+ * @return
+ *   MOD_SOM_STATUS_OK if initialization goes well
+ *   or otherwise
+ ******************************************************************************/
+
+void mod_som_voltage_adc1_scan_task_f(void  *p_arg){
+
+  RTOS_ERR err;
+
+
+  //        printf("In Consumer Task 2\n");
+  while (DEF_ON) {
+
+      mod_som_voltage_adc1_scan_f();
+
+      // Delay Start Task execution for
+      OSTimeDly( mod_som_voltage_ptr->settings_ptr->sampling_frequency,         //   consumer delay is #define at the beginning OS Ticks
+                 OS_OPT_TIME_DLY,          //   from now.
+                 &err);
+      //   Check error code.
+      APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), ;);
+  } // end of while (DEF_ON)
+
+  PP_UNUSED_PARAM(p_arg);                                     // Prevent config warning.
+
+}
 
 
 
@@ -526,6 +687,36 @@ void ADC0_IRQHandler(void)
   }
 
 }
+
+/**************************************************************************//**
+ * @brief  ADC Handler
+ *****************************************************************************/
+void ADC1_IRQHandler(void)
+{
+  uint32_t data;
+  char str_adc1[100];
+
+    ADC1->IFC=1;
+// Get ADC results
+// Read data from ADC
+  data = ADC1->SINGLEDATA;
+
+  // Convert data to mV and store into array
+  // 4096 is 2^12 the bit resolution
+  // 3300 is 3.3 volts the voltage reference.
+  // voltage is in v.
+  mod_som_voltage_ptr->voltage_adc1 = data * 3300 / 4096;
+
+
+//ALB keep this for debbug. It prints the voltage on the supercap.
+//  sprintf((char*) str_adc1,  \
+//        "SD voltage $%4lumV\r\n",mod_som_voltage_ptr->voltage_adc1);
+//  printf(str_adc1);
+
+
+}
+
+
 
 
 

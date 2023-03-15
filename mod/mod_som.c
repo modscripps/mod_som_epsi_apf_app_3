@@ -1687,13 +1687,13 @@ void ACMP2_IRQHandler(void){
     }
     return;
 }
-void ADC1_IRQHandler(void){
-    if(mod_som_sys_peripherals_list_ptr->ADC1_prf_ptr != DEF_NULL){
-        mod_som_sys_peripherals_list_ptr->ADC1_prf_ptr->irq_handler_1_f(
-                (void *)mod_som_sys_peripherals_list_ptr->ADC1_prf_ptr->device_ptr);
-    }
-    return;
-}
+//void ADC1_IRQHandler(void){
+//    if(mod_som_sys_peripherals_list_ptr->ADC1_prf_ptr != DEF_NULL){
+//        mod_som_sys_peripherals_list_ptr->ADC1_prf_ptr->irq_handler_1_f(
+//                (void *)mod_som_sys_peripherals_list_ptr->ADC1_prf_ptr->device_ptr);
+//    }
+//    return;
+//}
 void LCD_IRQHandler(void){
     if(mod_som_sys_peripherals_list_ptr->LCD_prf_ptr != DEF_NULL){
         mod_som_sys_peripherals_list_ptr->LCD_prf_ptr->irq_handler_1_f(

@@ -133,6 +133,9 @@ void mod_som_modules_init_f()
 #if defined(MOD_SOM_CALENDAR_EN)
     mod_som_calendar_init_f();
 #endif
+#if defined(MOD_SOM_VOLTAGE_EN)
+    mod_som_voltage_init_f();
+#endif
 #if defined(MOD_SOM_SDIO_EN)
     mod_som_sdio_init_f();
 #endif
@@ -159,9 +162,6 @@ void mod_som_modules_init_f()
 #endif
 #if defined(MOD_SOM_VEC_NAV_EN)
     mod_som_vecnav_init_f();
-#endif
-#if defined(MOD_SOM_VOLTAGE_EN)
-    mod_som_voltage_init_f();
 #endif
 #if defined(MOD_SOM_AGGREGATOR_EN)
     mod_som_aggregator_init_f();

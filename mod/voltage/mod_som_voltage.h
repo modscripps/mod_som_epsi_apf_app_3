@@ -96,8 +96,10 @@ typedef struct{
     uint32_t initialized_flag;
     uint32_t error_flag;
     uint64_t timestamp;
+    uint64_t timestamp_adc1;
     char     str_record[MOD_SOM_VOLTAGE_RECORD_LENGTH]; //char VOLThex_timestmaps,voltage*checksum\r\n
     uint32_t voltage;
+    uint32_t voltage_adc1;
     uint8_t  mode;   //0 streaming, 1 store;
     uint8_t  status;
     uint8_t  chksum;
@@ -172,9 +174,13 @@ mod_som_voltage_settings_t mod_som_voltage_get_settings_f();
 mod_som_voltage_ptr_t mod_som_voltage_get_runtime_ptr_f();
 
 mod_som_status_t mod_som_voltage_start_scan_task_f(void);
+mod_som_status_t mod_som_voltage_start_adc1_scan_task_f();
 mod_som_status_t mod_som_voltage_stop_scan_task_f(void);
+mod_som_status_t mod_som_voltage_stop_adc1_scan_task_f();
 void mod_som_voltage_scan_task_f(void  *p_arg);
+void mod_som_voltage_adc1_scan_task_f(void  *p_arg);
 mod_som_status_t mod_som_voltage_scan_f(void);
+mod_som_status_t mod_som_voltage_adc1_scan_f(void);
 mod_som_status_t mod_som_voltage_mode_f(CPU_INT16U argc,CPU_CHAR *argv[]);
 
 #endif /* MOD_SOM_VOLTAGE_H_ */

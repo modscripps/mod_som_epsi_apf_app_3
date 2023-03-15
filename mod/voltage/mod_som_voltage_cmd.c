@@ -28,8 +28,11 @@ static SHELL_CMD  mod_som_voltage_cmd_tbl[] =
 {
         { "volt.stop", mod_som_voltage_cmd_stop_f},
         { "volt.start",  mod_som_voltage_cmd_start_f},
+        { "volt.start_adc1",  mod_som_voltage_cmd_start_adc1_f},
+        { "volt.stop_adc1", mod_som_voltage_cmd_stop_adc1_f},
         { "volt.mode",  mod_som_voltage_cmd_mode_f},
         { "volt.scan",  mod_som_voltage_cmd_scan_f},
+        { "volt.scan_adc1",  mod_som_voltage_cmd_adc1_scan_f},
         { 0, 0 }
 };
 
@@ -101,6 +104,33 @@ CPU_INT16S mod_som_voltage_cmd_start_f(CPU_INT16U argc,
     return SHELL_EXEC_ERR_NONE;
 }
 
+/*******************************************************************************
+ * @brief
+ *   command shell to enable GG11 internal ADC sampling of the voltage
+ * @param argc
+ *   argument count
+ * @param argv
+ *   argument values
+ * @param out_put_f
+ *   out_put_f (print function)
+ * @param cmd_param
+ *   command parameters (passing along)
+ * @return
+ *   Micrium Command Shell Status
+ ******************************************************************************/
+CPU_INT16S mod_som_voltage_cmd_start_adc1_f(CPU_INT16U argc,
+        CPU_CHAR *argv[],
+        SHELL_OUT_FNCT out_put_f,
+        SHELL_CMD_PARAM *cmd_param){
+    mod_som_status_t status = 0;
+
+    status=mod_som_voltage_start_adc1_scan_task_f();
+
+    if(status != MOD_SOM_STATUS_OK)
+        return SHELL_EXEC_ERR;
+    return SHELL_EXEC_ERR_NONE;
+}
+
 
 /*******************************************************************************
  * @brief
@@ -143,6 +173,34 @@ CPU_INT16S mod_som_voltage_cmd_stop_f(CPU_INT16U argc,
  * @return
  *   Micrium Command Shell Status
  ******************************************************************************/
+CPU_INT16S mod_som_voltage_cmd_stop_adc1_f(CPU_INT16U argc,
+        CPU_CHAR *argv[],
+        SHELL_OUT_FNCT out_put_f,
+        SHELL_CMD_PARAM *cmd_param){
+    mod_som_status_t status = 0;
+
+    status=mod_som_voltage_stop_adc1_scan_task_f();
+
+    if(status != MOD_SOM_STATUS_OK)
+        return SHELL_EXEC_ERR;
+    return SHELL_EXEC_ERR_NONE;
+}
+
+
+/*******************************************************************************
+ * @brief
+ *   command shell to disable GG11 internal ADC sampling of the voltage
+ * @param argc
+ *   argument count
+ * @param argv
+ *   argument values
+ * @param out_put_f
+ *   out_put_f (print function)
+ * @param cmd_param
+ *   command parameters (passing along)
+ * @return
+ *   Micrium Command Shell Status
+ ******************************************************************************/
 CPU_INT16S mod_som_voltage_cmd_scan_f(CPU_INT16U argc,
         CPU_CHAR *argv[],
         SHELL_OUT_FNCT out_put_f,
@@ -150,6 +208,33 @@ CPU_INT16S mod_som_voltage_cmd_scan_f(CPU_INT16U argc,
     mod_som_status_t status = 0;
 
     status=mod_som_voltage_scan_f();
+
+    if(status != MOD_SOM_STATUS_OK)
+        return SHELL_EXEC_ERR;
+    return SHELL_EXEC_ERR_NONE;
+}
+
+/*******************************************************************************
+ * @brief
+ *   command shell to disable GG11 internal ADC sampling of the voltage
+ * @param argc
+ *   argument count
+ * @param argv
+ *   argument values
+ * @param out_put_f
+ *   out_put_f (print function)
+ * @param cmd_param
+ *   command parameters (passing along)
+ * @return
+ *   Micrium Command Shell Status
+ ******************************************************************************/
+CPU_INT16S mod_som_voltage_cmd_adc1_scan_f(CPU_INT16U argc,
+        CPU_CHAR *argv[],
+        SHELL_OUT_FNCT out_put_f,
+        SHELL_CMD_PARAM *cmd_param){
+    mod_som_status_t status = 0;
+
+    status=mod_som_voltage_adc1_scan_f();
 
     if(status != MOD_SOM_STATUS_OK)
         return SHELL_EXEC_ERR;

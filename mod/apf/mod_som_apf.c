@@ -26,7 +26,7 @@
   #include <mod_som_settings.h>
 #endif
 
-#define SOM_APF_NOT_DEBUG_MODE 1  // use this flag to turn on main command for debugging: 0: turn off,1: debug -- mai bui 5 May, 2022
+#define SOM_APF_NOT_DEBUG_MODE 0  // use this flag to turn on main command for debugging: 0: turn off,1: debug -- mai bui 5 May, 2022
 
 #include <efe_obp/mod_som_efe_obp.h>
 
@@ -92,7 +92,6 @@ int32_t mod_som_apf_meta_data_pack_f(uint8_t * buff, uint8_t max_buff_len);
 mod_som_apf_status_t mod_som_apf_init_f(){
     mod_som_apf_status_t status;
     RTOS_ERR  err;
-
 
     LEUART_TypeDef* apf_leuart_ptr;
     char apf_reply_str[MOD_SOM_SHELL_INPUT_BUF_SIZE]="\0";
@@ -221,6 +220,7 @@ mod_som_apf_status_t mod_som_apf_init_f(){
 #if SOM_APF_NOT_DEBUG_MODE
     mod_som_main_com_off_f();
 #endif
+
 
     //ALB initialize mod_som_apf_ptr params
     mod_som_apf_ptr->sleep_flag=0;

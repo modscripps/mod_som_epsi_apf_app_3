@@ -58,13 +58,27 @@ CPU_INT16S mod_som_voltage_cmd_start_f(CPU_INT16U argc,
         SHELL_OUT_FNCT out_put_f,
         SHELL_CMD_PARAM *cmd_param);
 
+CPU_INT16S mod_som_voltage_cmd_start_adc1_f(CPU_INT16U argc,
+        CPU_CHAR *argv[],
+        SHELL_OUT_FNCT out_put_f,
+        SHELL_CMD_PARAM *cmd_param);
 
 CPU_INT16S mod_som_voltage_cmd_stop_f(CPU_INT16U argc,
         CPU_CHAR *argv[],
         SHELL_OUT_FNCT out_put_f,
         SHELL_CMD_PARAM *cmd_param);
 
+CPU_INT16S mod_som_voltage_cmd_stop_adc1_f(CPU_INT16U argc,
+        CPU_CHAR *argv[],
+        SHELL_OUT_FNCT out_put_f,
+        SHELL_CMD_PARAM *cmd_param);
+
 CPU_INT16S mod_som_voltage_cmd_scan_f(CPU_INT16U argc,
+        CPU_CHAR *argv[],
+        SHELL_OUT_FNCT out_put_f,
+        SHELL_CMD_PARAM *cmd_param);
+
+CPU_INT16S mod_som_voltage_cmd_adc1_scan_f(CPU_INT16U argc,
         CPU_CHAR *argv[],
         SHELL_OUT_FNCT out_put_f,
         SHELL_CMD_PARAM *cmd_param);

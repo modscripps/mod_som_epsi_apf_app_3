@@ -8,6 +8,7 @@
 #include "ff.h"
 #include "diskio.h"
 #include "mod_som_sdio.h"
+#include "mod_som_voltage.h"
 #include "mod_som_sdio_priv.h"
 #include <sl_sleeptimer.h>
 #include "mod_som_priv.h"
@@ -145,6 +146,7 @@ mod_som_status_t mod_som_sdio_init_f(){
 mod_som_status_t mod_som_sdio_enable_hardware_f(){
 //  int delay=833333; //ALB 60s at 50e6 Hz
   int delay=100; //ALB .1sec
+  char str_adc1[100];
 
   if(!mod_som_sdio_struct.enable_flag){
   CMU_ClockEnable(cmuClock_GPIO, true);
@@ -153,6 +155,26 @@ mod_som_status_t mod_som_sdio_enable_hardware_f(){
   // Soldered sdCard slot
     GPIO_PinModeSet(gpioPortD, 6u, gpioModePushPull, 1); //SD_EN
     GPIO_PinOutSet(gpioPortD, 6u);
+
+    //start scan ADC1 right away to monitor the supercap charge
+    mod_som_voltage_start_adc1_scan_task_f();
+
+
+    mod_som_voltage_ptr_t local_voltage_runtime_ptr =
+            mod_som_voltage_get_runtime_ptr_f();
+
+    sl_sleeptimer_delay_millisecond(delay);
+
+    while(local_voltage_runtime_ptr->voltage_adc1<3000){
+        //ALB   Feed the DOG.
+        WDOG_Feed();
+};
+    sprintf((char*) str_adc1,  \
+            "enable SD. Voltage $%4lumV\r\n",local_voltage_runtime_ptr->voltage);
+    printf(str_adc1);
+    //start scan ADC1 right away to monitor the supercap charge
+    mod_som_voltage_stop_adc1_scan_task_f();
+
 
     sl_sleeptimer_delay_millisecond(delay);
 
