@@ -4906,7 +4906,7 @@ int32_t mod_som_apf_meta_data_pack_f(uint8_t * buff, uint8_t max_buff_len)
 
   /*
    *   uint32_t daq_timestamp; //
-  uint8_t  profile_id;
+  uint16_t  profile_id;
   uint16_t modsom_sn;
   uint16_t efe_sn;
   uint32_t firmware_rev;
@@ -4934,42 +4934,42 @@ int32_t mod_som_apf_meta_data_pack_f(uint8_t * buff, uint8_t max_buff_len)
   memcpy(buff+buf_len,&mod_som_apf_ptr->producer_ptr->mod_som_apf_meta_data.profile_id,element_size);
   buf_len += element_size;
 
-  //5
+  //6
   element_size = sizeof(mod_som_apf_ptr->producer_ptr->mod_som_apf_meta_data.modsom_sn);
   if((buf_len+element_size)>max_buff_len)
     return -1;
   memcpy(buff+buf_len,&mod_som_apf_ptr->producer_ptr->mod_som_apf_meta_data.modsom_sn,element_size);
   buf_len += element_size;
 
-  //7
+  //8
   element_size = sizeof(mod_som_apf_ptr->producer_ptr->mod_som_apf_meta_data.efe_sn);
   if((buf_len+element_size)>max_buff_len)
     return -1;
   memcpy(buff+buf_len,&mod_som_apf_ptr->producer_ptr->mod_som_apf_meta_data.efe_sn,element_size);
   buf_len += element_size;
 
-  //9
+  //10
   element_size = sizeof(mod_som_apf_ptr->producer_ptr->mod_som_apf_meta_data.firmware_rev);
   if((buf_len+element_size)>max_buff_len)
     return -1;
   memcpy(buff+buf_len,&mod_som_apf_ptr->producer_ptr->mod_som_apf_meta_data.firmware_rev,element_size);
   buf_len += element_size;
 
-  //13
+  //14
   element_size = sizeof(mod_som_apf_ptr->producer_ptr->mod_som_apf_meta_data.nfft);
   if((buf_len+element_size)>max_buff_len)
     return -1;
   memcpy(buff+buf_len,&mod_som_apf_ptr->producer_ptr->mod_som_apf_meta_data.nfft,element_size);
   buf_len += element_size;
 
-  //15
+  //16
   element_size = sizeof(mod_som_apf_ptr->producer_ptr->mod_som_apf_meta_data.nfftdiag);
   if((buf_len+element_size)>max_buff_len)
     return -1;
   memcpy(buff+buf_len,&mod_som_apf_ptr->producer_ptr->mod_som_apf_meta_data.nfftdiag,element_size);
   buf_len += element_size;
 
-  //17
+  //18
 //  element_size = sizeof(mod_som_apf_ptr->producer_ptr->mod_som_apf_meta_data.probe1.type);
 //  if((buf_len+element_size)>max_buff_len)
 //    return -1;
@@ -4983,21 +4983,21 @@ int32_t mod_som_apf_meta_data_pack_f(uint8_t * buff, uint8_t max_buff_len)
   memcpy(buff+buf_len,&probe_type,element_size);
   buf_len += element_size;
 
-  //18
+  //19
   element_size = sizeof(mod_som_apf_ptr->producer_ptr->mod_som_apf_meta_data.probe1.sn);
   if((buf_len+element_size)>max_buff_len)
     return -1;
   memcpy(buff+buf_len,&mod_som_apf_ptr->producer_ptr->mod_som_apf_meta_data.probe1.sn,element_size);
   buf_len += element_size;
 
-  //20
+  //21
   element_size = sizeof(mod_som_apf_ptr->producer_ptr->mod_som_apf_meta_data.probe1.cal);
   if((buf_len+element_size)>max_buff_len)
     return -1;
   memcpy(buff+buf_len,&mod_som_apf_ptr->producer_ptr->mod_som_apf_meta_data.probe1.cal,element_size);
   buf_len += element_size;
 
-  //22
+  //23
 //  element_size = sizeof(mod_som_apf_ptr->producer_ptr->mod_som_apf_meta_data.probe2.type);
 //  if((buf_len+element_size)>max_buff_len)
 //    return -1;
@@ -5011,56 +5011,56 @@ int32_t mod_som_apf_meta_data_pack_f(uint8_t * buff, uint8_t max_buff_len)
   memcpy(buff+buf_len,&probe_type,element_size);
   buf_len += element_size;
 
-  //23
+  //24
   element_size = sizeof(mod_som_apf_ptr->producer_ptr->mod_som_apf_meta_data.probe2.sn);
   if((buf_len+element_size)>max_buff_len)
     return -1;
   memcpy(buff+buf_len,&mod_som_apf_ptr->producer_ptr->mod_som_apf_meta_data.probe2.sn,element_size);
   buf_len += element_size;
 
-  //25
+  //26
   element_size = sizeof(mod_som_apf_ptr->producer_ptr->mod_som_apf_meta_data.probe2.cal);
   if((buf_len+element_size)>max_buff_len)
     return -1;
   memcpy(buff+buf_len,&mod_som_apf_ptr->producer_ptr->mod_som_apf_meta_data.probe2.cal,element_size);
   buf_len += element_size;
 
-  //27
+  //28
   element_size = sizeof(mod_som_apf_ptr->producer_ptr->mod_som_apf_meta_data.comm_telemetry_packet_format);
   if((buf_len+element_size)>max_buff_len)
     return -1;
   memcpy(buff+buf_len,&mod_som_apf_ptr->producer_ptr->mod_som_apf_meta_data.comm_telemetry_packet_format,element_size);
   buf_len += element_size;
 
-  //28
+  //29
   element_size = sizeof(mod_som_apf_ptr->producer_ptr->mod_som_apf_meta_data.sd_format);
   if((buf_len+element_size)>max_buff_len)
     return -1;
   memcpy(buff+buf_len,&mod_som_apf_ptr->producer_ptr->mod_som_apf_meta_data.sd_format,element_size);
   buf_len += element_size;
 
-  //29
+  //30
   element_size = sizeof(mod_som_apf_ptr->producer_ptr->mod_som_apf_meta_data.sample_cnt);
   if((buf_len+element_size)>max_buff_len)
     return -1;
   memcpy(buff+buf_len,&mod_som_apf_ptr->producer_ptr->mod_som_apf_meta_data.sample_cnt,element_size);
   buf_len += element_size;
 
-  //31
+  //32
   element_size = sizeof(mod_som_apf_ptr->producer_ptr->mod_som_apf_meta_data.voltage);
   if((buf_len+element_size)>max_buff_len)
     return -1;
   memcpy(buff+buf_len,&mod_som_apf_ptr->producer_ptr->mod_som_apf_meta_data.voltage,element_size);
   buf_len += element_size;
 
-  //35
+  //36
   element_size = sizeof(mod_som_apf_ptr->producer_ptr->mod_som_apf_meta_data.end_metadata);
   if((buf_len+element_size)>max_buff_len)
     return -1;
   memcpy(buff+buf_len,&mod_som_apf_ptr->producer_ptr->mod_som_apf_meta_data.end_metadata,element_size);
   buf_len += element_size;
 
-  //43
+  //38
 
   return buf_len;
 

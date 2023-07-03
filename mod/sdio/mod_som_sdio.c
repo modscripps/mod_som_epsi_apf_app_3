@@ -165,10 +165,14 @@ mod_som_status_t mod_som_sdio_enable_hardware_f(){
 
     sl_sleeptimer_delay_millisecond(delay);
 
-    while(local_voltage_runtime_ptr->voltage_adc1<3000){
+    while(local_voltage_runtime_ptr->voltage_adc1<3050){
+        sl_sleeptimer_delay_millisecond(100);
         //ALB   Feed the DOG.
         WDOG_Feed();
-};
+    };
+    GPIO_PinModeSet(gpioPortF, 11u, gpioModePushPull, 1); //SD_TP8_SW_EN
+    GPIO_PinOutSet(gpioPortF, 11u);
+
     sprintf((char*) str_adc1,  \
             "enable SD. Voltage $%4lumV\r\n",local_voltage_runtime_ptr->voltage);
     printf(str_adc1);
@@ -261,6 +265,10 @@ mod_som_status_t status=0;
 
 
     sl_sleeptimer_delay_millisecond(delay);
+
+    GPIO_PinModeSet(gpioPortF, 11u, gpioModePushPull, 0); //SD_TP8_SW_EN
+    GPIO_PinOutClear(gpioPortF, 11u);
+
     GPIO_PinModeSet(gpioPortD, 6u, gpioModePushPull, 0); //SD_EN
 
     //ALB Software reset of SDIO
