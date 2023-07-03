@@ -133,10 +133,10 @@ mod_som_status_t mod_som_voltage_init_f(){
     ADC_InitScan_TypeDef initScan=ADC_INITSCAN_DEFAULT;
     ADC_InitSingle_TypeDef initSingle1=ADC_INITSINGLE_DEFAULT;
 
-    init     = init;
-    //ADC0 stuff
-
-    initScan  = initScan;
+//    init     = init;
+//    //ADC0 stuff
+//
+//    initScan  = initScan;
 
     // Modify init structs
     init.prescale   = ADC_PrescaleCalc(ADCFREQ, 0);
@@ -173,7 +173,7 @@ mod_som_status_t mod_som_voltage_init_f(){
     NVIC_EnableIRQ(ADC0_IRQn);
 
     //ADC1 stuff
-    initSingle1 = initSingle1;
+    //initSingle1 = initSingle1;
     // Modify init structs
 
     initSingle1.diff       = 0;            // single ended

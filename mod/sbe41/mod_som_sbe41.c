@@ -1168,7 +1168,15 @@ static  void  mod_som_sbe41_consumer_task_f(void  *p_arg){
                     printf("wrong sbe.mode\r\n");
                     break;
                 }
-                while(!mod_som_sbe41_ptr->consumer_ptr->consumed_flag){};
+                while(!mod_som_sbe41_ptr->consumer_ptr->consumed_flag){
+                    //2023 06 08 added watchdog feed and a release from this task
+                    // this is to prevent the system to hang on to the processor
+                    // when there isn't nothing going on
+                    OSTimeDly( MOD_SOM_SBE41_CONSUMER_DELAY,             //   consumer delay is #define at the beginning OS Ticks
+                               OS_OPT_TIME_DLY,          //   from now.
+                               &err);
+                    WDOG_Feed();
+                };
 
                 mod_som_sbe41_ptr->consumer_ptr->elmnts_skipped = 0;
                 // reset the stream ptr.
