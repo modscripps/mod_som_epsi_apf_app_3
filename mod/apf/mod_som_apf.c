@@ -26,7 +26,7 @@
   #include <mod_som_settings.h>
 #endif
 
-#define SOM_APF_NOT_DEBUG_MODE 0  // use this flag to turn on main command for debugging: 0: turn off,1: debug -- mai bui 5 May, 2022
+#define SOM_APF_NOT_DEBUG_MODE 1  // use this flag to turn on main command for debugging: 0: turn off,1: debug -- mai bui 5 May, 2022
 
 #include <efe_obp/mod_som_efe_obp.h>
 
@@ -4627,14 +4627,7 @@ mod_som_apf_status_t mod_som_apf_upload_f(){
                   dacq_bytes_sent);
           }
 
-          //ALB compute the packet CRC
-          //TODO
-          crc=Crc16Bit((unsigned char *) mod_som_apf_ptr->consumer_ptr->packet.payload,
-                       dacq_bytes_to_sent);
 
-//          printf("crc %u\r\n",crc);
-
-          mod_som_apf_ptr->consumer_ptr->packet.CRC=crc;
           //ALB compute the counters
           //TODO finalize the bitshifting to add the remaining number of bytes to send
           mod_som_apf_ptr->consumer_ptr->packet.counters=
@@ -4650,6 +4643,18 @@ mod_som_apf_status_t mod_som_apf_upload_f(){
           //ALB update packet.counters
           mod_som_apf_ptr->consumer_ptr->packet.counters|=
                              dacq_bytes_to_sent;
+
+          //ALB compute the packet CRC
+          //TODO
+          //          crc=Crc16Bit((unsigned char *) mod_som_apf_ptr->consumer_ptr->packet.payload,
+          //                       dacq_bytes_to_sent);
+          //2023 07 14 SAN work on making sure crc include the packet counter
+          crc=Crc16Bit((unsigned char *) (&(mod_som_apf_ptr->consumer_ptr->packet.counters)),
+                       dacq_bytes_to_sent+2);
+
+          //          printf("crc %u\r\n",crc);
+
+          mod_som_apf_ptr->consumer_ptr->packet.CRC=crc;
 
           //ALB packet should be ready. Now send it
           mod_som_apf_ptr->consumer_ptr->consumed_flag=false;
