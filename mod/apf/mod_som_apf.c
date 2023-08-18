@@ -4611,7 +4611,7 @@ mod_som_apf_status_t mod_som_apf_upload_f(){
           if(mod_som_apf_ptr->consumer_ptr->daq_remaining_bytes==0){
 //              current_data_ptr=&eot_byte;
               dacq_bytes_to_sent=1;
-              mod_som_apf_ptr->consumer_ptr->daq_remaining_bytes=-1;
+              //mod_som_apf_ptr->consumer_ptr->daq_remaining_bytes=-1;
               memcpy(&mod_som_apf_ptr->consumer_ptr->packet.payload,
                      &eot_byte,
                      dacq_bytes_to_sent);
@@ -4717,6 +4717,8 @@ mod_som_apf_status_t mod_som_apf_upload_f(){
               if((read_char==MOD_SOM_APF_UPLOAD_APF11_NACK) || (timeout_flag==1)){
                   mod_som_apf_ptr->consumer_ptr->send_packet_tries++;
                   mod_som_apf_ptr->consumer_ptr->nb_packet_sent--;
+                  //2023 added this to make sure we have a correct number
+                  mod_som_apf_ptr->consumer_ptr->nb_packet_sent%=64;
                   mod_som_apf_ptr->consumer_ptr->daq_remaining_bytes+=
                                                              dacq_bytes_to_sent;
                   status=MOD_SOM_APF_STATUS_FAIL_SEND_PACKET;
