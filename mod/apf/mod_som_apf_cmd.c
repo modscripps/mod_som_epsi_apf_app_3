@@ -189,7 +189,9 @@ CPU_INT16S mod_som_apf_cmd_daq_f(CPU_INT16U argc,
           //printf("profile id: %s\n",argv[i+1]);
 
           // profile id is out of the range
-          if (profile_id < 0 || profile_id > MOD_SOM_APF_DAQ_PROFILE_LIMIT)
+          //if (profile_id < 0 |  | profile_id > MOD_SOM_APF_DAQ_PROFILE_LIMIT)
+          // 2023 12 13 add to make sure we don't have profile id 0 problem
+          if (profile_id < 1 || profile_id > MOD_SOM_APF_DAQ_PROFILE_LIMIT)
           {
                  // save time string into the temporary local string - Mai - Nov 18, 2021
                  sprintf(apf_reply_str,"%s,start,%s,invalid input(s)\r\n",
@@ -198,19 +200,18 @@ CPU_INT16S mod_som_apf_cmd_daq_f(CPU_INT16U argc,
                  break;
           }
 
-          /* CAP removing the continuous profile id condition
+          // CAP removing the continuous profile id condition
           // check the profile_id is continous
-          if (profile_id - local_apf_runtime_ptr->profile_id != 1)
-            {
-               // save time string into the temporary local string - Mai - Nov 18, 2021
-              sprintf(apf_reply_str,"%s,start,%s,wrong profile id,input profile is not continous,last profile id is %lu, must be %lu\r\n",
-                      MOD_SOM_APF_DAQ_STR,MOD_SOM_APF_NACK_STR,
-                      (uint32_t) local_apf_runtime_ptr->profile_id,
-                      (uint32_t) local_apf_runtime_ptr->profile_id+1);
-              status |= MOD_SOM_APF_STATUS_WRONG_ARG;
-              break;
-            }
-            */
+//          if (profile_id - local_apf_runtime_ptr->profile_id != 1)
+//            {
+//               // save time string into the temporary local string - Mai - Nov 18, 2021
+//              sprintf(apf_reply_str,"%s,start,%s,wrong profile id,input profile is not continous,last profile id is %lu, must be %lu\r\n",
+//                      MOD_SOM_APF_DAQ_STR,MOD_SOM_APF_NACK_STR,
+//                      (uint32_t) local_apf_runtime_ptr->profile_id,
+//                      (uint32_t) local_apf_runtime_ptr->profile_id+1);
+//              status |= MOD_SOM_APF_STATUS_WRONG_ARG;
+//              break;
+//            }
           // all the bad input are detected, now only have valid command - maibui Aprl 28, 2022
 //          last_profile_id = profile_id;  // update the frofile id
           //ALB STARTING THE PROFILE HERE

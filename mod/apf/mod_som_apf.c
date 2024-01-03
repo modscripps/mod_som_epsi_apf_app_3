@@ -2770,7 +2770,9 @@ mod_som_apf_status_t mod_som_apf_daq_start_f(uint64_t profile_id){
       mod_som_sdio_file_ptr_t processfile_ptr =
           local_mod_som_sdio_ptr_t->processdata_file_ptr;
 
-      obpfile_size=f_size(processfile_ptr->fp);
+      // 2023 12 20 SAN removed file checking for previous data
+      /*
+       obpfile_size=f_size(processfile_ptr->fp);
       //ALB obpfile_size>0 means there is already an OBP file.
       if(obpfile_size>0){
         //ALB read the metadata from the OBP file
@@ -2779,6 +2781,7 @@ mod_som_apf_status_t mod_som_apf_daq_start_f(uint64_t profile_id){
           mod_som_apf_ptr->producer_ptr->
                     mod_som_apf_meta_data.profile_id=0;
       }
+
       //ALB As of now a new daq erase the previous data (consistent with the specs)
       //ALB Be careful if we want to keep the the previous data we need to keep
       //ALB sample count, profile id and so on consistent.
@@ -2811,15 +2814,36 @@ mod_som_apf_status_t mod_som_apf_daq_start_f(uint64_t profile_id){
                                         &mod_som_apf_ptr->producer_ptr->done_sd_flag);
           }
 
-          /*
+//          mod_som_sdio_write_data_f(processfile_ptr,
+//                                    (uint8_t*) &mod_som_apf_ptr->producer_ptr->
+//                                    mod_som_apf_meta_data,
+//                                    sizeof(mod_som_apf_meta_data_t),
+//                                    &mod_som_apf_ptr->producer_ptr->done_sd_flag);
+//
+
+
+      }
+      */
+
+      // 2023 12 20 SAN added this to initialize meta data
+      mod_som_apf_ptr->producer_ptr->stored_dissrates_cnt=0;
+      mod_som_apf_init_meta_data(&mod_som_apf_ptr->producer_ptr->
+                                 mod_som_apf_meta_data);
+      f_lseek (processfile_ptr->fp, 0);
+
+      mod_som_apf_ptr->producer_ptr->done_sd_flag=false;
+      //SN making packed meta_data_buff
+      mod_som_apf_ptr->producer_ptr->meta_data_buffer_byte_cnt = mod_som_apf_meta_data_pack_f(
+          mod_som_apf_ptr->producer_ptr->meta_data_buffer_ptr, sizeof(mod_som_apf_meta_data_t));
+
+      if(mod_som_apf_ptr->producer_ptr->meta_data_buffer_byte_cnt<=0)
+        status |= mod_som_apf_ptr->producer_ptr->meta_data_buffer_byte_cnt;
+      else{
+          //if sample_cnt is wrong we still can get it with simple math afterwork.
           mod_som_sdio_write_data_f(processfile_ptr,
-                                    (uint8_t*) &mod_som_apf_ptr->producer_ptr->
-                                    mod_som_apf_meta_data,
-                                    sizeof(mod_som_apf_meta_data_t),
+                                    mod_som_apf_ptr->producer_ptr->meta_data_buffer_ptr,
+                                    mod_som_apf_ptr->producer_ptr->meta_data_buffer_byte_cnt,
                                     &mod_som_apf_ptr->producer_ptr->done_sd_flag);
-                                    */
-
-
       }
 
 
