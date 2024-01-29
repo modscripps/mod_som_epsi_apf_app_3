@@ -2909,7 +2909,7 @@ mod_som_apf_status_t mod_som_apf_daq_start_f(uint64_t profile_id){
 
 mod_som_apf_status_t mod_som_apf_daq_stop_f(){
   int delay =100; //0.1 sec
-  static int16_t data_terminator = 0x0000; // this is to terminate the data section
+  static int16_t data_terminator = 0xffff; // this is to terminate the data section
 //  FRESULT res=0;
   mod_som_apf_status_t status;
   status=MOD_SOM_APF_STATUS_OK;
