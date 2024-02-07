@@ -3579,14 +3579,13 @@ mod_som_apf_status_t mod_som_apf_probe_id_f(CPU_INT16U argc,
           if (status==MOD_SOM_IO_STATUS_ERR_NOT_STARTED){
               status=MOD_SOM_APF_STATUS_OK;
           }
-
-          sprintf(apf_reply_str,"%s,%s,s,%s,%lu,f,%s,%lu\r\n",
-                  MOD_SOM_APF_PROBENO_STR,MOD_SOM_APF_ACK_STR,
-                  local_efe_settings_ptr->sensors[1].sn,
-                  (uint32_t)local_efe_settings_ptr->sensors[1].cal,
-                  local_efe_settings_ptr->sensors[0].sn,
-                  (uint32_t)local_efe_settings_ptr->sensors[0].cal);
       }
+      sprintf(apf_reply_str,"%s,%s,s,%s,%lu,f,%s,%lu\r\n",
+              MOD_SOM_APF_PROBENO_STR,MOD_SOM_APF_ACK_STR,
+              local_efe_settings_ptr->sensors[1].sn,
+              (uint32_t)local_efe_settings_ptr->sensors[1].cal,
+              local_efe_settings_ptr->sensors[0].sn,
+              (uint32_t)local_efe_settings_ptr->sensors[0].cal);
   }
   else if(argc<7){
       // save to the local string for sending out - Mai- May 3, 2022
