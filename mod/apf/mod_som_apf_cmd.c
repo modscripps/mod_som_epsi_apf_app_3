@@ -242,6 +242,7 @@ CPU_INT16S mod_som_apf_cmd_daq_f(CPU_INT16U argc,
         }
       break;
     default:  // more than 3 argc
+      i = 1;
       /*
       // save time string into the temporary local string - Mai - Nov 18, 2021
       sprintf(apf_reply_str,"%s,%s,invalid input(s)\r\n",
@@ -258,7 +259,7 @@ CPU_INT16S mod_som_apf_cmd_daq_f(CPU_INT16U argc,
       else if (!Str_Cmp(argv[i], "start"))  // "daq,start" => missing profile id
         {
           // save time string into the temporary local string - Mai - Dec 3, 2021
-          sprintf(apf_reply_str,"%s,stop,%s,too many arguments\r\n",MOD_SOM_APF_DAQ_STR,MOD_SOM_APF_NACK_STR);
+          sprintf(apf_reply_str,"%s,start,%s,too many arguments\r\n",MOD_SOM_APF_DAQ_STR,MOD_SOM_APF_NACK_STR);
           status |= MOD_SOM_APF_STATUS_WRONG_ARG;
           break;
         } // end of if (!Str_Cmp(argv[i], "start"))

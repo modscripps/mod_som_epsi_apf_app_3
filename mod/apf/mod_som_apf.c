@@ -3508,7 +3508,7 @@ mod_som_apf_status_t mod_som_apf_probe_id_f(CPU_INT16U argc,
         {
           invalid_command = 1;
         }
-      if (length_argument3!=2) // Coef1 is NOT 2 digits
+      if (length_argument3>5) // Coef1 is NOT 2 digits
         {
           invalid_command = 1;
         }
@@ -3537,7 +3537,7 @@ mod_som_apf_status_t mod_som_apf_probe_id_f(CPU_INT16U argc,
         {
           invalid_command = 1;
         }
-      if (length_argument6!=2) // Coef2 number is NOT 2 digits
+      if (length_argument6>5) // Coef2 number is NOT 2 digits
         {
           invalid_command = 1;
         }
@@ -3545,16 +3545,23 @@ mod_som_apf_status_t mod_som_apf_probe_id_f(CPU_INT16U argc,
         {
           invalid_command = 1;
         }
+      if(!invalid_command){
+          // get value of all parameter of the probe
+          cal1 = strtol(argv[3], &endptr1, 10);  // Coef1
+          cal2 = strtol(argv[6], &endptr2, 10);  // Coef2
+          if(cal1>65535 || cal2>65535){
+              invalid_command = 1;
+          }
+      }
       if (invalid_command)
         {
           // send out a short error message - maibui 16Aug2022
           sprintf(apf_reply_str,"%s\r\n",probe_no_invalid_input);
           status |= MOD_SOM_APF_STATUS_WRONG_ARG;
         }
-      if(status!= MOD_SOM_APF_STATUS_OK){
-          // get value of all parameter of the probe
-          cal1 = strtol(argv[3], &endptr1, 10);  // Coef1
-          cal2 = strtol(argv[6], &endptr2, 10);  // Coef2
+      else{
+
+
 
           // this point, the input command is valid command
           channel_id = 1;  // save 'f' set in channel 1
@@ -3579,13 +3586,13 @@ mod_som_apf_status_t mod_som_apf_probe_id_f(CPU_INT16U argc,
           if (status==MOD_SOM_IO_STATUS_ERR_NOT_STARTED){
               status=MOD_SOM_APF_STATUS_OK;
           }
+          sprintf(apf_reply_str,"%s,%s,s,%s,%lu,f,%s,%lu\r\n",
+                  MOD_SOM_APF_PROBENO_STR,MOD_SOM_APF_ACK_STR,
+                  local_efe_settings_ptr->sensors[1].sn,
+                  (uint32_t)local_efe_settings_ptr->sensors[1].cal,
+                  local_efe_settings_ptr->sensors[0].sn,
+                  (uint32_t)local_efe_settings_ptr->sensors[0].cal);
       }
-      sprintf(apf_reply_str,"%s,%s,s,%s,%lu,f,%s,%lu\r\n",
-              MOD_SOM_APF_PROBENO_STR,MOD_SOM_APF_ACK_STR,
-              local_efe_settings_ptr->sensors[1].sn,
-              (uint32_t)local_efe_settings_ptr->sensors[1].cal,
-              local_efe_settings_ptr->sensors[0].sn,
-              (uint32_t)local_efe_settings_ptr->sensors[0].cal);
   }
   else if(argc<7){
       // save to the local string for sending out - Mai- May 3, 2022
@@ -3778,15 +3785,41 @@ mod_som_apf_status_t mod_som_apf_probe_id_status_f(){
   uint16_t cal_temp  = (uint16_t) local_efe_settings_ptr->sensors[0].cal;
   uint16_t cal_shear = (uint16_t) local_efe_settings_ptr->sensors[1].cal;
 
-  //ALB check errors on the sn and cal
-  if ( (sn_temp>999) |
-       (sn_shear>999)    |
-       (cal_temp>99) |
-       (cal_shear>99) )
-      {
-      status=MOD_SOM_APF_STATUS_ERR;
+  //ALB check errors on the sn and cal for initial settings
+  if ( (sn_temp>99)){
+      local_efe_settings_ptr->sensors[0].sn[0] = '0';
+      local_efe_settings_ptr->sensors[0].sn[1] = '0';
+      local_efe_settings_ptr->sensors[0].sn[2] = '0';
+      local_efe_settings_ptr->sensors[0].sn[3] = 0;
   }
+  if ( (sn_shear>99)){
+        local_efe_settings_ptr->sensors[1].sn[0] = '0';
+        local_efe_settings_ptr->sensors[1].sn[1] = '0';
+        local_efe_settings_ptr->sensors[1].sn[2] = '0';
+        local_efe_settings_ptr->sensors[1].sn[3] = 0;
+    }
+  if (cal_temp>65535){
+          local_efe_settings_ptr->sensors[0].cal = 0;
+  }
+  if (cal_shear>65535){
+            local_efe_settings_ptr->sensors[1].cal = 0;
+    }
+  status|= mod_som_settings_save_settings_f();
 
+  /*
+   // this point, the input command is valid command
+          channel_id = 1;  // save 'f' set in channel 1
+
+          memcpy(&local_efe_settings_ptr->sensors[channel_id].sn,argv[2],3);
+          local_efe_settings_ptr->sensors[channel_id].cal = cal1;
+
+          channel_id = 0; // save 's' set in channel 0 - Maibui 5 May, 2022
+
+          memcpy(&local_efe_settings_ptr->sensors[channel_id].sn,argv[5],3);
+          local_efe_settings_ptr->sensors[channel_id].cal = cal2;
+          // save all parameters' value
+          status|= mod_som_settings_save_settings_f();
+   */
 
 if (status==MOD_SOM_APF_STATUS_OK){
     //ALB good case
@@ -3795,20 +3828,20 @@ if (status==MOD_SOM_APF_STATUS_OK){
                        MOD_SOM_APF_PROBENO_STAT_STR,MOD_SOM_APF_ACK_STR,
                        "S",
                        local_efe_settings_ptr->sensors[1].sn,
-                       (uint32_t)local_efe_settings_ptr->sensors[1].cal,
+                       (uint16_t)local_efe_settings_ptr->sensors[1].cal,
                        "F",
                        local_efe_settings_ptr->sensors[0].sn,
-                       (uint32_t)local_efe_settings_ptr->sensors[0].cal);
+                       (uint16_t)local_efe_settings_ptr->sensors[0].cal);
 
   // save to the local string for sending out - Mai-Nov 18, 2021
    sprintf(apf_reply_str,"%s,%s,%s,%s,%lu,%s,%s,%lu\r\n",
            MOD_SOM_APF_PROBENO_STAT_STR,MOD_SOM_APF_ACK_STR,
             "S",
             local_efe_settings_ptr->sensors[1].sn,
-            (uint32_t)local_efe_settings_ptr->sensors[1].cal,
+            (uint16_t)local_efe_settings_ptr->sensors[1].cal,
             "F",
             local_efe_settings_ptr->sensors[0].sn,
-            (uint32_t)local_efe_settings_ptr->sensors[0].cal);
+            (uint16_t)local_efe_settings_ptr->sensors[0].cal);
 
     reply_str_len = strlen(apf_reply_str);
 
