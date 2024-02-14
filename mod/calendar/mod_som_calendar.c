@@ -248,6 +248,10 @@ sl_status_t  mod_som_calendar_set_time_f(sl_sleeptimer_timestamp_t time){
 //  status=sl_sleeptimer_set_datetime(
 //      &mod_som_calendar_ptr->mod_som_calendar_settings_ptr->initial_date);
   status = sl_sleeptimer_set_time(time);
+  //2024 02 13 added to make sure that we don't set time
+  if(status != SL_STATUS_OK){
+    return status;
+  }
 //  sl_sleeptimer_get_datetime(&mod_som_calendar_ptr->mod_som_calendar_settings_ptr->initial_date);
 //  //***************************************************************
 //  //MHA New timestamp convention 6/21/2021.  Previously, timestamp was the number of milliseconds

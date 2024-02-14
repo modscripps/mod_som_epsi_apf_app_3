@@ -4179,15 +4179,20 @@ mod_som_apf_status_t mod_som_apf_time_f(CPU_INT16U argc,
       //ALB The epoch of timestamps in the sleeptimer is 1970
 
       // calculate the seconds from
-
-      status|=mod_som_calendar_set_time_f(apex_time);
+      //2024 02 13 make sure to check if time is actually set
+      status=mod_som_calendar_set_time_f(apex_time);
+      if(status != MOD_SOM_APF_STATUS_OK){
+          sprintf(apf_reply_str,"%s\r\n", invalid_time_cmmd);
+          status |= MOD_SOM_APF_STATUS_WRONG_ARG;
+          break;
+      }
       status|=mod_som_settings_save_settings_f();
 
       // save time string into the temporary local string - Mai - Nov 18, 2021
       sprintf(apf_reply_str,"%s,%s,%s\r\n",
               MOD_SOM_APF_TIME_STR,MOD_SOM_APF_ACK_STR,
               argv[1]);
-      status |= MOD_SOM_APF_STATUS_OK;
+      status|= MOD_SOM_APF_STATUS_OK;
 
       break;
     default:  // not 2 agurments

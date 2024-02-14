@@ -450,7 +450,7 @@ CPU_INT16S mod_som_apf_cmd_ok_status_f(CPU_INT16U argc,
     //uint32_t bytes_sent;
     LEUART_TypeDef* apf_leuart_ptr;
 
-    if(argc>1 && !(local_apf_runtime_ptr->sleep_flag)){ //SAN 2023 02 16 added to ensure zero arguments
+    if(argc>1){ //SAN 2023 02 16 added to ensure zero arguments
         sprintf(apf_reply_str,"%s,%s,%s\r\n",
                 MOD_SOM_APF_OKSTAT_STR,MOD_SOM_APF_NACK_STR,"too many arguments");
         reply_str_len = strlen(apf_reply_str);
