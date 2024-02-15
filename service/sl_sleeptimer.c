@@ -536,12 +536,12 @@ sl_status_t sl_sleeptimer_set_time(sl_sleeptimer_timestamp_t time)
   cnt = sleeptimer_hal_get_counter();
 
   CORE_ENTER_ATOMIC();
-  second_count = time;
+
   overflow_tick_rest = 0;
   counter_sec = cnt / freq;
 
-  if (second_count >= counter_sec) {
-    second_count -= counter_sec;
+  if (time >= counter_sec) {
+    second_count = time - counter_sec;
   } else {
     CORE_EXIT_ATOMIC();
     return SL_STATUS_INVALID_PARAMETER;
