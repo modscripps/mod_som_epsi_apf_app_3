@@ -324,7 +324,7 @@ uint32_t SDIO_S_SendCMDWithOutDAT(SDIO_TypeDef *sdio_t,
   // Sequence to Finalize Command
   // 1. Wait for Command Complete
   //SAN added to ensure no hanging
-  SDIO_S_TimeoutSettingonDATLine(sdio_t);
+//  SDIO_S_TimeoutSettingonDATLine(sdio_t);
   while (!(sdio_t->IFCR & _SDIO_IFCR_CMDCOM_MASK));
   // 2. clear previous command complete int
   while ((sdio_t->IFCR & _SDIO_IFCR_CMDCOM_MASK))
@@ -480,9 +480,10 @@ static void SDIO_S_LowLevelRegisterInit(SDIO_TypeDef *sdio_t,
    * Board specific register adjustment
    * Route soldered microSD card slot
    */
+  //SML CDLOC_LOC0 is actually correct by the hardware copper routing.  not sure why it sometimes works with LOC3
   //ALB Make CD LOC since the SOM use LOC0 (F8) but for some reason it chokes when I do this
   sdio_t->ROUTELOC0 = 	SDIO_ROUTELOC0_DATLOC_LOC1 
-						| SDIO_ROUTELOC0_CDLOC_LOC3
+						| SDIO_ROUTELOC0_CDLOC_LOC0
 						//| SDIO_ROUTELOC0_WPLOC_LOC3
 						| SDIO_ROUTELOC0_CLKLOC_LOC1;
   sdio_t->ROUTELOC1 = 	SDIO_ROUTELOC1_CMDLOC_LOC1;
@@ -578,7 +579,9 @@ static void SDIO_S_LowLevelRegisterInit(SDIO_TypeDef *sdio_t,
                         | (SDIO_CLOCKCTRL_INTCLKEN)
                         | (SDIO_CLOCKCTRL_SDCLKEN);
   }
-//ALB I am changing to 3P3 becasue that is what we have
+
+//ALB I am changing to 3P3 because that is what we have
+//SML added SIGDET for TSTLVL mode (but I removed it later)
   sdio_t->HOSTCTRL1 =   (SDIO_HOSTCTRL1_SDBUSVOLTSEL_3P3V)
                         | (SDIO_HOSTCTRL1_SDBUSPOWER)
                         | (SDIO_HOSTCTRL1_DATTRANWD_SD4);

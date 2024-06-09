@@ -183,7 +183,9 @@ mod_som_status_t mod_som_sdio_enable_hardware_f(){
     sl_sleeptimer_delay_millisecond(delay);
 
 //ALB TODO Make CD works
-    GPIO_PinModeSet(gpioPortB, 10, gpioModeInput, 1);              // SDIO_CD
+    //sml use proper CD pin connected to SDIO
+    GPIO_PinModeSet(gpioPortF, 8, gpioModeInput, 1);              // SDIO_CD sml match the hw
+    //    GPIO_PinModeSet(gpioPortB, 10, gpioModeInput, 1);              // SDIO_CD
     GPIO_PinModeSet(gpioPortE, 15, gpioModePushPullAlternate, 0); // SDIO_CMD
     GPIO_PinModeSet(gpioPortE, 14, gpioModePushPullAlternate, 1); // SDIO_CLK
     GPIO_PinModeSet(gpioPortA, 0, gpioModePushPullAlternate, 1);  // SDIO_DAT0
