@@ -1160,24 +1160,34 @@ mod_som_status_t mod_som_sdio_read_config_sd_f(char * filename){
  ******************************************************************************/
 mod_som_status_t mod_som_sdio_read_data_sd_f(char * filename,uint32_t number_of_files){
 
-	mod_som_status_t status=0;
-	CPU_CHAR data_file_buf[100];
+  mod_som_status_t status=0;
+  CPU_CHAR data_file_buf[100];
 
-	//close the current file if open
-	mod_som_sdio_close_file_f(mod_som_sdio_struct.rawdata_file_ptr);
-	//loop through the files,read and stream data
-	for (uint32_t i=0;i<number_of_files+1;i++){
-		sprintf(data_file_buf, "%s%lu",filename,i);
-	    mod_som_sdio_struct.rawdata_file_ptr->len_filename=strlen(data_file_buf);
-	    //clear file_name. if i<10, tt avoids the 0 in filename07.
-	    memset(mod_som_sdio_struct.rawdata_file_ptr->file_name,0,strlen(mod_som_sdio_struct.rawdata_file_ptr->file_name));
-	    memcpy(mod_som_sdio_struct.rawdata_file_ptr->file_name, data_file_buf,mod_som_sdio_struct.rawdata_file_ptr->len_filename);
+  //close the current file if open
+  mod_som_sdio_close_file_f(mod_som_sdio_struct.rawdata_file_ptr);
+  //loop through the files,read and stream data
+  if(number_of_files==0){
+      sprintf(data_file_buf, "%s",filename);
+      mod_som_sdio_struct.rawdata_file_ptr->len_filename=strlen(data_file_buf);
+      memset(mod_som_sdio_struct.rawdata_file_ptr->file_name,0,strlen(mod_som_sdio_struct.rawdata_file_ptr->file_name));
+      memcpy(mod_som_sdio_struct.rawdata_file_ptr->file_name, data_file_buf,mod_som_sdio_struct.rawdata_file_ptr->len_filename);
 
-		status=mod_som_sdio_read_file_f(mod_som_sdio_struct.rawdata_file_ptr);
-	}
+      status=mod_som_sdio_read_file_f(mod_som_sdio_struct.rawdata_file_ptr);
 
+  }else{
+      for (uint32_t i=0;i<number_of_files+1;i++){
+          sprintf(data_file_buf, "%s%lu.modraw",filename,i);
+          mod_som_sdio_struct.rawdata_file_ptr->len_filename=strlen(data_file_buf);
+          //clear file_name. if i<10, tt avoids the 0 in filename07.
+          memset(mod_som_sdio_struct.rawdata_file_ptr->file_name,0,strlen(mod_som_sdio_struct.rawdata_file_ptr->file_name));
+          memcpy(mod_som_sdio_struct.rawdata_file_ptr->file_name, data_file_buf,mod_som_sdio_struct.rawdata_file_ptr->len_filename);
 
-    return status;
+          status=mod_som_sdio_read_file_f(mod_som_sdio_struct.rawdata_file_ptr);
+      }
+
+  }
+
+  return status;
 }
 
 
