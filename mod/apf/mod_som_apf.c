@@ -2324,38 +2324,47 @@ uint32_t mod_som_apf_send_line_f(LEUART_TypeDef *leuart_ptr,char * buf, uint32_t
 
   //ALB copy the data in the acq profile structure
   //ALB TODO check the dacq_ptr update and its value when out of that function
+  //bytes 0-1
   memcpy(dacq_ptr,
          &local_avg_dissrate_timestamp,
          MOD_SOM_APF_DACQ_TIMESTAMP_SIZE);
   dacq_ptr+=MOD_SOM_APF_DACQ_TIMESTAMP_SIZE;
+  //bytes 2-5
   memcpy(dacq_ptr,
          curr_avg_pressure_ptr,
          MOD_SOM_APF_DACQ_PRESSURE_SIZE);
   dacq_ptr+=MOD_SOM_APF_DACQ_PRESSURE_SIZE;
+  //bytes 6-9
   memcpy(dacq_ptr,
          curr_temperature_ptr,
          MOD_SOM_APF_DACQ_TEMPERATURE_SIZE);
   dacq_ptr+=MOD_SOM_APF_DACQ_TEMPERATURE_SIZE;
+  //bytes 10-13
   memcpy(dacq_ptr,
          curr_salinity_ptr,
          MOD_SOM_APF_DACQ_SALINITY_SIZE);
   dacq_ptr+=MOD_SOM_APF_DACQ_SALINITY_SIZE;
+  //bytes 14-17
   memcpy(dacq_ptr,
          curr_avg_dpdt_ptr,
          MOD_SOM_APF_DACQ_DPDT_SIZE);
   dacq_ptr+=MOD_SOM_APF_DACQ_DPDT_SIZE;
+  //bytes 18-20
   memcpy(dacq_ptr,
          &mod_bit_dissrates,
          MOD_SOM_APF_PRODUCER_DISSRATE_RES);
   dacq_ptr+=MOD_SOM_APF_PRODUCER_DISSRATE_RES;
+  //bytes 21-24
   memcpy(dacq_ptr,
          curr_kcut_shear_ptr,
          MOD_SOM_APF_DACQ_KCUT_SIZE);
   dacq_ptr+=MOD_SOM_APF_DACQ_KCUT_SIZE;
+  //bytes 25-28
   memcpy(dacq_ptr,
          curr_fcut_temp_ptr,
          MOD_SOM_APF_DACQ_FCUT_SIZE);
   dacq_ptr+=MOD_SOM_APF_DACQ_FCUT_SIZE;
+  //bytes 29
   memcpy(dacq_ptr,
          &mod_bit_fom,
          MOD_SOM_APF_PRODUCER_FOM_RES);
@@ -3786,13 +3795,13 @@ mod_som_apf_status_t mod_som_apf_probe_id_status_f(){
   uint16_t cal_shear = (uint16_t) local_efe_settings_ptr->sensors[1].cal;
 
   //ALB check errors on the sn and cal for initial settings
-  if ( (sn_temp>99)){
+  if ( (sn_temp>999)){
       local_efe_settings_ptr->sensors[0].sn[0] = '0';
       local_efe_settings_ptr->sensors[0].sn[1] = '0';
       local_efe_settings_ptr->sensors[0].sn[2] = '0';
       local_efe_settings_ptr->sensors[0].sn[3] = 0;
   }
-  if ( (sn_shear>99)){
+  if ( (sn_shear>999)){
         local_efe_settings_ptr->sensors[1].sn[0] = '0';
         local_efe_settings_ptr->sensors[1].sn[1] = '0';
         local_efe_settings_ptr->sensors[1].sn[2] = '0';
