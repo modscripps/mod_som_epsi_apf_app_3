@@ -50,7 +50,7 @@
 /// @endcond
 
 /// Timestamp, wall clock time in seconds.
-typedef uint32_t sl_sleeptimer_timestamp_t;
+typedef int32_t sl_sleeptimer_timestamp_t;
 
 /// Time zone offset from UTC(second).
 typedef int32_t sl_sleeptimer_time_zone_offset_t;

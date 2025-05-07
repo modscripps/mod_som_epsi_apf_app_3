@@ -509,7 +509,7 @@ sl_sleeptimer_timestamp_t sl_sleeptimer_get_time(void)
   freq = sl_sleeptimer_get_timer_frequency();
 
   CORE_ENTER_ATOMIC();
-  time = second_count + cnt / freq;
+  time = second_count + (int32_t)(cnt / freq);
   if (cnt % freq + overflow_tick_rest >= freq) {
     time++;
   }
@@ -524,7 +524,7 @@ sl_sleeptimer_timestamp_t sl_sleeptimer_get_time(void)
 sl_status_t sl_sleeptimer_set_time(sl_sleeptimer_timestamp_t time)
 {
   uint32_t freq = 0u;
-  uint32_t counter_sec = 0u;
+  int32_t counter_sec = 0;
   uint32_t cnt = 0;
   CORE_DECLARE_IRQ_STATE;
 
@@ -538,14 +538,14 @@ sl_status_t sl_sleeptimer_set_time(sl_sleeptimer_timestamp_t time)
   CORE_ENTER_ATOMIC();
 
   overflow_tick_rest = 0;
-  counter_sec = cnt / freq;
+  counter_sec = (int32_t)(cnt / freq);
 
-  if (time >= counter_sec) {
+//  if (time >= counter_sec) {
     second_count = time - counter_sec;
-  } else {
-    CORE_EXIT_ATOMIC();
-    return SL_STATUS_INVALID_PARAMETER;
-  }
+//  } else {
+//    CORE_EXIT_ATOMIC();
+//    return SL_STATUS_INVALID_PARAMETER;
+//  }
 
   CORE_EXIT_ATOMIC();
 
