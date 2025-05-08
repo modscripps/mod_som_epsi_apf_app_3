@@ -3055,6 +3055,24 @@ void mod_som_apf_init_meta_data(mod_som_apf_meta_data_ptr_t mod_som_apf_meta_dat
   mod_som_settings_struct_ptr_t local_settings_ptr=
                                               mod_som_settings_get_settings_f();
 
+  //2025 05 07 update to be consistent with
+  uint16_t ctlserno=0;
+  uint16_t feserno=0;
+
+  //ALB encode ctlserno. 0 < rev < 9 and 000 < sn < 999
+  uint32_t som_rev = strtoul(&local_settings_ptr->rev[3],NULL,10);
+  uint32_t som_sn  = strtoul(local_settings_ptr->sn,NULL,10);
+
+  ctlserno =  som_rev << 12; // High order nibble is rev no
+  ctlserno =  ctlserno | (som_sn & 0xFFF); // first 3 nibbles are sn no
+
+  //ALB encode feserno. 0 < rev < 9 and 000 < sn < 999
+  uint32_t efe_rev = strtoul(&local_settings_ptr->mod_som_efe_settings.rev[3],NULL,10);
+  uint32_t efe_sn  = strtoul(local_settings_ptr->mod_som_efe_settings.sn,NULL,10);
+
+  feserno =  efe_rev << 12; // High order nibble is rev no
+  feserno =  feserno | (efe_sn & 0xFFF); // first 3 nibbles are sn no
+
   mod_som_apf_meta_data_ptr->nfft=local_efe_obp->settings_ptr->nfft;
   mod_som_apf_meta_data_ptr->nfftdiag=local_efe_obp->settings_ptr->nfft/MOD_SOM_APF_DACQ_F3_NFFT_DECIM_COEF;
   mod_som_apf_meta_data_ptr->comm_telemetry_packet_format=
@@ -3063,11 +3081,11 @@ void mod_som_apf_init_meta_data(mod_som_apf_meta_data_ptr_t mod_som_apf_meta_dat
       mod_som_apf_ptr->settings_ptr->sd_packet_format;
 
   mod_som_apf_meta_data_ptr->efe_sn=
-                      strtol(local_efe_obp->efe_settings_ptr->sn,NULL,10);
+      feserno;//strtol(local_efe_obp->efe_settings_ptr->sn,NULL,10);
   mod_som_apf_meta_data_ptr->firmware_rev=
-                      strtol(local_settings_ptr->gitid, NULL, 16);
+      strtol(local_settings_ptr->gitid, NULL, 16);
   mod_som_apf_meta_data_ptr->modsom_sn=
-                      strtol(local_settings_ptr->sn,NULL,10);
+      ctlserno;//strtol(local_settings_ptr->sn,NULL,10);
 
   //ALB TODO local_efe_obp->efe_settings_ptr->sensors[0].name;
   mod_som_apf_meta_data_ptr->probe1.type=0;
