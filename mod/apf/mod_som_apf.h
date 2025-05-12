@@ -214,7 +214,7 @@ mod_som_apf_settings_t, *mod_som_apf_settings_ptr_t;
 ******************************************************************************/
 
 typedef struct{
-  enum {t1,s1}type;
+  enum {probe_type1='s',probe_type2='f'}type;
   uint16_t sn;
   uint16_t cal;
 }
