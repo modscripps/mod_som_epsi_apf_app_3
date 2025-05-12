@@ -3088,13 +3088,15 @@ void mod_som_apf_init_meta_data(mod_som_apf_meta_data_ptr_t mod_som_apf_meta_dat
       ctlserno;//strtol(local_settings_ptr->sn,NULL,10);
 
   //ALB TODO local_efe_obp->efe_settings_ptr->sensors[0].name;
-  mod_som_apf_meta_data_ptr->probe1.type=0;
+  // 2025 05 12 update to change probe type to be consistent with probe number
+  mod_som_apf_meta_data_ptr->probe1.type=1;
   mod_som_apf_meta_data_ptr->probe1.sn=
    (uint16_t)  strtol(local_efe_obp->efe_settings_ptr->sensors[0].sn, NULL, 10);
   mod_som_apf_meta_data_ptr->probe1.cal=
    (uint16_t) ceil(local_efe_obp->efe_settings_ptr->sensors[0].cal);
 
-  mod_som_apf_meta_data_ptr->probe2.type=1;
+  // 2025 05 12 update to change probe type to be consistent with probe number
+  mod_som_apf_meta_data_ptr->probe2.type=2;
   mod_som_apf_meta_data_ptr->probe2.sn=
   (uint16_t)  strtol(local_efe_obp->efe_settings_ptr->sensors[1].sn, NULL, 10);
   mod_som_apf_meta_data_ptr->probe2.cal=
@@ -3469,6 +3471,7 @@ mod_som_apf_status_t mod_som_apf_probe_id_f(CPU_INT16U argc,
 
   // get the port's fd
   apf_leuart_ptr = (LEUART_TypeDef *)mod_som_apf_ptr->com_prf_ptr->handle_port;
+  //2025 05 12 SAN added to make sure if DAQ is running, we can't set the probe infos
   if(mod_som_apf_ptr->daq){
       sprintf(apf_reply_str,"probe_no,nak,daq is running\r\n");
       // sending to the screen - Mai- May 3, 2022
@@ -3481,6 +3484,7 @@ mod_som_apf_status_t mod_som_apf_probe_id_f(CPU_INT16U argc,
                   MOD_SOM_APF_PROBENO_STR,MOD_SOM_APF_NACK_STR,
                   status);
           status |= MOD_SOM_APF_STATUS_WRONG_ARG;
+          return status;
       }
       return MOD_SOM_APF_STATUS_DAQ_IS_RUNNING;
   }
