@@ -3460,8 +3460,31 @@ int isNumber(char *input_str)
  ******************************************************************************/
 mod_som_apf_status_t mod_som_apf_probe_id_f(CPU_INT16U argc,
                                             CPU_CHAR *argv[]){
-
+  // for send_string to the port
+  uint32_t bytes_sent = 0;
+  char apf_reply_str[MOD_SOM_SHELL_INPUT_BUF_SIZE] = "\0";
+  size_t reply_str_len = 0;
+  LEUART_TypeDef* apf_leuart_ptr;
   mod_som_apf_status_t status=0;
+
+  // get the port's fd
+  apf_leuart_ptr = (LEUART_TypeDef *)mod_som_apf_ptr->com_prf_ptr->handle_port;
+  if(mod_som_apf_ptr->daq){
+      sprintf(apf_reply_str,"probe_no,nak,daq is running\r\n");
+      // sending to the screen - Mai- May 3, 2022
+      mod_som_io_print_f("%s",apf_reply_str);
+      reply_str_len = strlen(apf_reply_str);
+      // sending the above string to the APF port - Mai - Nov 18, 2021
+      bytes_sent = mod_som_apf_send_line_f(apf_leuart_ptr,apf_reply_str, reply_str_len);
+      if(bytes_sent==0){
+          sprintf(apf_reply_str,"%s,%s,%lu, failed to send to the APF port\r\n",
+                  MOD_SOM_APF_PROBENO_STR,MOD_SOM_APF_NACK_STR,
+                  status);
+          status |= MOD_SOM_APF_STATUS_WRONG_ARG;
+      }
+      return MOD_SOM_APF_STATUS_DAQ_IS_RUNNING;
+  }
+
   uint32_t cal1 = 0;
   uint32_t cal2 = 0;
   char *endptr1;
@@ -3483,14 +3506,7 @@ mod_som_apf_status_t mod_som_apf_probe_id_f(CPU_INT16U argc,
   char probe_no_invalid_input[] = "probe_no,nak,invalid input(s)";
   int invalid_command = 0;
 
-  // for send_string to the port
-  uint32_t bytes_sent = 0;
-  char apf_reply_str[MOD_SOM_SHELL_INPUT_BUF_SIZE] = "\0";
-  size_t reply_str_len = 0;
-  LEUART_TypeDef* apf_leuart_ptr;
 
-  // get the port's fd
-  apf_leuart_ptr = (LEUART_TypeDef *)mod_som_apf_ptr->com_prf_ptr->handle_port;
 
 
   mod_som_efe_settings_ptr_t local_efe_settings_ptr =

@@ -344,7 +344,7 @@ CPU_INT16S mod_som_apf_cmd_daq_status_f(CPU_INT16U argc,
         return SHELL_EXEC_ERR_NONE;
     }else{
 
-    if(mod_som_apf_get_daq_f()){ // I comment out this block - mnbui Nov 29, 2021
+    if(mod_som_apf_get_daq_f()){
         sprintf(apf_reply_str,"%s,%s,%s\r\n",
                 MOD_SOM_APF_DAQSTAT_STR,MOD_SOM_APF_ACK_STR,"enabled");
     }else{
