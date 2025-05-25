@@ -1017,6 +1017,12 @@ void mod_som_apf_producer_task_f(void  *p_arg){
       /************************************************************************/
       //ALB APF producer phase 1
       //ALB check if producer is started, and if the dacp_profile is NOT full
+
+      //ALB 05/25/2025 Using the ctd time out to stop the daq
+      mod_som_sbe41_ptr_t mod_som_sbe41_ptr=mod_som_sbe41_get_runtime_ptr_f();
+      if (mod_som_sbe41_ptr->sample_timeout){
+          mod_som_apf_daq_stop_f();
+      }
       if (mod_som_apf_ptr->producer_ptr->started_flg &
           !mod_som_apf_ptr->producer_ptr->dacq_full){
 
