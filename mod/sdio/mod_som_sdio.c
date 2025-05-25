@@ -1169,6 +1169,7 @@ mod_som_status_t mod_som_sdio_read_data_sd_f(char * filename,uint32_t number_of_
   if(number_of_files==0){
       sprintf(data_file_buf, "%s",filename);
       mod_som_sdio_struct.rawdata_file_ptr->len_filename=strlen(data_file_buf);
+      //clear file_name. if i<10, tt avoids the 0 in filename07.
       memset(mod_som_sdio_struct.rawdata_file_ptr->file_name,0,strlen(mod_som_sdio_struct.rawdata_file_ptr->file_name));
       memcpy(mod_som_sdio_struct.rawdata_file_ptr->file_name, data_file_buf,mod_som_sdio_struct.rawdata_file_ptr->len_filename);
 

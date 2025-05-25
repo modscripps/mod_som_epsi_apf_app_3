@@ -961,6 +961,8 @@ static  void  mod_som_sbe41_consumer_task_f(void  *p_arg){
     mod_som_sbe41_sample_t curr_sbe_sample;
     static sl_sleeptimer_timestamp_t time0=0;
     sl_sleeptimer_timestamp_t        time1=0;
+    char last_sbe42sample[mod_som_sbe41_ptr->config_ptr->element_length];
+
 
 
 
@@ -985,6 +987,17 @@ static  void  mod_som_sbe41_consumer_task_f(void  *p_arg){
             time1= mod_som_calendar_get_time_f();
             if (time1-time0>MOD_SOM_SBE41_SAMPLE_TIMEOUT){
                 mod_som_sbe41_ptr->sample_timeout=true;
+                // calculate the offset for current pointer
+                data_elmnts_offset     = mod_som_sbe41_ptr->consumer_ptr->cnsmr_cnt % mod_som_sbe41_ptr->config_ptr->elements_per_buffer;
+                // update the current element pointer using the element map
+                curr_data_ptr   =(uint8_t*)mod_som_sbe41_ptr->rec_buff_ptr->elements_map[data_elmnts_offset];
+                //ALB copy the the local element in the streamer
+
+                memcpy(last_sbe42sample,curr_data_ptr,mod_som_sbe41_ptr->config_ptr->element_length);
+
+                mod_som_io_print_f("Time out last SBE41 sample: %s [nb count %lu],",last_sbe42sample,(uint32_t)mod_som_sbe41_ptr->sample_count);
+                sprintf("Time out last SBE41 sample: %s [nb count %lu],",last_sbe42sample,(uint32_t)mod_som_sbe41_ptr->sample_count);
+
             }
 
             // LOOP without delay until caught up to latest produced element
@@ -1009,7 +1022,7 @@ static  void  mod_som_sbe41_consumer_task_f(void  *p_arg){
                     mod_som_sbe41_ptr->consumer_ptr->cnsmr_cnt = reset_cnsmr_cnt;
 //                    printf("new cns_cnt: %lu\n",(uint32_t) cnsmr_cnt);
                 }
-                time0= mod_som_calendar_get_time_f();
+                time0= time1;
                 mod_som_sbe41_ptr->sample_timeout=false;
 
                 // calculate the offset for current pointer
