@@ -1239,7 +1239,7 @@ mod_som_sbe41_sample_t mod_som_sbe41_parse_sample_f(uint8_t * element)
   char last_sbe42sample[mod_som_sbe41_ptr->config_ptr->element_length];
 
 
-  memcpy(last_sbe42sample,element[MOD_SOM_SBE41_HEXTIMESTAMP_LENGTH],mod_som_sbe41_ptr->config_ptr->element_length);
+  memcpy(last_sbe42sample,&element[MOD_SOM_SBE41_HEXTIMESTAMP_LENGTH],mod_som_sbe41_ptr->config_ptr->element_length);
 
   mod_som_io_print_f("%s",last_sbe42sample);
   sprintf("%s",last_sbe42sample);
