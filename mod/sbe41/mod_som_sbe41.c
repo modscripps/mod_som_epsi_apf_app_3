@@ -1009,7 +1009,7 @@ static  void  mod_som_sbe41_consumer_task_f(void  *p_arg){
                     mod_som_sbe41_ptr->consumer_ptr->cnsmr_cnt = reset_cnsmr_cnt;
 //                    printf("new cns_cnt: %lu\n",(uint32_t) cnsmr_cnt);
                 }
-                time0= mod_som_calendar_get_time_f();
+                time0 = time1; //mod_som_calendar_get_time_f();
                 mod_som_sbe41_ptr->sample_timeout=false;
 
                 // calculate the offset for current pointer
@@ -1223,8 +1223,6 @@ mod_som_sbe41_sample_t mod_som_sbe41_parse_sample_f(uint8_t * element)
 //  char  str_conductivity[MOD_SOM_SBE41_SBE_CHANNEL_LENGTH];
   char  str_pressure[MOD_SOM_SBE41_SBE_CHANNEL_LENGTH+1]={0};
   char  str_salinity[MOD_SOM_SBE41_SBE_CHANNEL_LENGTH+1]={0};
-
-
 
   memcpy(str_timestamp,element,MOD_SOM_SBE41_HEXTIMESTAMP_LENGTH);
     uint8_t * sbe_str=&element[MOD_SOM_SBE41_HEXTIMESTAMP_LENGTH];

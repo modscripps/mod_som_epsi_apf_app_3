@@ -4827,10 +4827,14 @@ mod_som_apf_status_t mod_som_apf_upload_f(){
           mod_som_sdio_get_runtime_ptr_f();
       mod_som_sdio_file_ptr_t processfile_ptr =
           local_mod_som_sdio_ptr_t->processdata_file_ptr;
-
-      f_lseek (processfile_ptr->fp, 0);
-      cnt=f_size(processfile_ptr->fp);
-      mod_som_apf_ptr->consumer_ptr->daq_remaining_bytes   = cnt;
+      if (!processfile_ptr->is_open_flag){
+          mod_som_apf_ptr->consumer_ptr->daq_remaining_bytes   = -1;
+          status = MOD_SOM_APF_STATUS_CANNOT_OPENFILE;
+      }else{
+          f_lseek (processfile_ptr->fp, 0);
+          cnt=f_size(processfile_ptr->fp);
+          mod_som_apf_ptr->consumer_ptr->daq_remaining_bytes   = cnt;
+      }
 
       if(cnt==0){ //ALB no data
           status = MOD_SOM_APF_STATUS_NO_DATA;
