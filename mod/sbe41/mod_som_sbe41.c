@@ -26,6 +26,7 @@
 #include <sbe41/mod_som_sbe41_bsp.h>
 #include <sbe41/mod_som_sbe41_cfg.h>
 #include <sbe41/mod_som_sbe41_priv.h>
+#include <stdbool.h>
 #include "mod_som_io.h"
 #include "mod_som.h"
 #include "mod_som_priv.h"
@@ -200,7 +201,7 @@ mod_som_status_t mod_som_sbe41_construct_settings_f(){
 }
 
 mod_som_sbe41_settings_t mod_som_sbe41_get_settings_f(){
-	return *mod_som_sbe41_ptr->settings_ptr;
+  return *mod_som_sbe41_ptr->settings_ptr;
 }
 
 /*******************************************************************************
@@ -959,8 +960,11 @@ static  void  mod_som_sbe41_consumer_task_f(void  *p_arg){
     uint64_t tick;
 
     mod_som_sbe41_sample_t curr_sbe_sample;
-    static sl_sleeptimer_timestamp_t time0=0;
-    sl_sleeptimer_timestamp_t        time1=0;
+    static sl_sleeptimer_timestamp_t time0 = 0;
+    bool first_sample_flag = true;
+    sl_sleeptimer_timestamp_t        time1= 0;;
+    char last_sbe42sample[mod_som_sbe41_ptr->config_ptr->sample_data_length+1];
+
 
 
 
@@ -975,16 +979,64 @@ static  void  mod_som_sbe41_consumer_task_f(void  *p_arg){
 
     mod_som_sdio_file_ptr_t rawfile_ptr =
         local_mod_som_sdio_ptr_t->rawdata_file_ptr;
+    char apf_reply_str[MOD_SOM_SHELL_INPUT_BUF_SIZE]="\0";
+    size_t reply_str_len = 0;
+    LEUART_TypeDef* apf_leuart_ptr;
+    uint32_t bytes_sent;
+    mod_som_apf_status_t status;
 
-
+    //time0= mod_som_calendar_get_time_f();
     while (DEF_ON) {
 
         if (mod_som_sbe41_ptr->collect_data_flag){
             elmnts_avail = mod_som_sbe41_ptr->sample_count - mod_som_sbe41_ptr->consumer_ptr->cnsmr_cnt;  //calculate number of elements available have been produced
             //ALB check if we still receive data
             time1= mod_som_calendar_get_time_f();
+            if(first_sample_flag){
+                time0=time1;
+                first_sample_flag = false;
+            }
             if (time1-time0>MOD_SOM_SBE41_SAMPLE_TIMEOUT){
                 mod_som_sbe41_ptr->sample_timeout=true;
+                /*
+                //2025 05 25 BEGIN stop collect data because data hasn't come in a a while
+                // calculate the offset for current pointer
+                data_elmnts_offset     = mod_som_sbe41_ptr->consumer_ptr->cnsmr_cnt % mod_som_sbe41_ptr->config_ptr->elements_per_buffer;
+                // update the current element pointer using the element map
+                curr_data_ptr   =(uint8_t*)(mod_som_sbe41_ptr->rec_buff_ptr->elements_map+data_elmnts_offset+MOD_SOM_SBE41_HEXTIMESTAMP_LENGTH);
+                //ALB copy the the local element in the streamer
+
+
+                if(mod_som_sbe41_ptr->consumer_ptr->cnsmr_cnt){
+                    memcpy(last_sbe42sample,curr_data_ptr,mod_som_sbe41_ptr->config_ptr->sample_data_length);
+                    last_sbe42sample[mod_som_sbe41_ptr->config_ptr->sample_data_length] = '\0';
+                    mod_som_io_print_f("Time out last SBE41 sample: [%lu]%s\r\n",(uint32_t)mod_som_sbe41_ptr->sample_count, last_sbe42sample);
+                    sprintf(apf_reply_str,"Time out last SBE41 sample: [%lu]%s\r\n",(uint32_t)mod_som_sbe41_ptr->sample_count,last_sbe42sample);
+
+                }else{
+                    mod_som_io_print_f("Time out missing SBE41 sample\r\n");
+                    sprintf(apf_reply_str,"Time out missing SBE41 sample\r\n");
+                }
+                reply_str_len = strlen(apf_reply_str);
+                apf_leuart_ptr =(LEUART_TypeDef *) mod_som_apf_get_port_ptr_f();
+
+                sl_sleeptimer_delay_millisecond(10);
+                bytes_sent = mod_som_apf_send_line_f(apf_leuart_ptr,apf_reply_str, reply_str_len);
+                sl_sleeptimer_delay_millisecond(10);
+                if (bytes_sent==0){
+                    status= MOD_SOM_STATUS_NOT_OK;
+                }
+                //                // Delay Start Task execution for
+                //                OSTimeDly( MOD_SOM_SBE41_CONSUMER_DELAY*10,             //   consumer delay is #define at the beginning OS Ticks
+                //                           OS_OPT_TIME_DLY,          //   from now.
+                //                           &err);
+                //                sl_sleeptimer_delay_millisecond(100);
+                //                mod_som_sbe41_stop_collect_data_f();
+                //2025 05 25 END stop collect data because data hasn't come in a a while
+                // */
+                break;
+
+
             }
 
             // LOOP without delay until caught up to latest produced element
@@ -1009,7 +1061,7 @@ static  void  mod_som_sbe41_consumer_task_f(void  *p_arg){
                     mod_som_sbe41_ptr->consumer_ptr->cnsmr_cnt = reset_cnsmr_cnt;
 //                    printf("new cns_cnt: %lu\n",(uint32_t) cnsmr_cnt);
                 }
-                time0 = time1; //mod_som_calendar_get_time_f();
+                time0 = time1; //mod_som_calendar_get_time_f(); // don't want to reacquire time
                 mod_som_sbe41_ptr->sample_timeout=false;
 
                 // calculate the offset for current pointer
@@ -1223,6 +1275,31 @@ mod_som_sbe41_sample_t mod_som_sbe41_parse_sample_f(uint8_t * element)
 //  char  str_conductivity[MOD_SOM_SBE41_SBE_CHANNEL_LENGTH];
   char  str_pressure[MOD_SOM_SBE41_SBE_CHANNEL_LENGTH+1]={0};
   char  str_salinity[MOD_SOM_SBE41_SBE_CHANNEL_LENGTH+1]={0};
+
+  /*2025 05 25 display every sample
+  char apf_reply_str[MOD_SOM_SHELL_INPUT_BUF_SIZE]="\0";
+  size_t reply_str_len = 0;
+  LEUART_TypeDef* apf_leuart_ptr;
+  uint32_t bytes_sent;
+  mod_som_apf_status_t status;
+
+
+  char last_sbe42sample[mod_som_sbe41_ptr->config_ptr->sample_data_length+1];
+  memcpy(last_sbe42sample,&element[MOD_SOM_SBE41_HEXTIMESTAMP_LENGTH],mod_som_sbe41_ptr->config_ptr->sample_data_length);
+  last_sbe42sample[mod_som_sbe41_ptr->config_ptr->sample_data_length] = '\0';
+  mod_som_io_print_f("SBE41:%s",last_sbe42sample);
+  sprintf(apf_reply_str, "SBE41:%s",last_sbe42sample);
+  reply_str_len = strlen(apf_reply_str);
+  apf_leuart_ptr =(LEUART_TypeDef *) mod_som_apf_get_port_ptr_f();
+
+  sl_sleeptimer_delay_millisecond(10);
+  bytes_sent = mod_som_apf_send_line_f(apf_leuart_ptr,apf_reply_str, reply_str_len);
+  sl_sleeptimer_delay_millisecond(10);
+  if (bytes_sent==0){
+      status= MOD_SOM_STATUS_NOT_OK;
+  }
+  //2025 05 25 end display every sample */
+
 
   memcpy(str_timestamp,element,MOD_SOM_SBE41_HEXTIMESTAMP_LENGTH);
     uint8_t * sbe_str=&element[MOD_SOM_SBE41_HEXTIMESTAMP_LENGTH];
@@ -1489,12 +1566,14 @@ void mod_som_sbe41_irq_rx_handler_f(){
           }
           //Clear SIGFRAME to start the transfer(data storing) with the begining of a SBE sample
           // i.e. not a \n.
+
           usart_ptr->CMD = USART_CMD_CLEARRX | USART_CMD_CLEARTX;
+          // Disabling the LEUART IRQ to "run" on the LDMA interrupt.
+          USART_IntDisable(usart_ptr, USART_IF_RXDATAV);
           LDMA_StartTransfer( mod_som_sbe41_ptr->ldma.ch ,\
                               (void*)&sbe_ldma_signal, \
                               (void*)&descriptor_read_sbe);
-          // Disabling the LEUART IRQ to "run" on the LDMA interrupt.
-          USART_IntDisable(usart_ptr, USART_IF_RXDATAV);
+
       }
       else{
           //ALB I need to clear the FIFO until I get SIGFRAME
@@ -1529,7 +1608,7 @@ void mod_som_sbe41_ldma_irq_handler_f(){
   if((*(uint8_t*)(mod_som_sbe41_ptr->rec_buff_ptr->elements_map \
       [mod_som_sbe41_ptr->rec_buff_ptr->producer_indx]+ \
                          MOD_SOM_SBE41_HEXTIMESTAMP_LENGTH+\
-     mod_som_sbe41_ptr->config_ptr->sample_data_length-1)==10) & \
+     mod_som_sbe41_ptr->config_ptr->sample_data_length-1)==10) && \
          (mod_som_sbe41_ptr->collect_data_flag))
 
     {
@@ -1585,10 +1664,12 @@ void mod_som_sbe41_ldma_irq_handler_f(){
     }else{
         //reset the LEUART IRQ and look for the next SBE sample.
         USART_IntClear(usart_ptr, USART_IF_RXDATAV);
-        USART_IntEnable(usart_ptr, USART_IF_RXDATAV);
         //ALB I am not storing data yet
         //ALB I need to clear the FIFO until I get SIGFRAME
         usart_ptr->CMD = USART_CMD_CLEARRX | USART_CMD_CLEARTX;
+
+        USART_IntEnable(usart_ptr, USART_IF_RXDATAV);
+
 
 //        //TODO update the error flag in the header.
 //        mod_som_sbe41_ptr->collect_data_flag = false;
@@ -1726,5 +1807,3 @@ mod_som_status_t mod_som_sbe41_encode_status_f(uint16_t status){
         return MOD_SOM_STATUS_OK;
     return MOD_SOM_ENCODE_STATUS(MOD_SOM_SBE41_STATUS_PREFIX, status);
 }
-
-

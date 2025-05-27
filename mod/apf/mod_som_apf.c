@@ -865,19 +865,14 @@ mod_som_apf_status_t mod_som_apf_start_producer_task_f(){
  *   or otherwise
  ******************************************************************************/
 mod_som_apf_status_t mod_som_apf_stop_producer_task_f(){
-
-
-  RTOS_ERR err;
-  OSTaskDel(&mod_som_apf_producer_task_tcb,
-             &err);
-
-
   //ALB update the Meta Data sample cnt.
   mod_som_apf_ptr->producer_ptr->mod_som_apf_meta_data.sample_cnt=
       mod_som_apf_ptr->producer_ptr->stored_dissrates_cnt;
 
   mod_som_apf_ptr->producer_ptr->started_flg=false;
-
+  RTOS_ERR err;
+    OSTaskDel(&mod_som_apf_producer_task_tcb,
+               &err);
 
   if(RTOS_ERR_CODE_GET(err) != RTOS_ERR_NONE)
     return (mod_som_apf_ptr->status = mod_som_apf_encode_status_f(MOD_SOM_APF_STATUS_FAIL_TO_STOP_PRODUCER_TASK));
@@ -1017,6 +1012,11 @@ void mod_som_apf_producer_task_f(void  *p_arg){
       /************************************************************************/
       //ALB APF producer phase 1
       //ALB check if producer is started, and if the dacp_profile is NOT full
+      //ALB 05/25/2025 Using the ctd time out to stop the daq
+      mod_som_sbe41_ptr_t mod_som_sbe41_ptr=mod_som_sbe41_get_runtime_ptr_f();
+      if (mod_som_sbe41_ptr->sample_timeout){
+          break;
+      }
       if (mod_som_apf_ptr->producer_ptr->started_flg &
           !mod_som_apf_ptr->producer_ptr->dacq_full){
 
@@ -1223,6 +1223,8 @@ void mod_som_apf_producer_task_f(void  *p_arg){
   } // end of while (DEF_ON)
 
   PP_UNUSED_PARAM(p_arg);                                     // Prevent config warning.
+  //this function only reaches when the loop ends
+  mod_som_apf_daq_stop_f();
 
 }
 
@@ -2859,8 +2861,6 @@ mod_som_apf_status_t mod_som_apf_daq_start_f(uint64_t profile_id){
       if (file_status>0){
           status|=file_status;
       }
-      //ALB start ADC master clock timer
-      mod_som_apf_ptr->daq=true;
 
 
 
@@ -2940,8 +2940,7 @@ mod_som_apf_status_t mod_som_apf_daq_stop_f(){
   status|= mod_som_efe_obp_stop_cpt_dissrate_task_f();
   status|= mod_som_efe_obp_stop_consumer_task_f();
 
-  //ALB stop APF producer task
-  status |= mod_som_apf_stop_producer_task_f();
+
   //ALB stop APF consumer task
   status |= mod_som_apf_stop_consumer_task_f();
 
@@ -3001,13 +3000,12 @@ mod_som_apf_status_t mod_som_apf_daq_stop_f(){
   mod_som_sdio_stop_f();
   mod_som_sdio_disable_hardware_f();
 
+  mod_som_apf_ptr->daq = false;
+  //2025 05 26 move this here to that everything else get executed
+  //ALB stop APF producer task
+  status |= mod_som_apf_stop_producer_task_f();
 
-
-  //reset Daq flags
-  mod_som_apf_ptr->daq=false;
   }
-
-
 	return status;
 }
 

@@ -245,7 +245,6 @@ mod_som_apf_probe_t, *mod_som_apf_probe_ptr_t;
 
 //#pragma pack(1)
 typedef struct{
-
   uint32_t daq_timestamp; //
   uint16_t  profile_id;
   uint16_t modsom_sn;
@@ -508,7 +507,7 @@ typedef struct{
    mod_som_apf_prf_ptr_t      com_prf_ptr;
 
    uint64_t profile_id;
-   uint32_t     daq;
+   volatile bool     daq;
    float    dacq_start_pressure;
    float    dacq_pressure;
    float    dacq_dz;
