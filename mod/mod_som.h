@@ -24,7 +24,7 @@
 #include <mod_som_cfg.h>
 //#include "mod_som_bsp.h"
 #include "mod_som_common.h"
-
+#include "sl_atomic.h"
 
 
 //------------------------------------------------------------------------------

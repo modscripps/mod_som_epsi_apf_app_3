@@ -998,7 +998,7 @@ static  void  mod_som_sbe41_consumer_task_f(void  *p_arg){
             }
             if (time1-time0>MOD_SOM_SBE41_SAMPLE_TIMEOUT){
                 mod_som_sbe41_ptr->sample_timeout=true;
-                /*
+                ///*
                 //2025 05 25 BEGIN stop collect data because data hasn't come in a a while
                 // calculate the offset for current pointer
                 data_elmnts_offset     = mod_som_sbe41_ptr->consumer_ptr->cnsmr_cnt % mod_som_sbe41_ptr->config_ptr->elements_per_buffer;
@@ -1011,21 +1011,22 @@ static  void  mod_som_sbe41_consumer_task_f(void  *p_arg){
                     memcpy(last_sbe42sample,curr_data_ptr,mod_som_sbe41_ptr->config_ptr->sample_data_length);
                     last_sbe42sample[mod_som_sbe41_ptr->config_ptr->sample_data_length] = '\0';
                     mod_som_io_print_f("Time out last SBE41 sample: [%lu]%s\r\n",(uint32_t)mod_som_sbe41_ptr->sample_count, last_sbe42sample);
-                    sprintf(apf_reply_str,"Time out last SBE41 sample: [%lu]%s\r\n",(uint32_t)mod_som_sbe41_ptr->sample_count,last_sbe42sample);
+                    //sprintf(apf_reply_str,"Time out last SBE41 sample: [%lu]%s\r\n",(uint32_t)mod_som_sbe41_ptr->sample_count,last_sbe42sample);
 
                 }else{
                     mod_som_io_print_f("Time out missing SBE41 sample\r\n");
-                    sprintf(apf_reply_str,"Time out missing SBE41 sample\r\n");
+                    //sprintf(apf_reply_str,"Time out missing SBE41 sample\r\n");
                 }
-                reply_str_len = strlen(apf_reply_str);
-                apf_leuart_ptr =(LEUART_TypeDef *) mod_som_apf_get_port_ptr_f();
+//                reply_str_len = strlen(apf_reply_str);
+//                apf_leuart_ptr =(LEUART_TypeDef *) mod_som_apf_get_port_ptr_f();
+//
+//                sl_sleeptimer_delay_millisecond(10);
+//                bytes_sent = mod_som_apf_send_line_f(apf_leuart_ptr,apf_reply_str, reply_str_len);
+//                sl_sleeptimer_delay_millisecond(10);
+//                if (bytes_sent==0){
+//                    status= MOD_SOM_STATUS_NOT_OK;
+//                }
 
-                sl_sleeptimer_delay_millisecond(10);
-                bytes_sent = mod_som_apf_send_line_f(apf_leuart_ptr,apf_reply_str, reply_str_len);
-                sl_sleeptimer_delay_millisecond(10);
-                if (bytes_sent==0){
-                    status= MOD_SOM_STATUS_NOT_OK;
-                }
                 //                // Delay Start Task execution for
                 //                OSTimeDly( MOD_SOM_SBE41_CONSUMER_DELAY*10,             //   consumer delay is #define at the beginning OS Ticks
                 //                           OS_OPT_TIME_DLY,          //   from now.

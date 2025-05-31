@@ -618,6 +618,7 @@ mod_som_status_t mod_som_sdio_open_processfilename_f(CPU_CHAR* filename){
   mod_som_io_print_f("\n[sdio open file]:%s \r\n",(char *) mod_som_sdio_struct.processdata_file_ptr->file_name);
   mod_som_sdio_struct.processdata_file_ptr->is_open_flag=0;
 
+
     TCHAR tchar_filename[100];
 
     int idx;
@@ -651,6 +652,12 @@ mod_som_status_t mod_som_sdio_open_processfilename_f(CPU_CHAR* filename){
       return MOD_SOM_SDIO_STATUS_FAIL_OPENFILE;
     }
     mod_som_sdio_struct.processdata_file_ptr->is_open_flag=1;
+    //2025 05 28 initialize writing flag
+    CORE_DECLARE_IRQ_STATE;
+    CORE_ENTER_ATOMIC();
+    mod_som_sdio_struct.processdata_file_ptr->is_writing_flag=false;
+    mod_som_sdio_struct.processdata_file_ptr->is_reading_flag=false;
+    CORE_EXIT_ATOMIC();
 
 //  //ALB sync the file to actually write on the SD card
 //  res_sync = f_sync(mod_som_sdio_struct.processdata_file_ptr->fp);
@@ -726,6 +733,12 @@ mod_som_status_t mod_som_sdio_opentoread_processfilename_f(CPU_CHAR* filename){
       return MOD_SOM_SDIO_STATUS_FAIL_OPENFILE;
     }
     mod_som_sdio_struct.processdata_file_ptr->is_open_flag=1;
+    //2025 05 28 initialize writing flag
+    CORE_DECLARE_IRQ_STATE;
+    CORE_ENTER_ATOMIC();
+    mod_som_sdio_struct.processdata_file_ptr->is_writing_flag=false;
+    mod_som_sdio_struct.processdata_file_ptr->is_reading_flag=false;
+    CORE_EXIT_ATOMIC();
 
 //  //ALB sync the file to actually write on the SD card
 //  res_sync = f_sync(mod_som_sdio_struct.processdata_file_ptr->fp);
@@ -877,6 +890,12 @@ mod_som_status_t mod_som_sdio_open_file_f(mod_som_sdio_file_ptr_t mod_som_sdio_f
     	return MOD_SOM_SDIO_STATUS_FAIL_OPENFILE;
     }
     mod_som_sdio_file_ptr->is_open_flag=1;
+    //2025 05 28 initialize writing flag
+    CORE_DECLARE_IRQ_STATE;
+    CORE_ENTER_ATOMIC();
+    mod_som_sdio_file_ptr->is_writing_flag=false;
+    mod_som_sdio_file_ptr->is_reading_flag=false;
+    CORE_EXIT_ATOMIC();
     return mod_som_sdio_encode_status_f(MOD_SOM_STATUS_OK);
 }
 
@@ -893,6 +912,21 @@ mod_som_status_t mod_som_sdio_close_file_f(mod_som_sdio_file_ptr_t mod_som_sdio_
 	if(mod_som_sdio_file_ptr->is_open_flag==1){
 
 	    FRESULT res;
+	    bool is_writing_flag;
+	    //2025 05 28 check for writing flag
+	    CORE_DECLARE_IRQ_STATE;
+	    CORE_ENTER_ATOMIC();
+	    is_writing_flag = mod_som_sdio_file_ptr->is_writing_flag;
+	    CORE_EXIT_ATOMIC();
+
+	    while(is_writing_flag){
+	        WDOG_Feed();
+	        sl_sleeptimer_delay_millisecond(10);
+	        CORE_DECLARE_IRQ_STATE;
+	        CORE_ENTER_ATOMIC();
+	        is_writing_flag = mod_som_sdio_file_ptr->is_writing_flag;
+	        CORE_EXIT_ATOMIC();
+	    }
 
 	    //ALB Add a delay because sometime the closing process get hangup
 	    //ALB because (i think) the file close while trying to write in the writing task
@@ -1016,7 +1050,12 @@ mod_som_status_t mod_som_sdio_write_config_f(uint8_t *data_ptr,
 	        "*%02x\r\n",payload_chksum);
 
 
-    res = f_write(file_ptr->fp,(uint8_t*) header,length_header,&byteswritten);  /* buffptr = pointer to the data to be written */
+	//2025 05 28  writing flag
+	CORE_DECLARE_IRQ_STATE;
+	CORE_ENTER_ATOMIC();
+	file_ptr->is_writing_flag = true;
+	CORE_EXIT_ATOMIC();
+	res = f_write(file_ptr->fp,(uint8_t*) header,length_header,&byteswritten);  /* buffptr = pointer to the data to be written */
 
     //write the settings
     byteswritten=0;
@@ -1035,7 +1074,13 @@ mod_som_status_t mod_som_sdio_write_config_f(uint8_t *data_ptr,
     res = f_write(file_ptr->fp,str_payload_chksum,5,&byteswritten);  /* buffptr = pointer to the data to be written */
     f_sync(mod_som_sdio_struct.rawdata_file_ptr->fp);
 
-    if(file_ptr->is_open_flag==0){
+    //2025 05 28  writing flag
+    CORE_ENTER_ATOMIC();
+    file_ptr->is_writing_flag = false;
+    CORE_EXIT_ATOMIC();
+
+    //2025 05 28  san fixed error if file wasn't open initially when entering this function, then this will close it upon exit
+    if(!file_ptr->is_open_flag){
         mod_som_sdio_close_file_f(file_ptr);
     }
 
@@ -1212,7 +1257,11 @@ mod_som_status_t mod_som_sdio_read_file_f(mod_som_sdio_file_ptr_t mod_som_sdio_f
         if(mod_som_sdio_file_ptr->is_open_flag==0){
         	mod_som_io_print_f("\nReading file %s...\n", \
         			mod_som_sdio_file_ptr->file_name);
-
+        	//2025 05 28  writing flag
+        	CORE_DECLARE_IRQ_STATE;
+        	CORE_ENTER_ATOMIC();
+        	mod_som_sdio_file_ptr->is_reading_flag = true;
+        	CORE_EXIT_ATOMIC();
         	res = f_lseek (mod_som_sdio_file_ptr->fp, 0);
         	int done_reading=0;
         	while(done_reading==0){
@@ -1228,6 +1277,10 @@ mod_som_status_t mod_som_sdio_read_file_f(mod_som_sdio_file_ptr_t mod_som_sdio_f
             //ALB check If I am at the end of the file. if yes done_reading=1
             done_reading=f_eof(mod_som_sdio_file_ptr->fp);
         	}
+        	//2025 05 28  writing flag
+        	CORE_ENTER_ATOMIC();
+        	mod_som_sdio_file_ptr->is_reading_flag = false;
+        	CORE_EXIT_ATOMIC();
         } else
         {
         	mod_som_io_print_f("\nRead error data file still open\n");
@@ -1267,7 +1320,11 @@ if(mod_som_sdio_file_ptr->is_open_flag==0){
 }
   mod_som_io_print_f("\nReading file %s...\n", \
       mod_som_sdio_file_ptr->file_name);
-
+  //2025 05 28  reading flag
+  CORE_DECLARE_IRQ_STATE;
+  CORE_ENTER_ATOMIC();
+  mod_som_sdio_file_ptr->is_reading_flag = true;
+  CORE_EXIT_ATOMIC();
   //ALB position the SD read idx. Usefull when we nee to send again a packet
   res = f_lseek (mod_som_sdio_file_ptr->fp, seek_idx);
 //  int done_reading=0;
@@ -1288,7 +1345,10 @@ if(mod_som_sdio_file_ptr->is_open_flag==0){
 //    //ALB check If I am at the end of the file. if yes done_reading=1
 //    done_reading = f_eof(mod_som_sdio_file_ptr->fp);
 }
-
+  //2025 05 28  reading flag
+  CORE_ENTER_ATOMIC();
+  mod_som_sdio_file_ptr->is_reading_flag = false;
+  CORE_EXIT_ATOMIC();
   done_reading=f_eof(mod_som_sdio_file_ptr->fp);
 if (done_reading>0){
     res = f_close(mod_som_sdio_file_ptr->fp);
@@ -1729,6 +1789,11 @@ static void mod_som_sdio_print_task_f(void *p_arg)
 
             if(tmp_mod_som_sdio_xfer_item_ptr->file_ptr->is_open_flag==1)
               {
+                //2025 05 28  writing flag
+                CORE_DECLARE_IRQ_STATE;
+                CORE_ENTER_ATOMIC();
+                tmp_mod_som_sdio_xfer_item_ptr->file_ptr->is_writing_flag = true;
+                CORE_EXIT_ATOMIC();
                 int remaining_bytes;
                 int bytes_to_send=MOD_SOM_SDIO_BLOCK_LENGTH;
                 UINT byteswritten;
@@ -1742,22 +1807,27 @@ static void mod_som_sdio_print_task_f(void *p_arg)
                         bytes_to_send=remaining_bytes;
                       }
                     res = f_write(tmp_mod_som_sdio_xfer_item_ptr->file_ptr->fp,\
-                            &tmp_mod_som_sdio_xfer_item_ptr->data_ptr[tmp_mod_som_sdio_xfer_item_ptr->data_length-remaining_bytes],bytes_to_send, &byteswritten); /* buffptr = pointer to the data to be written */
+                                  &tmp_mod_som_sdio_xfer_item_ptr->data_ptr[tmp_mod_som_sdio_xfer_item_ptr->data_length-remaining_bytes],bytes_to_send, &byteswritten); /* buffptr = pointer to the data to be written */
                     remaining_bytes=remaining_bytes-byteswritten;
                     if (res != FR_OK)
                       {
                         //TODO write an error code
                       }
                   }
-                  f_sync(tmp_mod_som_sdio_xfer_item_ptr->file_ptr->fp);
+                f_sync(tmp_mod_som_sdio_xfer_item_ptr->file_ptr->fp);
 
-                  if (mod_som_calendar_get_time_f()-
+                //2025 05 28  writing flag
+                CORE_ENTER_ATOMIC();
+                tmp_mod_som_sdio_xfer_item_ptr->file_ptr->is_writing_flag = false;
+                CORE_EXIT_ATOMIC();
+
+                if (mod_som_calendar_get_time_f()-
                     mod_som_sdio_struct.open_file_time>=
                     mod_som_sdio_struct.mod_som_sdio_settings_ptr->file_duration)
-                    {
-                      //ALB suspend the task.
-                      mod_som_sdio_struct.new_file_flag=true;
-                    }
+                  {
+                    //ALB suspend the task.
+                    mod_som_sdio_struct.new_file_flag=true;
+                  }
 
               } else{
                   mod_som_io_print_f("Write error data file not open\n");

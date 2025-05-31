@@ -203,6 +203,8 @@
 typedef struct{
     uint8_t initialized_flag;
     uint8_t is_open_flag;
+    volatile bool is_writing_flag; //adding here to ensure we do not close file if it is writing
+    volatile bool is_reading_flag; //adding here to ensure we do not close file if it is writing
     FIL *fp;
     char * file_name;
     uint8_t len_filename;

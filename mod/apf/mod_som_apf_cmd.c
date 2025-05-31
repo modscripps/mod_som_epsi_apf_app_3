@@ -215,7 +215,7 @@ CPU_INT16S mod_som_apf_cmd_daq_f(CPU_INT16U argc,
           // all the bad input are detected, now only have valid command - maibui Aprl 28, 2022
 //          last_profile_id = profile_id;  // update the frofile id
           //ALB STARTING THE PROFILE HERE
-          return_status = mod_som_apf_daq_start_f((uint64_t)profile_id); // execute start()
+          return_status = mod_som_apf_daq_start_f((uint32_t)profile_id); // execute start()
 
           if (return_status == MOD_SOM_APF_STATUS_NO_CTD_DATA)
           {
@@ -230,7 +230,7 @@ CPU_INT16S mod_som_apf_cmd_daq_f(CPU_INT16U argc,
           //ALB THIS THE ACK ANSWER
           sprintf(apf_reply_str,"%s,start,%s,%lu\r\n",
                   MOD_SOM_APF_DAQ_STR,MOD_SOM_APF_ACK_STR,
-                  (uint32_t) profile_id);
+                  profile_id);
           status |= MOD_SOM_APF_STATUS_OK;
         } // if (!Str_Cmp(argv[argc], "start"))
       else  // not "daq stop" nor "daq start"

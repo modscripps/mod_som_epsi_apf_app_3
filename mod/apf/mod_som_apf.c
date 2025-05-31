@@ -123,7 +123,7 @@ mod_som_apf_status_t mod_som_apf_init_f(){
     //ALB TODO change return -1 to return the an appropriate error code.
     APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
     if(mod_som_apf_ptr==DEF_NULL){
-      printf("APF not initialized\n");
+        mod_som_io_print_f("APF not initialized\n");
       return -1;
     }
 
@@ -136,7 +136,7 @@ mod_som_apf_status_t mod_som_apf_init_f(){
     // ALB WARNING: The setup pointer CAN NOT have pointers inside.
     status |= mod_som_apf_allocate_settings_ptr_f();
     if (status!=MOD_SOM_STATUS_OK){
-      printf("APF not initialized\n");
+        mod_som_io_print_f("APF not initialized\n");
       return status;
     }
 
@@ -158,7 +158,7 @@ mod_som_apf_status_t mod_som_apf_init_f(){
         status |= mod_som_apf_default_settings_f(
                                              mod_som_apf_ptr->settings_ptr);
         if (status!=MOD_SOM_STATUS_OK){
-          printf("APF not initialized\n");
+            mod_som_io_print_f("APF not initialized\n");
           return status;
         }
       }
@@ -167,7 +167,7 @@ mod_som_apf_status_t mod_som_apf_init_f(){
       //ALB using the settings_ptr variable
       status |= mod_som_apf_construct_config_ptr_f();
     if (status!=MOD_SOM_STATUS_OK){
-      printf("APF not initialized\n");
+        mod_som_io_print_f("APF not initialized\n");
       return status;
     }
 
@@ -177,7 +177,7 @@ mod_som_apf_status_t mod_som_apf_init_f(){
     //ALB using the settings_ptr variable
     status |= mod_som_apf_construct_producer_ptr_f();
     if (status!=MOD_SOM_STATUS_OK){
-        printf("APF not initialized\n");
+        mod_som_io_print_f("APF not initialized\n");
         return status;
     }
     //ALB Allocate memory for the producer pointer,
@@ -185,7 +185,7 @@ mod_som_apf_status_t mod_som_apf_init_f(){
     //ALB REMEMBER, you need consumer struct even if you do not use the consumer task
     status |= mod_som_apf_construct_consumer_ptr_f();
     if (status!=MOD_SOM_STATUS_OK){
-        printf("APF not initialized\n");
+        mod_som_io_print_f("APF not initialized\n");
         return status;
     }
 // enable the reading and parsing the input command/string through the LEUART - Arnaud&Mai - Nov 10, 2021
@@ -193,14 +193,14 @@ mod_som_apf_status_t mod_som_apf_init_f(){
 //    //ALB using the settings_ptr variable
     status |= mod_som_apf_construct_com_prf_f();
     if (status!=MOD_SOM_STATUS_OK){
-        printf("APF not initialized\n");
+        mod_som_io_print_f("APF not initialized\n");
         return status;
 
     }
     else{
         uint32_t bytes_sent;
 
-        printf("APF initialized\n");
+        mod_som_io_print_f("APF initialized\n");
 
         apf_leuart_ptr =(LEUART_TypeDef *) mod_som_apf_get_port_ptr_f();
         sprintf(apf_reply_str,"APEX-EPSI initialized\r\n");
@@ -291,8 +291,8 @@ mod_som_apf_status_t mod_som_apf_default_settings_f(
   strncpy(settings_ptr->header,
           MOD_SOM_APF_HEADER0,MOD_SOM_APF_SETTINGS_STR_LENGTH);
 
-  settings_ptr->comm_telemetry_packet_format=2;
-  settings_ptr->sd_packet_format=2;
+  settings_ptr->comm_telemetry_packet_format=1;
+  settings_ptr->sd_packet_format=1;
 
 
   settings_ptr->initialize_flag=true;
@@ -1186,6 +1186,8 @@ void mod_som_apf_producer_task_f(void  *p_arg){
               }//end if current P<previous P +dz
               //ALB increment cnsmr count
               mod_som_apf_ptr->producer_ptr->dissrates_cnt++;
+              mod_som_io_print_f("\n _apf stored_: %lu\r\n ", \
+                                    (uint32_t)mod_som_apf_ptr->producer_ptr->stored_dissrates_cnt);
               mod_som_io_print_f("\n apf cnt: %lu\r\n ", \
                   (uint32_t)mod_som_apf_ptr->producer_ptr->dissrates_cnt);
 
@@ -2707,7 +2709,7 @@ mod_som_apf_status_t mod_som_apf_encode_status_f(uint8_t mod_som_apf_status){
  *   MOD_SOM_APF_STATUS_OK if function execute nicely
  ******************************************************************************/
 
-mod_som_apf_status_t mod_som_apf_daq_start_f(uint64_t profile_id){
+mod_som_apf_status_t mod_som_apf_daq_start_f(uint32_t profile_id){
   mod_som_apf_status_t status=0;
   uint32_t delay1s=1000;
   uint32_t delay2s=2000;
@@ -2788,6 +2790,10 @@ mod_som_apf_status_t mod_som_apf_daq_start_f(uint64_t profile_id){
       if(obpfile_size>0){
         //ALB read the metadata from the OBP file
         status=mod_som_sdio_read_OBPfile_metadata(processfile_ptr);
+        if(status){
+          mod_som_apf_ptr->producer_ptr->
+                      mod_som_apf_meta_data.profile_id=0;
+        }
       }else{
           mod_som_apf_ptr->producer_ptr->
                     mod_som_apf_meta_data.profile_id=0;
@@ -2824,18 +2830,10 @@ mod_som_apf_status_t mod_som_apf_daq_start_f(uint64_t profile_id){
                                         mod_som_apf_ptr->producer_ptr->meta_data_buffer_byte_cnt,
                                         &mod_som_apf_ptr->producer_ptr->done_sd_flag);
           }
-
-//          mod_som_sdio_write_data_f(processfile_ptr,
-//                                    (uint8_t*) &mod_som_apf_ptr->producer_ptr->
-//                                    mod_som_apf_meta_data,
-//                                    sizeof(mod_som_apf_meta_data_t),
-//                                    &mod_som_apf_ptr->producer_ptr->done_sd_flag);
-//
-
-
       }
       */
 
+      ///*
       // 2023 12 20 SAN added this to initialize meta data
       mod_som_apf_ptr->producer_ptr->stored_dissrates_cnt=0;
       mod_som_apf_init_meta_data(&mod_som_apf_ptr->producer_ptr->
@@ -2856,7 +2854,7 @@ mod_som_apf_status_t mod_som_apf_daq_start_f(uint64_t profile_id){
                                     mod_som_apf_ptr->producer_ptr->meta_data_buffer_byte_cnt,
                                     &mod_som_apf_ptr->producer_ptr->done_sd_flag);
       }
-
+      //*/
 
       if (file_status>0){
           status|=file_status;
@@ -2924,7 +2922,9 @@ mod_som_apf_status_t mod_som_apf_daq_stop_f(){
   status=MOD_SOM_APF_STATUS_OK;
 
   if(mod_som_apf_ptr->daq){
-
+      //ALB update the Meta Data sample cnt.
+      mod_som_apf_ptr->producer_ptr->mod_som_apf_meta_data.sample_cnt=
+          mod_som_apf_ptr->producer_ptr->stored_dissrates_cnt;
 
   // from the spec, it
 	// stop ADC master clock timer
@@ -4891,8 +4891,8 @@ mod_som_apf_status_t mod_som_apf_upload_f(){
                      dacq_bytes_to_sent);
 
           }else{
-              printf("Bytes to send %lu\r\n",dacq_bytes_to_sent);
-              printf("Bytes sent %lu\r\n",dacq_bytes_sent);
+              mod_som_io_print_f("Bytes to send %lu\r\n",dacq_bytes_to_sent);
+              mod_som_io_print_f("Bytes sent %lu\r\n",dacq_bytes_sent);
 
               //ALB copy the dacq bytes in the packet payload structure.
               mod_som_sdio_read_processfile_f(
@@ -4907,7 +4907,7 @@ mod_som_apf_status_t mod_som_apf_upload_f(){
           mod_som_apf_ptr->consumer_ptr->packet.counters=
               (uint16_t) mod_som_apf_ptr->consumer_ptr->nb_packet_sent;
 
-//          printf("packet.counters %u\r\n",mod_som_apf_ptr->consumer_ptr->packet.counters);
+//          mod_som_io_print_f("packet.counters %u\r\n",mod_som_apf_ptr->consumer_ptr->packet.counters);
 
           //ALB bitshift packet.counters
           mod_som_apf_ptr->consumer_ptr->packet.counters=
@@ -4926,7 +4926,7 @@ mod_som_apf_status_t mod_som_apf_upload_f(){
           crc=Crc16Bit((unsigned char *) (&(mod_som_apf_ptr->consumer_ptr->packet.counters)),
                        dacq_bytes_to_sent+2);
 
-          //          printf("crc %u\r\n",crc);
+          //          mod_som_io_print_f("crc %u\r\n",crc);
 
           mod_som_apf_ptr->consumer_ptr->packet.CRC=crc;
 
@@ -4934,11 +4934,11 @@ mod_som_apf_status_t mod_som_apf_upload_f(){
           mod_som_apf_ptr->consumer_ptr->consumed_flag=false;
 
           //TODO MNB send the packet to APEX-shell
-          mod_som_io_stream_data_f(
-              (uint8_t *)&mod_som_apf_ptr->consumer_ptr->packet,
-              dacq_bytes_to_sent+MOD_SOM_APF_UPLOAD_PACKET_CRC_SIZE+
-              MOD_SOM_APF_UPLOAD_PACKET_CNT_SIZE,
-              &mod_som_apf_ptr->consumer_ptr->consumed_flag);
+//          mod_som_io_stream_data_f(
+//              (uint8_t *)&mod_som_apf_ptr->consumer_ptr->packet,
+//              dacq_bytes_to_sent+MOD_SOM_APF_UPLOAD_PACKET_CRC_SIZE+
+//              MOD_SOM_APF_UPLOAD_PACKET_CNT_SIZE,
+//              &mod_som_apf_ptr->consumer_ptr->consumed_flag);
 
           //ALB We need to send the packet to the APEX shell
 //          sl_sleeptimer_delay_millisecond(10);

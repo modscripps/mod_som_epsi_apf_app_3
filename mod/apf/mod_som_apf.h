@@ -304,8 +304,8 @@ typedef struct{
 
   uint32_t nfft_diag;
 
-  uint64_t dissrates_cnt;
-  uint64_t stored_dissrates_cnt;
+  uint32_t dissrates_cnt;
+  uint32_t stored_dissrates_cnt;
 
 //  uint64_t avg_timestamp;
 
@@ -370,7 +370,7 @@ typedef struct{
 
   uint32_t  dacq_size;
   uint8_t * dacq_ptr;
-  uint64_t dissrates_cnt;
+  uint32_t dissrates_cnt;
   uint64_t record_timestamp;
   uint32_t dissrate_skipped;
 //  uint32_t stored_dissrates_cnt;
@@ -506,7 +506,7 @@ typedef struct{
    mod_som_apf_consumer_ptr_t consumer_ptr;
    mod_som_apf_prf_ptr_t      com_prf_ptr;
 
-   uint64_t profile_id;
+   uint32_t profile_id;
    volatile bool     daq;
    float    dacq_start_pressure;
    float    dacq_pressure;
@@ -632,7 +632,7 @@ mod_som_status_t mod_som_apf_construct_consumer_ptr_f();
  *   MOD_SOM_APF_STATUS_OK if function execute nicely
  ******************************************************************************/
 
-mod_som_apf_status_t mod_som_apf_daq_start_f(uint64_t profile_id);
+mod_som_apf_status_t mod_som_apf_daq_start_f(uint32_t profile_id);
 
 /*******************************************************************************
  * @brief
