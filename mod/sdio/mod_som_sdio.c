@@ -697,7 +697,7 @@ mod_som_status_t mod_som_sdio_new_processfilename_f(CPU_CHAR* filename){
   mod_som_sdio_struct.processdata_file_ptr->initialized_flag=0;
 
   //ALB open file
-  mod_som_io_print_f("\n[sdio open file]:%s \r\n",(char *) mod_som_sdio_struct.processdata_file_ptr->file_name);
+  mod_som_io_print_f("\n[sdio new file]:%s \r\n",(char *) mod_som_sdio_struct.processdata_file_ptr->file_name);
   mod_som_sdio_struct.processdata_file_ptr->is_open_flag=0;
 
 
@@ -725,11 +725,11 @@ mod_som_status_t mod_som_sdio_new_processfilename_f(CPU_CHAR* filename){
     {
 
         status=MOD_SOM_SDIO_STATUS_OK;
-        mod_som_io_print_f("\nopened %s\n",
+        mod_som_io_print_f("\nnew %s\n",
                            (char *) mod_som_sdio_struct.processdata_file_ptr->file_name);
     }else {
 
-          mod_som_io_print_f("\nFailed to open %s,error %i \n", \
+          mod_som_io_print_f("\nFailed to create new %s,error %i \n", \
           (char *) mod_som_sdio_struct.processdata_file_ptr->file_name, res);
       return MOD_SOM_SDIO_STATUS_FAIL_OPENFILE;
     }
