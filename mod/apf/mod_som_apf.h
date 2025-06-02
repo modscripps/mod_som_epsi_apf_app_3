@@ -158,6 +158,8 @@
 #define MOD_SOM_APF_UPLOAD_APF11_TIMEOUT          5           // 5 second timeout
 #define MOD_SOM_APF_UPLOAD_MAX_TRY_PACKET         3           // 3 tries to send a packet
 
+#define MOD_SOM_APF_META_TIMEOUT                  10800UL
+
 
 #define MIN(X, Y) (((X) < (Y)) ? (X) : (Y))
 #define MAX(X, Y) (((X) > (Y)) ? (X) : (Y))
@@ -242,22 +244,36 @@ mod_som_apf_probe_t, *mod_som_apf_probe_ptr_t;
 34-37   Voltage (2bytes)
 38-39   0xFFFF
 ******************************************************************************/
-
+//you would need to update mod_som_sdio_read_OBPfile_metadata
 //#pragma pack(1)
 typedef struct{
+  //0
   uint32_t daq_timestamp; //
+  //4
   uint16_t  profile_id;
+  //6
   uint16_t modsom_sn;
+  //8
   uint16_t efe_sn;
+  //10
   uint32_t firmware_rev;
+  //14
   uint16_t nfft;
+  //16
   uint16_t nfftdiag;
+  //18
   mod_som_apf_probe_t  probe1;
+  //23
   mod_som_apf_probe_t  probe2;
+  //28
   uint8_t  comm_telemetry_packet_format;
+  //29
   uint8_t  sd_format;
+  //30
   uint16_t sample_cnt;
+  //32
   uint32_t voltage;
+  //36
   uint16_t end_metadata; //always 0xFFFF;
 }
 mod_som_apf_meta_data_t, *mod_som_apf_meta_data_ptr_t;

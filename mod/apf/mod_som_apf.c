@@ -768,7 +768,7 @@ mod_som_apf_status_t mod_som_apf_start_producer_task_f(){
   mod_som_apf_ptr->producer_ptr->dissrate_skipped     = 0;
   mod_som_apf_ptr->producer_ptr->dissrates_cnt        = 0;
   mod_som_apf_ptr->producer_ptr->dacq_size            = 0;
-  mod_som_apf_ptr->producer_ptr->stored_dissrates_cnt = 0;
+//  mod_som_apf_ptr->producer_ptr->stored_dissrates_cnt = 0;
   //ALB watch out: I do not initialize stored_dissrates_cnt to 0
   //ALB because we could be restarting a profile
   //ALB (case where daq stop was issued but we want to continue the profile i.e.,
@@ -989,6 +989,12 @@ void mod_som_apf_producer_task_f(void  *p_arg){
   float    * curr_epsi_fom_ptr;
   float    * curr_chi_fom_ptr;
 
+  static int16_t data_terminator = 0xffff; // this is to terminate the data section
+  uint32_t cur_rec_ptr =  0;
+  mod_som_sdio_ptr_t local_mod_som_sdio_ptr=
+      mod_som_sdio_get_runtime_ptr_f();
+
+
   // parameters for send commands out to APF - mai - Nov 22, 2021
   uint32_t bytes_sent = 0;
 //  char apf_reply_str[MOD_SOM_SHELL_INPUT_BUF_SIZE]="\0";
@@ -1169,6 +1175,33 @@ void mod_som_apf_producer_task_f(void  *p_arg){
 //                       mod_som_apf_ptr->producer_ptr->dacq_size;
 
                   mod_som_apf_ptr->producer_ptr->stored_dissrates_cnt++;
+                  //2025 60 01 update meta data for every record so that we don't loose it
+                  mod_som_apf_ptr->producer_ptr->mod_som_apf_meta_data.sample_cnt=
+                      mod_som_apf_ptr->producer_ptr->stored_dissrates_cnt;
+                  //SAN making packed meta_data_buff
+                  mod_som_apf_ptr->producer_ptr->meta_data_buffer_byte_cnt = mod_som_apf_meta_data_pack_f(
+                      mod_som_apf_ptr->producer_ptr->meta_data_buffer_ptr, sizeof(mod_som_apf_meta_data_t));
+//                  if(mod_som_apf_ptr->producer_ptr->meta_data_buffer_byte_cnt>0)
+//                    {
+                      cur_rec_ptr = f_tell(local_mod_som_sdio_ptr->processdata_file_ptr->fp);
+                      //2024 01 22 SAN - described in section 4.5 of
+                      // http://runt.ocean.washington.edu/swift/Apf11Sbe41cpEpsi.pdf
+                      //write terminator to the end of data section
+                      mod_som_sdio_write_data_f(local_mod_som_sdio_ptr->processdata_file_ptr,
+                                                &data_terminator,
+                                                sizeof(data_terminator),
+                                                &mod_som_apf_ptr->producer_ptr->done_sd_flag);
+                      //if sample_cnt is wrong we still can get it with simple math afterwork.
+                      // update meta data at beginning of file
+                      f_lseek(local_mod_som_sdio_ptr->processdata_file_ptr->fp,0);
+                      mod_som_sdio_write_data_f(local_mod_som_sdio_ptr->processdata_file_ptr,
+                                                mod_som_apf_ptr->producer_ptr->meta_data_buffer_ptr,
+                                                mod_som_apf_ptr->producer_ptr->meta_data_buffer_byte_cnt,
+                                                &mod_som_apf_ptr->producer_ptr->done_sd_flag);
+                      cur_rec_ptr = f_lseek(local_mod_som_sdio_ptr->processdata_file_ptr->fp,cur_rec_ptr);
+//                    }
+
+
                   mod_som_io_print_f("\n apf stored: %lu\r\n ", \
                       (uint32_t)mod_som_apf_ptr->producer_ptr->stored_dissrates_cnt);
                   mod_som_io_print_f("\n epsi stored: %e\r\n ", \
@@ -2784,19 +2817,19 @@ mod_som_apf_status_t mod_som_apf_daq_start_f(uint32_t profile_id){
           local_mod_som_sdio_ptr_t->processdata_file_ptr;
 
       // 2023 12 20 SAN removed file checking for previous data
-      /*
-       obpfile_size=f_size(processfile_ptr->fp);
+      ///*
+      obpfile_size=f_size(processfile_ptr->fp);
       //ALB obpfile_size>0 means there is already an OBP file.
       if(obpfile_size>0){
-        //ALB read the metadata from the OBP file
-        status=mod_som_sdio_read_OBPfile_metadata(processfile_ptr);
-        if(status){
-          mod_som_apf_ptr->producer_ptr->
-                      mod_som_apf_meta_data.profile_id=0;
-        }
+          //ALB read the metadata from the OBP file
+          status=mod_som_sdio_read_OBPfile_metadata(processfile_ptr);
+          if(status){
+              mod_som_apf_ptr->producer_ptr->
+              mod_som_apf_meta_data.profile_id=0;
+          }
       }else{
           mod_som_apf_ptr->producer_ptr->
-                    mod_som_apf_meta_data.profile_id=0;
+          mod_som_apf_meta_data.profile_id=0;
       }
 
       //ALB As of now a new daq erase the previous data (consistent with the specs)
@@ -2807,16 +2840,26 @@ mod_som_apf_status_t mod_som_apf_daq_start_f(uint32_t profile_id){
       //ALB during mod_som_sdio_open_processfilename_f.
       //ALB now I compare mod_som_apf_meta_data.profile_id!=profile_id
       //ALB to know if this a new new profile or if we continue profile.
-      if (mod_som_apf_ptr->producer_ptr->
-          mod_som_apf_meta_data.profile_id!=profile_id){
-//          FRESULT res;
+      uint32_t curr_time = sl_sleeptimer_get_time();
+      if (mod_som_apf_ptr->producer_ptr->mod_som_apf_meta_data.profile_id == profile_id
+          && (curr_time - mod_som_apf_ptr->producer_ptr->mod_som_apf_meta_data.daq_timestamp)<=MOD_SOM_APF_META_TIMEOUT)
+        {
+          mod_som_io_print_f("using old meta data file\r\n");
+          mod_som_apf_ptr->producer_ptr->stored_dissrates_cnt = mod_som_apf_ptr->producer_ptr->
+              mod_som_apf_meta_data.sample_cnt;
+          //go to end of file where we discount the data terminator section
+          f_lseek(processfile_ptr->fp,obpfile_size-sizeof(int16_t));
+        }
+      else{
+          file_status=mod_som_sdio_new_processfilename_f("OBPdata");
+          //          FRESULT res;
+          mod_som_io_print_f("using new meta data file\r\n");
 
-          mod_som_apf_ptr->producer_ptr->stored_dissrates_cnt=0;
           mod_som_apf_init_meta_data(&mod_som_apf_ptr->producer_ptr->
                                      mod_som_apf_meta_data);
           f_lseek (processfile_ptr->fp, 0);
 
-          mod_som_apf_ptr->producer_ptr->done_sd_flag=false;
+
           //SN making packed meta_data_buff
           mod_som_apf_ptr->producer_ptr->meta_data_buffer_byte_cnt = mod_som_apf_meta_data_pack_f(
               mod_som_apf_ptr->producer_ptr->meta_data_buffer_ptr, sizeof(mod_som_apf_meta_data_t));
@@ -2830,31 +2873,37 @@ mod_som_apf_status_t mod_som_apf_daq_start_f(uint32_t profile_id){
                                         mod_som_apf_ptr->producer_ptr->meta_data_buffer_byte_cnt,
                                         &mod_som_apf_ptr->producer_ptr->done_sd_flag);
           }
+
+          mod_som_apf_ptr->producer_ptr->stored_dissrates_cnt=0;
       }
-      */
-
-      ///*
-      // 2023 12 20 SAN added this to initialize meta data
-      mod_som_apf_ptr->producer_ptr->stored_dissrates_cnt=0;
-      mod_som_apf_init_meta_data(&mod_som_apf_ptr->producer_ptr->
-                                 mod_som_apf_meta_data);
-      f_lseek (processfile_ptr->fp, 0);
-
       mod_som_apf_ptr->producer_ptr->done_sd_flag=false;
-      //SN making packed meta_data_buff
       mod_som_apf_ptr->producer_ptr->meta_data_buffer_byte_cnt = mod_som_apf_meta_data_pack_f(
           mod_som_apf_ptr->producer_ptr->meta_data_buffer_ptr, sizeof(mod_som_apf_meta_data_t));
-
-      if(mod_som_apf_ptr->producer_ptr->meta_data_buffer_byte_cnt<=0)
-        status |= mod_som_apf_ptr->producer_ptr->meta_data_buffer_byte_cnt;
-      else{
-          //if sample_cnt is wrong we still can get it with simple math afterwork.
-          mod_som_sdio_write_data_f(processfile_ptr,
-                                    mod_som_apf_ptr->producer_ptr->meta_data_buffer_ptr,
-                                    mod_som_apf_ptr->producer_ptr->meta_data_buffer_byte_cnt,
-                                    &mod_som_apf_ptr->producer_ptr->done_sd_flag);
-      }
       //*/
+
+      /*
+            // 2023 12 20 SAN added this to initialize meta data
+            mod_som_apf_ptr->producer_ptr->stored_dissrates_cnt=0;
+            mod_som_apf_init_meta_data(&mod_som_apf_ptr->producer_ptr->
+                                       mod_som_apf_meta_data);
+            f_lseek (processfile_ptr->fp, 0);
+
+            mod_som_apf_ptr->producer_ptr->done_sd_flag=false;
+            //SN making packed meta_data_buff
+            mod_som_apf_ptr->producer_ptr->meta_data_buffer_byte_cnt = mod_som_apf_meta_data_pack_f(
+                mod_som_apf_ptr->producer_ptr->meta_data_buffer_ptr, sizeof(mod_som_apf_meta_data_t));
+
+            if(mod_som_apf_ptr->producer_ptr->meta_data_buffer_byte_cnt<=0)
+              status |= mod_som_apf_ptr->producer_ptr->meta_data_buffer_byte_cnt;
+            else{
+                //if sample_cnt is wrong we still can get it with simple math afterwork.
+                mod_som_sdio_write_data_f(processfile_ptr,
+                                          mod_som_apf_ptr->producer_ptr->meta_data_buffer_ptr,
+                                          mod_som_apf_ptr->producer_ptr->meta_data_buffer_byte_cnt);//,
+                                          //&mod_som_apf_ptr->producer_ptr->done_sd_flag);
+            }
+            //*/
+
 
       if (file_status>0){
           status|=file_status;
@@ -5181,6 +5230,7 @@ void LEUART0_IRQHandler(){
 
 int32_t mod_som_apf_meta_data_pack_f(uint8_t * buff, uint8_t max_buff_len)
 {
+  // TODO you need to update mod_som_sdio_read_OBPfile_metadata
   int32_t buf_len = 0;
   int32_t element_size = 0;
   uint8_t probe_type;

@@ -631,6 +631,88 @@ mod_som_status_t mod_som_sdio_open_processfilename_f(CPU_CHAR* filename){
     FRESULT res;
     res = f_open(mod_som_sdio_struct.processdata_file_ptr->fp, \
         tchar_filename,\
+        FA_OPEN_ALWAYS | FA_WRITE | FA_READ);
+
+    //ALB APPEND if we want to keep the previous data (i.e., if epsi turned off/on during a profile)
+    //ALB TODO figure out a way to either append or erase the previous data through software
+
+//    res = f_open(mod_som_sdio_struct.processdata_file_ptr->fp, \
+//        tchar_filename,\
+//        FA_OPEN_APPEND | FA_WRITE | FA_READ);
+    if (res == FR_OK)
+    {
+
+        status=MOD_SOM_SDIO_STATUS_OK;
+        mod_som_io_print_f("\nopened %s\n",
+                           (char *) mod_som_sdio_struct.processdata_file_ptr->file_name);
+    }else {
+
+          mod_som_io_print_f("\nFailed to open %s,error %i \n", \
+          (char *) mod_som_sdio_struct.processdata_file_ptr->file_name, res);
+      return MOD_SOM_SDIO_STATUS_FAIL_OPENFILE;
+    }
+    mod_som_sdio_struct.processdata_file_ptr->is_open_flag=1;
+    //2025 05 28 initialize writing flag
+    CORE_DECLARE_IRQ_STATE;
+    CORE_ENTER_ATOMIC();
+    mod_som_sdio_struct.processdata_file_ptr->is_writing_flag=false;
+    mod_som_sdio_struct.processdata_file_ptr->is_reading_flag=false;
+    CORE_EXIT_ATOMIC();
+
+//  //ALB sync the file to actually write on the SD card
+//  res_sync = f_sync(mod_som_sdio_struct.processdata_file_ptr->fp);
+//  mod_som_sdio_struct.processdata_file_ptr->initialized_flag=1;
+
+  if ((status>0) & (status<MOD_SOM_SDIO_OPEN_PREV_PROCESS_FILE)){
+    return MOD_SOM_STATUS_NOT_OK;
+  }
+  return status;
+}
+/*******************************************************************************
+ * @brief
+ *   a function to open a file with a name from given from the shell
+ *
+ * @return
+ *   MOD_SOM_STATUS_OK if function execute nicely
+ ******************************************************************************/
+mod_som_status_t mod_som_sdio_new_processfilename_f(CPU_CHAR* filename){
+
+  mod_som_status_t status;
+  UINT byteswritten=0;
+
+
+
+  CPU_CHAR data_file_buf[100];   //ALB with this version of ff.c the filename can *not* be more than 8
+
+  if(!mod_som_sdio_struct.enable_flag){
+      mod_som_sdio_enable_hardware_f();
+  }
+
+  sprintf(data_file_buf, "%s.modraw",filename);
+  mod_som_sdio_struct.processdata_file_ptr->len_filename=strlen(data_file_buf);
+
+    //ALB initialize the filename memory to erase previous str
+  memset(mod_som_sdio_struct.processdata_file_ptr->file_name, 0,strlen(mod_som_sdio_struct.processdata_file_ptr->file_name));
+  memcpy(mod_som_sdio_struct.processdata_file_ptr->file_name, data_file_buf,mod_som_sdio_struct.processdata_file_ptr->len_filename);
+  mod_som_sdio_struct.processdata_file_ptr->initialized_flag=0;
+
+  //ALB open file
+  mod_som_io_print_f("\n[sdio open file]:%s \r\n",(char *) mod_som_sdio_struct.processdata_file_ptr->file_name);
+  mod_som_sdio_struct.processdata_file_ptr->is_open_flag=0;
+
+
+    TCHAR tchar_filename[100];
+
+    int idx;
+    //mod_som_sdio_file_ptr->file_name is ASCII char, we have to convert into ANSII
+    for (idx = 0; idx < strlen (mod_som_sdio_struct.processdata_file_ptr->file_name); ++idx){
+      tchar_filename[idx] = ff_convert (mod_som_sdio_struct.processdata_file_ptr->file_name[idx], 1);
+    }
+    tchar_filename[idx] = '\0';
+
+    FRESULT res;
+    res = f_open(mod_som_sdio_struct.processdata_file_ptr->fp, \
+        tchar_filename,\
         FA_CREATE_ALWAYS | FA_WRITE | FA_READ);
 
     //ALB APPEND if we want to keep the previous data (i.e., if epsi turned off/on during a profile)
@@ -770,6 +852,7 @@ mod_som_status_t mod_som_sdio_read_OBPfile_metadata(
   UINT byte_read;
   mod_som_status_t status=MOD_SOM_STATUS_OK;
   uint32_t read_ptr=0;
+  uint8_t* curr_buff_ptr;
 
 
   mod_som_apf_meta_data_ptr_t local_meta_data;
@@ -782,8 +865,64 @@ mod_som_status_t mod_som_sdio_read_OBPfile_metadata(
   //ALB I read the metadata of the previous
   res = f_read(processdata_file_ptr->fp, mod_som_sdio_struct.read_buff, \
                sizeof(mod_som_apf_meta_data_t), &byte_read);
-  if ((res == FR_OK) & (byte_read>0)){
-      memcpy((uint8_t*) local_meta_data,(uint8_t*)mod_som_sdio_struct.read_buff,byte_read);
+  if ((res == FR_OK) & (byte_read>0))
+    {
+//      memcpy((uint8_t*) local_meta_data,(uint8_t*)mod_som_sdio_struct.read_buff,byte_read);
+      curr_buff_ptr = (uint8_t*)mod_som_sdio_struct.read_buff;
+      //0
+      local_meta_data->daq_timestamp = *((uint32_t *)curr_buff_ptr);
+      curr_buff_ptr += 4;
+      //4
+      local_meta_data->profile_id = *((uint16_t *)curr_buff_ptr);
+      curr_buff_ptr += 2;
+      //6
+      local_meta_data->modsom_sn = *((uint16_t *)curr_buff_ptr);
+      curr_buff_ptr += 2;
+      //8
+      local_meta_data->efe_sn = *((uint16_t *)curr_buff_ptr);
+      curr_buff_ptr += 2;
+      //10
+      local_meta_data->firmware_rev = *((uint32_t *)curr_buff_ptr);
+      curr_buff_ptr += 4;
+      //14
+      local_meta_data->nfft = *((uint16_t *)curr_buff_ptr);
+      curr_buff_ptr += 2;
+      //16
+      local_meta_data->nfftdiag = *((uint16_t *)curr_buff_ptr);
+      curr_buff_ptr += 2;
+      //18
+      local_meta_data->probe1.type = *curr_buff_ptr;
+      curr_buff_ptr++;
+      //19
+      local_meta_data->probe1.sn = *((uint16_t *)curr_buff_ptr);
+      curr_buff_ptr += 2;
+      //21
+      local_meta_data->probe1.cal = *((uint16_t *)curr_buff_ptr);
+      curr_buff_ptr += 2;
+      //23
+      local_meta_data->probe2.type = *curr_buff_ptr;
+      curr_buff_ptr++;
+      //24
+      local_meta_data->probe2.sn = *((uint16_t *)curr_buff_ptr);
+      curr_buff_ptr += 2;
+      //26
+      local_meta_data->probe2.cal = *((uint16_t *)curr_buff_ptr);
+      curr_buff_ptr += 2;
+      //28
+      local_meta_data->comm_telemetry_packet_format = *curr_buff_ptr;
+      curr_buff_ptr++;
+      //29
+      local_meta_data->sd_format = *curr_buff_ptr;
+      curr_buff_ptr++;
+      //30
+      local_meta_data->sample_cnt = *((uint16_t *)curr_buff_ptr);
+      curr_buff_ptr += 2;
+      //32
+      local_meta_data->voltage = *((uint32_t *)curr_buff_ptr);
+      curr_buff_ptr += 4;
+      //36
+      local_meta_data->end_metadata = *((uint16_t *)curr_buff_ptr);
+      curr_buff_ptr += 2;
   } else{
       mod_som_io_print_f("\nRead Failure: %d\n", res);
       status=MOD_SOM_STATUS_NOT_OK;
