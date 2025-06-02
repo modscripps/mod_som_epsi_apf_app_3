@@ -559,7 +559,7 @@ void mod_som_voltage_scan_task_f(void  *p_arg){
 
   //        printf("In Consumer Task 2\n");
   while (DEF_ON) {
-
+      WDOG_Feed();
       mod_som_voltage_scan_f();
 
       // Delay Start Task execution for
@@ -591,7 +591,7 @@ void mod_som_voltage_adc1_scan_task_f(void  *p_arg){
 
   //        printf("In Consumer Task 2\n");
   while (DEF_ON) {
-
+      WDOG_Feed();
       mod_som_voltage_adc1_scan_f();
 
       // Delay Start Task execution for

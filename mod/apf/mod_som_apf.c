@@ -989,7 +989,7 @@ void mod_som_apf_producer_task_f(void  *p_arg){
   float    * curr_epsi_fom_ptr;
   float    * curr_chi_fom_ptr;
 
-  static int16_t data_terminator = 0xffff; // this is to terminate the data section
+//  static int16_t data_terminator = 0xffff; // this is to terminate the data section
   uint32_t cur_rec_ptr =  0;
   mod_som_sdio_ptr_t local_mod_som_sdio_ptr=
       mod_som_sdio_get_runtime_ptr_f();
@@ -1014,7 +1014,7 @@ void mod_som_apf_producer_task_f(void  *p_arg){
   while (DEF_ON) {
 
 
-
+      WDOG_Feed();
       /************************************************************************/
       //ALB APF producer phase 1
       //ALB check if producer is started, and if the dacp_profile is NOT full
@@ -1037,6 +1037,7 @@ void mod_som_apf_producer_task_f(void  *p_arg){
           // LOOP without delay until caught up to latest produced element
           while (dissrate_avail > 0)
             {
+              WDOG_Feed();
               // When have circular buffer overflow: have produced data bigger than consumer data: 1 circular buffer (n_elmnts)
               // calculate new consumer count to skip ahead to the tail of the circular buffer (with optional padding),
               // calculate the number of data we skipped, report number of elements skipped.
@@ -1187,10 +1188,13 @@ void mod_som_apf_producer_task_f(void  *p_arg){
                       //2024 01 22 SAN - described in section 4.5 of
                       // http://runt.ocean.washington.edu/swift/Apf11Sbe41cpEpsi.pdf
                       //write terminator to the end of data section
-                      mod_som_sdio_write_data_f(local_mod_som_sdio_ptr->processdata_file_ptr,
-                                                &data_terminator,
-                                                sizeof(data_terminator),
-                                                &mod_som_apf_ptr->producer_ptr->done_sd_flag);
+//                      mod_som_sdio_write_data_f(local_mod_som_sdio_ptr->processdata_file_ptr,
+//                                                &data_terminator,
+//                                                sizeof(data_terminator),
+//                                                &mod_som_apf_ptr->producer_ptr->done_sd_flag);
+//                      while(!mod_som_apf_ptr->producer_ptr->done_sd_flag){
+//                          WDOG_Feed();
+//                      };
                       //if sample_cnt is wrong we still can get it with simple math afterwork.
                       // update meta data at beginning of file
                       f_lseek(local_mod_som_sdio_ptr->processdata_file_ptr->fp,0);
@@ -1200,7 +1204,9 @@ void mod_som_apf_producer_task_f(void  *p_arg){
                                                 &mod_som_apf_ptr->producer_ptr->done_sd_flag);
                       cur_rec_ptr = f_lseek(local_mod_som_sdio_ptr->processdata_file_ptr->fp,cur_rec_ptr);
 //                    }
-
+                      while(!mod_som_apf_ptr->producer_ptr->done_sd_flag){
+                          WDOG_Feed();
+                      };
 
                   mod_som_io_print_f("\n apf stored: %lu\r\n ", \
                       (uint32_t)mod_som_apf_ptr->producer_ptr->stored_dissrates_cnt);
@@ -1333,7 +1339,7 @@ void mod_som_apf_consumer_task_f(void  *p_arg){
 
 
   while (DEF_ON) {
-
+      WDOG_Feed();
       if (mod_som_apf_ptr->consumer_ptr->started_flg & (mod_som_apf_ptr->settings_ptr->sd_packet_format>=1)){
           /************************************************************************/
           //ALB APF producer phase 1
@@ -1348,6 +1354,7 @@ void mod_som_apf_consumer_task_f(void  *p_arg){
               // LOOP without delay until caught up to latest produced element
               while (dissrate_avail > 0)
                 {
+                  WDOG_Feed();
 //                  curr_dacq_ptr=mod_som_apf_ptr->consumer_ptr->dacq_ptr;
                   // When have circular buffer overflow: have produced data bigger than consumer data: 1 circular buffer (n_elmnts)
                   // calculate new consumer count to skip ahead to the tail of the circular buffer (with optional padding),
@@ -1609,7 +1616,7 @@ void mod_som_apf_shell_task_f(void  *p_arg){
   apf_leuart_ptr =(LEUART_TypeDef *) mod_som_apf_get_port_ptr_f();
 
   while (DEF_ON) {
-
+      WDOG_Feed();
 
       OSTimeDly(
               (OS_TICK     )MOD_SOM_APF_SHELL_DELAY,
@@ -1776,6 +1783,7 @@ mod_som_apf_status_t mod_som_apf_shell_get_line_f(char *buf, uint32_t * bytes_re
         //ALB while status > 0  we do not haver a bytes
         time0= mod_som_calendar_get_time_f();
         while(status>0){
+            WDOG_Feed();
             OSTimeDly(
                     (OS_TICK     )MOD_SOM_CFG_LOOP_TICK_DELAY,
                     (OS_OPT      )OS_OPT_TIME_DLY,
@@ -2074,7 +2082,9 @@ uint32_t mod_som_apf_send_line_f(LEUART_TypeDef *leuart_ptr,char * buf, uint32_t
                               &mod_som_apf_ptr->producer_ptr->done_sd_flag);
 
 
-    while(!mod_som_apf_ptr->producer_ptr->done_sd_flag){};
+    while(!mod_som_apf_ptr->producer_ptr->done_sd_flag){
+        WDOG_Feed();
+    };
     dacq_size=dacq_size1;
 
     return dacq_size;
@@ -2502,14 +2512,18 @@ uint32_t mod_som_apf_send_line_f(LEUART_TypeDef *leuart_ptr,char * buf, uint32_t
 
   }
   dacq_size2=dacq_ptr-mod_som_apf_ptr->producer_ptr->dacq_ptr;
-  while(!mod_som_apf_ptr->producer_ptr->done_sd_flag){};
+  while(!mod_som_apf_ptr->producer_ptr->done_sd_flag){
+      WDOG_Feed();
+  };
   mod_som_apf_ptr->producer_ptr->done_sd_flag=false;
   mod_som_sdio_write_data_f(processfile_ptr,
                             mod_som_apf_ptr->producer_ptr->dacq_ptr,
                             dacq_size2,
                             &mod_som_apf_ptr->producer_ptr->done_sd_flag);
   dacq_size=dacq_size1+dacq_size2;
-  while(!mod_som_apf_ptr->producer_ptr->done_sd_flag){};
+  while(!mod_som_apf_ptr->producer_ptr->done_sd_flag){
+      WDOG_Feed();
+  };
 
   return dacq_size;
 
@@ -2661,7 +2675,9 @@ dacq_ptr+=spectra_length;
                             mod_som_apf_ptr->consumer_ptr->dacq_ptr,
                             payload_length,
                             &mod_som_apf_ptr->consumer_ptr->consumed_flag);
-  while(!mod_som_apf_ptr->consumer_ptr->consumed_flag){};
+  while(!mod_som_apf_ptr->consumer_ptr->consumed_flag){
+      WDOG_Feed();
+  };
 
 
 
@@ -2776,6 +2792,7 @@ mod_som_apf_status_t mod_som_apf_daq_start_f(uint32_t profile_id){
 
   //ALB I am getting a pressure sample
   while(local_sbe41_runtime_ptr->consumer_ptr->record_pressure[1]==0){
+      WDOG_Feed();
       sl_sleeptimer_delay_millisecond(delay10ms);
       get_ctd_count++;
       //ALB SBE41 is 1Hz 300 counts x 10 ms is 3 seconds
@@ -2933,7 +2950,9 @@ mod_som_apf_status_t mod_som_apf_daq_start_f(uint32_t profile_id){
 
     //ALB get the voltage at the beginning of the profile
       mod_som_voltage_scan_f();
-      while(local_voltage_runtime_ptr->voltage==0){};
+      while(local_voltage_runtime_ptr->voltage==0){
+          WDOG_Feed();
+      };
       mod_som_apf_ptr->producer_ptr->mod_som_apf_meta_data.voltage=
           local_voltage_runtime_ptr->voltage;
       //ALB reset voltage
@@ -2971,7 +2990,7 @@ mod_som_apf_status_t mod_som_apf_daq_start_f(uint32_t profile_id){
 
 mod_som_apf_status_t mod_som_apf_daq_stop_f(){
   int delay =100; //0.1 sec
-  static int16_t data_terminator = 0xffff; // this is to terminate the data section
+//  static int16_t data_terminator = 0xffff; // this is to terminate the data section
 //  FRESULT res=0;
   mod_som_apf_status_t status;
   status=MOD_SOM_APF_STATUS_OK;
@@ -3011,11 +3030,11 @@ mod_som_apf_status_t mod_som_apf_daq_stop_f(){
   //2024 01 22 SAN - described in section 4.5 of
   // http://runt.ocean.washington.edu/swift/Apf11Sbe41cpEpsi.pdf
   //write terminator to the end of data section
-  f_lseek(processfile_ptr->fp, f_size(processfile_ptr->fp));
-  mod_som_sdio_write_data_f(processfile_ptr,
-                                  &data_terminator,
-                                  sizeof(data_terminator),
-                                  &mod_som_apf_ptr->producer_ptr->done_sd_flag);
+//  f_lseek(processfile_ptr->fp, f_size(processfile_ptr->fp));
+//  mod_som_sdio_write_data_f(processfile_ptr,
+//                                  &data_terminator,
+//                                  sizeof(data_terminator),
+//                                  &mod_som_apf_ptr->producer_ptr->done_sd_flag);
 
   //ALB place the idx at the beginning of the file
   f_lseek (processfile_ptr->fp, 0);
@@ -4851,10 +4870,11 @@ mod_som_apf_status_t mod_som_apf_upload_f(){
 //  uint32_t   dacq_bytes_available = 0;
   uint32_t   dacq_bytes_sent      = 0;
   uint32_t   dacq_bytes_to_sent   = 0;
+  uint32_t   dacq_bytes_to_read   = 0;
 //  uint8_t *  current_data_ptr=
 //      mod_som_apf_ptr->producer_ptr->dacq_ptr;
   uint8_t    eot_byte = MOD_SOM_APF_UPLOAD_EOT_BYTE;
-  uint32_t cnt=0;
+  uint32_t byte_cnt=0;
 
 
   //ALB start transmit the packet
@@ -4885,11 +4905,11 @@ mod_som_apf_status_t mod_som_apf_upload_f(){
           status = MOD_SOM_APF_STATUS_CANNOT_OPENFILE;
       }else{
           f_lseek (processfile_ptr->fp, 0);
-          cnt=f_size(processfile_ptr->fp);
-          mod_som_apf_ptr->consumer_ptr->daq_remaining_bytes   = cnt;
+          byte_cnt=f_size(processfile_ptr->fp);
+          mod_som_apf_ptr->consumer_ptr->daq_remaining_bytes   = byte_cnt+2;
       }
 
-      if(cnt==0){ //ALB no data
+      if(byte_cnt==0){ //ALB no data
           status = MOD_SOM_APF_STATUS_NO_DATA;
       }
 
@@ -4935,6 +4955,8 @@ mod_som_apf_status_t mod_som_apf_upload_f(){
 
           dacq_bytes_to_sent=MIN(mod_som_apf_ptr->consumer_ptr->daq_remaining_bytes,
                                  MOD_SOM_APF_UPLOAD_PACKET_LOAD_SIZE);
+          dacq_bytes_to_read=MIN(byte_cnt,
+                                           MOD_SOM_APF_UPLOAD_PACKET_LOAD_SIZE);
 
           //ALB end of profile sending the EOT bytes
           if(mod_som_apf_ptr->consumer_ptr->daq_remaining_bytes==0){
@@ -4949,11 +4971,19 @@ mod_som_apf_status_t mod_som_apf_upload_f(){
               mod_som_io_print_f("Bytes to send %lu\r\n",dacq_bytes_to_sent);
               mod_som_io_print_f("Bytes sent %lu\r\n",dacq_bytes_sent);
 
-              //ALB copy the dacq bytes in the packet payload structure.
-              mod_som_sdio_read_processfile_f(
-                  (uint8_t*) &mod_som_apf_ptr->consumer_ptr->packet.payload,
-                  dacq_bytes_to_sent,
-                  dacq_bytes_sent);
+              if(dacq_bytes_to_read>0){
+                  //ALB copy the dacq bytes in the packet payload structure.
+                  mod_som_sdio_read_processfile_f(
+                      (uint8_t*) &mod_som_apf_ptr->consumer_ptr->packet.payload,
+                      dacq_bytes_to_read,
+                      dacq_bytes_sent);
+              }
+              //add 2 bytes for termination
+              for(int i=0;i<(dacq_bytes_to_sent-dacq_bytes_to_read);i++)
+                {
+                  mod_som_apf_ptr->consumer_ptr->packet.payload[i+dacq_bytes_to_read] = 0xff;
+                }
+
           }
 
 
@@ -4969,6 +4999,7 @@ mod_som_apf_status_t mod_som_apf_upload_f(){
               mod_som_apf_ptr->consumer_ptr->packet.counters<<10;
           //ALB update daq_remaining_bytes. !!This the while loop param!!
           mod_som_apf_ptr->consumer_ptr->daq_remaining_bytes-=dacq_bytes_to_sent;
+          byte_cnt -=dacq_bytes_to_read;
           //ALB update packet.counters
           mod_som_apf_ptr->consumer_ptr->packet.counters|=
                              dacq_bytes_to_sent;
@@ -5018,6 +5049,7 @@ mod_som_apf_status_t mod_som_apf_upload_f(){
           t0= mod_som_calendar_get_time_f();
           read_char=0;
           while (read_char <= 0){ // Wait for valid input
+              WDOG_Feed();
               timeout_flag=0;
               //Release for waiting tasks
 //              c = RETARGET_ReadChar();

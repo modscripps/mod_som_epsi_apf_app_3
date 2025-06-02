@@ -79,6 +79,9 @@ WDOG_Init_TypeDef wdog_init =
   .lock       = false,                /* Do not lock WDOG configuration (if locked, reset needed to unlock) */
   .clkSel     = wdogClkSelULFRCO,     /* Select 1kHZ WDOG oscillator */
   .perSel     = wdogPeriod_32k,        /* Set the watchdog period to 2049 clock periods (ie ~2 seconds) */
+#ifdef MOD_SOM_DEBUG_WDOG
+  .resetDisable = true,               //disable reset
+#endif
 };
 
 
@@ -197,8 +200,10 @@ mod_som_status_t mod_som_main_init_f(void){
 
 
 //    /* Enable watchdog warning interrupt */
-//    WDOGn_IntEnable(DEFAULT_WDOG, WDOG_IEN_WARN);
-//    NVIC_EnableIRQ(WDOG0_IRQn);
+#ifdef MOD_SOM_DEBUG_WDOG
+    WDOGn_IntEnable(DEFAULT_WDOG, WDOG_IEN_TOUT);
+    NVIC_EnableIRQ(WDOG0_IRQn);
+#endif
 
 
 
@@ -294,6 +299,7 @@ mod_som_status_t mod_som_main_start_f(void){
     RTOS_ERR  err;
     if(!mod_som_initialized_flag)
         return mod_som_encode_status_f(MOD_SOM_STATUS_ERR_NOT_INITIALIZED_MAIN);
+
 
 
     printf("\r\n==============================\r\n");
@@ -1779,11 +1785,24 @@ void QSPI0_IRQHandler(void){
  *****************************************************************************/
 void WDOG0_IRQHandler(void)
 {
+#ifdef MOD_SOM_DEBUG_WDOG
+  printf("WDOG0 TIMEOUT, ENTERING DEBUG LOOP\r\n");
+  while(1){
+
+  }
   //ALB do something?
-  /* Clear flag for interrupt */
-//  uint8_t toto = 0;
-//        WDOGn_IntClear(DEFAULT_WDOG, WDOG_IEN_WARN);
-//      WDOG_Feed();
+    /* Clear flag for interrupt */
+  //  uint8_t toto = 0;
+//          WDOGn_IntClear(DEFAULT_WDOG, WDOG_IEN_TOUT);
+
+#else
+  if(mod_som_sys_peripherals_list_ptr->WDOG1_prf_ptr != DEF_NULL){
+          mod_som_sys_peripherals_list_ptr->WDOG1_prf_ptr->irq_handler_1_f(
+                  (void *)mod_som_sys_peripherals_list_ptr->WDOG1_prf_ptr->device_ptr);
+      }
+      return;
+#endif
+
 }
 
 

@@ -1200,6 +1200,7 @@ mod_som_status_t mod_som_sdio_write_config_f(uint8_t *data_ptr,
     byteswritten=0;
 	  remaining_bytes=data_length;
     while(remaining_bytes>0){
+        WDOG_Feed();
         if (remaining_bytes<MOD_SOM_SDIO_BLOCK_LENGTH){
             bytes_to_send=remaining_bytes;
         }
@@ -1468,6 +1469,8 @@ if(mod_som_sdio_file_ptr->is_open_flag==0){
   res = f_lseek (mod_som_sdio_file_ptr->fp, seek_idx);
 //  int done_reading=0;
   while(obp_file_bytes>0){
+      //ALB feed the WDOG coz sending long files triggers the WDOG.
+          WDOG_Feed();
       byte_to_read=MIN(MOD_SOM_SDIO_BLOCK_LENGTH,obp_file_bytes);
       res = f_read(mod_som_sdio_file_ptr->fp, mod_som_sdio_struct.read_buff, \
                    byte_to_read, &byte_read);
@@ -1479,8 +1482,7 @@ if(mod_som_sdio_file_ptr->is_open_flag==0){
       mod_som_io_print_f("\nRead Failure: %d\n", res);
       return MOD_SOM_STATUS_NOT_OK;
     }
-    //ALB feed the WDOG coz sending long files triggers the WDOG.
-    WDOG_Feed();
+
 //    //ALB check If I am at the end of the file. if yes done_reading=1
 //    done_reading = f_eof(mod_som_sdio_file_ptr->fp);
 }
@@ -1895,6 +1897,7 @@ static void mod_som_sdio_print_task_f(void *p_arg)
 
 //    uint32_t n_count = 0;
     while(DEF_ON){
+        WDOG_Feed();
         //necessary for every task
         tmp_mod_som_sdio_xfer_item_ptr =
                 (mod_som_sdio_xfer_ptr_t)OSQPend(&mod_som_sdio_struct.msg_queue,
@@ -1941,6 +1944,7 @@ static void mod_som_sdio_print_task_f(void *p_arg)
 
                 while(remaining_bytes>0)
                   {
+                    WDOG_Feed();
                     if (remaining_bytes<MOD_SOM_SDIO_BLOCK_LENGTH)
                       {
                         bytes_to_send=remaining_bytes;

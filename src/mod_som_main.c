@@ -399,6 +399,7 @@ void mod_som_main_task_f(void *p_arg)
 
     printf("\r\n=====START INITIALIZATION======\r\n");
 
+
     /*****************************************
      * Initialize Modules
      *****************************************/
@@ -415,13 +416,28 @@ void mod_som_main_task_f(void *p_arg)
     /*****************************************
      * END Post OS start Add your code here
      *****************************************/
+#ifdef MOD_SOM_DEBUG_WDOG
+    int32_t counter=0;
+#endif
 
     while (DEF_ON) {
+
         OSTimeDly (
                 (OS_TICK     )1000,
                 (OS_OPT      )OS_OPT_TIME_DLY,
                 &err);
         tick=sl_sleeptimer_get_tick_count64();
+        counter++;
+#ifdef MOD_SOM_DEBUG_WDOG
+        counter++;
+        if((counter%3)==0){
+            printf("\r\n##############################\r\n");
+            printf("##############################\r\n");
+            printf("MOD_SOM_DEBUG_WDOG is enabled\r\n");
+            printf("##############################\r\n");
+            printf("##############################\r\n");
+        }
+#endif
 
         //ALB   feed (reset) the watchdog timer.
         //ALB   Be aware that the priorities of the tasks
