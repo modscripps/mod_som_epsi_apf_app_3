@@ -427,7 +427,7 @@ void mod_som_main_task_f(void *p_arg)
                 (OS_OPT      )OS_OPT_TIME_DLY,
                 &err);
         tick=sl_sleeptimer_get_tick_count64();
-        counter++;
+
 #ifdef MOD_SOM_DEBUG_WDOG
         counter++;
         if((counter%3)==0){
