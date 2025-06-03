@@ -257,7 +257,7 @@ mod_som_status_t status=0;
 
     //TODO use bsp_som variables to initialize the SD card.
     // Soldered sdCard slot
-    GPIO_PinModeSet(gpioPortB, 10, gpioModeInput, 0);             // SDIO_CD
+    GPIO_PinModeSet(gpioPortF, 8, gpioModeInput, 0);             // SDIO_CD
     GPIO_PinModeSet(gpioPortE, 15, gpioModePushPullAlternate, 0); // SDIO_CMD
     GPIO_PinModeSet(gpioPortE, 14, gpioModePushPullAlternate, 0); // SDIO_CLK
     GPIO_PinModeSet(gpioPortA, 0, gpioModePushPullAlternate, 0);  // SDIO_DAT0
@@ -312,10 +312,24 @@ mod_som_status_t mod_som_sdio_mount_fatfs_f(){
     {
     	printf("FAT-mount failed: %d\r\n", res);
     }
-    else
-    {
-    	printf("FAT-mount successful.\r\n Watch out: It does NOT imply there is an SD card. \r\n");//MHA
-    }
+    else if(GPIO_PinInGet(gpioPortF, 8)){
+        // 2024 12 12 LW: Only attempt to mount if a card is detected.Add commentMore actions
+
+        printf("FAT-mount failed: No SD card detected.\r\n");
+    }else
+      {
+        res=f_mount(&mod_som_sdio_struct.fat_fs,(TCHAR *) "" ,1);
+
+        //    res = f_mount(VOLUME_ADDRESS, &Fatfs);
+        if (res != FR_OK)
+          {
+            printf("FAT-mount failed: %d\r\n", res);
+          }
+        else
+          {
+            printf("FAT-mount successful.\r\n");
+          }
+      }
 
     // return default mod som OK.
     //TODO handle error from the previous calls.
@@ -1944,7 +1958,7 @@ static void mod_som_sdio_print_task_f(void *p_arg)
 
                 while(remaining_bytes>0)
                   {
-                    WDOG_Feed();
+//                    WDOG_Feed();
                     if (remaining_bytes<MOD_SOM_SDIO_BLOCK_LENGTH)
                       {
                         bytes_to_send=remaining_bytes;

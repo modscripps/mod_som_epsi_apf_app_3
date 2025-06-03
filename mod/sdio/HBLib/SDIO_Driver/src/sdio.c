@@ -573,8 +573,11 @@ static void SDIO_S_LowLevelRegisterInit(SDIO_TypeDef *sdio_t,
                         | SDIO_IFENC_CARDINTEN;
 
   {
+    // 2024 12 12 LW: Configure CMU for SDIOCLK to use HFXOAdd commentMore actions
+    CMU->SDIOCTRL = CMU_SDIOCTRL_SDIOCLKSEL_HFXO;
     // Calculate the divisor for SD clock frequency
-    uint32_t divisor_u32 = CMU_ClockFreqGet(mainClock_t) / sdioFreq_u32;
+    // 2024 12 12 LW: Divide divisor by 2 for correct frequencyAdd commentMore actions
+    uint32_t divisor_u32 = (CMU_ClockFreqGet(mainClock_t) / sdioFreq_u32) / 2;
     sdio_t->CLOCKCTRL = ((divisor_u32 << _SDIO_CLOCKCTRL_SDCLKFREQSEL_SHIFT))
                         | (SDIO_CLOCKCTRL_INTCLKEN)
                         | (SDIO_CLOCKCTRL_SDCLKEN);

@@ -42,9 +42,10 @@ DSTATUS disk_initialize (
   if (stat&STA_NOINIT)
   {
     // Initialization of SDIO and Card
+    // 2024 12 12 LW: Use HF clock instead of HFPER clock
     SDIO_Init(SDIO,
               400000,             // 400kHz
-              cmuClock_HFPER);
+              cmuClock_HF);
     //ALB check status again because I added a stat = NODISK inside SendCMDWithOutDAT
     //ALB TODO figure how cmd are sent exactly to the SD card and set the timer inside disk_status
     if (stat & STA_NODISK) return stat;           /* No card in the socket */
@@ -53,9 +54,14 @@ DSTATUS disk_initialize (
 	switch(a_u8){
 	  case SDHC_SDXC:
 	  {
-	    CardType = CT_SD2;
+	    CardType = CT_BLOCK;  //CardType = CT_SD2;
 	    break;
 	  }
+	  case SDSC_Ver200_or_Ver300:
+    {
+      CardType = CT_SDC;
+      break;
+    }
 	}
   }
   stat &= ~STA_NOINIT;                        /* Clear STA_NOINIT */
@@ -95,7 +101,9 @@ DRESULT disk_read (
   if (drv || !count) return RES_PARERR;
   if (stat & STA_NOINIT) return RES_NOTRDY;
 
-  if (!(CardType & CT_BLOCK)) sector = sector;  /* Convert to byte address if needed */
+  //if (!(CardType & CT_BLOCK)) sector = sector;  /* Convert to byte address if needed */
+  // 2025 01 02 LW: Proper sector ID to byte address conversionAdd commentMore actions
+  if (!(CardType & CT_BLOCK)) sector = sector << 9;  /* Convert to byte address if needed */
 
   while(count != 0)
   {
@@ -121,6 +129,9 @@ DRESULT disk_write (
   if (drv || !count) return RES_PARERR;
   if (stat & STA_NOINIT) return RES_NOTRDY;
   if (stat & STA_PROTECT) return RES_WRPRT;
+
+  // 2025 01 02 LW: Proper sector ID to byte address conversionAdd commentMore actions
+  if (!(CardType & CT_BLOCK)) sector = sector << 9;  /* Convert to byte address if needed */
 
   while(count != 0)
   {

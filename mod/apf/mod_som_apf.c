@@ -1179,6 +1179,7 @@ void mod_som_apf_producer_task_f(void  *p_arg){
                   //2025 60 01 update meta data for every record so that we don't loose it
                   mod_som_apf_ptr->producer_ptr->mod_som_apf_meta_data.sample_cnt=
                       mod_som_apf_ptr->producer_ptr->stored_dissrates_cnt;
+                  /*
                   //SAN making packed meta_data_buff
                   mod_som_apf_ptr->producer_ptr->meta_data_buffer_byte_cnt = mod_som_apf_meta_data_pack_f(
                       mod_som_apf_ptr->producer_ptr->meta_data_buffer_ptr, sizeof(mod_som_apf_meta_data_t));
@@ -1207,6 +1208,7 @@ void mod_som_apf_producer_task_f(void  *p_arg){
                       while(!mod_som_apf_ptr->producer_ptr->done_sd_flag){
                           WDOG_Feed();
                       };
+                      //*/
 
                   mod_som_io_print_f("\n apf stored: %lu\r\n ", \
                       (uint32_t)mod_som_apf_ptr->producer_ptr->stored_dissrates_cnt);
@@ -1964,7 +1966,7 @@ uint32_t mod_som_apf_send_line_f(LEUART_TypeDef *leuart_ptr,char * buf, uint32_t
   {
 
 
-
+    // changes layout here must update upload function for sample count calculation
 
     //ALB declare the local parameters
     uint32_t mod_epsilon, mod_chi;
@@ -2274,6 +2276,7 @@ uint32_t mod_som_apf_send_line_f(LEUART_TypeDef *leuart_ptr,char * buf, uint32_t
                                   float * curr_shear_avg_spectra_ptr,
                                   float * curr_accel_avg_spectra_ptr)
   {
+    // changes layout here must update upload function for sample count calculation
 
   //ALB declare the local parameters
   uint32_t mod_epsilon, mod_chi;
@@ -4875,6 +4878,7 @@ mod_som_apf_status_t mod_som_apf_upload_f(){
 //      mod_som_apf_ptr->producer_ptr->dacq_ptr;
   uint8_t    eot_byte = MOD_SOM_APF_UPLOAD_EOT_BYTE;
   uint32_t byte_cnt=0;
+  uint32_t sample_cnt;
 
 
   //ALB start transmit the packet
@@ -4890,7 +4894,7 @@ mod_som_apf_status_t mod_som_apf_upload_f(){
 
 //          sl_sleeptimer_delay_millisecond(500);
           //ALB file not open
-          status = mod_som_sdio_opentoread_processfilename_f("OBPdata");
+          status = mod_som_sdio_open_processfilename_f("OBPdata");
 //          if (status==0x2u){
 //              status=MOD_SOM_APF_STATUS_CANNOT_OPENFILE;
 //          }
@@ -4906,7 +4910,68 @@ mod_som_apf_status_t mod_som_apf_upload_f(){
       }else{
           f_lseek (processfile_ptr->fp, 0);
           byte_cnt=f_size(processfile_ptr->fp);
+          //2025 06 02 update to fill in last meta data before upload
+          status=mod_som_sdio_read_OBPfile_metadata(processfile_ptr);
+          if (status){
+              status = MOD_SOM_APF_STATUS_CANNOT_OPENFILE;
+              mod_som_io_print_f("%s,%s,%s\r\n",
+                                 MOD_SOM_APF_UPLOAD_STR,MOD_SOM_APF_NACK_STR,
+                                 "can not open file");
+              // save to the local string for sending out - Mai-Nov 18, 2021
+              sprintf(apf_reply_str,"%s,%s,%s\r\n",
+                      MOD_SOM_APF_UPLOAD_STR,MOD_SOM_APF_NACK_STR,
+                      "can not open file");
+              status = MOD_SOM_APF_STATUS_OK;
+              mod_som_sdio_close_file_f(processfile_ptr);
+              mod_som_sdio_disable_hardware_f();
+              return mod_som_apf_encode_status_f(status);
+          }
+          sample_cnt = byte_cnt-38; // subtract meta data
+          switch(mod_som_apf_ptr->producer_ptr->
+              mod_som_apf_meta_data.comm_telemetry_packet_format){
+            case 1:
+              sample_cnt /= 10;
+              break;
+            case 2:
+              sample_cnt /= (30+mod_som_apf_ptr->producer_ptr->
+                  mod_som_apf_meta_data.nfftdiag*6);
+              break;
+            default:
+              status = MOD_SOM_APF_STATUS_CANNOT_OPENFILE;
+              mod_som_io_print_f("%s,%s,%s\r\n",
+                                 MOD_SOM_APF_UPLOAD_STR,MOD_SOM_APF_NACK_STR,
+                                 "can not open file");
+              // save to the local string for sending out - Mai-Nov 18, 2021
+              sprintf(apf_reply_str,"%s,%s,%s\r\n",
+                      MOD_SOM_APF_UPLOAD_STR,MOD_SOM_APF_NACK_STR,
+                      "can not open file");
+              status = MOD_SOM_APF_STATUS_OK;
+              return mod_som_apf_encode_status_f(status);
+              break;
+
+          }
+          mod_som_apf_ptr->producer_ptr->
+                        mod_som_apf_meta_data.sample_cnt = sample_cnt;
+          f_lseek (processfile_ptr->fp, 0);
+
+
+
+          //SAN making packed meta_data_buff
+          mod_som_apf_ptr->producer_ptr->meta_data_buffer_byte_cnt = mod_som_apf_meta_data_pack_f(
+              mod_som_apf_ptr->producer_ptr->meta_data_buffer_ptr, sizeof(mod_som_apf_meta_data_t));
+
+          if(mod_som_apf_ptr->producer_ptr->meta_data_buffer_byte_cnt<=0)
+            status |= mod_som_apf_ptr->producer_ptr->meta_data_buffer_byte_cnt;
+          else{
+              //if sample_cnt is wrong we still can get it with simple math afterwork.
+              // update meta data at beginning of file
+              mod_som_sdio_write_data_f(processfile_ptr,
+                                        mod_som_apf_ptr->producer_ptr->meta_data_buffer_ptr,
+                                        mod_som_apf_ptr->producer_ptr->meta_data_buffer_byte_cnt,
+                                        &mod_som_apf_ptr->producer_ptr->done_sd_flag);
+          }
           mod_som_apf_ptr->consumer_ptr->daq_remaining_bytes   = byte_cnt+2;
+          f_lseek (processfile_ptr->fp, 0);
       }
 
       if(byte_cnt==0){ //ALB no data
