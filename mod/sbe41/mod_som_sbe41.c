@@ -1277,29 +1277,7 @@ mod_som_sbe41_sample_t mod_som_sbe41_parse_sample_f(uint8_t * element)
   char  str_pressure[MOD_SOM_SBE41_SBE_CHANNEL_LENGTH+1]={0};
   char  str_salinity[MOD_SOM_SBE41_SBE_CHANNEL_LENGTH+1]={0};
 
-  /*2025 05 25 display every sample
-  char apf_reply_str[MOD_SOM_SHELL_INPUT_BUF_SIZE]="\0";
-  size_t reply_str_len = 0;
-  LEUART_TypeDef* apf_leuart_ptr;
-  uint32_t bytes_sent;
-  mod_som_apf_status_t status;
 
-
-  char last_sbe42sample[mod_som_sbe41_ptr->config_ptr->sample_data_length+1];
-  memcpy(last_sbe42sample,&element[MOD_SOM_SBE41_HEXTIMESTAMP_LENGTH],mod_som_sbe41_ptr->config_ptr->sample_data_length);
-  last_sbe42sample[mod_som_sbe41_ptr->config_ptr->sample_data_length] = '\0';
-  mod_som_io_print_f("SBE41:%s",last_sbe42sample);
-  sprintf(apf_reply_str, "SBE41:%s",last_sbe42sample);
-  reply_str_len = strlen(apf_reply_str);
-  apf_leuart_ptr =(LEUART_TypeDef *) mod_som_apf_get_port_ptr_f();
-
-  sl_sleeptimer_delay_millisecond(10);
-  bytes_sent = mod_som_apf_send_line_f(apf_leuart_ptr,apf_reply_str, reply_str_len);
-  sl_sleeptimer_delay_millisecond(10);
-  if (bytes_sent==0){
-      status= MOD_SOM_STATUS_NOT_OK;
-  }
-  //2025 05 25 end display every sample */
 
 
   memcpy(str_timestamp,element,MOD_SOM_SBE41_HEXTIMESTAMP_LENGTH);
@@ -1317,6 +1295,30 @@ mod_som_sbe41_sample_t mod_som_sbe41_parse_sample_f(uint8_t * element)
 //  sbe_sample.conductivity=strtof(str_conductivity,NULL);
   sbe_sample.pressure=strtof(str_pressure,NULL);
   sbe_sample.salinity=strtof(str_salinity,NULL);
+
+  ///*2025 05 25 display every sample
+//  char apf_reply_str[MOD_SOM_SHELL_INPUT_BUF_SIZE]="\0";
+//  size_t reply_str_len = 0;
+//  LEUART_TypeDef* apf_leuart_ptr;
+//  uint32_t bytes_sent;
+//  mod_som_apf_status_t status;
+
+
+  char last_sbe42sample[mod_som_sbe41_ptr->config_ptr->sample_data_length+1];
+  memcpy(last_sbe42sample,&element[MOD_SOM_SBE41_HEXTIMESTAMP_LENGTH],mod_som_sbe41_ptr->config_ptr->sample_data_length);
+  last_sbe42sample[mod_som_sbe41_ptr->config_ptr->sample_data_length] = '\0';
+  mod_som_io_print_f("SBE41:%s\r\nINTRP:%8.2f,%8.4f,%8.4f\r\n",last_sbe42sample,sbe_sample.pressure,sbe_sample.temperature,sbe_sample.salinity);
+  //  sprintf(apf_reply_str, "SBE41:%s",last_sbe42sample);
+  //  reply_str_len = strlen(apf_reply_str);
+  //  apf_leuart_ptr =(LEUART_TypeDef *) mod_som_apf_get_port_ptr_f();
+
+//  sl_sleeptimer_delay_millisecond(10);
+//  bytes_sent = mod_som_apf_send_line_f(apf_leuart_ptr,apf_reply_str, reply_str_len);
+//  sl_sleeptimer_delay_millisecond(10);
+//  if (bytes_sent==0){
+//      status= MOD_SOM_STATUS_NOT_OK;
+//  }
+  //2025 05 25 end display every sample */
 
   return sbe_sample;
 }

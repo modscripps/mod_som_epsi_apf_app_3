@@ -1224,6 +1224,9 @@ void mod_som_apf_producer_task_f(void  *p_arg){
                                      *curr_epsi_fom_ptr);
                   mod_som_io_print_f("\n chi_fom stored: %f\r\n ", \
                                      *curr_chi_fom_ptr);
+                  mod_som_io_print_f("\n pressure stored: %f\r\n ", \
+                                                       *curr_avg_pressure_ptr);
+
 //              }//end if current P<previous P +dz
               //ALB increment cnsmr count
               mod_som_apf_ptr->producer_ptr->dissrates_cnt++;
