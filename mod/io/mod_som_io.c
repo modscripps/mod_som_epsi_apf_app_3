@@ -515,6 +515,7 @@ void mod_som_io_print_task_f(void *p_arg)
 
     while(DEF_ON)
         {
+        WDOG_Feed();
 //        mod_som_io_struct.done_flag=false;
         //necessary for every task
 //        OSTimeDly(
@@ -559,6 +560,7 @@ void mod_som_io_print_task_f(void *p_arg)
         }
         //free memory
         mod_som_io_free_xfer_item_f(tmp_mod_som_io_xfer_item_ptr);
+        WDOG_Feed();
 
     }
 }

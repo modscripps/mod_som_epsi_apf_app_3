@@ -191,18 +191,18 @@ void mod_som_main_start_modules_f()
 //  mod_som_sdio_define_filename_f(filename);
 //#endif
 
-#if defined(MOD_SOM_SETTINGS_EN)
-  mod_som_settings_stream_settings_f();
-#endif
-
-#if defined(MOD_SOM_SBE41_EN)
-  mod_som_sbe41_connect_f();
-  mod_som_sbe41_start_collect_data_f();
-#endif
-
-#if defined(MOD_SOM_EFE_EN)
-  mod_som_efe_sampling_f();
-#endif
+//#if defined(MOD_SOM_SETTINGS_EN)
+//  mod_som_settings_stream_settings_f();
+//#endif
+//
+//#if defined(MOD_SOM_SBE41_EN)
+//  mod_som_sbe41_connect_f();
+//  mod_som_sbe41_start_collect_data_f();
+//#endif
+//
+//#if defined(MOD_SOM_EFE_EN)
+//  mod_som_efe_sampling_f();
+//#endif
 
   printf("ok\r\n");
 
@@ -331,7 +331,7 @@ mod_som_status_t mod_som_main_wake_up_f()
   int delay =1000;
 
   if (mod_som_sleep_flag==true){
-      printf("Making all modules are stopped \r\n");
+      printf("Waking up modules\r\n");
 
       //ALB      DC/DC not burst mode  PF10 high
       GPIO_PinModeSet(gpioPortF, 10, gpioModePushPull, 1);

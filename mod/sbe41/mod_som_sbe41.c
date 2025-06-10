@@ -27,6 +27,7 @@
 #include <sbe41/mod_som_sbe41_cfg.h>
 #include <sbe41/mod_som_sbe41_priv.h>
 #include <stdbool.h>
+#include <strings.h>
 #include "mod_som_io.h"
 #include "mod_som.h"
 #include "mod_som_priv.h"
@@ -605,6 +606,7 @@ mod_som_status_t mod_som_sbe41_construct_consumer_ptr_f(){
       return (mod_som_sbe41_ptr->status = mod_som_sbe41_encode_status_f(MOD_SOM_SBE41_STATUS_FAIL_TO_ALLOCATE_MEMORY));
   }
 
+  bzero(mod_som_sbe41_ptr->consumer_ptr,sizeof(mod_som_sbe41_data_consumer_t));
 
   mod_som_sbe41_ptr->consumer_ptr->max_element_per_record=\
                           mod_som_sbe41_ptr->settings_ptr->elements_per_record;
@@ -781,6 +783,10 @@ mod_som_status_t mod_som_sbe41_start_collect_data_f(){
 
     mod_som_sbe41_start_consumer_task_f();
 
+    /* Clear previous RX interrupts. */
+    USART_IntClear(usart_ptr, ~0x0);
+    NVIC_ClearPendingIRQ(mod_som_sbe41_ptr->com_prf_ptr->irqn);
+
     USART_IntEnable(usart_ptr, USART_IF_RXDATAV);//_RXDATAV);//LEUART_IEN_RXDATAV);
     usart_ptr->CMD = USART_CMD_CLEARRX | USART_CMD_CLEARTX;
     NVIC_EnableIRQ(mod_som_sbe41_ptr->com_prf_ptr->irqn);
@@ -867,12 +873,8 @@ void mod_som_sbe41_id_f(CPU_INT16U argc,CPU_CHAR *argv[]){
 mod_som_status_t  mod_som_sbe41_start_consumer_task_f(){
 
   RTOS_ERR err;
-  mod_som_sbe41_ptr->sample_count=0;
-  mod_som_sbe41_ptr->consumer_ptr->cnsmr_cnt=0;
-  mod_som_sbe41_ptr->consumer_ptr->consumed_flag=true;
   mod_som_sbe41_ptr->consumer_ptr->record_pressure[0]=0; //ALB I need to initialize these becasue I use record_pressure in daq_start
   mod_som_sbe41_ptr->consumer_ptr->record_pressure[1]=0;
-  mod_som_sbe41_ptr->sample_timeout = false;
 
   // Consumer Task 2
    OSTaskCreate(&sbe41_consumer_task_tcb,
@@ -948,6 +950,13 @@ mod_som_status_t  mod_som_sbe41_stop_consumer_task_f(){
 static  void  mod_som_sbe41_consumer_task_f(void  *p_arg){
     RTOS_ERR  err;
 
+    mod_som_sbe41_ptr->sample_count=0;
+    mod_som_sbe41_ptr->consumer_ptr->cnsmr_cnt=0;
+    mod_som_sbe41_ptr->consumer_ptr->consumed_flag=true;
+    mod_som_sbe41_ptr->consumer_ptr->record_pressure[0]=0; //ALB I need to initialize these becasue I use record_pressure in daq_start
+    mod_som_sbe41_ptr->consumer_ptr->record_pressure[1]=0;
+    mod_som_sbe41_ptr->sample_timeout = false;
+
     //cb_elmnt_ptr curr_read_elmnt_ptr = test_cb_param_block.base_ptr;
     // get local sbe41 element ptr and local sbe41 streamer ptr.
     uint8_t * curr_data_ptr   = mod_som_sbe41_ptr->rec_buff_ptr->elements_buffer;
@@ -979,11 +988,11 @@ static  void  mod_som_sbe41_consumer_task_f(void  *p_arg){
 
     mod_som_sdio_file_ptr_t rawfile_ptr =
         local_mod_som_sdio_ptr_t->rawdata_file_ptr;
-    char apf_reply_str[MOD_SOM_SHELL_INPUT_BUF_SIZE]="\0";
-    size_t reply_str_len = 0;
-    LEUART_TypeDef* apf_leuart_ptr;
-    uint32_t bytes_sent;
-    mod_som_apf_status_t status;
+//    char apf_reply_str[MOD_SOM_SHELL_INPUT_BUF_SIZE]="\0";
+//    size_t reply_str_len = 0;
+//    LEUART_TypeDef* apf_leuart_ptr;
+//    uint32_t bytes_sent;
+//    mod_som_apf_status_t status;
 
     //time0= mod_som_calendar_get_time_f();
     while (DEF_ON) {

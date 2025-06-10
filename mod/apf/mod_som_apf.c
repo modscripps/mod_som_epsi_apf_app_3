@@ -2789,6 +2789,9 @@ mod_som_apf_status_t mod_som_apf_daq_start_f(uint32_t profile_id){
   //ALB start collecting CTD.
   status = mod_som_sbe41_connect_f();
   status = mod_som_sbe41_start_collect_data_f();
+  if(status){
+      return MOD_SOM_APF_STATUS_NO_CTD_DATA;
+  }
 
   ////  //ALB enable SDIO hardware
   mod_som_sdio_enable_hardware_f();
@@ -4074,10 +4077,10 @@ mod_som_apf_status_t mod_som_apf_sleep_f(){
       //ALB stop APF consumer task
       status |= mod_som_apf_stop_consumer_task_f();
 
-      sl_sleeptimer_delay_millisecond(100);
+      sl_sleeptimer_delay_millisecond(1000);
       //ALB disable SDIO hardware
       mod_som_sdio_disable_hardware_f();
-
+      sl_sleeptimer_delay_millisecond(10);
       mod_som_main_sleep_f();
  }
  else{
