@@ -33,7 +33,7 @@
 
 #define MOD_SOM_APF_ENDACK_STR            "\r\n"
 #define MOD_SOM_APF_ACK_STR               "ack"
-#define MOD_SOM_APF_NACK_STR              "nak"
+#define MOD_SOM_APF_NAK_STR              "nak"
 #define MOD_SOM_APF_DAQ_STR               "daq"
 #define MOD_SOM_APF_DAQSTAT_STR           "daq?"
 #define MOD_SOM_APF_TIME_STR              "time"

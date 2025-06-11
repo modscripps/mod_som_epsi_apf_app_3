@@ -610,7 +610,7 @@ mod_som_status_t mod_som_sdio_define_filename_f(CPU_CHAR* filename){
 mod_som_status_t mod_som_sdio_open_processfilename_f(CPU_CHAR* filename){
 
   mod_som_status_t status;
-//  UINT byteswritten=0;
+  UINT byteswritten=0;
 
 
 
@@ -629,7 +629,7 @@ mod_som_status_t mod_som_sdio_open_processfilename_f(CPU_CHAR* filename){
   mod_som_sdio_struct.processdata_file_ptr->initialized_flag=0;
 
   //ALB open file
-  mod_som_io_print_f("\r\n[sdio open file]:%s \r\n",(char *) mod_som_sdio_struct.processdata_file_ptr->file_name);
+  mod_som_io_print_f("\n[sdio open file]:%s \r\n",(char *) mod_som_sdio_struct.processdata_file_ptr->file_name);
   mod_som_sdio_struct.processdata_file_ptr->is_open_flag=0;
 
 
@@ -650,18 +650,18 @@ mod_som_status_t mod_som_sdio_open_processfilename_f(CPU_CHAR* filename){
     //ALB APPEND if we want to keep the previous data (i.e., if epsi turned off/on during a profile)
     //ALB TODO figure out a way to either append or erase the previous data through software
 
-//    res = f_open(mod_som_sdio_struct.processdata_file_ptr->fp,
-//        tchar_filename,
+//    res = f_open(mod_som_sdio_struct.processdata_file_ptr->fp, \
+//        tchar_filename,\
 //        FA_OPEN_APPEND | FA_WRITE | FA_READ);
     if (res == FR_OK)
     {
 
         status=MOD_SOM_SDIO_STATUS_OK;
-        mod_som_io_print_f("\r\nopened %s\r\n",
+        mod_som_io_print_f("\ropened %s\r\n",
                            (char *) mod_som_sdio_struct.processdata_file_ptr->file_name);
     }else {
 
-          mod_som_io_print_f("\r\nFailed to open %s,error %i \r\n", \
+          mod_som_io_print_f("\nFailed to open %s,error %i\r\n", \
           (char *) mod_som_sdio_struct.processdata_file_ptr->file_name, res);
       return MOD_SOM_SDIO_STATUS_FAIL_OPENFILE;
     }
@@ -692,7 +692,7 @@ mod_som_status_t mod_som_sdio_open_processfilename_f(CPU_CHAR* filename){
 mod_som_status_t mod_som_sdio_new_processfilename_f(CPU_CHAR* filename){
 
   mod_som_status_t status;
-//  UINT byteswritten=0;
+  UINT byteswritten=0;
 
 
 
@@ -711,7 +711,7 @@ mod_som_status_t mod_som_sdio_new_processfilename_f(CPU_CHAR* filename){
   mod_som_sdio_struct.processdata_file_ptr->initialized_flag=0;
 
   //ALB open file
-  mod_som_io_print_f("\n\r[sdio new file]:%s \n\r",(char *) mod_som_sdio_struct.processdata_file_ptr->file_name);
+  mod_som_io_print_f("[sdio new file]:%s \r\n",(char *) mod_som_sdio_struct.processdata_file_ptr->file_name);
   mod_som_sdio_struct.processdata_file_ptr->is_open_flag=0;
 
 
@@ -732,18 +732,18 @@ mod_som_status_t mod_som_sdio_new_processfilename_f(CPU_CHAR* filename){
     //ALB APPEND if we want to keep the previous data (i.e., if epsi turned off/on during a profile)
     //ALB TODO figure out a way to either append or erase the previous data through software
 
-//    res = f_open(mod_som_sdio_struct.processdata_file_ptr->fp,
-//        tchar_filename,
+//    res = f_open(mod_som_sdio_struct.processdata_file_ptr->fp, \
+//        tchar_filename,\
 //        FA_OPEN_APPEND | FA_WRITE | FA_READ);
     if (res == FR_OK)
     {
 
         status=MOD_SOM_SDIO_STATUS_OK;
-        mod_som_io_print_f("\n\rnew %s\n\r",
+        mod_som_io_print_f("\n\rnew %s\r\n",
                            (char *) mod_som_sdio_struct.processdata_file_ptr->file_name);
     }else {
 
-          mod_som_io_print_f("\n\rFailed to create new %s,error %i \n\r", \
+          mod_som_io_print_f("\n\rFailed to create new %s,error %i\r\n", \
           (char *) mod_som_sdio_struct.processdata_file_ptr->file_name, res);
       return MOD_SOM_SDIO_STATUS_FAIL_OPENFILE;
     }
@@ -774,7 +774,7 @@ mod_som_status_t mod_som_sdio_new_processfilename_f(CPU_CHAR* filename){
 mod_som_status_t mod_som_sdio_opentoread_processfilename_f(CPU_CHAR* filename){
 
   mod_som_status_t status;
-//  UINT byteswritten=0;
+  UINT byteswritten=0;
 
 
 
@@ -793,7 +793,7 @@ mod_som_status_t mod_som_sdio_opentoread_processfilename_f(CPU_CHAR* filename){
   mod_som_sdio_struct.processdata_file_ptr->initialized_flag=0;
 
   //ALB open file
-  mod_som_io_print_f("\n\r[sdio open file]:%s \n\r",(char *) mod_som_sdio_struct.processdata_file_ptr->file_name);
+  mod_som_io_print_f("\n\r[sdio open file]:%s \r\n",(char *) mod_som_sdio_struct.processdata_file_ptr->file_name);
   mod_som_sdio_struct.processdata_file_ptr->is_open_flag=0;
 
     TCHAR tchar_filename[100];
@@ -813,18 +813,18 @@ mod_som_status_t mod_som_sdio_opentoread_processfilename_f(CPU_CHAR* filename){
     //ALB APPEND if we want to keep the previous data (i.e., if epsi turned off/on during a profile)
     //ALB TODO figure out a way to either append or erase the previous data through software
 
-//    res = f_open(mod_som_sdio_struct.processdata_file_ptr->fp,
-//        tchar_filename,
+//    res = f_open(mod_som_sdio_struct.processdata_file_ptr->fp, \
+//        tchar_filename,\
 //        FA_OPEN_APPEND | FA_WRITE | FA_READ);
     if (res == FR_OK)
     {
 
         status=MOD_SOM_SDIO_STATUS_OK;
-        mod_som_io_print_f("\n\ropened %s\n\r",
+        mod_som_io_print_f("\n\ropened %s\r\n",
                            (char *) mod_som_sdio_struct.processdata_file_ptr->file_name);
     }else {
 
-          mod_som_io_print_f("\n\rFailed to open %s,error %i \n\r", \
+          mod_som_io_print_f("\n\rFailed to open %s,error %i\r\n", \
           (char *) mod_som_sdio_struct.processdata_file_ptr->file_name, res);
       return MOD_SOM_SDIO_STATUS_FAIL_OPENFILE;
     }
@@ -938,7 +938,7 @@ mod_som_status_t mod_som_sdio_read_OBPfile_metadata(
       local_meta_data->end_metadata = *((uint16_t *)curr_buff_ptr);
       curr_buff_ptr += 2;
   } else{
-      mod_som_io_print_f("\n\rRead Failure: %d\n\r", res);
+      mod_som_io_print_f("\n\rRead Failure: %d\r\n", res);
       status=MOD_SOM_STATUS_NOT_OK;
   }
 
@@ -1012,7 +1012,7 @@ mod_som_status_t mod_som_sdio_open_next_datafile(){
  ******************************************************************************/
 mod_som_status_t mod_som_sdio_open_file_f(mod_som_sdio_file_ptr_t mod_som_sdio_file_ptr){
 
-	mod_som_io_print_f("\n\r[sdio open file]:%s \n\r",(char *) mod_som_sdio_file_ptr->file_name);
+	mod_som_io_print_f("\n[sdio open file]:%s \r\n",(char *) mod_som_sdio_file_ptr->file_name);
     mod_som_sdio_file_ptr->is_open_flag=0;
 
     TCHAR tchar_filename[100];
@@ -1030,15 +1030,15 @@ mod_som_status_t mod_som_sdio_open_file_f(mod_som_sdio_file_ptr_t mod_som_sdio_f
     		FA_CREATE_ALWAYS | FA_WRITE | FA_READ);
     //ALB APPEND if we want to keep the previous data (i.e., if epsi turned off/on during a profile)
     //ALB TODO figure out a way to either append or erase the previous data through software
-//    res = f_open(mod_som_sdio_file_ptr->fp,
-//        tchar_filename,
+//    res = f_open(mod_som_sdio_file_ptr->fp, \
+//        tchar_filename,\
 //        FA_OPEN_APPEND | FA_WRITE | FA_READ);
     if (res == FR_OK)
     {
-    	mod_som_io_print_f("\n\ropened %s\n\r",(char *) mod_som_sdio_file_ptr->file_name);
+    	mod_som_io_print_f("\n\ropened %s\r\n",(char *) mod_som_sdio_file_ptr->file_name);
 
     }else {
-    	mod_som_io_print_f("\n\rFailed to open %s,error %i \n\r", \
+    	mod_som_io_print_f("\nFailed to open %s,error %i\r\n", \
     			(char *) mod_som_sdio_file_ptr->file_name, res);
     	return MOD_SOM_SDIO_STATUS_FAIL_OPENFILE;
     }
@@ -1098,12 +1098,12 @@ mod_som_status_t mod_som_sdio_close_file_f(mod_som_sdio_file_ptr_t mod_som_sdio_
 			mod_som_io_print_f("closed %s\r\n",mod_som_sdio_file_ptr->file_name);
 //	    mod_som_sdio_file_ptr->is_open_flag=0;
 		} else{
-			mod_som_io_print_f("Failed to close %s, error %i\n\r", \
+			mod_som_io_print_f("Failed to close %s, error %i\r\n", \
 					mod_som_sdio_file_ptr->file_name,res);
 			return MOD_SOM_SDIO_STATUS_FAIL_CLOSEFILE;
 		}
 	} else {
-		printf("Close error file not open\n\r");
+		printf("Close error file not open\r\n");
 	}
     return mod_som_sdio_encode_status_f(MOD_SOM_STATUS_OK);
 }
@@ -1155,7 +1155,7 @@ mod_som_status_t mod_som_sdio_write_config_f(uint8_t *data_ptr,
 				tchar_filename,\
 				FA_OPEN_APPEND);
 		if (res!=FR_OK){
-			printf("\n\rcan not open %s\n\r",file_ptr->file_name);
+			printf("\n\rcannot open %s\r\n",file_ptr->file_name);
 		}
 	}
 
@@ -1239,7 +1239,7 @@ mod_som_status_t mod_som_sdio_write_config_f(uint8_t *data_ptr,
     }
 
 	if (res != FR_OK){
-		printf("can not write config in %s",file_ptr->file_name);
+		printf("\rcan not write config in %s\r\n",file_ptr->file_name);
 		return MOD_SOM_SDIO_STATUS_FAIL_WRITEFILE;
 	}
 	return mod_som_sdio_encode_status_f(MOD_SOM_STATUS_OK);
@@ -1277,11 +1277,11 @@ mod_som_status_t mod_som_sdio_write_config_f(uint8_t *data_ptr,
 //    }
 //    tchar_filename[idx] = '\0';
 //
-//    res = f_open(mod_som_sdio_file_ptr->fp,
-//        tchar_filename,
+//    res = f_open(mod_som_sdio_file_ptr->fp, \
+//        tchar_filename,\
 //        FA_OPEN_APPEND);
 //    if (res!=FR_OK){
-//      mod_som_io_print_f(("\n can not open %s",mod_som_sdio_file_ptr->file_name);
+//      printf("\n can not open %s",mod_som_sdio_file_ptr->file_name);
 //    }
 //  }
 //
@@ -1305,7 +1305,7 @@ mod_som_status_t mod_som_sdio_write_config_f(uint8_t *data_ptr,
 //    }
 //
 //  if (res != FR_OK){
-//    mod_som_io_print_f(("can not write OBP data in %s",mod_som_sdio_file_ptr->file_name);
+//    printf("can not write OBP data in %s",mod_som_sdio_file_ptr->file_name);
 //    return MOD_SOM_SDIO_STATUS_FAIL_WRITEFILE;
 //  }
 //  return mod_som_sdio_encode_status_f(MOD_SOM_STATUS_OK);
@@ -1409,7 +1409,7 @@ mod_som_status_t mod_som_sdio_read_file_f(mod_som_sdio_file_ptr_t mod_som_sdio_f
     			FA_READ);
 
         if(mod_som_sdio_file_ptr->is_open_flag==0){
-        	mod_som_io_print_f("\n\rReading file %s...\n\r", \
+        	mod_som_io_print_f("\nReading file %s...\r\n", \
         			mod_som_sdio_file_ptr->file_name);
         	//2025 05 28  writing flag
         	CORE_DECLARE_IRQ_STATE;
@@ -1424,7 +1424,7 @@ mod_som_status_t mod_som_sdio_read_file_f(mod_som_sdio_file_ptr_t mod_som_sdio_f
         		if (res == FR_OK){
         			mod_som_io_stream_data_f((uint8_t*)mod_som_sdio_struct.read_buff,byte_read,DEF_NULL);
         		} else{
-        			mod_som_io_print_f("\n\rRead Failure: %d\n\r", res);
+        			mod_som_io_print_f("\nRead Failure: %d\r\n", res);
         		}
             //ALB feed the WDOG coz sending long files tiggers the WDOG.
             WDOG_Feed();
@@ -1437,10 +1437,10 @@ mod_som_status_t mod_som_sdio_read_file_f(mod_som_sdio_file_ptr_t mod_som_sdio_f
         	CORE_EXIT_ATOMIC();
         } else
         {
-        	mod_som_io_print_f("\n\rRead error data file still open\n\r");
+        	mod_som_io_print_f("\nRead error data file still open\r\n");
         }
         res = f_close(mod_som_sdio_file_ptr->fp);
-		mod_som_io_print_f("\n\rDone reading %s\n\r",mod_som_sdio_file_ptr->file_name);
+		mod_som_io_print_f("\nDone reading %s\r\n",mod_som_sdio_file_ptr->file_name);
 
     return mod_som_sdio_encode_status_f(MOD_SOM_STATUS_OK);
 }
@@ -1472,7 +1472,7 @@ if(mod_som_sdio_file_ptr->is_open_flag==0){
     //ALB file not open
     mod_som_sdio_opentoread_processfilename_f("OBPdata");
 }
-  mod_som_io_print_f("\n\rReading file %s...\n\r", \
+  mod_som_io_print_f("\nReading file %s...\r\n", \
       mod_som_sdio_file_ptr->file_name);
   //2025 05 28  reading flag
   CORE_DECLARE_IRQ_STATE;
@@ -1493,7 +1493,7 @@ if(mod_som_sdio_file_ptr->is_open_flag==0){
      obp_file_bytes-=byte_read;
      idx_read =byte_read; //ALB index to where the data should be written in databuffer
     } else{
-      mod_som_io_print_f("\n\rRead Failure: %d\n\r", res);
+      mod_som_io_print_f("\nRead Failure: %d\r\n", res);
       return MOD_SOM_STATUS_NOT_OK;
     }
 
@@ -1586,7 +1586,7 @@ mod_som_status_t mod_som_sdio_ls_sd_f(){
 	    FRESULT res;
 	    res = scan_files(buff);
 	    if (res != FR_OK) {
-	    	mod_som_io_print_f("can not read Volume\n\r");
+	    	mod_som_io_print_f("can not read Volume\r\n");
 		    return MOD_SOM_SDIO_STATUS_FAIL_READVOLUME;
 	    }
 	    return mod_som_sdio_encode_status_f(MOD_SOM_STATUS_OK);
@@ -1774,118 +1774,6 @@ uint32_t mod_som_sdio_get_max_size_of_complete_data_block_f(void){
 
 /*******************************************************************************
  * @function
- *     mod_som_sdio_print_task_f
- * @abstract
- *     MOD SOM I/O OS task that would run in parallel with the main task
- * @discussion
- *     This task would dequeue the MOD SOM I/O transfer as the data is piped out
- * @param       p_arg
- *     argument passed in by OSTaskCreate (not used)
- ******************************************************************************/
-static void mod_som_sdio_print_task_f(void *p_arg)
-{
-
-    (void)p_arg; // Deliberately unused argument
-    RTOS_ERR err;
-
-    mod_som_sdio_xfer_ptr_t tmp_mod_som_sdio_xfer_item_ptr = DEF_NULL;
-    OS_MSG_SIZE tmp_mod_som_sdio_xfer_item_size;
-    CPU_TS time_passed_msg_pend;
-    uint32_t i;
-
-//    CORE_DECLARE_IRQ_STATE;
-
-//    uint32_t n_count = 0;
-    while(DEF_ON){
-        WDOG_Feed();
-        //necessary for every task
-        tmp_mod_som_sdio_xfer_item_ptr =
-                (mod_som_sdio_xfer_ptr_t)OSQPend(&mod_som_sdio_struct.msg_queue,
-                        0,
-                        OS_OPT_PEND_BLOCKING,
-                        &tmp_mod_som_sdio_xfer_item_size,
-                        &time_passed_msg_pend,
-                        &err);
-        //SAN 20230213 check if file system is mounted
-        if(!mod_som_sdio_struct.fatfs_mounted){
-            mod_som_io_print_f("$ERR: file system not mounted\n\r");
-            continue;
-        }
-
-        if (mod_som_sdio_struct.new_file_flag)
-          {
-            mod_som_sdio_open_next_datafile();
-            mod_som_sdio_struct.new_file_flag=false;
-          }
-
-        //TODO track print
-        if(tmp_mod_som_sdio_xfer_item_ptr->is_printf_mode)
-          {
-            //body of data
-            for(i=0;i<tmp_mod_som_sdio_xfer_item_ptr->printf_str_length;i++)
-              {
-                putchar(tmp_mod_som_sdio_xfer_item_ptr->printf_str_ptr[i]);
-              }
-          }else
-            {
-
-            if(tmp_mod_som_sdio_xfer_item_ptr->file_ptr->is_open_flag==1)
-              {
-                //2025 05 28  writing flag
-                CORE_DECLARE_IRQ_STATE;
-                CORE_ENTER_ATOMIC();
-                tmp_mod_som_sdio_xfer_item_ptr->file_ptr->is_writing_flag = true;
-                CORE_EXIT_ATOMIC();
-                int remaining_bytes;
-                int bytes_to_send=MOD_SOM_SDIO_BLOCK_LENGTH;
-                UINT byteswritten;
-                FRESULT res;
-                remaining_bytes=tmp_mod_som_sdio_xfer_item_ptr->data_length;
-
-                while(remaining_bytes>0)
-                  {
-//                    WDOG_Feed();
-                    if (remaining_bytes<MOD_SOM_SDIO_BLOCK_LENGTH)
-                      {
-                        bytes_to_send=remaining_bytes;
-                      }
-                    res = f_write(tmp_mod_som_sdio_xfer_item_ptr->file_ptr->fp,\
-                                  &tmp_mod_som_sdio_xfer_item_ptr->data_ptr[tmp_mod_som_sdio_xfer_item_ptr->data_length-remaining_bytes],bytes_to_send, &byteswritten); /* buffptr = pointer to the data to be written */
-                    remaining_bytes=remaining_bytes-byteswritten;
-                    if (res != FR_OK)
-                      {
-                        //TODO write an error code
-                      }
-                  }
-                f_sync(tmp_mod_som_sdio_xfer_item_ptr->file_ptr->fp);
-
-                //2025 05 28  writing flag
-                CORE_ENTER_ATOMIC();
-                tmp_mod_som_sdio_xfer_item_ptr->file_ptr->is_writing_flag = false;
-                CORE_EXIT_ATOMIC();
-
-                if (mod_som_calendar_get_time_f()-
-                    mod_som_sdio_struct.open_file_time>=
-                    mod_som_sdio_struct.mod_som_sdio_settings_ptr->file_duration)
-                  {
-                    //ALB suspend the task.
-                    mod_som_sdio_struct.new_file_flag=true;
-                  }
-
-              } else{
-                  mod_som_io_print_f("Write error data file not open\n\r");
-              }
-              if(tmp_mod_som_sdio_xfer_item_ptr->done_streaming_flag_ptr!=DEF_NULL){
-                  *(tmp_mod_som_sdio_xfer_item_ptr->done_streaming_flag_ptr)  = true;
-              }
-            }//end if printf
-          //free memory
-          mod_som_sdio_free_xfer_item_f(tmp_mod_som_sdio_xfer_item_ptr);
-      }//end while DEF_ON
-  }//end function
-
-/*******************************************************************************
- * @function
  *     mod_som_sdio_start_f
  * @abstract
  *     Start the background task for MOD SOM I/O
@@ -1998,7 +1886,117 @@ mod_som_status_t mod_som_sdio_write_data_f(mod_som_sdio_file_ptr_t file_ptr, con
 }
 
 
+/*******************************************************************************
+ * @function
+ *     mod_som_sdio_print_task_f
+ * @abstract
+ *     MOD SOM I/O OS task that would run in parallel with the main task
+ * @discussion
+ *     This task would dequeue the MOD SOM I/O transfer as the data is piped out
+ * @param       p_arg
+ *     argument passed in by OSTaskCreate (not used)
+ ******************************************************************************/
+static void mod_som_sdio_print_task_f(void *p_arg)
+{
 
+    (void)p_arg; // Deliberately unused argument
+    RTOS_ERR err;
+
+    mod_som_sdio_xfer_ptr_t tmp_mod_som_sdio_xfer_item_ptr = DEF_NULL;
+    OS_MSG_SIZE tmp_mod_som_sdio_xfer_item_size;
+    CPU_TS time_passed_msg_pend;
+    uint32_t i;
+
+//    CORE_DECLARE_IRQ_STATE;
+
+//    uint32_t n_count = 0;
+    while(DEF_ON){
+        WDOG_Feed();
+        //necessary for every task
+        tmp_mod_som_sdio_xfer_item_ptr =
+                (mod_som_sdio_xfer_ptr_t)OSQPend(&mod_som_sdio_struct.msg_queue,
+                        0,
+                        OS_OPT_PEND_BLOCKING,
+                        &tmp_mod_som_sdio_xfer_item_size,
+                        &time_passed_msg_pend,
+                        &err);
+        //SAN 20230213 check if file system is mounted
+        if(!mod_som_sdio_struct.fatfs_mounted){
+            mod_som_io_print_f("$ERR: file system not mounted\r\n");
+            continue;
+        }
+
+        if (mod_som_sdio_struct.new_file_flag)
+          {
+            mod_som_sdio_open_next_datafile();
+            mod_som_sdio_struct.new_file_flag=false;
+          }
+
+        //TODO track print
+        if(tmp_mod_som_sdio_xfer_item_ptr->is_printf_mode)
+          {
+            //body of data
+            for(i=0;i<tmp_mod_som_sdio_xfer_item_ptr->printf_str_length;i++)
+              {
+                putchar(tmp_mod_som_sdio_xfer_item_ptr->printf_str_ptr[i]);
+              }
+          }else
+            {
+
+            if(tmp_mod_som_sdio_xfer_item_ptr->file_ptr->is_open_flag==1)
+              {
+                //2025 05 28  writing flag
+                CORE_DECLARE_IRQ_STATE;
+                CORE_ENTER_ATOMIC();
+                tmp_mod_som_sdio_xfer_item_ptr->file_ptr->is_writing_flag = true;
+                CORE_EXIT_ATOMIC();
+                int remaining_bytes;
+                int bytes_to_send=MOD_SOM_SDIO_BLOCK_LENGTH;
+                UINT byteswritten;
+                FRESULT res;
+                remaining_bytes=tmp_mod_som_sdio_xfer_item_ptr->data_length;
+
+                while(remaining_bytes>0)
+                  {
+//                    WDOG_Feed();
+                    if (remaining_bytes<MOD_SOM_SDIO_BLOCK_LENGTH)
+                      {
+                        bytes_to_send=remaining_bytes;
+                      }
+                    res = f_write(tmp_mod_som_sdio_xfer_item_ptr->file_ptr->fp,\
+                                  &tmp_mod_som_sdio_xfer_item_ptr->data_ptr[tmp_mod_som_sdio_xfer_item_ptr->data_length-remaining_bytes],bytes_to_send, &byteswritten); /* buffptr = pointer to the data to be written */
+                    remaining_bytes=remaining_bytes-byteswritten;
+                    if (res != FR_OK)
+                      {
+                        //TODO write an error code
+                      }
+                  }
+                f_sync(tmp_mod_som_sdio_xfer_item_ptr->file_ptr->fp);
+
+                //2025 05 28  writing flag
+                CORE_ENTER_ATOMIC();
+                tmp_mod_som_sdio_xfer_item_ptr->file_ptr->is_writing_flag = false;
+                CORE_EXIT_ATOMIC();
+
+                if (mod_som_calendar_get_time_f()-
+                    mod_som_sdio_struct.open_file_time>=
+                    mod_som_sdio_struct.mod_som_sdio_settings_ptr->file_duration)
+                  {
+                    //ALB suspend the task.
+                    mod_som_sdio_struct.new_file_flag=true;
+                  }
+
+              } else{
+                  mod_som_io_print_f("Write error data file not open\r\n");
+              }
+              if(tmp_mod_som_sdio_xfer_item_ptr->done_streaming_flag_ptr!=DEF_NULL){
+                  *(tmp_mod_som_sdio_xfer_item_ptr->done_streaming_flag_ptr)  = true;
+              }
+            }//end if printf
+          //free memory
+          mod_som_sdio_free_xfer_item_f(tmp_mod_som_sdio_xfer_item_ptr);
+      }//end while DEF_ON
+  }//end function
 
 /*******************************************************************************
  * @function
@@ -2117,11 +2115,11 @@ mod_som_status_t mod_som_sdio_add_to_queue_f(mod_som_sdio_xfer_ptr_t xfer_item_p
     		mod_som_sdio_free_xfer_item_f(xfer_item_ptr);
     		return mod_som_sdio_encode_status_f(MOD_SOM_SDIO_STATUS_ERR_FAIL_TO_POST_MSG_TO_QUEUE);
     	}
-//    	printf("\n\radd to queue Nb entries %u\n\r",mod_som_sdio_struct.msg_queue.MsgQ.NbrEntries);
+//    	printf("\n add to queue Nb entries %u\r\n",mod_som_sdio_struct.msg_queue.MsgQ.NbrEntries);
 
     }else{
 		mod_som_sdio_free_xfer_item_f(xfer_item_ptr);
-		mod_som_io_print_f("\n\rNot adding to SD queue Nb entries %u\n\r",mod_som_sdio_struct.msg_queue.MsgQ.NbrEntries);
+    	printf("\n\r Not adding to SD queue Nb entries %u\r\n",mod_som_sdio_struct.msg_queue.MsgQ.NbrEntries);
     }
     return mod_som_sdio_encode_status_f(MOD_SOM_STATUS_OK);
 }

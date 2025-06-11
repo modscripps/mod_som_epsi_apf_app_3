@@ -123,7 +123,7 @@ mod_som_apf_status_t mod_som_apf_init_f(){
     //ALB TODO change return -1 to return the an appropriate error code.
     APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
     if(mod_som_apf_ptr==DEF_NULL){
-        mod_som_io_print_f("APF not initialized\r\n");
+        mod_som_io_print_f("APF not initialized\n\r");
       return -1;
     }
 
@@ -136,7 +136,7 @@ mod_som_apf_status_t mod_som_apf_init_f(){
     // ALB WARNING: The setup pointer CAN NOT have pointers inside.
     status |= mod_som_apf_allocate_settings_ptr_f();
     if (status!=MOD_SOM_STATUS_OK){
-        mod_som_io_print_f("APF not initialized\r\n");
+        mod_som_io_print_f("APF not initialized\n\r");
       return status;
     }
 
@@ -158,7 +158,7 @@ mod_som_apf_status_t mod_som_apf_init_f(){
         status |= mod_som_apf_default_settings_f(
                                              mod_som_apf_ptr->settings_ptr);
         if (status!=MOD_SOM_STATUS_OK){
-            mod_som_io_print_f("APF not initialized\r\n");
+            mod_som_io_print_f("APF not initialized\n\r");
           return status;
         }
       }
@@ -167,7 +167,7 @@ mod_som_apf_status_t mod_som_apf_init_f(){
       //ALB using the settings_ptr variable
       status |= mod_som_apf_construct_config_ptr_f();
     if (status!=MOD_SOM_STATUS_OK){
-        mod_som_io_print_f("APF not initialized\r\n");
+        mod_som_io_print_f("APF not initialized\n\r");
       return status;
     }
 
@@ -177,7 +177,7 @@ mod_som_apf_status_t mod_som_apf_init_f(){
     //ALB using the settings_ptr variable
     status |= mod_som_apf_construct_producer_ptr_f();
     if (status!=MOD_SOM_STATUS_OK){
-        mod_som_io_print_f("APF not initialized\r\n");
+        mod_som_io_print_f("APF not initialized\n\r");
         return status;
     }
     //ALB Allocate memory for the producer pointer,
@@ -185,7 +185,7 @@ mod_som_apf_status_t mod_som_apf_init_f(){
     //ALB REMEMBER, you need consumer struct even if you do not use the consumer task
     status |= mod_som_apf_construct_consumer_ptr_f();
     if (status!=MOD_SOM_STATUS_OK){
-        mod_som_io_print_f("APF not initialized\r\n");
+        mod_som_io_print_f("APF not initialized\n\r");
         return status;
     }
 // enable the reading and parsing the input command/string through the LEUART - Arnaud&Mai - Nov 10, 2021
@@ -193,14 +193,14 @@ mod_som_apf_status_t mod_som_apf_init_f(){
 //    //ALB using the settings_ptr variable
     status |= mod_som_apf_construct_com_prf_f();
     if (status!=MOD_SOM_STATUS_OK){
-        mod_som_io_print_f("APF not initialized\r\n");
+        mod_som_io_print_f("APF not initialized\n\r");
         return status;
 
     }
     else{
         uint32_t bytes_sent;
 
-        mod_som_io_print_f("APF initialized\r\n");
+        mod_som_io_print_f("APF initialized\n\r");
 
         apf_leuart_ptr =(LEUART_TypeDef *) mod_som_apf_get_port_ptr_f();
         sprintf(apf_reply_str,"APEX-EPSI initialized\r\n");
@@ -215,9 +215,9 @@ mod_som_apf_status_t mod_som_apf_init_f(){
     }
 
 
-    //ALB turn off min com
+    //ALB turn off main com
     //MB add "Debugg" flag
-#if SOM_APF_NOT_DEBUG_MODE
+#ifndef MOD_SOM_DEBUG
     mod_som_main_com_off_f();
 #endif
 
@@ -941,7 +941,7 @@ mod_som_apf_status_t mod_som_apf_stop_consumer_task_f(){
   if(!mod_som_apf_ptr->consumer_ptr->started_flg){
       return mod_som_apf_encode_status_f(MOD_SOM_STATUS_OK);
   }
-
+  
   RTOS_ERR err;
   OSTaskDel(&mod_som_apf_consumer_task_tcb,
              &err);
@@ -3270,7 +3270,7 @@ mod_som_apf_status_t mod_som_apf_fwrev_status_f(){
   if (status!=0)
   {
       mod_som_io_print_f("%s,%s,%lu\r\n",
-                         MOD_SOM_APF_FWREV_STAT_STR,MOD_SOM_APF_NACK_STR,status);
+                         MOD_SOM_APF_FWREV_STAT_STR,MOD_SOM_APF_NAK_STR,status);
       for (int i=0;i<MOD_SOM_SHELL_INPUT_BUF_SIZE;i++){
           apf_reply_str[i]=0;
       }
@@ -3337,10 +3337,10 @@ mod_som_apf_status_t mod_som_apf_ok_status_f(){
   if (status!=0)
   {  //PB somewhere
       mod_som_io_print_f("%s,%s,%lu\r\n",
-                         MOD_SOM_APF_OKSTAT_STR,MOD_SOM_APF_NACK_STR,status);
+                         MOD_SOM_APF_OKSTAT_STR,MOD_SOM_APF_NAK_STR,status);
 
       sprintf(apf_reply_str,"%s,%s,issue with wake up\r\n",
-              MOD_SOM_APF_OKSTAT_STR,MOD_SOM_APF_NACK_STR);
+              MOD_SOM_APF_OKSTAT_STR,MOD_SOM_APF_NAK_STR);
       reply_str_len = strlen(apf_reply_str);
       // sending the above string to the APF port - Mai - Nov 18, 2021
       bytes_sent = mod_som_apf_send_line_f(apf_leuart_ptr,apf_reply_str, reply_str_len);
@@ -3394,7 +3394,7 @@ mod_som_apf_status_t mod_som_apf_poweroff_f(){
   if(bytes_sent==0){
 
       sprintf(apf_reply_str,"%s,%s,%lu\r\n",
-              MOD_SOM_APF_POWEROFF_STR,MOD_SOM_APF_NACK_STR,status);
+              MOD_SOM_APF_POWEROFF_STR,MOD_SOM_APF_NAK_STR,status);
       reply_str_len = strlen(apf_reply_str);
       // sending the above string to the APF port - Mai - Nov 18, 2021
       bytes_sent = mod_som_apf_send_line_f(apf_leuart_ptr,apf_reply_str, reply_str_len);
@@ -3493,7 +3493,7 @@ mod_som_apf_status_t mod_som_apf_epsi_id_status_f(){
 
       sprintf(apf_reply_str,"%s,%s,%s\r\n",
               MOD_SOM_APF_EPSINO_STAT_STR,
-              MOD_SOM_APF_NACK_STR,
+              MOD_SOM_APF_NAK_STR,
               "Issue with saved rev and SN");
 
       reply_str_len = strlen(apf_reply_str);
@@ -3568,7 +3568,7 @@ mod_som_apf_status_t mod_som_apf_probe_id_f(CPU_INT16U argc,
       bytes_sent = mod_som_apf_send_line_f(apf_leuart_ptr,apf_reply_str, reply_str_len);
       if(bytes_sent==0){
           sprintf(apf_reply_str,"%s,%s,%lu, failed to send to the APF port\r\n",
-                  MOD_SOM_APF_PROBENO_STR,MOD_SOM_APF_NACK_STR,
+                  MOD_SOM_APF_PROBENO_STR,MOD_SOM_APF_NAK_STR,
                   status);
           status |= MOD_SOM_APF_STATUS_WRONG_ARG;
           return status;
@@ -3706,7 +3706,6 @@ mod_som_apf_status_t mod_som_apf_probe_id_f(CPU_INT16U argc,
               // sending the above string to the APF port - Mai - Nov 18, 2021
               mod_som_apf_send_line_f(apf_leuart_ptr,apf_reply_str, reply_str_len);
               return status;
-
           }
 
           // this point, the input command is valid command
@@ -3743,12 +3742,12 @@ mod_som_apf_status_t mod_som_apf_probe_id_f(CPU_INT16U argc,
   else if(argc<7){
       // save to the local string for sending out - Mai- May 3, 2022
       sprintf(apf_reply_str,"%s,%s,not enough arguments\r\n",
-              MOD_SOM_APF_PROBENO_STR,MOD_SOM_APF_NACK_STR);
+              MOD_SOM_APF_PROBENO_STR,MOD_SOM_APF_NAK_STR);
       status|= MOD_SOM_APF_STATUS_WRONG_ARG;
   }else{
       // save to the local string for sending out - Mai- May 3, 2022
       sprintf(apf_reply_str,"%s,%s,too many arguments\r\n",
-              MOD_SOM_APF_PROBENO_STR,MOD_SOM_APF_NACK_STR);
+              MOD_SOM_APF_PROBENO_STR,MOD_SOM_APF_NAK_STR);
       status|= MOD_SOM_APF_STATUS_WRONG_ARG;
   }
 
@@ -3886,7 +3885,7 @@ mod_som_apf_status_t mod_som_apf_probe_id_f(CPU_INT16U argc,
   bytes_sent = mod_som_apf_send_line_f(apf_leuart_ptr,apf_reply_str, reply_str_len);
   if(bytes_sent==0){
       sprintf(apf_reply_str,"%s,%s,%lu, failed to send to the APF port\r\n",
-              MOD_SOM_APF_PROBENO_STR,MOD_SOM_APF_NACK_STR,
+              MOD_SOM_APF_PROBENO_STR,MOD_SOM_APF_NAK_STR,
               status);
       status |= MOD_SOM_APF_STATUS_WRONG_ARG;
    }
@@ -3970,7 +3969,7 @@ mod_som_apf_status_t mod_som_apf_probe_id_status_f(){
 if (status==MOD_SOM_APF_STATUS_OK){
     //ALB good case
 
-//    mod_som_io_print_f("%s,%s,%s,%s,%u,%s,%s,%u\r\n",
+//    mod_som_io_print_f("%s,%s,%s,%s,%lu,%s,%s,%lu\r\n",
 //                       MOD_SOM_APF_PROBENO_STAT_STR,MOD_SOM_APF_ACK_STR,
 //                       "S",
 //                       local_efe_settings_ptr->sensors[1].sn,
@@ -4002,11 +4001,11 @@ if (status==MOD_SOM_APF_STATUS_OK){
 }else{
     //ALB case if there is an error
     mod_som_io_print_f("%s,%s,%lu\r\n",
-                       MOD_SOM_APF_PROBENO_STAT_STR,MOD_SOM_APF_NACK_STR,
+                       MOD_SOM_APF_PROBENO_STAT_STR,MOD_SOM_APF_NAK_STR,
                        status);
     // save to the local string for sending out - Mai-Nov 18, 2021
     sprintf(apf_reply_str,"%s,%s,%lu\r\n",
-            MOD_SOM_APF_PROBENO_STAT_STR,MOD_SOM_APF_NACK_STR,
+            MOD_SOM_APF_PROBENO_STAT_STR,MOD_SOM_APF_NAK_STR,
             status);
     reply_str_len = strlen(apf_reply_str);
     // sending the above string to the APF port - Mai - Nov 18, 2021
@@ -4116,8 +4115,8 @@ mod_som_apf_status_t mod_som_apf_sleep_f(){
      }else{
          //          status|=mod_som_io_print_f("sleep,nak,%lu\r\n",status);
          // save to the local string for sending out - Mai-Nov 18, 2021
-         sprintf(apf_reply_str,"%s,%s,**%lu\r\n",
-                 MOD_SOM_APF_SLEEP_STR,MOD_SOM_APF_NACK_STR,status);
+         sprintf(apf_reply_str,"%s,%s,%lu\r\n",
+                 MOD_SOM_APF_SLEEP_STR,MOD_SOM_APF_NAK_STR,status);
      }
      reply_str_len = strlen(apf_reply_str);
      // sending the above string to the APF port - Mai - Nov 18, 2021
@@ -4185,19 +4184,13 @@ mod_som_apf_status_t mod_som_apf_gate_f(CPU_INT16U argc,
     }
 
 
-  if (status==MOD_SOM_APF_STATUS_OK){
-      status|=mod_som_io_print_f("%s,%s\r\n",
-                                 MOD_SOM_APF_GATE_STR,MOD_SOM_APF_ACK_STR);
-      // save to the local string for sending out - Mai-Nov 18, 2021
-  }else{
-      status|=mod_som_io_print_f("%s,%s,%lu\r\n",
-                                 MOD_SOM_APF_GATE_STR,MOD_SOM_APF_ACK_STR,
-                                 status);
+  if (status!=MOD_SOM_APF_STATUS_OK){
       // save to the local string for sending out - Mai-Nov 18, 2021
       sprintf(apf_reply_str,"%s,%s,%lu\r\n",
-              MOD_SOM_APF_GATE_STR,MOD_SOM_APF_ACK_STR,
+              MOD_SOM_APF_GATE_STR,MOD_SOM_APF_NAK_STR,
               status);
   }
+  mod_som_io_print_f("%s",apf_reply_str);
   reply_str_len = strlen(apf_reply_str);
   // sending the above string to the APF port - Mai - Nov 18, 2021
   bytes_sent = mod_som_apf_send_line_f(apf_leuart_ptr,apf_reply_str, reply_str_len);
@@ -4666,11 +4659,11 @@ mod_som_apf_status_t mod_som_apf_packet_format_status_f(){
   }else{
       //ALB bad case
       mod_som_io_print_f("%s,%s,%lu\r\n",
-                         MOD_SOM_APF_PACKETFORMAT_STAT_STR,MOD_SOM_APF_NACK_STR,
+                         MOD_SOM_APF_PACKETFORMAT_STAT_STR,MOD_SOM_APF_NAK_STR,
                          status);
       // save to the local string for sending out - Mai- Dec 1, 2021
       sprintf(apf_reply_str,"%s,%s,error while reading the mode\r\n",
-              MOD_SOM_APF_PACKETFORMAT_STAT_STR,MOD_SOM_APF_NACK_STR);
+              MOD_SOM_APF_PACKETFORMAT_STAT_STR,MOD_SOM_APF_NAK_STR);
       reply_str_len = strlen(apf_reply_str);
       // sending the above string to the APF port - Mai - Dec 1, 2021
       bytes_sent = mod_som_apf_send_line_f(apf_leuart_ptr,apf_reply_str, reply_str_len);
@@ -4759,7 +4752,7 @@ mod_som_apf_status_t mod_som_apf_sd_format_f(CPU_INT16U argc,
       if (isalpha(second_arg[0]))
       {
           sprintf(apf_reply_str,"%s,%s,invalid input(s)\r\n",
-                  MOD_SOM_APF_SDFORMAT_STR,MOD_SOM_APF_NACK_STR);
+                  MOD_SOM_APF_SDFORMAT_STR,MOD_SOM_APF_NAK_STR);
           status |= MOD_SOM_APF_STATUS_WRONG_ARG;
           break;
      }
@@ -4781,7 +4774,7 @@ mod_som_apf_status_t mod_som_apf_sd_format_f(CPU_INT16U argc,
       {
           // save to the local string for sending out - Mai-Nov 18, 2021
           sprintf(apf_reply_str,"%s,%s,invalid input(s)\r\n",
-                  MOD_SOM_APF_SDFORMAT_STR,MOD_SOM_APF_NACK_STR);
+                  MOD_SOM_APF_SDFORMAT_STR,MOD_SOM_APF_NAK_STR);
           status |= MOD_SOM_APF_STATUS_WRONG_ARG;
       }
       break;
@@ -4789,7 +4782,7 @@ mod_som_apf_status_t mod_som_apf_sd_format_f(CPU_INT16U argc,
     default:  // command does NOT have 2 arguments: set the status, send 'nak' message to som
       // save to the local string for sending out - Mai-Nov 18, 2021
       sprintf(apf_reply_str,"%s,%s,invalid input(s)\r\n",
-              MOD_SOM_APF_SDFORMAT_STR,MOD_SOM_APF_NACK_STR);
+              MOD_SOM_APF_SDFORMAT_STR,MOD_SOM_APF_NAK_STR);
       status |= MOD_SOM_APF_STATUS_WRONG_ARG;
       break;
     } // end of switch case of number of arguments
@@ -4867,11 +4860,11 @@ mod_som_apf_status_t mod_som_apf_sd_format_status_f(CPU_INT16U argc,
   }else{
       //ALB bad case
       mod_som_io_print_f("%s,%s,%lu\r\n",
-                         MOD_SOM_APF_SDFORMAT_STAT_STR,MOD_SOM_APF_NACK_STR,
+                         MOD_SOM_APF_SDFORMAT_STAT_STR,MOD_SOM_APF_NAK_STR,
                          status);
       // save to the local string for sending out - Mai-Nov 18, 2021
       sprintf(apf_reply_str,"%s,%s,%lu\r\n",
-              MOD_SOM_APF_SDFORMAT_STAT_STR,MOD_SOM_APF_NACK_STR,
+              MOD_SOM_APF_SDFORMAT_STAT_STR,MOD_SOM_APF_NAK_STR,
               status);
       reply_str_len = strlen(apf_reply_str);
       // sending the above string to the APF port - Mai - Nov 18, 2021
@@ -4965,11 +4958,11 @@ mod_som_apf_status_t mod_som_apf_upload_f(){
           if (status){
               status = MOD_SOM_APF_STATUS_CANNOT_OPENFILE;
               mod_som_io_print_f("%s,%s,%s\r\n",
-                                 MOD_SOM_APF_UPLOAD_STR,MOD_SOM_APF_NACK_STR,
+                                 MOD_SOM_APF_UPLOAD_STR,MOD_SOM_APF_NAK_STR,
                                  "can not open file");
               // save to the local string for sending out - Mai-Nov 18, 2021
               sprintf(apf_reply_str,"%s,%s,%s\r\n",
-                      MOD_SOM_APF_UPLOAD_STR,MOD_SOM_APF_NACK_STR,
+                      MOD_SOM_APF_UPLOAD_STR,MOD_SOM_APF_NAK_STR,
                       "can not open file");
               status = MOD_SOM_APF_STATUS_OK;
               mod_som_sdio_close_file_f(processfile_ptr);
@@ -4989,11 +4982,11 @@ mod_som_apf_status_t mod_som_apf_upload_f(){
             default:
               status = MOD_SOM_APF_STATUS_CANNOT_OPENFILE;
               mod_som_io_print_f("%s,%s,%s\r\n",
-                                 MOD_SOM_APF_UPLOAD_STR,MOD_SOM_APF_NACK_STR,
+                                 MOD_SOM_APF_UPLOAD_STR,MOD_SOM_APF_NAK_STR,
                                  "can not open file");
               // save to the local string for sending out - Mai-Nov 18, 2021
               sprintf(apf_reply_str,"%s,%s,%s\r\n",
-                      MOD_SOM_APF_UPLOAD_STR,MOD_SOM_APF_NACK_STR,
+                      MOD_SOM_APF_UPLOAD_STR,MOD_SOM_APF_NAK_STR,
                       "can not open file");
               status = MOD_SOM_APF_STATUS_OK;
               return mod_som_apf_encode_status_f(status);
@@ -5236,54 +5229,54 @@ mod_som_apf_status_t mod_som_apf_upload_f(){
   switch (status){
     case MOD_SOM_APF_STATUS_CANNOT_OPENFILE:
       mod_som_io_print_f("%s,%s,%s\r\n",
-                         MOD_SOM_APF_UPLOAD_STR,MOD_SOM_APF_NACK_STR,
+                         MOD_SOM_APF_UPLOAD_STR,MOD_SOM_APF_NAK_STR,
                          "can not open file");
       // save to the local string for sending out - Mai-Nov 18, 2021
       sprintf(apf_reply_str,"%s,%s,%s\r\n",
-              MOD_SOM_APF_UPLOAD_STR,MOD_SOM_APF_NACK_STR,
+              MOD_SOM_APF_UPLOAD_STR,MOD_SOM_APF_NAK_STR,
               "can not open file");
       status = MOD_SOM_APF_STATUS_OK;
       break;
 
     case MOD_SOM_APF_STATUS_NO_DATA:
       mod_som_io_print_f("%s,%s,%s\r\n",
-                         MOD_SOM_APF_UPLOAD_STR,MOD_SOM_APF_NACK_STR,
+                         MOD_SOM_APF_UPLOAD_STR,MOD_SOM_APF_NAK_STR,
                          "no data");
       // save to the local string for sending out - Mai-Nov 18, 2021
       sprintf(apf_reply_str,"%s,%s,%s\r\n",
-              MOD_SOM_APF_UPLOAD_STR,MOD_SOM_APF_NACK_STR,
+              MOD_SOM_APF_UPLOAD_STR,MOD_SOM_APF_NAK_STR,
               "no data");
       status = MOD_SOM_APF_STATUS_OK;
 
       break;
     case MOD_SOM_APF_STATUS_DAQ_IS_RUNNING:
       mod_som_io_print_f("%s,%s,%s\r\n",
-                         MOD_SOM_APF_UPLOAD_STR,MOD_SOM_APF_NACK_STR,
+                         MOD_SOM_APF_UPLOAD_STR,MOD_SOM_APF_NAK_STR,
                          "daq is still running");
       // save to the local string for sending out - Mai-Nov 18, 2021
       sprintf(apf_reply_str,"%s,%s,%s\r\n",
-              MOD_SOM_APF_UPLOAD_STR,MOD_SOM_APF_NACK_STR,
+              MOD_SOM_APF_UPLOAD_STR,MOD_SOM_APF_NAK_STR,
               "daq is still running");
       status = MOD_SOM_APF_STATUS_OK;
       break;
     case MOD_SOM_APF_STATUS_SLEEPING:
       mod_som_io_print_f("%s,%s,%s\r\n",
-                         MOD_SOM_APF_UPLOAD_STR,MOD_SOM_APF_NACK_STR,
+                         MOD_SOM_APF_UPLOAD_STR,MOD_SOM_APF_NAK_STR,
                          "epsi is sleeping");
       // save to the local string for sending out - Mai-Nov 18, 2021
       sprintf(apf_reply_str,"%s,%s,%s\r\n",
-              MOD_SOM_APF_UPLOAD_STR,MOD_SOM_APF_NACK_STR,
+              MOD_SOM_APF_UPLOAD_STR,MOD_SOM_APF_NAK_STR,
               "epsi is sleeping");
 
       status = MOD_SOM_APF_STATUS_OK;
       break;
     case MOD_SOM_APF_STATUS_FAIL_SEND_PACKET:
       mod_som_io_print_f("%s,%s,%s\r\n",
-                         MOD_SOM_APF_UPLOAD_STR,MOD_SOM_APF_NACK_STR,
+                         MOD_SOM_APF_UPLOAD_STR,MOD_SOM_APF_NAK_STR,
                          "fail sending packets");
       // save to the local string for sending out - Mai-Nov 18, 2021
       sprintf(apf_reply_str,"%s,%s,%s\r\n",
-              MOD_SOM_APF_UPLOAD_STR,MOD_SOM_APF_NACK_STR,
+              MOD_SOM_APF_UPLOAD_STR,MOD_SOM_APF_NAK_STR,
               "fail sending packets");
       status = MOD_SOM_APF_STATUS_OK;
       break;
@@ -5300,11 +5293,11 @@ mod_som_apf_status_t mod_som_apf_upload_f(){
       break;
     default:
       mod_som_io_print_f("%s,%s,%s\r\n",
-                         MOD_SOM_APF_UPLOAD_STR,MOD_SOM_APF_NACK_STR,
+                         MOD_SOM_APF_UPLOAD_STR,MOD_SOM_APF_NAK_STR,
                          "unknown error");
       // save to the local string for sending out - Mai-Nov 18, 2021
       sprintf(apf_reply_str,"%s,%s,%s\r\n",
-              MOD_SOM_APF_UPLOAD_STR,MOD_SOM_APF_NACK_STR,
+              MOD_SOM_APF_UPLOAD_STR,MOD_SOM_APF_NAK_STR,
               "unknown error");
 
       status = MOD_SOM_APF_STATUS_OK;

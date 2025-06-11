@@ -71,7 +71,7 @@ mod_som_status_t mod_som_altimeter_init_f(){
     //ALB TODO change return -1 to return the an appropriate error code.
     APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
     if(mod_som_altimeter_ptr==DEF_NULL){
-      printf("ALTIMETER not initialized\n");
+      printf("ALTIMETER not initialized\n\r");
       return -1;
     }
 
@@ -83,7 +83,7 @@ mod_som_status_t mod_som_altimeter_init_f(){
     // ALB WARNING: The setup pointer CAN NOT have pointers inside.
     status |= mod_som_altimeter_allocate_settings_f();
     if (status!=MOD_SOM_STATUS_OK){
-      printf("ALTIMETER not initialized\n");
+      printf("ALTIMETER not initialized\n\r");
       return status;
     }
 
@@ -102,7 +102,7 @@ mod_som_status_t mod_som_altimeter_init_f(){
           // TODO add the conditional download of the pre existing settings in the user data page.
           status |= mod_som_altimeter_default_settings_f(mod_som_altimeter_ptr->settings_ptr);
           if (status!=MOD_SOM_STATUS_OK){
-              printf("ALTIMETER not initialized\n");
+              printf("ALTIMETER not initialized\n\r");
               return status;
           }
       }
@@ -110,7 +110,7 @@ mod_som_status_t mod_som_altimeter_init_f(){
     // ALB allocate memory for config ptr.
     status |= mod_som_altimeter_allocate_config_f();
     if (status!=MOD_SOM_STATUS_OK){
-        printf("ALTIMETER not initialized\n");
+        printf("ALTIMETER not initialized\n\r");
         return status;
     }
 
