@@ -2796,6 +2796,8 @@ mod_som_apf_status_t mod_som_apf_daq_start_f(uint32_t profile_id){
   status = mod_som_sbe41_connect_f();
   status = mod_som_sbe41_start_collect_data_f();
   if(status){
+      mod_som_sbe41_stop_collect_data_f();
+      mod_som_sbe41_disconnect_f();
       return MOD_SOM_APF_STATUS_NO_CTD_DATA;
   }
 
@@ -2819,8 +2821,14 @@ mod_som_apf_status_t mod_som_apf_daq_start_f(uint32_t profile_id){
       }
   }
   //SAN 2023 02 20 correct for something funny status not working properly
-  if(status == MOD_SOM_APF_STATUS_NO_CTD_DATA)
+  if(status == MOD_SOM_APF_STATUS_NO_CTD_DATA){
+      mod_som_sdio_disable_hardware_f();
+      sl_sleeptimer_delay_millisecond(delay10ms);
+      mod_som_sbe41_stop_collect_data_f();
+      mod_som_sbe41_disconnect_f();
+
     return status;
+  }
 
   //SAN 2023 02 20 correct for something funny status not working properly
 //  if (status==MOD_SOM_APF_STATUS_OK){
@@ -3268,7 +3276,7 @@ mod_som_apf_status_t mod_som_apf_fwrev_status_f(){
       status=MOD_SOM_APF_STATUS_FAIL_SEND_MS;
   }
   if (status!=0)
-  {
+    {
       mod_som_io_print_f("%s,%s,%lu\r\n",
                          MOD_SOM_APF_FWREV_STAT_STR,MOD_SOM_APF_NAK_STR,status);
       for (int i=0;i<MOD_SOM_SHELL_INPUT_BUF_SIZE;i++){
@@ -3288,7 +3296,7 @@ mod_som_apf_status_t mod_som_apf_fwrev_status_f(){
 //      }
   }
 
-	return status;
+	return  mod_som_apf_encode_status_f(MOD_SOM_APF_STATUS_OK);;
 }
 
 /*******************************************************************************
@@ -3358,7 +3366,7 @@ mod_som_apf_status_t mod_som_apf_ok_status_f(){
   }
 
  //	mod_som_io_print_f("ok?,nak,%s\r\n","error message");
-	return status;
+	return mod_som_apf_encode_status_f(MOD_SOM_APF_STATUS_OK);
 }
 
 /*******************************************************************************
@@ -3403,7 +3411,7 @@ mod_som_apf_status_t mod_som_apf_poweroff_f(){
   }
 
 
-	return status;
+  return mod_som_apf_encode_status_f(MOD_SOM_APF_STATUS_OK);
 }
 
 /*******************************************************************************
@@ -3502,7 +3510,7 @@ mod_som_apf_status_t mod_som_apf_epsi_id_status_f(){
 
   }
 
-	return mod_som_apf_encode_status_f(status);
+  return mod_som_apf_encode_status_f(MOD_SOM_APF_STATUS_OK);
 }
 
 
@@ -3889,8 +3897,8 @@ mod_som_apf_status_t mod_som_apf_probe_id_f(CPU_INT16U argc,
               status);
       status |= MOD_SOM_APF_STATUS_WRONG_ARG;
    }
-//  return mod_som_apf_encode_status_f(MOD_SOM_APF_STATUS_OK);
-  return status;
+  return mod_som_apf_encode_status_f(MOD_SOM_APF_STATUS_OK);
+//  return status;
 }
 
 /*******************************************************************************
@@ -3938,17 +3946,17 @@ mod_som_apf_status_t mod_som_apf_probe_id_status_f(){
       local_efe_settings_ptr->sensors[0].sn[3] = 0;
   }
   if ( (sn_shear>999)){
-        local_efe_settings_ptr->sensors[1].sn[0] = '0';
-        local_efe_settings_ptr->sensors[1].sn[1] = '0';
-        local_efe_settings_ptr->sensors[1].sn[2] = '0';
-        local_efe_settings_ptr->sensors[1].sn[3] = 0;
-    }
+      local_efe_settings_ptr->sensors[1].sn[0] = '0';
+      local_efe_settings_ptr->sensors[1].sn[1] = '0';
+      local_efe_settings_ptr->sensors[1].sn[2] = '0';
+      local_efe_settings_ptr->sensors[1].sn[3] = 0;
+  }
   if (cal_temp>65535){
-          local_efe_settings_ptr->sensors[0].cal = 0;
+      local_efe_settings_ptr->sensors[0].cal = 0;
   }
   if (cal_shear>65535){
-            local_efe_settings_ptr->sensors[1].cal = 0;
-    }
+      local_efe_settings_ptr->sensors[1].cal = 0;
+  }
   status|= mod_som_settings_save_settings_f();
 
   /*
@@ -3966,57 +3974,58 @@ mod_som_apf_status_t mod_som_apf_probe_id_status_f(){
           status|= mod_som_settings_save_settings_f();
    */
 
-if (status==MOD_SOM_APF_STATUS_OK){
-    //ALB good case
+  if (status==MOD_SOM_APF_STATUS_OK){
+      //ALB good case
 
-//    mod_som_io_print_f("%s,%s,%s,%s,%lu,%s,%s,%lu\r\n",
-//                       MOD_SOM_APF_PROBENO_STAT_STR,MOD_SOM_APF_ACK_STR,
-//                       "S",
-//                       local_efe_settings_ptr->sensors[1].sn,
-//                       (uint16_t)local_efe_settings_ptr->sensors[1].cal,
-//                       "F",
-//                       local_efe_settings_ptr->sensors[0].sn,
-//                       (uint16_t)local_efe_settings_ptr->sensors[0].cal);
+      //    mod_som_io_print_f("%s,%s,%s,%s,%lu,%s,%s,%lu\r\n",
+      //                       MOD_SOM_APF_PROBENO_STAT_STR,MOD_SOM_APF_ACK_STR,
+      //                       "S",
+      //                       local_efe_settings_ptr->sensors[1].sn,
+      //                       (uint16_t)local_efe_settings_ptr->sensors[1].cal,
+      //                       "F",
+      //                       local_efe_settings_ptr->sensors[0].sn,
+      //                       (uint16_t)local_efe_settings_ptr->sensors[0].cal);
 
-  // save to the local string for sending out - Mai-Nov 18, 2021
-   sprintf(apf_reply_str,"%s,%s,%s,%s,%u,%s,%s,%u\r\n",
-           MOD_SOM_APF_PROBENO_STAT_STR,MOD_SOM_APF_ACK_STR,
-            "S",
-            local_efe_settings_ptr->sensors[1].sn,
-            (uint16_t)local_efe_settings_ptr->sensors[1].cal,
-            "F",
-            local_efe_settings_ptr->sensors[0].sn,
-            (uint16_t)local_efe_settings_ptr->sensors[0].cal);
-   mod_som_io_print_f("%s",apf_reply_str);
+      // save to the local string for sending out - Mai-Nov 18, 2021
+      sprintf(apf_reply_str,"%s,%s,%s,%s,%u,%s,%s,%u\r\n",
+              MOD_SOM_APF_PROBENO_STAT_STR,MOD_SOM_APF_ACK_STR,
+              "S",
+              local_efe_settings_ptr->sensors[1].sn,
+              (uint16_t)local_efe_settings_ptr->sensors[1].cal,
+              "F",
+              local_efe_settings_ptr->sensors[0].sn,
+              (uint16_t)local_efe_settings_ptr->sensors[0].cal);
+      mod_som_io_print_f("%s",apf_reply_str);
 
-    reply_str_len = strlen(apf_reply_str);
+      reply_str_len = strlen(apf_reply_str);
 
-    // sending the above string to the APF port - Mai - Nov 18, 2021
-    bytes_sent = mod_som_apf_send_line_f(apf_leuart_ptr,apf_reply_str, reply_str_len);
+      // sending the above string to the APF port - Mai - Nov 18, 2021
+      bytes_sent = mod_som_apf_send_line_f(apf_leuart_ptr,apf_reply_str, reply_str_len);
 
-    if(bytes_sent==0){
-        status=MOD_SOM_APF_STATUS_ERR;
-    }
+      if(bytes_sent==0){
+          status=MOD_SOM_APF_STATUS_ERR;
+      }
 
-}else{
-    //ALB case if there is an error
-    mod_som_io_print_f("%s,%s,%lu\r\n",
-                       MOD_SOM_APF_PROBENO_STAT_STR,MOD_SOM_APF_NAK_STR,
-                       status);
-    // save to the local string for sending out - Mai-Nov 18, 2021
-    sprintf(apf_reply_str,"%s,%s,%lu\r\n",
-            MOD_SOM_APF_PROBENO_STAT_STR,MOD_SOM_APF_NAK_STR,
-            status);
-    reply_str_len = strlen(apf_reply_str);
-    // sending the above string to the APF port - Mai - Nov 18, 2021
-    bytes_sent = mod_som_apf_send_line_f(apf_leuart_ptr,apf_reply_str, reply_str_len);
-    if(bytes_sent==0){
-        status=MOD_SOM_APF_STATUS_ERR;
-    }
+  }else{
+      //ALB case if there is an error
+      mod_som_io_print_f("%s,%s,%lu\r\n",
+                         MOD_SOM_APF_PROBENO_STAT_STR,MOD_SOM_APF_NAK_STR,
+                         status);
+      // save to the local string for sending out - Mai-Nov 18, 2021
+      sprintf(apf_reply_str,"%s,%s,%lu\r\n",
+              MOD_SOM_APF_PROBENO_STAT_STR,MOD_SOM_APF_NAK_STR,
+              status);
+      reply_str_len = strlen(apf_reply_str);
+      // sending the above string to the APF port - Mai - Nov 18, 2021
+      bytes_sent = mod_som_apf_send_line_f(apf_leuart_ptr,apf_reply_str, reply_str_len);
+      if(bytes_sent==0){
+          status=MOD_SOM_APF_STATUS_ERR;
+      }
 
-}
+  }
 
-	return mod_som_apf_encode_status_f(status);
+  //	return mod_som_apf_encode_status_f(status);
+  return mod_som_apf_encode_status_f(MOD_SOM_APF_STATUS_OK);
 }
 
 /*******************************************************************************
@@ -4125,7 +4134,8 @@ mod_som_apf_status_t mod_som_apf_sleep_f(){
          //TODO handle the error
      }
  }
-  return mod_som_apf_encode_status_f(status);
+//  return mod_som_apf_encode_status_f(status);
+ return mod_som_apf_encode_status_f(MOD_SOM_APF_STATUS_OK);
 }
 
 
@@ -4199,7 +4209,8 @@ mod_som_apf_status_t mod_som_apf_gate_f(CPU_INT16U argc,
   }
 
 
-  return mod_som_apf_encode_status_f(status);
+//  return mod_som_apf_encode_status_f(status);
+  return mod_som_apf_encode_status_f(MOD_SOM_APF_STATUS_OK);
 }
 
 
@@ -4358,8 +4369,8 @@ mod_som_apf_status_t mod_som_apf_time_f(CPU_INT16U argc,
   // sending the above string to the APF port - Mai - Nov 18, 2021
   mod_som_apf_send_line_f(apf_leuart_ptr,apf_reply_str, reply_str_len);
 
-  return status;
-  //  return mod_som_apf_encode_status_f(MOD_SOM_APF_STATUS_OK);
+//  return status;
+    return mod_som_apf_encode_status_f(MOD_SOM_APF_STATUS_OK);
 }
 
 /*******************************************************************************
@@ -4435,7 +4446,8 @@ mod_som_apf_status_t mod_som_apf_time_status_f(){
 
    }
 
-	return mod_som_apf_encode_status_f(status);
+//	return mod_som_apf_encode_status_f(status);
+   return mod_som_apf_encode_status_f(MOD_SOM_APF_STATUS_OK);
 }
 
 
@@ -4610,8 +4622,8 @@ mod_som_apf_status_t mod_som_apf_packet_format_f(CPU_INT16U argc,
   }
 //  if(status != MOD_SOM_APF_STATUS_OK)
 //      return MOD_SOM_APF_STATUS_ERR;
-
-  return status;
+  return mod_som_apf_encode_status_f(MOD_SOM_APF_STATUS_OK);
+//  return status;
 }
 
 /*******************************************************************************
@@ -4797,7 +4809,8 @@ mod_som_apf_status_t mod_som_apf_sd_format_f(CPU_INT16U argc,
       //TODO handle the error
   }
 
-  return status;
+//  return status;
+  return mod_som_apf_encode_status_f(MOD_SOM_APF_STATUS_OK);
 }
 
 /*******************************************************************************
@@ -4872,7 +4885,8 @@ mod_som_apf_status_t mod_som_apf_sd_format_status_f(CPU_INT16U argc,
 
   }
 
-  return status;
+//  return status;
+  return mod_som_apf_encode_status_f(MOD_SOM_APF_STATUS_OK);
 }
 
 
@@ -5311,8 +5325,9 @@ mod_som_apf_status_t mod_som_apf_upload_f(){
   if(bytes_sent==0){
       //TODO handle the error
   }
+  return mod_som_apf_encode_status_f(MOD_SOM_APF_STATUS_OK);
 
-  return mod_som_apf_encode_status_f(status);
+//  return mod_som_apf_encode_status_f(status);
 }
 
 

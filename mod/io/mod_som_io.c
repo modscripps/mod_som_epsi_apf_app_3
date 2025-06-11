@@ -77,86 +77,6 @@ LDMA_TransferCfg_t mod_som_io_ldma_signal= LDMA_TRANSFER_CFG_PERIPHERAL(ldmaPeri
 LDMA_Descriptor_t mod_som_io_ldma_write_tx = LDMA_DESCRIPTOR_SINGLE_M2P_BYTE(0,0,0);
 LDMA_Descriptor_t mod_som_io_ldma_descriptor_write;//ALB Descriptor list to send data.
 
-//------------------------------------------------------------------------------
-// private function
-//------------------------------------------------------------------------------
-
-/*******************************************************************************
- * @function
- *     mod_som_io_print_task_f
- *
- *     ALB TODO convert the putchar into a LDMA transfer.
- * @abstract
- *     MOD SOM I/O OS task that would run in parallel with the main task
- * @discussion
- *     This task would dequeue the MOD SOM I/O transfer as the data is piped out
- * @param       p_arg
- *     argument passed in by OSTaskCreate (not used)
- ******************************************************************************/
-static void mod_som_io_print_task_f(void *p_arg)
-{
-
-    (void)p_arg; // Deliberately unused argument
-    RTOS_ERR err;
-
-    mod_som_io_xfer_ptr_t tmp_mod_som_io_xfer_item_ptr = DEF_NULL;
-    OS_MSG_SIZE tmp_mod_som_io_xfer_item_size;
-    CPU_TS time_passed_msg_pend;
-    uint32_t i;
-
-    CORE_DECLARE_IRQ_STATE;
-
-    while(DEF_ON)
-        {
-        WDOG_Feed();
-//        mod_som_io_struct.done_flag=false;
-        //necessary for every task
-//        OSTimeDly(
-//                (OS_TICK     )MOD_SOM_CFG_LOOP_TICK_DELAY,
-//                (OS_OPT      )OS_OPT_TIME_DLY,
-//                &err);
-//        APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
-        tmp_mod_som_io_xfer_item_ptr =
-                (mod_som_io_xfer_ptr_t)OSQPend(&mod_som_io_struct.msg_queue,
-                        0,
-                        OS_OPT_PEND_BLOCKING,
-                        &tmp_mod_som_io_xfer_item_size,
-                        &time_passed_msg_pend,
-                        &err);
-        //        APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
-        if(RTOS_ERR_CODE_GET(err) != RTOS_ERR_NONE)
-            continue;
-        if(tmp_mod_som_io_xfer_item_ptr == NULL)
-            continue;
-
-        if(tmp_mod_som_io_xfer_item_ptr->is_printf_mode){
-            //body of data
-            for(i=0;i<tmp_mod_som_io_xfer_item_ptr->printf_str_length;i++){
-                putchar(tmp_mod_som_io_xfer_item_ptr->printf_str_ptr[i]);
-            }
-        }else{
-
-            //body of data
-            for(i=0;i<tmp_mod_som_io_xfer_item_ptr->data_length;i++){
-                putchar(tmp_mod_som_io_xfer_item_ptr->data_ptr[i]);
-            }
-            //ALB change putchar to an LDMA transfer
-//            mod_som_io_struct.done_flag_ptr=
-//                tmp_mod_som_io_xfer_item_ptr->done_streaming_flag_ptr;
-//
-//            mod_som_io_ldma_transfer_f(tmp_mod_som_io_xfer_item_ptr);
-
-            CORE_ENTER_CRITICAL();
-//                mod_som_io_struct.done_flag=true;
-                *(tmp_mod_som_io_xfer_item_ptr->done_streaming_flag_ptr)  = true;
-            CORE_EXIT_CRITICAL();
-        }
-        //free memory
-        mod_som_io_free_xfer_item_f(tmp_mod_som_io_xfer_item_ptr);
-        WDOG_Feed();
-
-    }
-}
 
 //------------------------------------------------------------------------------
 // global functions
@@ -574,7 +494,82 @@ mod_som_status_t mod_som_io_putchar_f(char c){
 //    }
 //}
 
+/*******************************************************************************
+ * @function
+ *     mod_som_io_print_task_f
+ *
+ *     ALB TODO convert the putchar into a LDMA transfer.
+ * @abstract
+ *     MOD SOM I/O OS task that would run in parallel with the main task
+ * @discussion
+ *     This task would dequeue the MOD SOM I/O transfer as the data is piped out
+ * @param       p_arg
+ *     argument passed in by OSTaskCreate (not used)
+ ******************************************************************************/
+void mod_som_io_print_task_f(void *p_arg)
+{
 
+    (void)p_arg; // Deliberately unused argument
+    RTOS_ERR err;
+
+    mod_som_io_xfer_ptr_t tmp_mod_som_io_xfer_item_ptr = DEF_NULL;
+    OS_MSG_SIZE tmp_mod_som_io_xfer_item_size;
+    CPU_TS time_passed_msg_pend;
+    uint32_t i;
+
+    CORE_DECLARE_IRQ_STATE;
+
+    while(DEF_ON)
+        {
+        WDOG_Feed();
+//        mod_som_io_struct.done_flag=false;
+        //necessary for every task
+//        OSTimeDly(
+//                (OS_TICK     )MOD_SOM_CFG_LOOP_TICK_DELAY,
+//                (OS_OPT      )OS_OPT_TIME_DLY,
+//                &err);
+//        APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
+        tmp_mod_som_io_xfer_item_ptr =
+                (mod_som_io_xfer_ptr_t)OSQPend(&mod_som_io_struct.msg_queue,
+                        0,
+                        OS_OPT_PEND_BLOCKING,
+                        &tmp_mod_som_io_xfer_item_size,
+                        &time_passed_msg_pend,
+                        &err);
+        //        APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
+        if(RTOS_ERR_CODE_GET(err) != RTOS_ERR_NONE)
+            continue;
+        if(tmp_mod_som_io_xfer_item_ptr == NULL)
+            continue;
+
+        if(tmp_mod_som_io_xfer_item_ptr->is_printf_mode){
+            //body of data
+            for(i=0;i<tmp_mod_som_io_xfer_item_ptr->printf_str_length;i++){
+                putchar(tmp_mod_som_io_xfer_item_ptr->printf_str_ptr[i]);
+            }
+        }else{
+
+            //body of data
+            for(i=0;i<tmp_mod_som_io_xfer_item_ptr->data_length;i++){
+                putchar(tmp_mod_som_io_xfer_item_ptr->data_ptr[i]);
+            }
+            //ALB change putchar to an LDMA transfer
+//            mod_som_io_struct.done_flag_ptr=
+//                tmp_mod_som_io_xfer_item_ptr->done_streaming_flag_ptr;
+//
+//            mod_som_io_ldma_transfer_f(tmp_mod_som_io_xfer_item_ptr);
+
+            CORE_ENTER_CRITICAL();
+//                mod_som_io_struct.done_flag=true;
+                *(tmp_mod_som_io_xfer_item_ptr->done_streaming_flag_ptr)  = true;
+            CORE_EXIT_CRITICAL();
+        }
+        //free memory
+        mod_som_io_free_xfer_item_f(tmp_mod_som_io_xfer_item_ptr);
+        WDOG_Feed();
+
+    }
+}
 
 /*******************************************************************************
  * @function

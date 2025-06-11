@@ -114,7 +114,6 @@ static float fom_batchelor_f(float *temp_spec,float epsilon, float chi, float kv
 /*------------------------------ Module Code ----------------------------a---*/
 // public functions
 
-void mod_som_epsiobp_init_f(mod_som_efe_obp_config_ptr_t config_ptr_in, mod_som_efe_obp_settings_ptr_t settings_ptr_in, mod_som_efe_obp_calibration_ptr_t cals_ptr_in)
 /*******************************************************************************
  * @brief
  *   function to initialize variables with correct user inputs, calibration values, etc.
@@ -125,6 +124,7 @@ void mod_som_epsiobp_init_f(mod_som_efe_obp_config_ptr_t config_ptr_in, mod_som_
  * @param calibrations
  *   input - see header file
  ******************************************************************************/
+void mod_som_epsiobp_init_f(mod_som_efe_obp_config_ptr_t config_ptr_in, mod_som_efe_obp_settings_ptr_t settings_ptr_in, mod_som_efe_obp_calibration_ptr_t cals_ptr_in)
 {
   config = config_ptr_in;
   settings = settings_ptr_in;
@@ -389,8 +389,6 @@ void mod_som_epsiobp_init_f(mod_som_efe_obp_config_ptr_t config_ptr_in, mod_som_
   master_counter = 0;
 }
 
-
-void mod_som_efe_obp_shear_spectrum_f(float *seg_buffer, int spectra_offset, mod_som_efe_obp_ptr_t mod_som_efe_obp_ptr)
 /*******************************************************************************
  * @brief
  *   function to calculate power density spectra in appropriate units vs frequency
@@ -403,6 +401,7 @@ void mod_som_efe_obp_shear_spectrum_f(float *seg_buffer, int spectra_offset, mod
  *   input - the struct containing the output locations for the spectra and all
  *   the relevant input CTD data
  ******************************************************************************/
+void mod_som_efe_obp_shear_spectrum_f(float *seg_buffer, int spectra_offset, mod_som_efe_obp_ptr_t mod_som_efe_obp_ptr)
 {
   // SHEAR
   // pull in fall rate
@@ -442,7 +441,6 @@ void mod_som_efe_obp_shear_spectrum_f(float *seg_buffer, int spectra_offset, mod
 
 }
 
-void mod_som_efe_obp_temp_spectrum_f(float *seg_buffer, int spectra_offset, mod_som_efe_obp_ptr_t mod_som_efe_obp_ptr)
 /*******************************************************************************
  * @brief
  *   function to calculate power density spectra in appropriate units vs frequency
@@ -455,6 +453,7 @@ void mod_som_efe_obp_temp_spectrum_f(float *seg_buffer, int spectra_offset, mod_
  *   input - the struct containing the output locations for the spectra and all
  *   the relevant input CTD data
  ******************************************************************************/
+void mod_som_efe_obp_temp_spectrum_f(float *seg_buffer, int spectra_offset, mod_som_efe_obp_ptr_t mod_som_efe_obp_ptr)
 {
   // TEMP
   // pull in fall rate
@@ -503,7 +502,6 @@ void mod_som_efe_obp_temp_spectrum_f(float *seg_buffer, int spectra_offset, mod_
   }
 }
 
-void mod_som_efe_obp_accel_spectrum_f(float *seg_buffer, int spectra_offset, mod_som_efe_obp_ptr_t mod_som_efe_obp_ptr)
 /*******************************************************************************
  * @brief
  *   function to calculate power density spectra in appropriate units vs frequency
@@ -516,6 +514,7 @@ void mod_som_efe_obp_accel_spectrum_f(float *seg_buffer, int spectra_offset, mod
  *   input - the struct containing the output locations for the spectra and all
  *   the relevant input CTD data
  ******************************************************************************/
+void mod_som_efe_obp_accel_spectrum_f(float *seg_buffer, int spectra_offset, mod_som_efe_obp_ptr_t mod_som_efe_obp_ptr)
 {
   // ACCEL
   // changed to accommodate only a single acceleration channel
@@ -539,10 +538,6 @@ void mod_som_efe_obp_accel_spectrum_f(float *seg_buffer, int spectra_offset, mod
 
 }
 
-
-void mod_som_efe_obp_calc_epsilon_f(float *local_epsilon, float *nu,
-                                    float *fom_ptr,float * kcutoff,
-                                    mod_som_efe_obp_ptr_t mod_som_efe_obp_ptr)
 /*******************************************************************************
  * @brief
  *   function to calculate a value for dissipation (i.e. epsilon) in W/kg for
@@ -553,6 +548,9 @@ void mod_som_efe_obp_calc_epsilon_f(float *local_epsilon, float *nu,
  * @param scan_CTD
  *   input - the struct containing the appropriate CTD data
  ******************************************************************************/
+void mod_som_efe_obp_calc_epsilon_f(float *local_epsilon, float *nu,
+                                    float *fom_ptr,float * kcutoff,
+                                    mod_som_efe_obp_ptr_t mod_som_efe_obp_ptr)
 {
 
 
@@ -720,9 +718,6 @@ void mod_som_efe_obp_calc_epsilon_f(float *local_epsilon, float *nu,
 //    }
 }
 
-void mod_som_efe_obp_calc_chi_f(float *local_epsilon, float *local_chi,
-                                float *kappa_t, float *fcutoff,
-                                float *fom, mod_som_efe_obp_ptr_t mod_som_efe_obp_ptr)
 /*******************************************************************************
  * @brief
  *   function to calculate a value for dissipation of thermal variance in K^2/s (chi)
@@ -735,6 +730,9 @@ void mod_som_efe_obp_calc_chi_f(float *local_epsilon, float *local_chi,
  * @return
  *   thermal variance dissipation (i.e. chi) in K^2/s
  ******************************************************************************/
+void mod_som_efe_obp_calc_chi_f(float *local_epsilon, float *local_chi,
+                                float *kappa_t, float *fcutoff,
+                                float *fom, mod_som_efe_obp_ptr_t mod_som_efe_obp_ptr)
 {
     // pull in CTD values
     float w, P, T, S;
@@ -812,8 +810,6 @@ void mod_som_efe_obp_correct_convert_avg_spectra_f(float * temp_spectrum,
   }
 }
 
-
-void mod_som_epsiobp_shear_filters_f(float *shear_filter, float fall_rate)
 /*******************************************************************************
  * @brief
  *   function to calculate the filters (physical, electrical, etc.) necessary to correct the shear probe data spectrum
@@ -822,6 +818,7 @@ void mod_som_epsiobp_shear_filters_f(float *shear_filter, float fall_rate)
  * @param fall_rate
  *   input - average fall rate of the instrument over the scan under study in m/s
  ******************************************************************************/
+void mod_som_epsiobp_shear_filters_f(float *shear_filter, float fall_rate)
 {
   // define arrays and variables
   //ALB modify
@@ -847,7 +844,6 @@ void mod_som_epsiobp_shear_filters_f(float *shear_filter, float fall_rate)
   }
 }
 
-float oakey_filter_f(float f, float fall_rate)
 /*******************************************************************************
  * @brief
  *   function to calculate Oakey airfoil probe response
@@ -858,12 +854,12 @@ float oakey_filter_f(float f, float fall_rate)
  * @return
  *   oakey filter value for f and fall_rate
  ******************************************************************************/
+float oakey_filter_f(float f, float fall_rate)
 {
   static const float lambda_c = 0.02;
   return 1/(1 + pow((lambda_c*f/fall_rate), 2.0));
 }
 
-void mod_som_epsiobp_fp07_filters_f(float *fp07_filter, float fall_rate)
 /*******************************************************************************
  * @brief
  *   function to calculate the filters (physical, electrical, etc.) necessary to correct the fp07 data spectrum
@@ -872,6 +868,7 @@ void mod_som_epsiobp_fp07_filters_f(float *fp07_filter, float fall_rate)
  * @param fall_rate
  *   input - average fall rate of the instrument over the scan under study in m/s
  ******************************************************************************/
+void mod_som_epsiobp_fp07_filters_f(float *fp07_filter, float fall_rate)
 {
   // interpolate to get proper Tdiff filter given freq
 //  interp1_f(cals->Tdiff_freq, cals->Tdiff_coeff, cals->Tdiff_size, vals->freq, Tdiff, settings->nfft/2);
@@ -884,11 +881,11 @@ void mod_som_epsiobp_fp07_filters_f(float *fp07_filter, float fall_rate)
   }
 }
 
-void mod_som_epsiobp_fp07_noise_f()
 /*******************************************************************************
  * @brief
  *   function to calculate noise on the raw fp07 spectrum
  ******************************************************************************/
+void mod_som_epsiobp_fp07_noise_f()
 {
   // loop over all frequencies using the noise calibration values
   for (uint16_t i = 0; i < settings->nfft/2; i++) {
@@ -896,7 +893,6 @@ void mod_som_epsiobp_fp07_noise_f()
   }
 }
 
-uint16_t mod_som_epsiobp_fp07_cutoff_f(float *fp07_spectrum, uint16_t size)
 /*******************************************************************************
  * @brief
  *   function to calculate the cutoff above which the fp07 spectrum is assumed to be noise
@@ -907,6 +903,7 @@ uint16_t mod_som_epsiobp_fp07_cutoff_f(float *fp07_spectrum, uint16_t size)
  * @return
  *   index of the highest frequency at which the fp07 signal is not noise
  ******************************************************************************/
+uint16_t mod_som_epsiobp_fp07_cutoff_f(float *fp07_spectrum, uint16_t size)
 {
   // define variables and arrays
   float signal_noise_ratio = 3;
@@ -933,7 +930,6 @@ uint16_t mod_som_epsiobp_fp07_cutoff_f(float *fp07_spectrum, uint16_t size)
   return cutoff;
 }
 
-void power_spectrum_f(float *data, float *spectrum, uint32_t size, float sampling_frequency)
 /*******************************************************************************
  * @brief
  *   function to calculate power spectral density from a single block of data
@@ -951,6 +947,7 @@ void power_spectrum_f(float *data, float *spectrum, uint32_t size, float samplin
  *    (i.e. output spectrum does not contain zero frequency data)
  *   -there is non-trivial loss of precision due to using 32bit types (floats) instead of 64bit types (doubles)
  ******************************************************************************/
+void power_spectrum_f(float *data, float *spectrum, uint32_t size, float sampling_frequency)
 {
   bool fft_direction = 0;
   uint16_t j, end;
@@ -964,7 +961,8 @@ void power_spectrum_f(float *data, float *spectrum, uint32_t size, float samplin
   // this being said, sometimes weird errors pop up when this isn't initialized here, so...
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   arm_rfft_fast_instance_f32 rfft_instance_1; //a fast RFFT instance for the real FFT
-//  arm_status status_1 = arm_rfft_fast_init_f32(&rfft_instance_1, size);
+//  arm_status status_1 =
+      arm_rfft_fast_init_f32(&rfft_instance_1, size);
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //  float epsi_spectrum_buffer[size/2]; // for reasons that I don't understand, this array must be defined down here in order to have a valid pointer
   // detrend the input data
@@ -989,8 +987,7 @@ void power_spectrum_f(float *data, float *spectrum, uint32_t size, float samplin
     spectrum[j] = 2*fft_ptr->epsi_spectrum_buffer[j + 1] / vals->normalization;
   }
 }
-//
-//static void average_spectra_f(uint16_t size, uint8_t num_blocks, float *spectra_in, float *spectrum_out)
+
 ///*******************************************************************************
 // * @brief
 // *   function to average a number of spectra
@@ -1004,7 +1001,7 @@ void power_spectrum_f(float *data, float *spectrum, uint32_t size, float samplin
 // * @param *spectrum_out
 // *   input - pointer to array where averaged spectrum will be output (length size)
 // ******************************************************************************/
-//{
+//static void average_spectra_f(uint16_t size, uint8_t num_blocks, float *spectra_in, float *spectrum_out)//{
 //  uint16_t i, j;
 //  for(j = 0; j < size; j++) {
 //    spectrum_out[j] = 0;
@@ -1014,7 +1011,6 @@ void power_spectrum_f(float *data, float *spectrum, uint32_t size, float samplin
 //  }
 //}
 
-void hamming_window_f(uint16_t size, float sampling_frequency, float *window, float* normal)
 /*******************************************************************************
  * @brief
  *   function to calculate hamming window weights and normalization for a given
@@ -1028,6 +1024,7 @@ void hamming_window_f(uint16_t size, float sampling_frequency, float *window, fl
  * @param *normalization
  *   input - pointer to array where normalization values will be stored
  ******************************************************************************/
+void hamming_window_f(uint16_t size, float sampling_frequency, float *window, float* normal)
 {
   for (uint16_t j = 0; j < size; j++) {
     window[j] = 0.54 - 0.46*cos(2*M_PI*j/(size - 1));
@@ -1036,7 +1033,6 @@ void hamming_window_f(uint16_t size, float sampling_frequency, float *window, fl
   *normal = *normal*((float) sampling_frequency);
 }
 
-float sinc_f(float x)
 /*******************************************************************************
  * @brief
  *   function to calculate sinc for a given x
@@ -1045,6 +1041,7 @@ float sinc_f(float x)
  * @return
  *   value for sinc(x)
  ******************************************************************************/
+float sinc_f(float x)
 {
   float value;
   if (x == 0) {
@@ -1074,8 +1071,8 @@ float sinc_f(float x)
  *   -x and xq must BOTH be sorted in increasing order
  *   -all xq values must be within the limits of x values
  ******************************************************************************/
-/*
- void interp1_f(float *x, float *v, uint32_t size, float *xq, float *vq, uint32_t sizeq)
+/*void interp1_f(float *x, float *v, uint32_t size, float *xq, float *vq, uint32_t sizeq)
+
 {
   // define variables
   float x1, x2, delta_x, v1, v2, delta_v, slope, diff;
@@ -1110,7 +1107,7 @@ float sinc_f(float x)
   }
 }
 //*/
-void smooth_movingmean_f(float *data, float *smoothed, uint16_t size, uint16_t window)
+
 /*******************************************************************************
  * @brief
  *   function to smooth an array using the moving mean technique
@@ -1125,6 +1122,7 @@ void smooth_movingmean_f(float *data, float *smoothed, uint16_t size, uint16_t w
  * @notes
  *   -there are a number of inefficiencies in this function I haven't gone back to clean up
  ******************************************************************************/
+void smooth_movingmean_f(float *data, float *smoothed, uint16_t size, uint16_t window)
 {
   // if size of data vector is smaller than window size, leave data vector as is
   if (size > window) {
@@ -1176,7 +1174,6 @@ void smooth_movingmean_f(float *data, float *smoothed, uint16_t size, uint16_t w
   }
 }
 
-void detrend_f(float *data, uint32_t size, float *detrended_data)
 /*******************************************************************************
  * @brief
  *   function to detrend an array using least squares (i.e. remove line of best fit)
@@ -1189,6 +1186,7 @@ void detrend_f(float *data, uint32_t size, float *detrended_data)
  * @notes
  *   -had to use 64 bit variables here (doubles) to maintain precision; still some small concern over truncation but I don't think it should be an issue
  ******************************************************************************/
+void detrend_f(float *data, uint32_t size, float *detrended_data)
 {
   // define variables and arrays
 //  float x[size], y[size];
@@ -1213,7 +1211,6 @@ void detrend_f(float *data, uint32_t size, float *detrended_data)
   }
 }
 
-void find_vector_indices_f(float *vector, uint32_t size, float *limits, uint16_t *indices)
 /*******************************************************************************
  * @brief
  *   function to find the indices of an array at the given limits
@@ -1229,6 +1226,7 @@ void find_vector_indices_f(float *vector, uint32_t size, float *limits, uint16_t
  *   -vector must be sorted in ascending order
  *   -the function finds the first index WITHIN the given limits
  ******************************************************************************/
+void find_vector_indices_f(float *vector, uint32_t size, float *limits, uint16_t *indices)
 {
   // define variables
   float min = limits[0], max = limits[1];
@@ -1357,7 +1355,6 @@ float seawater_kinematic_viscosity_f(float salinity, float temperature, float pr
   return nu;
 }
 
-float fom_panchev_f(float *shear_spec, float epsilon, float kvis,uint16_t kvec_indices, uint16_t kvec_size, float *panchev_spec)
 /*******************************************************************************
  * @brief
  *   function to calculate the panchev spectrum for the current wavenumber vector
@@ -1373,6 +1370,7 @@ float fom_panchev_f(float *shear_spec, float epsilon, float kvis,uint16_t kvec_i
  * @return
  *   returns the integral of the panchev spectrum up to the epsilon cutoff
  ******************************************************************************/
+float fom_panchev_f(float *shear_spec, float epsilon, float kvis,uint16_t kvec_indices, uint16_t kvec_size, float *panchev_spec)
 {
   // initialize constants and variables
   float eta, conv, z, phi;
@@ -1428,7 +1426,6 @@ float fom_panchev_f(float *shear_spec, float epsilon, float kvis,uint16_t kvec_i
   return fom;
 }
 
-float fom_batchelor_f(float *temp_spec, float epsilon, float chi, float kvis, float kappa, uint16_t cutoff, float *batchelor_spec)
 /*******************************************************************************
  * @brief
  *   function to calculate the batchelor spectrum for the current wavenumber vector
@@ -1448,6 +1445,7 @@ float fom_batchelor_f(float *temp_spec, float epsilon, float chi, float kvis, fl
  * @return
  *   returns the integral of the batchelor spectrum up to the chi cutoff
  ******************************************************************************/
+float fom_batchelor_f(float *temp_spec, float epsilon, float chi, float kvis, float kappa, uint16_t cutoff, float *batchelor_spec)
 {
   // initialize constants and variables
 //  float eta = pow(pow(kvis, 3)/epsilon, 1.0/4.0);

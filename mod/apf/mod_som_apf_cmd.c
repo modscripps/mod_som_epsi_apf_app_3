@@ -99,7 +99,7 @@ CPU_INT16S mod_som_apf_cmd_daq_f(CPU_INT16U argc,
 
   mod_som_apf_status_t status = MOD_SOM_APF_STATUS_OK;
   mod_som_apf_status_t return_status;
-  uint64_t profile_id = 0;
+  uint16_t profile_id = 0;
 
   // paramters for send_line_f()
   char apf_reply_str[MOD_SOM_SHELL_INPUT_BUF_SIZE]="\0";
@@ -223,12 +223,12 @@ CPU_INT16S mod_som_apf_cmd_daq_f(CPU_INT16U argc,
               sprintf(apf_reply_str,"%s,start,%s,no valid CTD data\r\n",
                       MOD_SOM_APF_DAQ_STR,MOD_SOM_APF_NAK_STR);
               mod_som_apf_status_t temp_status = mod_som_apf_daq_stop_f();
-              status |= return_status;
+              status |= return_status | temp_status;
               break;
           }
           // save time string into the temporary local string - Mai - Nov 18, 2021
           //ALB THIS THE ACK ANSWER
-          sprintf(apf_reply_str,"%s,start,%s,%lu\r\n",
+          sprintf(apf_reply_str,"%s,start,%s,%u\r\n",
                   MOD_SOM_APF_DAQ_STR,MOD_SOM_APF_ACK_STR,
                   profile_id);
           status |= MOD_SOM_APF_STATUS_OK;
@@ -415,8 +415,9 @@ CPU_INT16S mod_som_apf_cmd_fwrev_status_f(CPU_INT16U argc,
 
     status = mod_som_apf_fwrev_status_f();
   }
-//    if(status != MOD_SOM_APF_STATUS_OK)
-//        return SHELL_EXEC_ERR;
+//  void(status);
+    if(status != MOD_SOM_APF_STATUS_OK)
+        return SHELL_EXEC_ERR;
     return SHELL_EXEC_ERR_NONE;
 }
 
@@ -443,7 +444,7 @@ CPU_INT16S mod_som_apf_cmd_ok_status_f(CPU_INT16U argc,
         SHELL_CMD_PARAM *cmd_param){
 
     mod_som_apf_status_t status;
-    mod_som_apf_ptr_t local_apf_runtime_ptr = mod_som_apf_get_runtime_ptr_f();
+//    mod_som_apf_ptr_t local_apf_runtime_ptr = mod_som_apf_get_runtime_ptr_f();
     char apf_reply_str[MOD_SOM_SHELL_INPUT_BUF_SIZE]="\0";
     size_t reply_str_len = 0;
     //uint32_t bytes_sent;
@@ -461,8 +462,8 @@ CPU_INT16S mod_som_apf_cmd_ok_status_f(CPU_INT16U argc,
         return SHELL_EXEC_ERR_NONE;
     }
     status = mod_som_apf_ok_status_f();
-//    if(status != MOD_SOM_APF_STATUS_OK)
-//        return SHELL_EXEC_ERR;
+    if(status != MOD_SOM_APF_STATUS_OK)
+        return SHELL_EXEC_ERR;
     return SHELL_EXEC_ERR_NONE;
 }
 
@@ -519,8 +520,8 @@ CPU_INT16S mod_som_apf_cmd_poweroff_f(CPU_INT16U argc,
     }else{
         status = mod_som_apf_poweroff_f();
     }
-//    if(status != MOD_SOM_APF_STATUS_OK)
-//        return SHELL_EXEC_ERR;
+    if(status != MOD_SOM_APF_STATUS_OK)
+        return SHELL_EXEC_ERR;
     return SHELL_EXEC_ERR_NONE;
 }
 
@@ -598,8 +599,8 @@ CPU_INT16S mod_som_apf_cmd_epsi_id_status_f(CPU_INT16U argc,
     }else{
         status = mod_som_apf_epsi_id_status_f();
     }
-//    if(status != MOD_SOM_APF_STATUS_OK)
-//        return SHELL_EXEC_ERR;
+    if(status != MOD_SOM_APF_STATUS_OK)
+        return SHELL_EXEC_ERR;
     return SHELL_EXEC_ERR_NONE;
 }
 
@@ -636,8 +637,8 @@ CPU_INT16S mod_som_apf_cmd_probe_id_f(CPU_INT16U argc,
     }else{
         status = mod_som_apf_probe_id_f(argc,argv);
     }
-//    if(status != MOD_SOM_APF_STATUS_OK)
-//        return SHELL_EXEC_ERR;
+    if(status != MOD_SOM_APF_STATUS_OK)
+        return SHELL_EXEC_ERR;
     return SHELL_EXEC_ERR_NONE;
 }
 
@@ -685,8 +686,8 @@ CPU_INT16S mod_som_apf_cmd_probe_id_status_f(CPU_INT16U argc,
   }else{
       status = mod_som_apf_probe_id_status_f();
   }
-//  if(status != MOD_SOM_APF_STATUS_OK)
-//    return SHELL_EXEC_ERR;
+  if(status != MOD_SOM_APF_STATUS_OK)
+    return SHELL_EXEC_ERR;
   return SHELL_EXEC_ERR_NONE;
 }
 
@@ -735,8 +736,8 @@ CPU_INT16S mod_som_apf_cmd_sleep_f(CPU_INT16U argc,
   }else{
       status = mod_som_apf_sleep_f();
   }
-//  if(status != MOD_SOM_APF_STATUS_OK)
-//    return SHELL_EXEC_ERR;
+  if(status != MOD_SOM_APF_STATUS_OK)
+    return SHELL_EXEC_ERR;
   return SHELL_EXEC_ERR_NONE;
 }
 
@@ -766,8 +767,8 @@ CPU_INT16S mod_som_apf_cmd_gate_f(CPU_INT16U argc,
 
     mod_som_apf_status_t status = mod_som_apf_gate_f(argc,argv);
 
-//    if(status != MOD_SOM_APF_STATUS_OK)
-//        return SHELL_EXEC_ERR;
+    if(status != MOD_SOM_APF_STATUS_OK)
+        return SHELL_EXEC_ERR;
     return SHELL_EXEC_ERR_NONE;
 }
 
@@ -802,8 +803,8 @@ CPU_INT16S mod_som_apf_cmd_time_f(CPU_INT16U argc,
   }else{
       status = mod_som_apf_time_f(argc,argv);
   }
-//  if(status != MOD_SOM_APF_STATUS_OK)
-//    return SHELL_EXEC_ERR;
+  if(status != MOD_SOM_APF_STATUS_OK)
+    return SHELL_EXEC_ERR;
   return SHELL_EXEC_ERR_NONE;
 }
 
@@ -852,8 +853,8 @@ CPU_INT16S mod_som_apf_cmd_time_status_f(CPU_INT16U argc,
   }else{
       status = mod_som_apf_time_status_f();
   }
-//  if(status != MOD_SOM_APF_STATUS_OK)
-//    return SHELL_EXEC_ERR;
+  if(status != MOD_SOM_APF_STATUS_OK)
+    return SHELL_EXEC_ERR;
   return SHELL_EXEC_ERR_NONE;
 }
 
@@ -889,8 +890,8 @@ CPU_INT16S mod_som_apf_cmd_packet_format_f(CPU_INT16U argc,
     }else{
     status = mod_som_apf_packet_format_f(argc,argv);
     }
-//    if(status != MOD_SOM_APF_STATUS_OK)
-//        return SHELL_EXEC_ERR;
+    if(status != MOD_SOM_APF_STATUS_OK)
+        return SHELL_EXEC_ERR;
     return SHELL_EXEC_ERR_NONE;
 }
 
@@ -921,8 +922,8 @@ CPU_INT16S mod_som_apf_cmd_packet_format_status_f(CPU_INT16U argc,
     }else{
         status = mod_som_apf_packet_format_status_f(argc,argv);
     }
-//    if(status != MOD_SOM_APF_STATUS_OK)
-//      return SHELL_EXEC_ERR;
+    if(status != MOD_SOM_APF_STATUS_OK)
+      return SHELL_EXEC_ERR;
     return status;
 }
 
@@ -948,8 +949,8 @@ CPU_INT16S mod_som_apf_cmd_process_nfft_f(CPU_INT16U argc,
 
     mod_som_apf_status_t status = 0;
 
-//    if(status != MOD_SOM_APF_STATUS_OK)
-//        return SHELL_EXEC_ERR;
+    if(status != MOD_SOM_APF_STATUS_OK)
+        return SHELL_EXEC_ERR;
     return SHELL_EXEC_ERR_NONE;
 }
 
@@ -984,8 +985,8 @@ CPU_INT16S mod_som_apf_cmd_sd_format_f(CPU_INT16U argc,
     }else{
         status = mod_som_apf_sd_format_f(argc,argv);
     }
-//    if(status != MOD_SOM_APF_STATUS_OK)
-//        return SHELL_EXEC_ERR;
+    if(status != MOD_SOM_APF_STATUS_OK)
+        return SHELL_EXEC_ERR;
     return SHELL_EXEC_ERR_NONE;
 }
 
@@ -1017,8 +1018,8 @@ CPU_INT16S mod_som_apf_cmd_sd_format_status_f(CPU_INT16U argc,
     }else{
     status = mod_som_apf_sd_format_status_f(argc,argv);
     }
-//    if(status != MOD_SOM_APF_STATUS_OK)
-//        return SHELL_EXEC_ERR;
+    if(status != MOD_SOM_APF_STATUS_OK)
+        return SHELL_EXEC_ERR;
     return SHELL_EXEC_ERR_NONE;
 }
 
@@ -1068,8 +1069,8 @@ CPU_INT16S mod_som_apf_cmd_upload_f(CPU_INT16U argc,
     }else{
         status = mod_som_apf_upload_f();
     }
-//    if(status != MOD_SOM_APF_STATUS_OK)
-//        return SHELL_EXEC_ERR;
+    if(status != MOD_SOM_APF_STATUS_OK)
+        return SHELL_EXEC_ERR;
     return SHELL_EXEC_ERR_NONE;
 }
 

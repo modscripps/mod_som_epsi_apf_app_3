@@ -371,7 +371,7 @@ void mod_som_sbe41_store_f();
 mod_som_status_t mod_som_sbe41_stop_collect_data_f();
 void mod_som_sbe41_id_f(CPU_INT16U argc,CPU_CHAR *argv[]);
 
-//static  void  mod_som_sbe41_consumer_task_f(void  *p_arg);
+static  void  mod_som_sbe41_consumer_task_f(void  *p_arg);
 mod_som_status_t mod_som_sbe41_stop_consumer_task_f(void);
 mod_som_status_t mod_som_sbe41_start_consumer_task_f(void);
 

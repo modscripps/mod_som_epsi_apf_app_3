@@ -37,8 +37,6 @@
 //------------------------------------------------------------------------------
 // DEFINES
 //------------------------------------------------------------------------------
-//#define MOD_SOM_SDIO_STATUS_PREFIX 99U
-
 #define MOD_SOM_SDIO_STATUS_OK              0x0U
 #define MOD_SOM_SDIO_STATUS_FAIL_INIT_CMD   0x1U
 #define MOD_SOM_SDIO_STATUS_FAIL_OPENFILE   0x2U
@@ -74,7 +72,7 @@
  * @define MOD_SOM_SDIO_STATUS_PREFIX
  *     16 bit identifying prefix for MOD SOM I/O status
  ******************************************************************************/
-#define MOD_SOM_SDIO_STATUS_PREFIX 0x02U
+#define MOD_SOM_SDIO_STATUS_PREFIX 0x99U
 
 /*******************************************************************************
  * @define MOD_SOM_SDIO_STATUS_ERR_FAIL_TO_ALLOCATE_DYNAMIC_MEMORY

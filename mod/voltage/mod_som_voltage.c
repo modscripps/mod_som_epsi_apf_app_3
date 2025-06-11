@@ -133,6 +133,10 @@ mod_som_status_t mod_som_voltage_init_f(){
     ADC_InitScan_TypeDef initScan=ADC_INITSCAN_DEFAULT;
     ADC_InitSingle_TypeDef initSingle1=ADC_INITSINGLE_DEFAULT;
 
+//    init     = init;
+//    //ADC0 stuff
+//
+//    initScan  = initScan;
 
     // Modify init structs
     init.prescale   = ADC_PrescaleCalc(ADCFREQ, 0);
@@ -169,6 +173,7 @@ mod_som_status_t mod_som_voltage_init_f(){
     NVIC_EnableIRQ(ADC0_IRQn);
 
     //ADC1 stuff
+    //initSingle1 = initSingle1;
     // Modify init structs
 
     initSingle1.diff       = 0;            // single ended
@@ -452,7 +457,7 @@ mod_som_status_t mod_som_voltage_stop_adc1_scan_task_f(){
 mod_som_status_t mod_som_voltage_mode_f(CPU_INT16U argc,CPU_CHAR *argv[]){
 
 
-  RTOS_ERR  *p_err = NULL;
+  RTOS_ERR  p_err;
 
   if (argc==1){
       printf("volt.mode %u\r\n",mod_som_voltage_ptr->mode);
@@ -461,7 +466,7 @@ mod_som_status_t mod_som_voltage_mode_f(CPU_INT16U argc,CPU_CHAR *argv[]){
     //ALB switch statement easy to handle all user input cases.
     switch (argc){
     case 2:
-      mod_som_voltage_ptr->mode=shellStrtol(argv[1],p_err);
+      mod_som_voltage_ptr->mode=shellStrtol(argv[1],&p_err);
       break;
     default:
       printf("format: volt.mode mode (0:stream, 1:SD store)\r\n");

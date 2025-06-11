@@ -89,7 +89,7 @@ typedef struct{
  * @param       p_arg
  *     argument passed in by OSTaskCreate (not used)
  ******************************************************************************/
-//static void mod_som_sdio_print_task_f(void *p_arg);
+static void mod_som_sdio_print_task_f(void *p_arg);
 
 ///*******************************************************************************
 // * @function
