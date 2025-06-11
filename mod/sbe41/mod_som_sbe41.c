@@ -83,6 +83,358 @@ LDMA_Descriptor_t sbe_ldma_read_rx = LDMA_DESCRIPTOR_SINGLE_P2M_BYTE(0,0,0);
 LDMA_Descriptor_t descriptor_read_sbe;//ALB Descriptor list to gather SBE sample.
 
 
+
+//------------------------------------------------------------------------------
+// local functions
+//------------------------------------------------------------------------------
+
+/*******************************************************************************
+ * @brief
+ *   mod_som_sbe41_consumer_task_f
+ *   conusmer task (i.e. sbe41 stream consumer or SD store consumer)
+ *
+ *   This task is a while loop, thus, it will run continuously once the task started
+ *   cnsmr_cnt increases indefinitely until the task is stopped
+ *
+ *   - Every MOD_SOM_EFE_CONSUMER_DELAY the task will gather the EFE data stored
+ *     in the circular buffer one element at a time.
+ *   - Once there no more data available, compute the checksum and append it to the block (*FF\r\n)
+ *   - The task gather the current timestamp,
+ *   - Build a block header (EFEtimestamp,recordsize,elementskipped,voltage,errorflag)
+ *   - Prefix the header to the block
+ *   - Add the header for this block and send a message
+ *     (header+block) to the IO stream task or SDIO stream task.
+ *
+ *   1 element    = 1 EFE sample = 3bytes x nb channels
+ *   sample_count = producer count
+ *   cnsmr_cnt    =
+ * @return
+ *   MOD_SOM_STATUS_OK if initialization goes well
+ *   or otherwise
+ ******************************************************************************/
+
+static  void  mod_som_sbe41_consumer_task_f(void  *p_arg){
+    RTOS_ERR  err;
+
+    mod_som_sbe41_ptr->sample_count=0;
+    mod_som_sbe41_ptr->consumer_ptr->cnsmr_cnt=0;
+    mod_som_sbe41_ptr->consumer_ptr->consumed_flag=true;
+    mod_som_sbe41_ptr->consumer_ptr->record_pressure[0]=0; //ALB I need to initialize these becasue I use record_pressure in daq_start
+    mod_som_sbe41_ptr->consumer_ptr->record_pressure[1]=0;
+    mod_som_sbe41_ptr->sample_timeout = false;
+
+    //cb_elmnt_ptr curr_read_elmnt_ptr = test_cb_param_block.base_ptr;
+    // get local sbe41 element ptr and local sbe41 streamer ptr.
+    uint8_t * curr_data_ptr   = mod_som_sbe41_ptr->rec_buff_ptr->elements_buffer;
+    uint8_t * curr_consumer_element_ptr = mod_som_sbe41_ptr->consumer_ptr->record_data_ptr+\
+                                mod_som_sbe41_ptr->consumer_ptr->length_header;
+    uint8_t * base_consumer_element_ptr = mod_som_sbe41_ptr->consumer_ptr->record_data_ptr+\
+                                mod_som_sbe41_ptr->consumer_ptr->length_header;
+
+    int32_t cnsmr_indx = 0;
+    uint64_t tick;
+
+    mod_som_sbe41_sample_t curr_sbe_sample;
+    static sl_sleeptimer_timestamp_t time0 = 0;
+    bool first_sample_flag = true;
+    sl_sleeptimer_timestamp_t        time1= 0;;
+    char last_sbe42sample[mod_som_sbe41_ptr->config_ptr->sample_data_length+1];
+
+
+
+
+    int elmnts_avail=0, reset_cnsmr_cnt=0;
+    int data_elmnts_offset=0;
+
+
+    int padding = MOD_SOM_SBE41_CONSUMER_PADDING; // the padding should include the variance.
+
+    mod_som_sdio_ptr_t local_mod_som_sdio_ptr_t=
+        mod_som_sdio_get_runtime_ptr_f();
+
+    mod_som_sdio_file_ptr_t rawfile_ptr =
+        local_mod_som_sdio_ptr_t->rawdata_file_ptr;
+//    char apf_reply_str[MOD_SOM_SHELL_INPUT_BUF_SIZE]="\0";
+//    size_t reply_str_len = 0;
+//    LEUART_TypeDef* apf_leuart_ptr;
+//    uint32_t bytes_sent;
+//    mod_som_apf_status_t status;
+
+    //time0= mod_som_calendar_get_time_f();
+    while (DEF_ON) {
+
+        if (mod_som_sbe41_ptr->collect_data_flag){
+            elmnts_avail = mod_som_sbe41_ptr->sample_count - mod_som_sbe41_ptr->consumer_ptr->cnsmr_cnt;  //calculate number of elements available have been produced
+            //ALB check if we still receive data
+            time1= mod_som_calendar_get_time_f();
+            if(first_sample_flag){
+                time0=time1;
+                first_sample_flag = false;
+            }
+            if (time1-time0>MOD_SOM_SBE41_SAMPLE_TIMEOUT){
+                mod_som_sbe41_ptr->sample_timeout=true;
+                ///*
+                //2025 05 25 BEGIN stop collect data because data hasn't come in a a while
+                // calculate the offset for current pointer
+                data_elmnts_offset     = mod_som_sbe41_ptr->consumer_ptr->cnsmr_cnt % mod_som_sbe41_ptr->config_ptr->elements_per_buffer;
+                // update the current element pointer using the element map
+                curr_data_ptr   =(uint8_t*)(mod_som_sbe41_ptr->rec_buff_ptr->elements_map+data_elmnts_offset+MOD_SOM_SBE41_HEXTIMESTAMP_LENGTH);
+                //ALB copy the the local element in the streamer
+
+
+                if(mod_som_sbe41_ptr->consumer_ptr->cnsmr_cnt){
+                    memcpy(last_sbe42sample,curr_data_ptr,mod_som_sbe41_ptr->config_ptr->sample_data_length);
+                    last_sbe42sample[mod_som_sbe41_ptr->config_ptr->sample_data_length] = '\0';
+                    mod_som_io_print_f("Time out last SBE41 sample: [%lu]%s\r\n",(uint32_t)mod_som_sbe41_ptr->sample_count, last_sbe42sample);
+                    //sprintf(apf_reply_str,"Time out last SBE41 sample: [%lu]%s\r\n",(uint32_t)mod_som_sbe41_ptr->sample_count,last_sbe42sample);
+
+                }else{
+                    mod_som_io_print_f("Time out missing SBE41 sample\r\n");
+                    //sprintf(apf_reply_str,"Time out missing SBE41 sample\r\n");
+                }
+//                reply_str_len = strlen(apf_reply_str);
+//                apf_leuart_ptr =(LEUART_TypeDef *) mod_som_apf_get_port_ptr_f();
+//
+//                sl_sleeptimer_delay_millisecond(10);
+//                bytes_sent = mod_som_apf_send_line_f(apf_leuart_ptr,apf_reply_str, reply_str_len);
+//                sl_sleeptimer_delay_millisecond(10);
+//                if (bytes_sent==0){
+//                    status= MOD_SOM_STATUS_NOT_OK;
+//                }
+
+                //                // Delay Start Task execution for
+                //                OSTimeDly( MOD_SOM_SBE41_CONSUMER_DELAY*10,             //   consumer delay is #define at the beginning OS Ticks
+                //                           OS_OPT_TIME_DLY,          //   from now.
+                //                           &err);
+                //                sl_sleeptimer_delay_millisecond(100);
+                //                mod_som_sbe41_stop_collect_data_f();
+                //2025 05 25 END stop collect data because data hasn't come in a a while
+                // */
+                break;
+
+
+            }
+
+            // LOOP without delay until caught up to latest produced element
+            while (elmnts_avail > 0)
+              {
+                // When have circular buffer overflow: have produced data bigger than consumer data: 1 circular buffer (n_elmnts)
+                // calculate new consumer count to skip ahead to the tail of the circular buffer (with optional padding),
+                // calculate the number of data we skipped, report number of elements skipped.
+                // Reset the consumers cnt equal with producer data plus padding
+                if (elmnts_avail>(mod_som_sbe41_ptr->config_ptr->elements_per_buffer)){ // checking over flow. TODO check adding padding is correct.
+                    // reset the consumer count less one buffer than producer count plus padding
+                    //ALB I think I want to change this line from the cb example. The "-" only works if you overflowed once.
+                    reset_cnsmr_cnt = mod_som_sbe41_ptr->sample_count - mod_som_sbe41_ptr->config_ptr->elements_per_buffer + padding;
+                    // calculate the number of skipped elements
+                    mod_som_sbe41_ptr->consumer_ptr->elmnts_skipped = reset_cnsmr_cnt - mod_som_sbe41_ptr->consumer_ptr->cnsmr_cnt;
+
+                    mod_som_io_print_f("\n sbe41 stream task: CB overflow: sample count = %lu,cnsmr_cnt = %lu,skipped %lu elements, ", \
+                           (uint32_t)mod_som_sbe41_ptr->sample_count, \
+                           (uint32_t) mod_som_sbe41_ptr->consumer_ptr->cnsmr_cnt, \
+                           mod_som_sbe41_ptr->consumer_ptr->elmnts_skipped);
+
+                    mod_som_sbe41_ptr->consumer_ptr->cnsmr_cnt = reset_cnsmr_cnt;
+//                    printf("new cns_cnt: %lu\n",(uint32_t) cnsmr_cnt);
+                }
+                time0 = time1; //mod_som_calendar_get_time_f(); // don't want to reacquire time
+                mod_som_sbe41_ptr->sample_timeout=false;
+
+                // calculate the offset for current pointer
+                data_elmnts_offset     = mod_som_sbe41_ptr->consumer_ptr->cnsmr_cnt % mod_som_sbe41_ptr->config_ptr->elements_per_buffer;
+
+                // update the current element pointer using the element map
+                curr_data_ptr   =(uint8_t*)mod_som_sbe41_ptr->rec_buff_ptr->elements_map[data_elmnts_offset];
+
+                //ALB move the stream ptr to the next element
+                curr_consumer_element_ptr = base_consumer_element_ptr + \
+                    (mod_som_sbe41_ptr->consumer_ptr->cnsmr_cnt-reset_cnsmr_cnt)*\
+                    mod_som_sbe41_ptr->config_ptr->element_length;
+
+                //ALB copy the the local element in the streamer
+                memcpy(curr_consumer_element_ptr,curr_data_ptr,mod_som_sbe41_ptr->config_ptr->element_length);
+
+                if(mod_som_sbe41_ptr->settings_ptr->data_format==0){
+                    curr_sbe_sample=mod_som_sbe41_parse_sample_f(curr_data_ptr);
+
+                    mod_som_sbe41_ptr->consumer_ptr->record_pressure[0]=
+                        mod_som_sbe41_ptr->consumer_ptr->record_pressure[1];
+                    mod_som_sbe41_ptr->consumer_ptr->record_salinity[0]=
+                        mod_som_sbe41_ptr->consumer_ptr->record_salinity[1];
+                    mod_som_sbe41_ptr->consumer_ptr->record_temp[0]=
+                        mod_som_sbe41_ptr->consumer_ptr->record_temp[1];
+                    mod_som_sbe41_ptr->consumer_ptr->record_timestamp[0]=
+                        mod_som_sbe41_ptr->consumer_ptr->record_timestamp[1];
+
+                    mod_som_sbe41_ptr->consumer_ptr->record_pressure[1]=
+                        curr_sbe_sample.pressure;
+                    mod_som_sbe41_ptr->consumer_ptr->record_salinity[1]=
+                        curr_sbe_sample.salinity;
+                    mod_som_sbe41_ptr->consumer_ptr->record_temp[1]=
+                        curr_sbe_sample.temperature;
+                    mod_som_sbe41_ptr->consumer_ptr->record_timestamp[1]=
+                        curr_sbe_sample.timestamp;
+
+                    //ALB compute dPdt to get a fall rate
+                    float dP=mod_som_sbe41_ptr->consumer_ptr->record_pressure[1]-
+                        mod_som_sbe41_ptr->consumer_ptr->record_pressure[0];
+
+                    uint64_t dt=mod_som_sbe41_ptr->consumer_ptr->record_timestamp[1]-
+                        mod_som_sbe41_ptr->consumer_ptr->record_timestamp[0];
+
+                    if (dP>=0){
+                        mod_som_sbe41_ptr->consumer_ptr->dPdt= dP /
+                                                       ((float)dt)*1000;
+                        mod_som_sbe41_ptr->consumer_ptr->direction=down;
+                    }else{
+                        mod_som_sbe41_ptr->consumer_ptr->dPdt= -dP /
+                                                       ((float)dt)*1000;
+                        mod_som_sbe41_ptr->consumer_ptr->direction=up;
+                    }
+//                    printf("fall rate %3.3f\r\n",mod_som_sbe41_ptr->consumer_ptr->dPdt);
+                }
+
+                mod_som_sbe41_ptr->consumer_ptr->cnsmr_cnt++;  // increment cnsmr count
+                cnsmr_indx=mod_som_sbe41_ptr->consumer_ptr->cnsmr_cnt %
+                           mod_som_sbe41_ptr->consumer_ptr->max_element_per_record;  // increment cnsmr count
+                elmnts_avail = mod_som_sbe41_ptr->sample_count - mod_som_sbe41_ptr->consumer_ptr->cnsmr_cnt; //elements available have been produced
+                //ALB this IF check if we have enough element in the consumer record
+                //ALB to be streamed/SD stored.
+                if(cnsmr_indx ==0){
+                    mod_som_sbe41_ptr->consumer_ptr->data_ready_flg=1;
+                    break;
+                }
+              }  // end of while (elemts_avail > 0)
+            // No more data available. All data are stored in the stream buffer.
+
+
+            if (mod_som_sbe41_ptr->consumer_ptr->data_ready_flg &
+                mod_som_sbe41_ptr->consumer_ptr->consumed_flag) {
+
+                // We are almost ready to send. Just need to get the header, compute the chcksum, append it
+                // to the stream buffer and send to the stream task
+
+                //ALB move the stream ptr to the position of the checksum
+                curr_consumer_element_ptr = base_consumer_element_ptr + \
+                    (mod_som_sbe41_ptr->consumer_ptr->cnsmr_cnt-reset_cnsmr_cnt)*\
+                    mod_som_sbe41_ptr->config_ptr->element_length;
+
+                //ALB get the length of the stream block
+                mod_som_sbe41_ptr->consumer_ptr->payload_length= \
+                    (int) &curr_consumer_element_ptr[0]- \
+                    (int) base_consumer_element_ptr;
+
+                //get the timestamp for the record header
+                tick=sl_sleeptimer_get_tick_count64();
+                mystatus = sl_sleeptimer_tick64_to_ms(tick,\
+                                                      &mod_som_sbe41_ptr->consumer_ptr->timestamp);
+
+                //MHA: Now augment timestamp by poweron_offset_ms
+                mod_som_calendar_settings=mod_som_calendar_get_settings_f(); //get the calendar settings pointer
+                mod_som_sbe41_ptr->timestamp += mod_som_calendar_settings.poweron_offset_ms;
+
+
+
+                //create header
+                mod_som_sbe41_header_f(mod_som_sbe41_ptr->consumer_ptr);
+                //add header to the beginning of the stream block
+                memcpy(mod_som_sbe41_ptr->consumer_ptr->record_data_ptr, \
+                       mod_som_sbe41_ptr->consumer_ptr->header,
+                       mod_som_sbe41_ptr->consumer_ptr->length_header);
+
+
+                mod_som_sbe41_ptr->consumer_ptr->chksum=0;
+                for(int i=0;i<mod_som_sbe41_ptr->consumer_ptr->payload_length;i++)
+                  {
+                    mod_som_sbe41_ptr->consumer_ptr->chksum ^=\
+                        base_consumer_element_ptr[i];
+                  }
+
+
+                // the curr_consumer_element_ptr should be at the right place to
+                // write the checksum already
+                //write checksum at the end of the steam block (record).
+                *(curr_consumer_element_ptr++) = '*';
+                *((uint16_t*)curr_consumer_element_ptr) = \
+                    mod_som_int8_2hex_f(mod_som_sbe41_ptr->consumer_ptr->chksum);
+                curr_consumer_element_ptr += 2;
+                *(curr_consumer_element_ptr++) = '\r';
+                *(curr_consumer_element_ptr++) = '\n';
+
+
+                //ALB get the length of the stream block
+                mod_som_sbe41_ptr->consumer_ptr->record_length= \
+                    (int) &curr_consumer_element_ptr[0]- \
+                    (int) &mod_som_sbe41_ptr->consumer_ptr->record_data_ptr[0];
+
+
+                if (mod_som_sbe41_ptr->settings_ptr->data_format==3){
+                    // CTD OBP land
+                }
+
+                // ALB Do we want to send a fix length block or send a variable length block
+                //
+                mod_som_sbe41_ptr->consumer_ptr->consumed_flag=false;
+                switch(mod_som_sbe41_ptr->consumer_mode){
+                  case 0:
+                    mod_som_io_stream_data_f(
+                        mod_som_sbe41_ptr->consumer_ptr->record_data_ptr,
+                        mod_som_sbe41_ptr->consumer_ptr->record_length,
+                        &mod_som_sbe41_ptr->consumer_ptr->consumed_flag);
+                    break;
+                  case 1:
+                    mod_som_sdio_write_data_f(rawfile_ptr,
+                        mod_som_sbe41_ptr->consumer_ptr->record_data_ptr,
+                        mod_som_sbe41_ptr->consumer_ptr->record_length,
+                        &mod_som_sbe41_ptr->consumer_ptr->consumed_flag);
+                    break;
+                  case 2:
+                    printf("On board processing. Work in progress\r\n");
+                    mod_som_sbe41_ptr->consumer_ptr->consumed_flag=true;
+                    break;
+                  default:
+                    printf("wrong sbe.mode\r\n");
+                    break;
+                }
+                while(!mod_som_sbe41_ptr->consumer_ptr->consumed_flag){
+                    //2023 06 08 added watchdog feed and a release from this task
+                    // this is to prevent the system to hang on to the processor
+                    // when there isn't nothing going on
+                    OSTimeDly( MOD_SOM_SBE41_CONSUMER_DELAY,             //   consumer delay is #define at the beginning OS Ticks
+                               OS_OPT_TIME_DLY,          //   from now.
+                               &err);
+                    WDOG_Feed();
+                };
+
+                mod_som_sbe41_ptr->consumer_ptr->elmnts_skipped = 0;
+                // reset the stream ptr.
+                curr_consumer_element_ptr = base_consumer_element_ptr;
+
+                //ALB update reset_cnsmr_cnt so we can fill the stream block from 0 again
+                reset_cnsmr_cnt=mod_som_sbe41_ptr->consumer_ptr->cnsmr_cnt;
+                mod_som_sbe41_ptr->consumer_ptr->data_ready_flg=0;
+
+
+
+                if ((mod_som_sbe41_ptr->sample_count - mod_som_sbe41_ptr->consumer_ptr->cnsmr_cnt)<=0)  // not have available data
+                  {
+//                    printf("CNSMR2: Waiting for available data in sbe streamer ....\n\n");
+                  }
+            }//end if (mod_som_sbe41_ptr->collect_data_flag)
+        } // data_ready_flg
+
+        // Delay Start Task execution for
+        OSTimeDly( MOD_SOM_SBE41_CONSUMER_DELAY,             //   consumer delay is #define at the beginning OS Ticks
+                   OS_OPT_TIME_DLY,          //   from now.
+                   &err);
+        //   Check error code.
+        APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), ;);
+    } // end of while (DEF_ON)
+
+    PP_UNUSED_PARAM(p_arg);                                     // Prevent config warning.
+}
+
+
 //------------------------------------------------------------------------------
 // global functions
 //------------------------------------------------------------------------------
@@ -805,8 +1157,9 @@ mod_som_status_t mod_som_sbe41_stop_collect_data_f(){
 
   if(!mod_som_sbe41_ptr->connected_flag){
         mod_som_sbe41_ptr->collect_data_flag = false;
-        mod_som_io_print_f("$%s: Device is not connected yet!\r\n",mod_som_sbe41_ptr->settings_ptr->data_header_text);
-        return (mod_som_sbe41_ptr->status = mod_som_sbe41_encode_status_f(MOD_SOM_SBE41_STATUS_NOT_CONNECTED));
+//        mod_som_io_print_f("$%s: Device is not connected yet!\r\n",mod_som_sbe41_ptr->settings_ptr->data_header_text);
+        return (mod_som_sbe41_ptr->status = mod_som_sbe41_encode_status_f(MOD_SOM_STATUS_OK));
+//        return (mod_som_sbe41_ptr->status = mod_som_sbe41_encode_status_f(MOD_SOM_SBE41_STATUS_NOT_CONNECTED));
     }
 
   USART_TypeDef           *usart_ptr;
@@ -922,351 +1275,6 @@ mod_som_status_t  mod_som_sbe41_stop_consumer_task_f(){
 
 
 
-/*******************************************************************************
- * @brief
- *   mod_som_sbe41_consumer_task_f
- *   conusmer task (i.e. sbe41 stream consumer or SD store consumer)
- *
- *   This task is a while loop, thus, it will run continuously once the task started
- *   cnsmr_cnt increases indefinitely until the task is stopped
- *
- *   - Every MOD_SOM_EFE_CONSUMER_DELAY the task will gather the EFE data stored
- *     in the circular buffer one element at a time.
- *   - Once there no more data available, compute the checksum and append it to the block (*FF\r\n)
- *   - The task gather the current timestamp,
- *   - Build a block header (EFEtimestamp,recordsize,elementskipped,voltage,errorflag)
- *   - Prefix the header to the block
- *   - Add the header for this block and send a message
- *     (header+block) to the IO stream task or SDIO stream task.
- *
- *   1 element    = 1 EFE sample = 3bytes x nb channels
- *   sample_count = producer count
- *   cnsmr_cnt    =
- * @return
- *   MOD_SOM_STATUS_OK if initialization goes well
- *   or otherwise
- ******************************************************************************/
-
-static  void  mod_som_sbe41_consumer_task_f(void  *p_arg){
-    RTOS_ERR  err;
-
-    mod_som_sbe41_ptr->sample_count=0;
-    mod_som_sbe41_ptr->consumer_ptr->cnsmr_cnt=0;
-    mod_som_sbe41_ptr->consumer_ptr->consumed_flag=true;
-    mod_som_sbe41_ptr->consumer_ptr->record_pressure[0]=0; //ALB I need to initialize these becasue I use record_pressure in daq_start
-    mod_som_sbe41_ptr->consumer_ptr->record_pressure[1]=0;
-    mod_som_sbe41_ptr->sample_timeout = false;
-
-    //cb_elmnt_ptr curr_read_elmnt_ptr = test_cb_param_block.base_ptr;
-    // get local sbe41 element ptr and local sbe41 streamer ptr.
-    uint8_t * curr_data_ptr   = mod_som_sbe41_ptr->rec_buff_ptr->elements_buffer;
-    uint8_t * curr_consumer_element_ptr = mod_som_sbe41_ptr->consumer_ptr->record_data_ptr+\
-                                mod_som_sbe41_ptr->consumer_ptr->length_header;
-    uint8_t * base_consumer_element_ptr = mod_som_sbe41_ptr->consumer_ptr->record_data_ptr+\
-                                mod_som_sbe41_ptr->consumer_ptr->length_header;
-
-    int32_t cnsmr_indx = 0;
-    uint64_t tick;
-
-    mod_som_sbe41_sample_t curr_sbe_sample;
-    static sl_sleeptimer_timestamp_t time0 = 0;
-    bool first_sample_flag = true;
-    sl_sleeptimer_timestamp_t        time1= 0;;
-    char last_sbe42sample[mod_som_sbe41_ptr->config_ptr->sample_data_length+1];
-
-
-
-
-    int elmnts_avail=0, reset_cnsmr_cnt=0;
-    int data_elmnts_offset=0;
-
-
-    int padding = MOD_SOM_SBE41_CONSUMER_PADDING; // the padding should include the variance.
-
-    mod_som_sdio_ptr_t local_mod_som_sdio_ptr_t=
-        mod_som_sdio_get_runtime_ptr_f();
-
-    mod_som_sdio_file_ptr_t rawfile_ptr =
-        local_mod_som_sdio_ptr_t->rawdata_file_ptr;
-//    char apf_reply_str[MOD_SOM_SHELL_INPUT_BUF_SIZE]="\0";
-//    size_t reply_str_len = 0;
-//    LEUART_TypeDef* apf_leuart_ptr;
-//    uint32_t bytes_sent;
-//    mod_som_apf_status_t status;
-
-    //time0= mod_som_calendar_get_time_f();
-    while (DEF_ON) {
-
-        if (mod_som_sbe41_ptr->collect_data_flag){
-            elmnts_avail = mod_som_sbe41_ptr->sample_count - mod_som_sbe41_ptr->consumer_ptr->cnsmr_cnt;  //calculate number of elements available have been produced
-            //ALB check if we still receive data
-            time1= mod_som_calendar_get_time_f();
-            if(first_sample_flag){
-                time0=time1;
-                first_sample_flag = false;
-            }
-            if (time1-time0>MOD_SOM_SBE41_SAMPLE_TIMEOUT){
-                mod_som_sbe41_ptr->sample_timeout=true;
-                ///*
-                //2025 05 25 BEGIN stop collect data because data hasn't come in a a while
-                // calculate the offset for current pointer
-                data_elmnts_offset     = mod_som_sbe41_ptr->consumer_ptr->cnsmr_cnt % mod_som_sbe41_ptr->config_ptr->elements_per_buffer;
-                // update the current element pointer using the element map
-                curr_data_ptr   =(uint8_t*)(mod_som_sbe41_ptr->rec_buff_ptr->elements_map+data_elmnts_offset+MOD_SOM_SBE41_HEXTIMESTAMP_LENGTH);
-                //ALB copy the the local element in the streamer
-
-
-                if(mod_som_sbe41_ptr->consumer_ptr->cnsmr_cnt){
-                    memcpy(last_sbe42sample,curr_data_ptr,mod_som_sbe41_ptr->config_ptr->sample_data_length);
-                    last_sbe42sample[mod_som_sbe41_ptr->config_ptr->sample_data_length] = '\0';
-                    mod_som_io_print_f("Time out last SBE41 sample: [%lu]%s\r\n",(uint32_t)mod_som_sbe41_ptr->sample_count, last_sbe42sample);
-                    //sprintf(apf_reply_str,"Time out last SBE41 sample: [%lu]%s\r\n",(uint32_t)mod_som_sbe41_ptr->sample_count,last_sbe42sample);
-
-                }else{
-                    mod_som_io_print_f("Time out missing SBE41 sample\r\n");
-                    //sprintf(apf_reply_str,"Time out missing SBE41 sample\r\n");
-                }
-//                reply_str_len = strlen(apf_reply_str);
-//                apf_leuart_ptr =(LEUART_TypeDef *) mod_som_apf_get_port_ptr_f();
-//
-//                sl_sleeptimer_delay_millisecond(10);
-//                bytes_sent = mod_som_apf_send_line_f(apf_leuart_ptr,apf_reply_str, reply_str_len);
-//                sl_sleeptimer_delay_millisecond(10);
-//                if (bytes_sent==0){
-//                    status= MOD_SOM_STATUS_NOT_OK;
-//                }
-
-                //                // Delay Start Task execution for
-                //                OSTimeDly( MOD_SOM_SBE41_CONSUMER_DELAY*10,             //   consumer delay is #define at the beginning OS Ticks
-                //                           OS_OPT_TIME_DLY,          //   from now.
-                //                           &err);
-                //                sl_sleeptimer_delay_millisecond(100);
-                //                mod_som_sbe41_stop_collect_data_f();
-                //2025 05 25 END stop collect data because data hasn't come in a a while
-                // */
-                break;
-
-
-            }
-
-            // LOOP without delay until caught up to latest produced element
-            while (elmnts_avail > 0)
-              {
-                // When have circular buffer overflow: have produced data bigger than consumer data: 1 circular buffer (n_elmnts)
-                // calculate new consumer count to skip ahead to the tail of the circular buffer (with optional padding),
-                // calculate the number of data we skipped, report number of elements skipped.
-                // Reset the consumers cnt equal with producer data plus padding
-                if (elmnts_avail>(mod_som_sbe41_ptr->config_ptr->elements_per_buffer)){ // checking over flow. TODO check adding padding is correct.
-                    // reset the consumer count less one buffer than producer count plus padding
-                    //ALB I think I want to change this line from the cb example. The "-" only works if you overflowed once.
-                    reset_cnsmr_cnt = mod_som_sbe41_ptr->sample_count - mod_som_sbe41_ptr->config_ptr->elements_per_buffer + padding;
-                    // calculate the number of skipped elements
-                    mod_som_sbe41_ptr->consumer_ptr->elmnts_skipped = reset_cnsmr_cnt - mod_som_sbe41_ptr->consumer_ptr->cnsmr_cnt;
-
-                    mod_som_io_print_f("\n sbe41 stream task: CB overflow: sample count = %lu,cnsmr_cnt = %lu,skipped %lu elements, ", \
-                           (uint32_t)mod_som_sbe41_ptr->sample_count, \
-                           (uint32_t) mod_som_sbe41_ptr->consumer_ptr->cnsmr_cnt, \
-                           mod_som_sbe41_ptr->consumer_ptr->elmnts_skipped);
-
-                    mod_som_sbe41_ptr->consumer_ptr->cnsmr_cnt = reset_cnsmr_cnt;
-//                    printf("new cns_cnt: %lu\n",(uint32_t) cnsmr_cnt);
-                }
-                time0 = time1; //mod_som_calendar_get_time_f(); // don't want to reacquire time
-                mod_som_sbe41_ptr->sample_timeout=false;
-
-                // calculate the offset for current pointer
-                data_elmnts_offset     = mod_som_sbe41_ptr->consumer_ptr->cnsmr_cnt % mod_som_sbe41_ptr->config_ptr->elements_per_buffer;
-
-                // update the current element pointer using the element map
-                curr_data_ptr   =(uint8_t*)mod_som_sbe41_ptr->rec_buff_ptr->elements_map[data_elmnts_offset];
-
-                //ALB move the stream ptr to the next element
-                curr_consumer_element_ptr = base_consumer_element_ptr + \
-                    (mod_som_sbe41_ptr->consumer_ptr->cnsmr_cnt-reset_cnsmr_cnt)*\
-                    mod_som_sbe41_ptr->config_ptr->element_length;
-
-                //ALB copy the the local element in the streamer
-                memcpy(curr_consumer_element_ptr,curr_data_ptr,mod_som_sbe41_ptr->config_ptr->element_length);
-
-                if(mod_som_sbe41_ptr->settings_ptr->data_format==0){
-                    curr_sbe_sample=mod_som_sbe41_parse_sample_f(curr_data_ptr);
-
-                    mod_som_sbe41_ptr->consumer_ptr->record_pressure[0]=
-                        mod_som_sbe41_ptr->consumer_ptr->record_pressure[1];
-                    mod_som_sbe41_ptr->consumer_ptr->record_salinity[0]=
-                        mod_som_sbe41_ptr->consumer_ptr->record_salinity[1];
-                    mod_som_sbe41_ptr->consumer_ptr->record_temp[0]=
-                        mod_som_sbe41_ptr->consumer_ptr->record_temp[1];
-                    mod_som_sbe41_ptr->consumer_ptr->record_timestamp[0]=
-                        mod_som_sbe41_ptr->consumer_ptr->record_timestamp[1];
-
-                    mod_som_sbe41_ptr->consumer_ptr->record_pressure[1]=
-                        curr_sbe_sample.pressure;
-                    mod_som_sbe41_ptr->consumer_ptr->record_salinity[1]=
-                        curr_sbe_sample.salinity;
-                    mod_som_sbe41_ptr->consumer_ptr->record_temp[1]=
-                        curr_sbe_sample.temperature;
-                    mod_som_sbe41_ptr->consumer_ptr->record_timestamp[1]=
-                        curr_sbe_sample.timestamp;
-
-                    //ALB compute dPdt to get a fall rate
-                    float dP=mod_som_sbe41_ptr->consumer_ptr->record_pressure[1]-
-                        mod_som_sbe41_ptr->consumer_ptr->record_pressure[0];
-
-                    uint64_t dt=mod_som_sbe41_ptr->consumer_ptr->record_timestamp[1]-
-                        mod_som_sbe41_ptr->consumer_ptr->record_timestamp[0];
-
-                    if (dP>=0){
-                        mod_som_sbe41_ptr->consumer_ptr->dPdt= dP /
-                                                       ((float)dt)*1000;
-                        mod_som_sbe41_ptr->consumer_ptr->direction=down;
-                    }else{
-                        mod_som_sbe41_ptr->consumer_ptr->dPdt= -dP /
-                                                       ((float)dt)*1000;
-                        mod_som_sbe41_ptr->consumer_ptr->direction=up;
-                    }
-//                    printf("fall rate %3.3f\r\n",mod_som_sbe41_ptr->consumer_ptr->dPdt);
-                }
-
-                mod_som_sbe41_ptr->consumer_ptr->cnsmr_cnt++;  // increment cnsmr count
-                cnsmr_indx=mod_som_sbe41_ptr->consumer_ptr->cnsmr_cnt %
-                           mod_som_sbe41_ptr->consumer_ptr->max_element_per_record;  // increment cnsmr count
-                elmnts_avail = mod_som_sbe41_ptr->sample_count - mod_som_sbe41_ptr->consumer_ptr->cnsmr_cnt; //elements available have been produced
-                //ALB this IF check if we have enough element in the consumer record
-                //ALB to be streamed/SD stored.
-                if(cnsmr_indx ==0){
-                    mod_som_sbe41_ptr->consumer_ptr->data_ready_flg=1;
-                    break;
-                }
-              }  // end of while (elemts_avail > 0)
-            // No more data available. All data are stored in the stream buffer.
-
-
-            if (mod_som_sbe41_ptr->consumer_ptr->data_ready_flg &
-                mod_som_sbe41_ptr->consumer_ptr->consumed_flag) {
-
-                // We are almost ready to send. Just need to get the header, compute the chcksum, append it
-                // to the stream buffer and send to the stream task
-
-                //ALB move the stream ptr to the position of the checksum
-                curr_consumer_element_ptr = base_consumer_element_ptr + \
-                    (mod_som_sbe41_ptr->consumer_ptr->cnsmr_cnt-reset_cnsmr_cnt)*\
-                    mod_som_sbe41_ptr->config_ptr->element_length;
-
-                //ALB get the length of the stream block
-                mod_som_sbe41_ptr->consumer_ptr->payload_length= \
-                    (int) &curr_consumer_element_ptr[0]- \
-                    (int) base_consumer_element_ptr;
-
-                //get the timestamp for the record header
-                tick=sl_sleeptimer_get_tick_count64();
-                mystatus = sl_sleeptimer_tick64_to_ms(tick,\
-                                                      &mod_som_sbe41_ptr->consumer_ptr->timestamp);
-
-                //MHA: Now augment timestamp by poweron_offset_ms
-                mod_som_calendar_settings=mod_som_calendar_get_settings_f(); //get the calendar settings pointer
-                mod_som_sbe41_ptr->timestamp += mod_som_calendar_settings.poweron_offset_ms;
-
-
-
-                //create header
-                mod_som_sbe41_header_f(mod_som_sbe41_ptr->consumer_ptr);
-                //add header to the beginning of the stream block
-                memcpy(mod_som_sbe41_ptr->consumer_ptr->record_data_ptr, \
-                       mod_som_sbe41_ptr->consumer_ptr->header,
-                       mod_som_sbe41_ptr->consumer_ptr->length_header);
-
-
-                mod_som_sbe41_ptr->consumer_ptr->chksum=0;
-                for(int i=0;i<mod_som_sbe41_ptr->consumer_ptr->payload_length;i++)
-                  {
-                    mod_som_sbe41_ptr->consumer_ptr->chksum ^=\
-                        base_consumer_element_ptr[i];
-                  }
-
-
-                // the curr_consumer_element_ptr should be at the right place to
-                // write the checksum already
-                //write checksum at the end of the steam block (record).
-                *(curr_consumer_element_ptr++) = '*';
-                *((uint16_t*)curr_consumer_element_ptr) = \
-                    mod_som_int8_2hex_f(mod_som_sbe41_ptr->consumer_ptr->chksum);
-                curr_consumer_element_ptr += 2;
-                *(curr_consumer_element_ptr++) = '\r';
-                *(curr_consumer_element_ptr++) = '\n';
-
-
-                //ALB get the length of the stream block
-                mod_som_sbe41_ptr->consumer_ptr->record_length= \
-                    (int) &curr_consumer_element_ptr[0]- \
-                    (int) &mod_som_sbe41_ptr->consumer_ptr->record_data_ptr[0];
-
-
-                if (mod_som_sbe41_ptr->settings_ptr->data_format==3){
-                    // CTD OBP land
-                }
-
-                // ALB Do we want to send a fix length block or send a variable length block
-                //
-                mod_som_sbe41_ptr->consumer_ptr->consumed_flag=false;
-                switch(mod_som_sbe41_ptr->consumer_mode){
-                  case 0:
-                    mod_som_io_stream_data_f(
-                        mod_som_sbe41_ptr->consumer_ptr->record_data_ptr,
-                        mod_som_sbe41_ptr->consumer_ptr->record_length,
-                        &mod_som_sbe41_ptr->consumer_ptr->consumed_flag);
-                    break;
-                  case 1:
-                    mod_som_sdio_write_data_f(rawfile_ptr,
-                        mod_som_sbe41_ptr->consumer_ptr->record_data_ptr,
-                        mod_som_sbe41_ptr->consumer_ptr->record_length,
-                        &mod_som_sbe41_ptr->consumer_ptr->consumed_flag);
-                    break;
-                  case 2:
-                    printf("On board processing. Work in progress\r\n");
-                    mod_som_sbe41_ptr->consumer_ptr->consumed_flag=true;
-                    break;
-                  default:
-                    printf("wrong sbe.mode\r\n");
-                    break;
-                }
-                while(!mod_som_sbe41_ptr->consumer_ptr->consumed_flag){
-                    //2023 06 08 added watchdog feed and a release from this task
-                    // this is to prevent the system to hang on to the processor
-                    // when there isn't nothing going on
-                    OSTimeDly( MOD_SOM_SBE41_CONSUMER_DELAY,             //   consumer delay is #define at the beginning OS Ticks
-                               OS_OPT_TIME_DLY,          //   from now.
-                               &err);
-                    WDOG_Feed();
-                };
-
-                mod_som_sbe41_ptr->consumer_ptr->elmnts_skipped = 0;
-                // reset the stream ptr.
-                curr_consumer_element_ptr = base_consumer_element_ptr;
-
-                //ALB update reset_cnsmr_cnt so we can fill the stream block from 0 again
-                reset_cnsmr_cnt=mod_som_sbe41_ptr->consumer_ptr->cnsmr_cnt;
-                mod_som_sbe41_ptr->consumer_ptr->data_ready_flg=0;
-
-
-
-                if ((mod_som_sbe41_ptr->sample_count - mod_som_sbe41_ptr->consumer_ptr->cnsmr_cnt)<=0)  // not have available data
-                  {
-//                    printf("CNSMR2: Waiting for available data in sbe streamer ....\n\n");
-                  }
-            }//end if (mod_som_sbe41_ptr->collect_data_flag)
-        } // data_ready_flg
-
-        // Delay Start Task execution for
-        OSTimeDly( MOD_SOM_SBE41_CONSUMER_DELAY,             //   consumer delay is #define at the beginning OS Ticks
-                   OS_OPT_TIME_DLY,          //   from now.
-                   &err);
-        //   Check error code.
-        APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), ;);
-    } // end of while (DEF_ON)
-
-    PP_UNUSED_PARAM(p_arg);                                     // Prevent config warning.
-}
 
 //static  void  mod_som_sbe41_store_start_task_f (){
 //

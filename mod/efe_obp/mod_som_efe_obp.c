@@ -863,16 +863,18 @@ mod_som_status_t mod_som_efe_obp_construct_cpt_dissrate_ptr_f(){
 mod_som_status_t mod_som_efe_obp_stop_fill_segment_task_f(){
 
 
-  RTOS_ERR err;
-  OSTaskDel(&efe_obp_fill_segment_task_tcb,
-             &err);
+  if(mod_som_efe_obp_ptr->fill_segment_ptr->started_flg){
+      RTOS_ERR err;
+      OSTaskDel(&efe_obp_fill_segment_task_tcb,
+                &err);
 
-//  mod_som_efe_obp_ptr->started_flag=false;
+      //  mod_som_efe_obp_ptr->started_flag=false;
 
 
-  if(RTOS_ERR_CODE_GET(err) != RTOS_ERR_NONE)
-    return (mod_som_efe_obp_ptr->status = mod_som_efe_encode_status_f(MOD_SOM_EFE_OPB_STATUS_FAIL_TO_START_CONSUMER_TASK));
-
+      if(RTOS_ERR_CODE_GET(err) != RTOS_ERR_NONE)
+        return (mod_som_efe_obp_ptr->status = mod_som_efe_encode_status_f(MOD_SOM_EFE_OPB_STATUS_FAIL_TO_START_CONSUMER_TASK));
+      mod_som_efe_obp_ptr->fill_segment_ptr->started_flg=false;
+  }
   return mod_som_efe_encode_status_f(MOD_SOM_STATUS_OK);
 }
 
@@ -888,7 +890,7 @@ mod_som_status_t mod_som_efe_obp_stop_fill_segment_task_f(){
  ******************************************************************************/
 mod_som_status_t mod_som_efe_obp_stop_cpt_spectra_task_f(){
 
-
+if(mod_som_efe_obp_ptr->cpt_spectra_ptr->started_flg){
   RTOS_ERR err;
   OSTaskDel(&efe_obp_cpt_spectra_task_tcb,
              &err);
@@ -898,7 +900,8 @@ mod_som_status_t mod_som_efe_obp_stop_cpt_spectra_task_f(){
 
   if(RTOS_ERR_CODE_GET(err) != RTOS_ERR_NONE)
     return (mod_som_efe_obp_ptr->status = mod_som_efe_encode_status_f(MOD_SOM_EFE_OPB_STATUS_FAIL_TO_START_CONSUMER_TASK));
-
+  mod_som_efe_obp_ptr->cpt_spectra_ptr->started_flg=false;
+}
   return mod_som_efe_encode_status_f(MOD_SOM_STATUS_OK);
 }
 
@@ -913,17 +916,18 @@ mod_som_status_t mod_som_efe_obp_stop_cpt_spectra_task_f(){
  ******************************************************************************/
 mod_som_status_t mod_som_efe_obp_stop_cpt_dissrate_task_f(){
 
+  if(mod_som_efe_obp_ptr->cpt_dissrate_ptr->started_flg){
+      RTOS_ERR err;
+      OSTaskDel(&efe_obp_cpt_dissrate_task_tcb,
+                &err);
 
-  RTOS_ERR err;
-  OSTaskDel(&efe_obp_cpt_dissrate_task_tcb,
-             &err);
-
-//  mod_som_efe_obp_ptr->started_flag=false;
+      //  mod_som_efe_obp_ptr->started_flag=false;
 
 
-  if(RTOS_ERR_CODE_GET(err) != RTOS_ERR_NONE)
-    return (mod_som_efe_obp_ptr->status = mod_som_efe_encode_status_f(MOD_SOM_EFE_OPB_STATUS_FAIL_TO_START_CONSUMER_TASK));
-
+      if(RTOS_ERR_CODE_GET(err) != RTOS_ERR_NONE)
+        return (mod_som_efe_obp_ptr->status = mod_som_efe_encode_status_f(MOD_SOM_EFE_OPB_STATUS_FAIL_TO_START_CONSUMER_TASK));
+      mod_som_efe_obp_ptr->cpt_dissrate_ptr->started_flg      = false;
+  }
   return mod_som_efe_encode_status_f(MOD_SOM_STATUS_OK);
 }
 

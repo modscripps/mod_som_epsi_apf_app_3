@@ -37,7 +37,7 @@
 //------------------------------------------------------------------------------
 // DEFINES
 //------------------------------------------------------------------------------
-#define MOD_SOM_SDIO_STATUS_PREFIX 99U
+//#define MOD_SOM_SDIO_STATUS_PREFIX 99U
 
 #define MOD_SOM_SDIO_STATUS_OK              0x0U
 #define MOD_SOM_SDIO_STATUS_FAIL_INIT_CMD   0x1U

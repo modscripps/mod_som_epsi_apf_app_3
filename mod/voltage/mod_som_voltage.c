@@ -133,10 +133,6 @@ mod_som_status_t mod_som_voltage_init_f(){
     ADC_InitScan_TypeDef initScan=ADC_INITSCAN_DEFAULT;
     ADC_InitSingle_TypeDef initSingle1=ADC_INITSINGLE_DEFAULT;
 
-//    init     = init;
-//    //ADC0 stuff
-//
-//    initScan  = initScan;
 
     // Modify init structs
     init.prescale   = ADC_PrescaleCalc(ADCFREQ, 0);
@@ -173,7 +169,6 @@ mod_som_status_t mod_som_voltage_init_f(){
     NVIC_EnableIRQ(ADC0_IRQn);
 
     //ADC1 stuff
-    //initSingle1 = initSingle1;
     // Modify init structs
 
     initSingle1.diff       = 0;            // single ended
@@ -185,8 +180,8 @@ mod_som_status_t mod_som_voltage_init_f(){
 
     // Select ADC inputs. See README for corresponding EXP header pin.
     // *Note that internal channels are unavailable in ADC scan mode
-//    ADC_ScanSingleEndedInputAdd(&(initSingle1), \
-//                                adcScanInputGroup0, \
+//    ADC_ScanSingleEndedInputAdd(&(initSingle1),
+//                                adcScanInputGroup0,
 //                                adcPosSelAPORT1XCH8);
 
 
@@ -457,7 +452,7 @@ mod_som_status_t mod_som_voltage_stop_adc1_scan_task_f(){
 mod_som_status_t mod_som_voltage_mode_f(CPU_INT16U argc,CPU_CHAR *argv[]){
 
 
-  RTOS_ERR  *p_err;
+  RTOS_ERR  *p_err = NULL;
 
   if (argc==1){
       printf("volt.mode %u\r\n",mod_som_voltage_ptr->mode);
@@ -694,7 +689,7 @@ void ADC0_IRQHandler(void)
 void ADC1_IRQHandler(void)
 {
   uint32_t data;
-  char str_adc1[100];
+//  char str_adc1[100];
 
     ADC1->IFC=1;
 // Get ADC results
@@ -709,7 +704,7 @@ void ADC1_IRQHandler(void)
 
 
 //ALB keep this for debbug. It prints the voltage on the supercap.
-//  sprintf((char*) str_adc1,  \
+//  sprintf((char*) str_adc1,
 //        "SD voltage $%4lumV\r\n",mod_som_voltage_ptr->voltage_adc1);
 //  printf(str_adc1);
 

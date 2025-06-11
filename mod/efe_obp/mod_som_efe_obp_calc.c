@@ -97,7 +97,7 @@ static void power_spectrum_f(float *data, float *spectrum, uint32_t size, float 
 //static void average_spectra_f(uint16_t size, uint8_t num_blocks, float *spectra_in, float *spectrum_out);
 static void hamming_window_f(uint16_t size, float sampling_frequency, float *hamming_window, float* normalization);
 static float sinc_f(float x);
-static void interp1_f(float *x, float *v, uint32_t size, float *xq, float *vq, uint32_t sizeq);
+//static void interp1_f(float *x, float *v, uint32_t size, float *xq, float *vq, uint32_t sizeq);
 static void smooth_movingmean_f(float *data, float *smoothed, uint16_t size, uint16_t window);
 static void detrend_f(float *data, uint32_t size, float *detrended_data);
 static void find_vector_indices_f(float *vector, uint32_t size, float *limits, uint16_t *indices);
@@ -964,7 +964,7 @@ void power_spectrum_f(float *data, float *spectrum, uint32_t size, float samplin
   // this being said, sometimes weird errors pop up when this isn't initialized here, so...
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   arm_rfft_fast_instance_f32 rfft_instance_1; //a fast RFFT instance for the real FFT
-  arm_status status_1 = arm_rfft_fast_init_f32(&rfft_instance_1, size);
+//  arm_status status_1 = arm_rfft_fast_init_f32(&rfft_instance_1, size);
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //  float epsi_spectrum_buffer[size/2]; // for reasons that I don't understand, this array must be defined down here in order to have a valid pointer
   // detrend the input data
@@ -1055,7 +1055,6 @@ float sinc_f(float x)
   return value;
 }
 
-void interp1_f(float *x, float *v, uint32_t size, float *xq, float *vq, uint32_t sizeq)
 /*******************************************************************************
  * @brief
  *   function to interpolate a given set of data onto another array of independent variable values
@@ -1075,6 +1074,8 @@ void interp1_f(float *x, float *v, uint32_t size, float *xq, float *vq, uint32_t
  *   -x and xq must BOTH be sorted in increasing order
  *   -all xq values must be within the limits of x values
  ******************************************************************************/
+/*
+ void interp1_f(float *x, float *v, uint32_t size, float *xq, float *vq, uint32_t sizeq)
 {
   // define variables
   float x1, x2, delta_x, v1, v2, delta_v, slope, diff;
@@ -1108,7 +1109,7 @@ void interp1_f(float *x, float *v, uint32_t size, float *xq, float *vq, uint32_t
     }
   }
 }
-
+//*/
 void smooth_movingmean_f(float *data, float *smoothed, uint16_t size, uint16_t window)
 /*******************************************************************************
  * @brief
@@ -1453,7 +1454,7 @@ float fom_batchelor_f(float *temp_spec, float epsilon, float chi, float kvis, fl
   static const float q = 3.7;
   float kb = pow((epsilon/kvis/pow(kappa, 2.0)), 1.0/4.0);
   float a, uppera, g_b;
-  float dk = vals->kvec[1] - vals->kvec[0];
+//  float dk = vals->kvec[1] - vals->kvec[0];
   float integral = 0;
   float average  =0;
 

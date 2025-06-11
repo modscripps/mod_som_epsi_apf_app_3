@@ -264,7 +264,7 @@ printf("epsi sleep\r\n");
  ******************************************************************************/
 mod_som_status_t mod_som_main_sleep_f()
 {
-  int delay =1000;
+//  int delay =1000;
 
   if (mod_som_sleep_flag==false){
       printf("Making all modules are stopped \r\n");

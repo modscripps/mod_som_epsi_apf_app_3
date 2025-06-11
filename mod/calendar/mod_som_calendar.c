@@ -219,7 +219,7 @@ sl_sleeptimer_timestamp_t mod_som_calendar_get_time_f(){
 	time = sl_sleeptimer_get_time();
 //	//get timestamp for 1970
 //      sl_sleeptimer_build_datetime(
-//                  &adate,\
+//                  &adate,
 //                   1970,0,1,0,0,0,0); //MHA: month starts with 0, day starts with 1, HMS all start with 0
 //  sl_sleeptimer_convert_date_to_time(&adate, &atime);
 //
@@ -242,7 +242,7 @@ sl_status_t  mod_som_calendar_set_time_f(sl_sleeptimer_timestamp_t time){
 
   //MHA month is defined as zero upwards, so add one to it so user enters dates in familiar format
 //  sl_status_t status=sl_sleeptimer_build_datetime(
-//      &mod_som_calendar_ptr->mod_som_calendar_settings_ptr->initial_date,\
+//      &mod_som_calendar_ptr->mod_som_calendar_settings_ptr->initial_date,
 //      year,month,month_day,hour,min,sec,tz_offset);
   // initialization of the start date
 //  status=sl_sleeptimer_set_datetime(
@@ -286,7 +286,7 @@ sl_status_t  mod_som_calendar_set_time_f(sl_sleeptimer_timestamp_t time){
 //
 //  //get timestamp for 1970
 //  //status=sl_sleeptimer_build_datetime(
-//  //            &adate_1970,\
+//  //            &adate_1970,
 //  //                                   1970,0,1,0,0,0,0); //MHA: month starts with 0, day starts with 1, HMS all start with 0
 //
 ////  status = sl_sleeptimer_convert_date_to_time(&adate, &atime);

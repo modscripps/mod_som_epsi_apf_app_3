@@ -281,7 +281,6 @@ CPU_INT16S mod_som_apf_cmd_daq_f(CPU_INT16U argc,
        mod_som_io_print_f("Failed from mod_som_io_print_f()\r\n");
        status |= MOD_SOM_APF_STATUS_ERR;
    }
-   status=mod_som_io_print_f("%s",apf_reply_str);
    reply_str_len = strlen(apf_reply_str);
    // sending the above string to the APF port - Mai - Nov 18, 2021
    bytes_sent = mod_som_apf_send_line_f(apf_leuart_ptr,apf_reply_str, reply_str_len);
