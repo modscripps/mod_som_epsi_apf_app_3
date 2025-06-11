@@ -125,7 +125,7 @@ mod_som_status_t mod_som_efe_obp_init_f(){
     //ALB TODO change return -1 to return the an appropriate error code.
     APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
     if(mod_som_efe_obp_ptr==DEF_NULL){
-      printf("EFE OBP not initialized\n");
+      printf("EFE OBP not initialized\n\r");
       return -1;
     }
 
@@ -138,7 +138,7 @@ mod_som_status_t mod_som_efe_obp_init_f(){
     // ALB WARNING: The setup pointer CAN NOT have pointers inside.
     status |= mod_som_efe_obp_allocate_settings_ptr_f();
     if (status!=MOD_SOM_STATUS_OK){
-      printf("EFE not initialized\n");
+      printf("EFE not initialized\n\r");
       return status;
     }
 
@@ -161,7 +161,7 @@ mod_som_status_t mod_som_efe_obp_init_f(){
         status |= mod_som_efe_obp_default_settings_f(
                                              mod_som_efe_obp_ptr->settings_ptr);
         if (status!=MOD_SOM_STATUS_OK){
-          printf("EFE OBP not initialized\n");
+          printf("EFE OBP not initialized\n\r");
           return status;
         }
       }
@@ -174,7 +174,7 @@ mod_som_status_t mod_som_efe_obp_init_f(){
       //ALB using the settings_ptr variable
       status |= mod_som_efe_obp_construct_config_ptr_f();
     if (status!=MOD_SOM_STATUS_OK){
-      printf("EFE OBP not initialized\n");
+      printf("EFE OBP not initialized\n\r");
       return status;
     }
 
@@ -182,7 +182,7 @@ mod_som_status_t mod_som_efe_obp_init_f(){
     //ALB using the settings_ptr variable
     status |= mod_som_efe_obp_construct_calibration_ptr_f();
   if (status!=MOD_SOM_STATUS_OK){
-    printf("EFE OBP not initialized\n");
+    printf("EFE OBP not initialized\n\r");
     return status;
   }
 
@@ -191,7 +191,7 @@ mod_som_status_t mod_som_efe_obp_init_f(){
     // ALB This pointer is also used to store the data on the SD card
       status |= mod_som_efe_obp_construct_consumer_ptr_f();
     if (status!=MOD_SOM_STATUS_OK){
-      printf("EFE OBP not initialized\n");
+      printf("EFE OBP not initialized\n\r");
       return status;
     }
 
@@ -206,7 +206,7 @@ mod_som_status_t mod_som_efe_obp_init_f(){
       status |= mod_som_efe_obp_construct_cpt_spectra_ptr_f();
       status |= mod_som_efe_obp_construct_cpt_dissrate_ptr_f();
     if (status!=MOD_SOM_STATUS_OK){
-      printf("EFE OBP not initialized\n");
+      printf("EFE OBP not initialized\n\r");
       return status;
     }
 
@@ -226,7 +226,7 @@ mod_som_status_t mod_som_efe_obp_init_f(){
 
     mod_som_efe_obp_ptr->initialized_flag            = true;
 
-    printf("EFE OBP initialized\n");
+    printf("EFE OBP initialized\n\r");
 
 
 
@@ -861,6 +861,8 @@ mod_som_status_t mod_som_efe_obp_construct_cpt_dissrate_ptr_f(){
  *   or otherwise
  ******************************************************************************/
 mod_som_status_t mod_som_efe_obp_stop_fill_segment_task_f(){
+  if(!mod_som_efe_obp_ptr->fill_segment_ptr->started_flg)
+    return mod_som_efe_encode_status_f(MOD_SOM_STATUS_OK);
 
 
   RTOS_ERR err;
@@ -872,7 +874,7 @@ mod_som_status_t mod_som_efe_obp_stop_fill_segment_task_f(){
 
   if(RTOS_ERR_CODE_GET(err) != RTOS_ERR_NONE)
     return (mod_som_efe_obp_ptr->status = mod_som_efe_encode_status_f(MOD_SOM_EFE_OPB_STATUS_FAIL_TO_START_CONSUMER_TASK));
-
+  mod_som_efe_obp_ptr->fill_segment_ptr->started_flg = false;
   return mod_som_efe_encode_status_f(MOD_SOM_STATUS_OK);
 }
 
@@ -887,7 +889,9 @@ mod_som_status_t mod_som_efe_obp_stop_fill_segment_task_f(){
  *   or otherwise
  ******************************************************************************/
 mod_som_status_t mod_som_efe_obp_stop_cpt_spectra_task_f(){
-
+  if(!mod_som_efe_obp_ptr->cpt_spectra_ptr->started_flg){
+      return mod_som_efe_encode_status_f(MOD_SOM_STATUS_OK);
+  }
 
   RTOS_ERR err;
   OSTaskDel(&efe_obp_cpt_spectra_task_tcb,
@@ -898,7 +902,7 @@ mod_som_status_t mod_som_efe_obp_stop_cpt_spectra_task_f(){
 
   if(RTOS_ERR_CODE_GET(err) != RTOS_ERR_NONE)
     return (mod_som_efe_obp_ptr->status = mod_som_efe_encode_status_f(MOD_SOM_EFE_OPB_STATUS_FAIL_TO_START_CONSUMER_TASK));
-
+  mod_som_efe_obp_ptr->cpt_spectra_ptr->started_flg =false;
   return mod_som_efe_encode_status_f(MOD_SOM_STATUS_OK);
 }
 
@@ -912,7 +916,9 @@ mod_som_status_t mod_som_efe_obp_stop_cpt_spectra_task_f(){
  *   or otherwise
  ******************************************************************************/
 mod_som_status_t mod_som_efe_obp_stop_cpt_dissrate_task_f(){
-
+  if(!mod_som_efe_obp_ptr->cpt_dissrate_ptr->started_flg){
+      return mod_som_efe_encode_status_f(MOD_SOM_STATUS_OK);
+  }
 
   RTOS_ERR err;
   OSTaskDel(&efe_obp_cpt_dissrate_task_tcb,
@@ -923,7 +929,7 @@ mod_som_status_t mod_som_efe_obp_stop_cpt_dissrate_task_f(){
 
   if(RTOS_ERR_CODE_GET(err) != RTOS_ERR_NONE)
     return (mod_som_efe_obp_ptr->status = mod_som_efe_encode_status_f(MOD_SOM_EFE_OPB_STATUS_FAIL_TO_START_CONSUMER_TASK));
-
+  mod_som_efe_obp_ptr->cpt_dissrate_ptr->started_flg = false;
   return mod_som_efe_encode_status_f(MOD_SOM_STATUS_OK);
 }
 

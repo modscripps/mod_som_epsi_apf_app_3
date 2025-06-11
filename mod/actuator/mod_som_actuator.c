@@ -60,7 +60,7 @@ mod_som_status_t mod_som_actuator_init_f(){
     //ALB TODO change return -1 to return the an appropriate error code.
     APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
     if(mod_som_actuator_ptr==DEF_NULL){
-//      printf("ACTUATOR not initialized\n");
+//      printf("ACTUATOR not initialized\n\r");
       return -1;
     }
 
@@ -72,7 +72,7 @@ mod_som_status_t mod_som_actuator_init_f(){
     // ALB WARNING: The setup pointer CAN NOT have pointers inside.
     status |= mod_som_actuator_allocate_settings_f();
     if (status!=MOD_SOM_STATUS_OK){
-      printf("ACTUATOR not initialized\n");
+      printf("ACTUATOR not initialized\n\r");
       return status;
     }
 
@@ -80,7 +80,7 @@ mod_som_status_t mod_som_actuator_init_f(){
     // ALB allocate memory for config ptr.
     status |= mod_som_actuator_allocate_config_f();
     if (status!=MOD_SOM_STATUS_OK){
-        printf("ACTUATOR not initialized\n");
+        printf("ACTUATOR not initialized\n\r");
         return status;
     }
 

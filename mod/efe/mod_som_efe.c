@@ -2245,6 +2245,9 @@ mod_som_status_t mod_som_efe_sampling_f()
  ******************************************************************************/
 mod_som_status_t mod_som_efe_stop_sampling_f()
 {
+  if (!mod_som_efe_ptr->sampling_flag) {
+      return mod_som_efe_encode_status_f(MOD_SOM_STATUS_OK);
+  }
 
   mod_som_status_t status = MOD_SOM_STATUS_OK;
   RTOS_ERR  err;

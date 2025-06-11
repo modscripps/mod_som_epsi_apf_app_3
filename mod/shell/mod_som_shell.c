@@ -30,8 +30,8 @@ mod_som_shell_t mod_som_shell;
 //------------------------------------------------------------------------------
 // LOCAL VARIABLES
 //------------------------------------------------------------------------------
-static bool mod_som_shell_initialized_flag = false;
-static bool mod_som_shell_started_flag     = false;
+//static bool mod_som_shell_initialized_flag = false;
+//static bool mod_som_shell_started_flag     = false;
 static CPU_STK mod_som_shell_task_stack[MOD_SOM_SHELL_TASK_STK_SIZE];
 static OS_TCB mod_som_shell_task_tcb;
 //------------------------------------------------------------------------------
@@ -53,19 +53,22 @@ mod_som_status_t mod_som_shell_init_f(){
 #endif
     mod_som_init_shellcmd_f();
     //TODO see if we can get rid of this line easily
-    mod_som_shell_initialized_flag = true;
+//    mod_som_shell_initialized_flag = true;
     //ALB I am starting to add a shell struct.
     //ALB because I need to get access to it so I can easily stop the shell from anywhere
-    mod_som_shell.initialize_flag = true;
+    mod_som_shell.initialized_flag = true;
     mod_som_shell.running_flag    = 0;
     mod_som_shell.stop_flag       = 1;
     return MOD_SOM_STATUS_OK;
 }
 
 mod_som_status_t mod_som_shell_start_f(){
-    if(!mod_som_shell_initialized_flag)
+  if(mod_som_shell.running_flag)
+         return mod_som_shell_encode_status_f(MOD_SOM_SHELL_STATUS_ERR_ALREADY_STARTED);
+    if(!mod_som_shell.initialized_flag)
         return mod_som_shell_encode_status_f(MOD_SOM_SHELL_STATUS_ERR_NOT_INIT);
     RTOS_ERR err;
+    mod_som_shell.stop_flag = false;
 
     OSTaskCreate(&mod_som_shell_task_tcb, // Create the Start Task
                 "MOD SOM Shell Task",
@@ -81,9 +84,8 @@ mod_som_status_t mod_som_shell_start_f(){
                 (OS_OPT_TASK_STK_CHK | OS_OPT_TASK_STK_CLR),
                 &err);
     APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
-    mod_som_shell_started_flag    = true;
     mod_som_shell.running_flag    = 1;
-    mod_som_shell.stop_flag       = 0;
+
 
     if(RTOS_ERR_CODE_GET(err) != RTOS_ERR_NONE)
         return mod_som_shell_encode_status_f(MOD_SOM_SHELL_STATUS_ERR_FAIL_TO_RUN);
@@ -91,19 +93,35 @@ mod_som_status_t mod_som_shell_start_f(){
 }
 
 mod_som_status_t mod_som_shell_stop_f(){
-    if(!mod_som_shell_started_flag)
+    if(!mod_som_shell.running_flag)
         return mod_som_shell_encode_status_f(MOD_SOM_SHELL_STATUS_ERR_NOT_INIT);
+
+    mod_som_shell.stop_flag = true;
 
     RTOS_ERR err;
 
-    //ALB kill shell task
-    OSTaskDel(&mod_som_shell_task_tcb,
-              &err);
+//    while(!mod_som_shell.stopped_flag){
+//        WDOG_Feed();
+//        OSTimeDly(
+//                        (OS_TICK     )MOD_SOM_CFG_LOOP_TICK_DELAY,
+//                        (OS_OPT      )OS_OPT_TIME_DLY,
+//                        &err);
+//    }
+    mod_som_shell.running_flag = false;
+    if (mod_som_shell_task_tcb.TaskState != OS_TASK_STATE_DEL){
 
-    APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
+        //ALB kill shell task
+        OSTaskDel(&mod_som_shell_task_tcb,
+                  &err);
 
-    if(RTOS_ERR_CODE_GET(err) != RTOS_ERR_NONE)
-        return mod_som_shell_encode_status_f(MOD_SOM_SHELL_STATUS_ERR_FAIL_TO_RUN);
+        APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
+
+
+
+        if(RTOS_ERR_CODE_GET(err) != RTOS_ERR_NONE)
+          return mod_som_shell_encode_status_f(MOD_SOM_SHELL_STATUS_ERR_FAIL_TO_RUN);
+    }
+
     return MOD_SOM_STATUS_OK;
 }
 
@@ -179,29 +197,29 @@ mod_som_status_t mod_som_shell_execute_input_f(char* input,uint32_t input_len){
 
     switch (RTOS_ERR_CODE_GET(err)) {
     case RTOS_ERR_NULL_PTR:
-        shellPrint(mod_som_shell_output_f, "Error, NULL pointer passed.\n");
+        shellPrint(mod_som_shell_output_f, "Error, NULL pointer passed.\n\r");
         status=MOD_SOM_STATUS_NOT_OK;
         break;
     case RTOS_ERR_NOT_FOUND:
-        shellPrintf(mod_som_shell_output_f, "Error, command not found: %s\n", input);
+        shellPrintf(mod_som_shell_output_f, "Error, command not found: %s\n\r", input);
         status=MOD_SOM_STATUS_NOT_OK;
         break;
     case RTOS_ERR_NOT_SUPPORTED:
-        shellPrint(mod_som_shell_output_f, "Error, command not supported.\n");
+        shellPrint(mod_som_shell_output_f, "Error, command not supported.\n\r");
         status=MOD_SOM_STATUS_NOT_OK;
         break;
     case RTOS_ERR_INVALID_ARG:
-        shellPrint(mod_som_shell_output_f, "Error, invalid arguments\n");
+        shellPrint(mod_som_shell_output_f, "Error, invalid arguments\n\r");
         status=MOD_SOM_STATUS_NOT_OK;
         break;
     case RTOS_ERR_SHELL_CMD_EXEC:
-        shellPrint(mod_som_shell_output_f, "Error, command failed to execute.\n");
+        shellPrint(mod_som_shell_output_f, "Error, command failed to execute.\n\r");
         status=MOD_SOM_STATUS_NOT_OK;
         break;
     case RTOS_ERR_NONE: /* No errors. */
         break;
     default:
-        shellPrint(mod_som_shell_output_f, "Error, unknown error\n");
+        shellPrint(mod_som_shell_output_f, "Error, unknown error\n\r");
         status=MOD_SOM_STATUS_NOT_OK;
 
         break;
@@ -224,11 +242,11 @@ mod_som_status_t mod_som_shell_get_input_f(char *buf, uint32_t * buf_len){
     RTOS_ERR err;
 
     Mem_Set(buf, '\0', MOD_SOM_SHELL_INPUT_BUF_SIZE); // Clear previous input
-    for (i = 0; i < MOD_SOM_SHELL_INPUT_BUF_SIZE - 1; i++) {
+    for (i = 0; i < MOD_SOM_SHELL_INPUT_BUF_SIZE - 1 && !mod_som_shell.stop_flag; i++) {
         c = RETARGET_ReadChar();
 
         //ALB read the input str.
-        while (c < 0){ // Wait for valid input
+        while (c < 0 && !mod_som_shell.stop_flag){ // Wait for valid input
             //Release for waiting tasks
             OSTimeDly(
                     (OS_TICK     )MOD_SOM_CFG_LOOP_TICK_DELAY,
@@ -238,6 +256,10 @@ mod_som_status_t mod_som_shell_get_input_f(char *buf, uint32_t * buf_len){
             c = RETARGET_ReadChar();
         }
 
+        if(mod_som_shell.stop_flag){
+            *buf_len = 0;
+          return mod_som_shell_encode_status_f(MOD_SOM_STATUS_OK);
+        }
 
         if (c == ASCII_CHAR_DELETE || c == 0x08) { // User inputed backspace
             if (i) {
@@ -294,8 +316,20 @@ void mod_som_shell_task_f(void *p_arg){
     char     input_buf[MOD_SOM_SHELL_INPUT_BUF_SIZE];
     uint32_t input_buf_len;
 
+    //clearing out the serial port
+    RETARGET_SerialFlush();
+    int c = 0;
+    while(c>=0){
+        c = RETARGET_ReadChar();
+        OSTimeDly(
+            (OS_TICK     )MOD_SOM_CFG_LOOP_TICK_DELAY,
+            (OS_OPT      )OS_OPT_TIME_DLY,
+            &err);
+        APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
+    }
 
-    while (DEF_ON) {
+//    mod_som_shell.stopped_flag = false;
+    while (!mod_som_shell.stop_flag) {
         OSTimeDly(
                 (OS_TICK     )MOD_SOM_CFG_LOOP_TICK_DELAY,
                 (OS_OPT      )OS_OPT_TIME_DLY,
@@ -313,5 +347,6 @@ void mod_som_shell_task_f(void *p_arg){
 
         mod_som_shell_execute_input_f(input_buf,input_buf_len);
     }
+//    mod_som_shell.stopped_flag = true;
 }
 #endif

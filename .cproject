@@ -127,7 +127,7 @@
 						</toolChain>
 					</folderInfo>
 					<sourceEntries>
-						<entry excluding="bsp|FatFS/ccsbcs.c|mod/sbe49|.trash" flags="VALUE_WORKSPACE_PATH" kind="sourcePath" name=""/>
+						<entry excluding="mod/vec_nav|mod/altimeter|mod/actuator|bsp|FatFS/ccsbcs.c|mod/sbe49|.trash" flags="VALUE_WORKSPACE_PATH" kind="sourcePath" name=""/>
 					</sourceEntries>
 				</configuration>
 			</storageModule>
@@ -257,7 +257,7 @@
 						</toolChain>
 					</folderInfo>
 					<sourceEntries>
-						<entry excluding="FatFS/ccsbcs.c|mod/sbe49|bsp|.trash" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
+						<entry excluding="mod/vec_nav|mod/altimeter|mod/actuator|FatFS/ccsbcs.c|mod/sbe49|bsp|.trash" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
 					</sourceEntries>
 				</configuration>
 			</storageModule>

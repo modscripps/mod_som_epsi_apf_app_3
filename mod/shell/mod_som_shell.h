@@ -42,6 +42,12 @@
 #define MOD_SOM_SHELL_STATUS_ERR_NOT_INIT 02U
 #define MOD_SOM_SHELL_STATUS_ERR_FAIL_TO_RUN 03U
 
+/*******************************************************************************
+ * @define MOD_SOM_IO_STATUS_ERR_ALREADY_STARTED
+ *     not initialized
+ ******************************************************************************/
+#define MOD_SOM_SHELL_STATUS_ERR_ALREADY_STARTED 0x09U
+
 #define MOD_SOM_SHELL_INPUT_BUF_SIZE 128U
 
 /*******************************************************************************
@@ -63,9 +69,10 @@
 
 /******************************************************************************/
 typedef struct{
-   uint32_t initialize_flag;
-   uint32_t running_flag;
-   uint32_t stop_flag;
+   bool initialized_flag;
+   bool running_flag;
+   volatile bool stop_flag;
+//   volatile bool stopped_flag;
 }
 mod_som_shell_t, *mod_som_shell_ptr_t;
 

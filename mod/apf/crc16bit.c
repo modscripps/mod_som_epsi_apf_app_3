@@ -236,7 +236,7 @@ unsigned int Crc16Bit(const unsigned char *msg,unsigned int len)
          crc <<= 1;
 
          /* shift the next message bit into the right side of the register */
-         if (byte<len && mask&msg[byte]) {crc |= 0x0001;} mask>>=1;
+         if (byte<len && (mask & msg[byte])) {crc |= 0x0001;} mask>>=1;
 
          /* divide (modulo 2) the current polynomial by the prime polynomial */
          if (xor) crc = ((crc&0xffff) ^ kernel);

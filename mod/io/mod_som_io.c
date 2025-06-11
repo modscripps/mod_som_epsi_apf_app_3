@@ -67,7 +67,7 @@ static struct{
 //    MEM_DYN_POOL cir_buff_dyn_mem_pool_ptr;
 } mod_som_io_struct;
 
-//------------------------------------------------------------------------------mod_som_io_struct.initialized_flag
+//------------------------------------------------------------------------------
 // global variable declarations
 //------------------------------------------------------------------------------
 
@@ -242,6 +242,9 @@ mod_som_status_t mod_som_io_init_ldma_f()
  *     status would indicate error in initialization
  ******************************************************************************/
 mod_som_status_t mod_som_io_start_f(void){
+  if(mod_som_io_struct.started_flag){
+      return mod_som_io_encode_status_f(MOD_SOM_IO_STATUS_ERR_ALREADY_STARTED);
+  }
 
     if(!mod_som_io_struct.initialized_flag)
         return mod_som_io_encode_status_f(MOD_SOM_IO_STATUS_ERR_NOT_INITIALIZED);
@@ -280,6 +283,9 @@ mod_som_status_t mod_som_io_start_f(void){
  ******************************************************************************/
 
 mod_som_status_t  mod_som_io_stop_task_f(){
+  if(!mod_som_io_struct.started_flag){
+      return mod_som_io_encode_status_f(MOD_SOM_STATUS_OK);
+  }
 
   mod_som_status_t status=MOD_SOM_STATUS_OK;
   RTOS_ERR err;

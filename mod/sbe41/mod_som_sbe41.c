@@ -304,7 +304,7 @@ mod_som_status_t mod_som_sbe41_init_f(){
     mod_som_sbe41_ptr->sample_count= 0;
     mod_som_sbe41_ptr->consumer_mode=1;//write to the SD card the raw data.
 
-    printf("S41 initialized\n");
+    printf("S41 initialized\n\r");
 
 
     return (mod_som_sbe41_ptr->status = mod_som_sbe41_encode_status_f(MOD_SOM_STATUS_OK));
@@ -805,8 +805,9 @@ mod_som_status_t mod_som_sbe41_stop_collect_data_f(){
 
   if(!mod_som_sbe41_ptr->connected_flag){
         mod_som_sbe41_ptr->collect_data_flag = false;
-        mod_som_io_print_f("$%s: Device is not connected yet!\r\n",mod_som_sbe41_ptr->settings_ptr->data_header_text);
-        return (mod_som_sbe41_ptr->status = mod_som_sbe41_encode_status_f(MOD_SOM_SBE41_STATUS_NOT_CONNECTED));
+//        mod_som_io_print_f("$%s: Device is not connected yet!\r\n",mod_som_sbe41_ptr->settings_ptr->data_header_text);
+        return (mod_som_sbe41_ptr->status = mod_som_sbe41_encode_status_f(MOD_SOM_STATUS_OK));
+//        return (mod_som_sbe41_ptr->status = mod_som_sbe41_encode_status_f(MOD_SOM_SBE41_STATUS_NOT_CONNECTED));
     }
 
   USART_TypeDef           *usart_ptr;
