@@ -244,8 +244,6 @@ sl_sleeptimer_timestamp_t open_file_time;
 bool new_file_flag;
 MEM_DYN_POOL dyn_mem_pool;
 uint32_t max_size_of_complete_data_block;
-CPU_STK print_task_stack[MOD_SOM_SDIO_TASK_STK_SIZE];
-OS_TCB print_task_tcb;
 OS_Q msg_queue;
 
 }mod_som_sdio_t,*mod_som_sdio_ptr_t;

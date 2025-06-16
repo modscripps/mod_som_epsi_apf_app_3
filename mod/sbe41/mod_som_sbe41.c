@@ -283,7 +283,9 @@ mod_som_status_t mod_som_sbe41_init_f(){
 
     mod_som_sbe41_ptr->initialized_flag = false;
 
-
+    //2025 06 14 adding this for monitoring the task
+    mod_som_sbe41_ptr->sbe41_consumer_task_stk_ptr = sbe41_consumer_task_stk;
+    mod_som_sbe41_ptr->sbe41_consumer_task_tcb_ptr = &sbe41_consumer_task_tcb;
 
 
     //set up configuration
@@ -301,7 +303,12 @@ mod_som_status_t mod_som_sbe41_init_f(){
     mod_som_sbe41_ptr->status = MOD_SOM_STATUS_OK;
     mod_som_sbe41_ptr->connected_flag = false;
     mod_som_sbe41_ptr->initialized_flag = true;
+    CORE_DECLARE_IRQ_STATE;
+    CORE_ENTER_ATOMIC();
     mod_som_sbe41_ptr->sample_count= 0;
+    //ALB adjust producer_indx
+    mod_som_sbe41_ptr->rec_buff_ptr->producer_indx= 0;
+    CORE_EXIT_ATOMIC();
     mod_som_sbe41_ptr->consumer_mode=1;//write to the SD card the raw data.
 
     printf("S41 initialized\n\r");
@@ -778,8 +785,13 @@ mod_som_status_t mod_som_sbe41_start_collect_data_f(){
     usart_ptr      = (USART_TypeDef *)mod_som_sbe41_ptr->com_prf_ptr->handle_port;
     usart_ptr->CMD = USART_CMD_CLEARRX | USART_CMD_CLEARTX;
 
+    CORE_DECLARE_IRQ_STATE;
+    CORE_ENTER_ATOMIC();
     mod_som_sbe41_ptr->sample_count= 0;
+    //ALB adjust producer_indx
+    mod_som_sbe41_ptr->rec_buff_ptr->producer_indx= 0;
     mod_som_sbe41_ptr->collect_data_flag = true;
+    CORE_EXIT_ATOMIC();
 
     mod_som_sbe41_start_consumer_task_f();
 
@@ -802,10 +814,12 @@ mod_som_status_t mod_som_sbe41_start_collect_data_f(){
  ******************************************************************************/
 mod_som_status_t mod_som_sbe41_stop_collect_data_f(){
 
-
+  if(!mod_som_sbe41_ptr->collect_data_flag){
+      return (mod_som_sbe41_ptr->status = mod_som_sbe41_encode_status_f(MOD_SOM_STATUS_OK));
+  }
   if(!mod_som_sbe41_ptr->connected_flag){
         mod_som_sbe41_ptr->collect_data_flag = false;
-//        mod_som_io_print_f("$%s: Device is not connected yet!\r\n",mod_som_sbe41_ptr->settings_ptr->data_header_text);
+        mod_som_io_print_f("$%s: Device is not connected yet!\r\n",mod_som_sbe41_ptr->settings_ptr->data_header_text);
         return (mod_som_sbe41_ptr->status = mod_som_sbe41_encode_status_f(MOD_SOM_STATUS_OK));
 //        return (mod_som_sbe41_ptr->status = mod_som_sbe41_encode_status_f(MOD_SOM_SBE41_STATUS_NOT_CONNECTED));
     }
@@ -822,11 +836,14 @@ mod_som_status_t mod_som_sbe41_stop_collect_data_f(){
     USART_IntClear(usart_ptr,~0x0);
     usart_ptr->CMD = USART_CMD_CLEARRX | USART_CMD_CLEARTX;
 
+    CORE_DECLARE_IRQ_STATE;
+    CORE_ENTER_ATOMIC();
     //reset counters
     mod_som_sbe41_ptr->sample_count= 0;
     mod_som_sbe41_ptr->rec_buff_ptr->producer_indx= 0;
     //TODO add the consumer index to the consumer_ptr duhhh!!!!
 //    mod_som_sbe41_ptr->consumer_ptr->consumer_indx= 0;
+    CORE_EXIT_ATOMIC();
 
     mod_som_sbe41_ptr->collect_data_flag = false;
     mod_som_sbe41_ptr->consumer_ptr->data_ready_flg= false;
@@ -912,10 +929,14 @@ mod_som_status_t  mod_som_sbe41_start_consumer_task_f(){
 
 mod_som_status_t  mod_som_sbe41_stop_consumer_task_f(){
 
-  RTOS_ERR err;
 
-  OSTaskDel(&sbe41_consumer_task_tcb,
-            &err);
+
+  if(sbe41_consumer_task_tcb.TaskState != OS_TASK_STATE_DEL){
+      RTOS_ERR err;
+
+      OSTaskDel(&sbe41_consumer_task_tcb,
+                &err);
+  }
 
   return mod_som_sbe41_encode_status_f(MOD_SOM_STATUS_OK);
 }
@@ -948,10 +969,22 @@ mod_som_status_t  mod_som_sbe41_stop_consumer_task_f(){
  *   or otherwise
  ******************************************************************************/
 
-static  void  mod_som_sbe41_consumer_task_f(void  *p_arg){
+void  mod_som_sbe41_consumer_task_f(void  *p_arg){
     RTOS_ERR  err;
-
+    int error_cnt = 0;
+    CORE_DECLARE_IRQ_STATE;
+    CORE_ENTER_ATOMIC();
     mod_som_sbe41_ptr->sample_count=0;
+    //ALB adjust producer_indx
+    mod_som_sbe41_ptr->rec_buff_ptr->producer_indx= 0;
+    CORE_EXIT_ATOMIC();
+
+    //update the address in the ldma descriptor list
+    descriptor_read_sbe.xfer.dstAddr=(uint32_t) (
+        mod_som_sbe41_ptr->rec_buff_ptr->elements_map
+        [mod_som_sbe41_ptr->rec_buff_ptr->producer_indx]+
+        MOD_SOM_SBE41_HEXTIMESTAMP_LENGTH);
+
     mod_som_sbe41_ptr->consumer_ptr->cnsmr_cnt=0;
     mod_som_sbe41_ptr->consumer_ptr->consumed_flag=true;
     mod_som_sbe41_ptr->consumer_ptr->record_pressure[0]=0; //ALB I need to initialize these becasue I use record_pressure in daq_start
@@ -996,9 +1029,9 @@ static  void  mod_som_sbe41_consumer_task_f(void  *p_arg){
 //    mod_som_apf_status_t status;
 
     //time0= mod_som_calendar_get_time_f();
-    while (DEF_ON) {
+    while (mod_som_sbe41_ptr->collect_data_flag) {
 
-        if (mod_som_sbe41_ptr->collect_data_flag){
+//        if (mod_som_sbe41_ptr->collect_data_flag){
             elmnts_avail = mod_som_sbe41_ptr->sample_count - mod_som_sbe41_ptr->consumer_ptr->cnsmr_cnt;  //calculate number of elements available have been produced
             //ALB check if we still receive data
             time1= mod_som_calendar_get_time_f();
@@ -1027,24 +1060,6 @@ static  void  mod_som_sbe41_consumer_task_f(void  *p_arg){
                     mod_som_io_print_f("Time out missing SBE41 sample\r\n");
                     //sprintf(apf_reply_str,"Time out missing SBE41 sample\r\n");
                 }
-//                reply_str_len = strlen(apf_reply_str);
-//                apf_leuart_ptr =(LEUART_TypeDef *) mod_som_apf_get_port_ptr_f();
-//
-//                sl_sleeptimer_delay_millisecond(10);
-//                bytes_sent = mod_som_apf_send_line_f(apf_leuart_ptr,apf_reply_str, reply_str_len);
-//                sl_sleeptimer_delay_millisecond(10);
-//                if (bytes_sent==0){
-//                    status= MOD_SOM_STATUS_NOT_OK;
-//                }
-
-                //                // Delay Start Task execution for
-                //                OSTimeDly( MOD_SOM_SBE41_CONSUMER_DELAY*10,             //   consumer delay is #define at the beginning OS Ticks
-                //                           OS_OPT_TIME_DLY,          //   from now.
-                //                           &err);
-                //                sl_sleeptimer_delay_millisecond(100);
-                //                mod_som_sbe41_stop_collect_data_f();
-                //2025 05 25 END stop collect data because data hasn't come in a a while
-                // */
                 break;
 
 
@@ -1065,25 +1080,25 @@ static  void  mod_som_sbe41_consumer_task_f(void  *p_arg){
                     mod_som_sbe41_ptr->consumer_ptr->elmnts_skipped = reset_cnsmr_cnt - mod_som_sbe41_ptr->consumer_ptr->cnsmr_cnt;
 
                     mod_som_io_print_f("\n sbe41 stream task: CB overflow: sample count = %lu,cnsmr_cnt = %lu,skipped %lu elements, ", \
-                           (uint32_t)mod_som_sbe41_ptr->sample_count, \
-                           (uint32_t) mod_som_sbe41_ptr->consumer_ptr->cnsmr_cnt, \
+                           (uint32_t)mod_som_sbe41_ptr->sample_count,
+                           (uint32_t) mod_som_sbe41_ptr->consumer_ptr->cnsmr_cnt,
                            mod_som_sbe41_ptr->consumer_ptr->elmnts_skipped);
 
                     mod_som_sbe41_ptr->consumer_ptr->cnsmr_cnt = reset_cnsmr_cnt;
 //                    printf("new cns_cnt: %lu\n",(uint32_t) cnsmr_cnt);
                 }
-                time0 = time1; //mod_som_calendar_get_time_f(); // don't want to reacquire time
+
                 mod_som_sbe41_ptr->sample_timeout=false;
 
                 // calculate the offset for current pointer
                 data_elmnts_offset     = mod_som_sbe41_ptr->consumer_ptr->cnsmr_cnt % mod_som_sbe41_ptr->config_ptr->elements_per_buffer;
 
                 // update the current element pointer using the element map
-                curr_data_ptr   =(uint8_t*)mod_som_sbe41_ptr->rec_buff_ptr->elements_map[data_elmnts_offset];
+                curr_data_ptr  = (uint8_t*)mod_som_sbe41_ptr->rec_buff_ptr->elements_map[data_elmnts_offset];
 
                 //ALB move the stream ptr to the next element
-                curr_consumer_element_ptr = base_consumer_element_ptr + \
-                    (mod_som_sbe41_ptr->consumer_ptr->cnsmr_cnt-reset_cnsmr_cnt)*\
+                curr_consumer_element_ptr = base_consumer_element_ptr +
+                    (mod_som_sbe41_ptr->consumer_ptr->cnsmr_cnt-reset_cnsmr_cnt)*
                     mod_som_sbe41_ptr->config_ptr->element_length;
 
                 //ALB copy the the local element in the streamer
@@ -1128,11 +1143,13 @@ static  void  mod_som_sbe41_consumer_task_f(void  *p_arg){
                     }
 //                    printf("fall rate %3.3f\r\n",mod_som_sbe41_ptr->consumer_ptr->dPdt);
                 }
-
+                time0 = time1; //mod_som_calendar_get_time_f(); // don't want to reacquire time
                 mod_som_sbe41_ptr->consumer_ptr->cnsmr_cnt++;  // increment cnsmr count
                 cnsmr_indx=mod_som_sbe41_ptr->consumer_ptr->cnsmr_cnt %
                            mod_som_sbe41_ptr->consumer_ptr->max_element_per_record;  // increment cnsmr count
                 elmnts_avail = mod_som_sbe41_ptr->sample_count - mod_som_sbe41_ptr->consumer_ptr->cnsmr_cnt; //elements available have been produced
+                mod_som_io_print_f("SBE41 elmnts_avail = %d, data_format = %lu\r\n",
+                                   elmnts_avail,mod_som_sbe41_ptr->settings_ptr->data_format);
                 //ALB this IF check if we have enough element in the consumer record
                 //ALB to be streamed/SD stored.
                 if(cnsmr_indx ==0){
@@ -1150,18 +1167,18 @@ static  void  mod_som_sbe41_consumer_task_f(void  *p_arg){
                 // to the stream buffer and send to the stream task
 
                 //ALB move the stream ptr to the position of the checksum
-                curr_consumer_element_ptr = base_consumer_element_ptr + \
-                    (mod_som_sbe41_ptr->consumer_ptr->cnsmr_cnt-reset_cnsmr_cnt)*\
+                curr_consumer_element_ptr = base_consumer_element_ptr +
+                    (mod_som_sbe41_ptr->consumer_ptr->cnsmr_cnt-reset_cnsmr_cnt)*
                     mod_som_sbe41_ptr->config_ptr->element_length;
 
                 //ALB get the length of the stream block
-                mod_som_sbe41_ptr->consumer_ptr->payload_length= \
-                    (int) &curr_consumer_element_ptr[0]- \
+                mod_som_sbe41_ptr->consumer_ptr->payload_length=
+                    (int) &curr_consumer_element_ptr[0]-
                     (int) base_consumer_element_ptr;
 
                 //get the timestamp for the record header
                 tick=sl_sleeptimer_get_tick_count64();
-                mystatus = sl_sleeptimer_tick64_to_ms(tick,\
+                mystatus = sl_sleeptimer_tick64_to_ms(tick,
                                                       &mod_som_sbe41_ptr->consumer_ptr->timestamp);
 
                 //MHA: Now augment timestamp by poweron_offset_ms
@@ -1173,7 +1190,7 @@ static  void  mod_som_sbe41_consumer_task_f(void  *p_arg){
                 //create header
                 mod_som_sbe41_header_f(mod_som_sbe41_ptr->consumer_ptr);
                 //add header to the beginning of the stream block
-                memcpy(mod_som_sbe41_ptr->consumer_ptr->record_data_ptr, \
+                memcpy(mod_som_sbe41_ptr->consumer_ptr->record_data_ptr,
                        mod_som_sbe41_ptr->consumer_ptr->header,
                        mod_som_sbe41_ptr->consumer_ptr->length_header);
 
@@ -1181,7 +1198,7 @@ static  void  mod_som_sbe41_consumer_task_f(void  *p_arg){
                 mod_som_sbe41_ptr->consumer_ptr->chksum=0;
                 for(int i=0;i<mod_som_sbe41_ptr->consumer_ptr->payload_length;i++)
                   {
-                    mod_som_sbe41_ptr->consumer_ptr->chksum ^=\
+                    mod_som_sbe41_ptr->consumer_ptr->chksum ^=
                         base_consumer_element_ptr[i];
                   }
 
@@ -1218,10 +1235,12 @@ static  void  mod_som_sbe41_consumer_task_f(void  *p_arg){
                         &mod_som_sbe41_ptr->consumer_ptr->consumed_flag);
                     break;
                   case 1:
-                    mod_som_sdio_write_data_f(rawfile_ptr,
-                        mod_som_sbe41_ptr->consumer_ptr->record_data_ptr,
-                        mod_som_sbe41_ptr->consumer_ptr->record_length,
-                        &mod_som_sbe41_ptr->consumer_ptr->consumed_flag);
+//                    if(rawfile_ptr->initialized_flag && rawfile_ptr->is_open_flag){
+                        mod_som_sdio_write_data_f(rawfile_ptr,
+                                                  mod_som_sbe41_ptr->consumer_ptr->record_data_ptr,
+                                                  mod_som_sbe41_ptr->consumer_ptr->record_length,
+                                                  &mod_som_sbe41_ptr->consumer_ptr->consumed_flag);
+//                    }
                     break;
                   case 2:
                     printf("On board processing. Work in progress\r\n");
@@ -1238,6 +1257,16 @@ static  void  mod_som_sbe41_consumer_task_f(void  *p_arg){
                     OSTimeDly( MOD_SOM_SBE41_CONSUMER_DELAY,             //   consumer delay is #define at the beginning OS Ticks
                                OS_OPT_TIME_DLY,          //   from now.
                                &err);
+                    if(RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE){
+                        error_cnt = 0;
+                    }
+                    else{
+                        error_cnt++;
+                    }
+                    if(error_cnt>MOD_SOM_MAX_ERROR_CNT){
+                        mod_som_io_print_f("%s error accumulation maxed\r\n",__func__);
+                        return;
+                    }
                     WDOG_Feed();
                 };
 
@@ -1256,14 +1285,24 @@ static  void  mod_som_sbe41_consumer_task_f(void  *p_arg){
 //                    printf("CNSMR2: Waiting for available data in sbe streamer ....\n\n");
                   }
             }//end if (mod_som_sbe41_ptr->collect_data_flag)
-        } // data_ready_flg
+//        } // collect_data_flag
 
         // Delay Start Task execution for
         OSTimeDly( MOD_SOM_SBE41_CONSUMER_DELAY,             //   consumer delay is #define at the beginning OS Ticks
                    OS_OPT_TIME_DLY,          //   from now.
                    &err);
+        if(RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE){
+            error_cnt = 0;
+        }
+        else{
+            error_cnt++;
+        }
+        if(error_cnt>MOD_SOM_MAX_ERROR_CNT){
+            mod_som_io_print_f("%s error accumulation maxed\r\n",__func__);
+            return;
+        }
         //   Check error code.
-        APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), ;);
+//        APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), ;);
     } // end of while (DEF_ON)
 
     PP_UNUSED_PARAM(p_arg);                                     // Prevent config warning.
@@ -1317,7 +1356,7 @@ mod_som_sbe41_sample_t mod_som_sbe41_parse_sample_f(uint8_t * element)
   char last_sbe42sample[mod_som_sbe41_ptr->config_ptr->sample_data_length+1];
   memcpy(last_sbe42sample,&element[MOD_SOM_SBE41_HEXTIMESTAMP_LENGTH],mod_som_sbe41_ptr->config_ptr->sample_data_length);
   last_sbe42sample[mod_som_sbe41_ptr->config_ptr->sample_data_length] = '\0';
-  mod_som_io_print_f("SBE41:%s\r\nINTRP:%8.2f,%8.4f,%8.4f\r\n",last_sbe42sample,sbe_sample.pressure,sbe_sample.temperature,sbe_sample.salinity);
+  mod_som_io_print_f("SBE41:%s\rINTRP:%8.2f,%8.4f,%8.4f\r\n",last_sbe42sample,sbe_sample.pressure,sbe_sample.temperature,sbe_sample.salinity);
   //  sprintf(apf_reply_str, "SBE41:%s",last_sbe42sample);
   //  reply_str_len = strlen(apf_reply_str);
   //  apf_leuart_ptr =(LEUART_TypeDef *) mod_som_apf_get_port_ptr_f();
@@ -1563,7 +1602,7 @@ void mod_som_sbe41_irq_rx_handler_f(){
   usart_ptr  = (USART_TypeDef *)mod_som_sbe41_ptr->com_prf_ptr->handle_port;
   interrupt_sig = usart_ptr->IF;
   USART_IntClear(usart_ptr,interrupt_sig);
-
+  CORE_DECLARE_IRQ_STATE;
   // enter this IF only at the  beginning to catch SIGFRAME
   if(interrupt_sig & USART_IF_RXDATAV){
       //ALB I am not storing data yet
@@ -1574,8 +1613,12 @@ void mod_som_sbe41_irq_rx_handler_f(){
           //ALB ensure we are at the beginng of a sbe sample when we sbe.start
           //ALB if collect_data_flag is false I clear LEUART RX in the following IF.
           if(!mod_som_sbe41_ptr->collect_data_flag){
+           CORE_ENTER_ATOMIC();
               mod_som_sbe41_ptr->sample_count=0;
+              //ALB adjust producer_indx
+              mod_som_sbe41_ptr->rec_buff_ptr->producer_indx= 0;
               mod_som_sbe41_ptr->consumer_ptr->cnsmr_cnt=0;
+              CORE_EXIT_ATOMIC();
           }
           //Clear SIGFRAME to start the transfer(data storing) with the begining of a SBE sample
           // i.e. not a \n.
@@ -1583,6 +1626,18 @@ void mod_som_sbe41_irq_rx_handler_f(){
           usart_ptr->CMD = USART_CMD_CLEARRX | USART_CMD_CLEARTX;
           // Disabling the LEUART IRQ to "run" on the LDMA interrupt.
           USART_IntDisable(usart_ptr, USART_IF_RXDATAV);
+
+          //ALB adjust producer_indx
+          mod_som_sbe41_ptr->rec_buff_ptr->producer_indx= \
+              mod_som_sbe41_ptr->sample_count % \
+              MOD_SOM_SBE41_DATA_SAMPLES_PER_BUFFER;
+          CORE_ENTER_ATOMIC();
+          //update the address in the ldma descriptor list
+          descriptor_read_sbe.xfer.dstAddr=(uint32_t) (
+              mod_som_sbe41_ptr->rec_buff_ptr->elements_map
+              [mod_som_sbe41_ptr->rec_buff_ptr->producer_indx]+
+              MOD_SOM_SBE41_HEXTIMESTAMP_LENGTH);
+          CORE_EXIT_ATOMIC();
           LDMA_StartTransfer( mod_som_sbe41_ptr->ldma.ch ,\
                               (void*)&sbe_ldma_signal, \
                               (void*)&descriptor_read_sbe);
@@ -1609,61 +1664,69 @@ void mod_som_sbe41_ldma_irq_handler_f(){
 
   USART_TypeDef  *usart_ptr;
   uint64_t        tick;
-  uint64_t *      local_elements_map;
+  uint8_t *      local_elements_map;
 
   char     hextimestamp[MOD_SOM_SBE41_HEXTIMESTAMP_LENGTH+2];
   uint32_t t_hex[2];
 
 
   usart_ptr  = (USART_TypeDef *)mod_som_sbe41_ptr->com_prf_ptr->handle_port;
-
+  CORE_DECLARE_IRQ_STATE;
   //ALB normal case
-  if((*(uint8_t*)(mod_som_sbe41_ptr->rec_buff_ptr->elements_map \
-      [mod_som_sbe41_ptr->rec_buff_ptr->producer_indx]+ \
-                         MOD_SOM_SBE41_HEXTIMESTAMP_LENGTH+\
-     mod_som_sbe41_ptr->config_ptr->sample_data_length-1)==10) && \
-         (mod_som_sbe41_ptr->collect_data_flag))
+  if((*(uint8_t*)(mod_som_sbe41_ptr->rec_buff_ptr->elements_map
+      [mod_som_sbe41_ptr->rec_buff_ptr->producer_indx]+
+                         MOD_SOM_SBE41_HEXTIMESTAMP_LENGTH+
+     mod_som_sbe41_ptr->config_ptr->sample_data_length-1)==10))
 
     {
-      tick=sl_sleeptimer_get_tick_count64();
-      mystatus = sl_sleeptimer_tick64_to_ms(tick,\
-                                            &mod_som_sbe41_ptr->timestamp);
+      if( (mod_som_sbe41_ptr->collect_data_flag)){
+        tick=sl_sleeptimer_get_tick_count64();
+        mystatus = sl_sleeptimer_tick64_to_ms(tick,\
+                                              &mod_som_sbe41_ptr->timestamp);
 
-      //MHA: Now augment timestamp by poweron_offset_ms
-      mod_som_calendar_settings=mod_som_calendar_get_settings_f(); //get the calendar settings pointer
-      mod_som_sbe41_ptr->timestamp += mod_som_calendar_settings.poweron_offset_ms;
-
-
-      if(mystatus != SL_STATUS_OK)
-        {
-          //ALB TODO handle get timestamps errors
-        }
-      //need to cast local_elements_map as uint64_t.
-      local_elements_map=(uint64_t*)mod_som_sbe41_ptr->rec_buff_ptr->elements_map \
-          [mod_som_sbe41_ptr->rec_buff_ptr->producer_indx];
-
-      t_hex[0] = (uint32_t) (mod_som_sbe41_ptr->timestamp>>32);
-      t_hex[1] = (uint32_t) mod_som_sbe41_ptr->timestamp;
-
-      sprintf(hextimestamp,  \
-          "%08x%08x", \
-          (int) t_hex[0],\
-          (int) t_hex[1]);
-
-      memcpy(local_elements_map, \
-             hextimestamp,\
-             MOD_SOM_SBE41_HEXTIMESTAMP_LENGTH);
+        //MHA: Now augment timestamp by poweron_offset_ms
+        mod_som_calendar_settings=mod_som_calendar_get_settings_f(); //get the calendar settings pointer
+        mod_som_sbe41_ptr->timestamp += mod_som_calendar_settings.poweron_offset_ms;
 
 
-      //ALB increment sample count
-      mod_som_sbe41_ptr->sample_count++;
-      //ALB adjust producer_indx
-      mod_som_sbe41_ptr->rec_buff_ptr->producer_indx= \
-          mod_som_sbe41_ptr->sample_count % \
-          MOD_SOM_SBE41_DATA_SAMPLES_PER_BUFFER;
+        if(mystatus != SL_STATUS_OK)
+          {
+            //ALB TODO handle get timestamps errors
+          }
+        //need to cast local_elements_map as uint64_t.
+        local_elements_map=(uint8_t*)mod_som_sbe41_ptr->rec_buff_ptr->elements_map \
+            [mod_som_sbe41_ptr->rec_buff_ptr->producer_indx];
+
+        t_hex[0] = (uint32_t) (mod_som_sbe41_ptr->timestamp>>32);
+        t_hex[1] = (uint32_t) mod_som_sbe41_ptr->timestamp;
+
+        sprintf(hextimestamp,  \
+                "%08x%08x", \
+                (int) t_hex[0],\
+                (int) t_hex[1]);
+
+        memcpy(local_elements_map, \
+               hextimestamp,\
+               MOD_SOM_SBE41_HEXTIMESTAMP_LENGTH);
 
 
-      //update the adresse in the ldma descriptor list
+        //ALB increment sample count
+        mod_som_sbe41_ptr->sample_count++;
+        //ALB adjust producer_indx
+        mod_som_sbe41_ptr->rec_buff_ptr->producer_indx= \
+            mod_som_sbe41_ptr->sample_count % \
+            MOD_SOM_SBE41_DATA_SAMPLES_PER_BUFFER;
+
+      }else{
+          CORE_ENTER_ATOMIC();
+          mod_som_sbe41_ptr->sample_count=0;
+          //ALB adjust producer_indx
+          mod_som_sbe41_ptr->rec_buff_ptr->producer_indx= 0;
+          mod_som_sbe41_ptr->consumer_ptr->cnsmr_cnt=0;
+          CORE_EXIT_ATOMIC();
+      }
+
+      //update the address in the ldma descriptor list
       descriptor_read_sbe.xfer.dstAddr=(uint32_t) ( \
                                  mod_som_sbe41_ptr->rec_buff_ptr->elements_map \
                              [mod_som_sbe41_ptr->rec_buff_ptr->producer_indx]+ \
@@ -1673,6 +1736,7 @@ void mod_som_sbe41_ldma_irq_handler_f(){
       LDMA_StartTransfer( mod_som_sbe41_ptr->ldma.ch ,\
                           (void*)&sbe_ldma_signal, \
                           (void*)&descriptor_read_sbe);
+
 
     }else{
         //reset the LEUART IRQ and look for the next SBE sample.

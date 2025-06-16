@@ -132,6 +132,19 @@ mod_som_apf_status_t mod_som_apf_init_f(){
     //ALB end of mod_som_efe_init_f().
     mod_som_apf_ptr->initialize_flag = false;
 
+    //2025 06 14 adding this for monitoring the task
+    // producer task
+    mod_som_apf_ptr->mod_som_apf_producer_task_stk_ptr = mod_som_apf_producer_task_stk;
+    mod_som_apf_ptr->mod_som_apf_producer_task_tcb_ptr = &mod_som_apf_producer_task_tcb;
+
+    // consumer task
+    mod_som_apf_ptr->mod_som_apf_consumer_task_stk_ptr = mod_som_apf_consumer_task_stk;
+    mod_som_apf_ptr->mod_som_apf_consumer_task_tcb_ptr = &mod_som_apf_consumer_task_tcb;
+
+    // apf shell task
+    mod_som_apf_ptr->mod_som_apf_shell_task_stk_ptr = mod_som_apf_shell_task_stk;
+    mod_som_apf_ptr->mod_som_apf_shell_task_tcb_ptr = &mod_som_apf_shell_task_tcb;
+
     // ALB allocate memory for the settings_ptr.
     // ALB WARNING: The setup pointer CAN NOT have pointers inside.
     status |= mod_som_apf_allocate_settings_ptr_f();
@@ -227,6 +240,7 @@ mod_som_apf_status_t mod_som_apf_init_f(){
     mod_som_apf_ptr->upload_flag=0;
     mod_som_apf_ptr->profile_id=0;
     mod_som_apf_ptr->daq=false;
+    mod_som_apf_ptr->daq_requested=false;
     mod_som_apf_ptr->dacq_start_pressure=0;
     mod_som_apf_ptr->dacq_pressure=0;
     mod_som_apf_ptr->dacq_dz=0;
@@ -783,7 +797,7 @@ mod_som_apf_status_t mod_som_apf_start_producer_task_f(){
 //  mod_som_apf_ptr->producer_ptr->dacq_ptr     =
 //      &mod_som_apf_ptr->producer_ptr->acq_profile.data_acq[0];
 
-  mod_som_apf_ptr->producer_ptr->started_flg          = true;
+
 
   switch (mod_som_apf_ptr->settings_ptr->comm_telemetry_packet_format){
     case 0:
@@ -873,12 +887,15 @@ mod_som_apf_status_t mod_som_apf_stop_producer_task_f(){
       mod_som_apf_ptr->producer_ptr->stored_dissrates_cnt;
 
   mod_som_apf_ptr->producer_ptr->started_flg=false;
-  RTOS_ERR err;
-    OSTaskDel(&mod_som_apf_producer_task_tcb,
-               &err);
+  sl_sleeptimer_delay_millisecond(100);
+  if(mod_som_apf_producer_task_tcb.TaskState != OS_TASK_STATE_DEL){
+      RTOS_ERR err;
+      OSTaskDel(&mod_som_apf_producer_task_tcb,
+                &err);
 
-  if(RTOS_ERR_CODE_GET(err) != RTOS_ERR_NONE)
-    return (mod_som_apf_ptr->status = mod_som_apf_encode_status_f(MOD_SOM_APF_STATUS_FAIL_TO_STOP_PRODUCER_TASK));
+      if(RTOS_ERR_CODE_GET(err) != RTOS_ERR_NONE)
+        return (mod_som_apf_ptr->status = mod_som_apf_encode_status_f(MOD_SOM_APF_STATUS_FAIL_TO_STOP_PRODUCER_TASK));
+  }
 
   return mod_som_apf_encode_status_f(MOD_SOM_STATUS_OK);
 }
@@ -971,6 +988,7 @@ mod_som_apf_status_t mod_som_apf_stop_consumer_task_f(){
  ******************************************************************************/
 void mod_som_apf_producer_task_f(void  *p_arg){
   RTOS_ERR  err;
+  int error_cnt = 0;
 
   (void)p_arg; // Deliberately unused argument
 
@@ -1016,21 +1034,22 @@ void mod_som_apf_producer_task_f(void  *p_arg){
   mod_som_efe_obp_ptr_t mod_som_efe_obp_ptr=
                                           mod_som_efe_obp_get_runtime_ptr_f();
 
-
-  while (DEF_ON) {
-
-
+  mod_som_apf_ptr->producer_ptr->started_flg = true;
+  while (mod_som_apf_ptr->producer_ptr->started_flg) {
       WDOG_Feed();
       /************************************************************************/
       //ALB APF producer phase 1
       //ALB check if producer is started, and if the dacp_profile is NOT full
       //ALB 05/25/2025 Using the ctd time out to stop the daq
-      mod_som_sbe41_ptr_t mod_som_sbe41_ptr=mod_som_sbe41_get_runtime_ptr_f();
-      if (mod_som_sbe41_ptr->sample_timeout){
+      mod_som_sbe41_ptr_t mod_som_sbe41_ptr = mod_som_sbe41_get_runtime_ptr_f();
+      //2025 06 12 add another timeout condition for the SBE41
+      // we are assuming the data rate is 1Hz
+      if( mod_som_sbe41_ptr->sample_timeout ||
+          (mod_som_sbe41_ptr->sample_count - mod_som_sbe41_ptr->consumer_ptr->cnsmr_cnt)>MOD_SOM_SBE41_SAMPLE_TIMEOUT*2){
+          mod_som_apf_ptr->producer_ptr->started_flg = false;
           break;
       }
-      if (mod_som_apf_ptr->producer_ptr->started_flg &
-          !mod_som_apf_ptr->producer_ptr->dacq_full){
+      if (!mod_som_apf_ptr->producer_ptr->dacq_full){
 
           dissrate_avail = mod_som_efe_obp_ptr->sample_count -
               mod_som_apf_ptr->producer_ptr->dissrates_cnt;  //calculate number of elements available have been produced
@@ -1269,11 +1288,22 @@ void mod_som_apf_producer_task_f(void  *p_arg){
       OSTimeDly( MOD_SOM_APF_PRODUCER_DELAY,             //   consumer delay is #define at the beginning OS Ticks
                  OS_OPT_TIME_DLY,          //   from now.
                  &err);
-      //   Check error code.
-      APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), ;);
+      if(RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE){
+          error_cnt = 0;
+      }
+      else{
+          error_cnt++;
+      }
+      if(error_cnt>MOD_SOM_MAX_ERROR_CNT){
+          mod_som_io_print_f("%s error accumulation maxed\r\n",__func__);
+          return;
+      }
+//      //   Check error code.
+//      APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), ;);
 
   } // end of while (DEF_ON)
 
+  mod_som_apf_ptr->producer_ptr->started_flg = false;
   PP_UNUSED_PARAM(p_arg);                                     // Prevent config warning.
   //this function only reaches when the loop ends
   mod_som_apf_daq_stop_f();
@@ -1300,6 +1330,7 @@ void mod_som_apf_producer_task_f(void  *p_arg){
  ******************************************************************************/
 void mod_som_apf_consumer_task_f(void  *p_arg){
   RTOS_ERR  err;
+  int error_cnt = 0;
 
   (void)p_arg; // Deliberately unused argument
 
@@ -1524,8 +1555,18 @@ void mod_som_apf_consumer_task_f(void  *p_arg){
       OSTimeDly( MOD_SOM_APF_CONSUMER_DELAY,             //   consumer delay is #define at the beginning OS Ticks
                  OS_OPT_TIME_DLY,          //   from now.
                  &err);
+      if(RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE){
+          error_cnt = 0;
+      }
+      else{
+          error_cnt++;
+      }
+      if(error_cnt>MOD_SOM_MAX_ERROR_CNT){
+          mod_som_io_print_f("%s error accumulation maxed\r\n",__func__);
+          return;
+      }
       //   Check error code.
-      APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), ;);
+//      APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), ;);
   } // end of while (DEF_ON)
 
   PP_UNUSED_PARAM(p_arg);                                     // Prevent config warning.
@@ -1611,6 +1652,7 @@ void mod_som_apf_header_f(mod_som_apf_consumer_ptr_t consumer_ptr, uint8_t tag_i
 void mod_som_apf_shell_task_f(void  *p_arg){
   (void)p_arg; // Deliberately unused argument
   RTOS_ERR err;
+  int error_cnt = 0;
   char     input_buf[MOD_SOM_SHELL_INPUT_BUF_SIZE+1];
   char     output_buf[MOD_SOM_SHELL_INPUT_BUF_SIZE];
   char     apf_reply_str[MOD_SOM_SHELL_INPUT_BUF_SIZE];
@@ -1633,7 +1675,17 @@ void mod_som_apf_shell_task_f(void  *p_arg){
               (OS_TICK     )MOD_SOM_APF_SHELL_DELAY,
               (OS_OPT      )OS_OPT_TIME_DLY,
               &err);
-      APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
+      if(RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE){
+          error_cnt = 0;
+      }
+      else{
+          error_cnt++;
+      }
+      if(error_cnt>MOD_SOM_MAX_ERROR_CNT){
+          mod_som_io_print_f("%s error accumulation maxed\r\n",__func__);
+          return;
+      }
+//      APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
       // get the whole string from the port
       for (int i=0;i<MOD_SOM_SHELL_INPUT_BUF_SIZE;i++){
           input_buf[i]='\0';
@@ -1757,6 +1809,7 @@ mod_som_status_t mod_som_apf_shell_get_line_f(char *buf, uint32_t * buf_len)
 mod_som_apf_status_t mod_som_apf_shell_get_line_f(char *buf, uint32_t * bytes_read){
   mod_som_apf_status_t status=0;
   RTOS_ERR err;
+  int error_cnt = 0;
 
   static sl_sleeptimer_timestamp_t time0=0;
   sl_sleeptimer_timestamp_t        time1=0;
@@ -1793,13 +1846,24 @@ mod_som_apf_status_t mod_som_apf_shell_get_line_f(char *buf, uint32_t * bytes_re
 
         //ALB while status > 0  we do not haver a bytes
         time0= mod_som_calendar_get_time_f();
+        error_cnt = 0;
         while(status>0){
             WDOG_Feed();
             OSTimeDly(
                     (OS_TICK     )MOD_SOM_CFG_LOOP_TICK_DELAY,
                     (OS_OPT      )OS_OPT_TIME_DLY,
                     &err);
-            APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
+            if(RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE){
+                error_cnt = 0;
+            }
+            else{
+                error_cnt++;
+            }
+            if(error_cnt>MOD_SOM_MAX_ERROR_CNT){
+                mod_som_io_print_f("%s error accumulation maxed\r\n",__func__);
+                return -1;
+            }
+//            APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
             time1= mod_som_calendar_get_time_f();
             status = mod_som_apf_get_char_f(apf_leuart_ptr, &read_char); // call for getting char from LEUART
             if((time1-time0)>MOD_SOM_APF_SHELL_TIMEOUT){
@@ -2773,16 +2837,19 @@ mod_som_apf_status_t mod_som_apf_encode_status_f(uint8_t mod_som_apf_status){
 mod_som_apf_status_t mod_som_apf_daq_start_f(uint32_t profile_id){
   mod_som_apf_status_t status=0;
 //  uint32_t delay1s=1000;
-  uint32_t delay2s=2000;
+//  uint32_t delay2s=2000;
     uint32_t delay10ms=10;
   uint32_t get_ctd_count=0;
   CPU_CHAR filename[100];
   uint32_t file_status;
 
+  mod_som_io_print_f("Requesting daq_start\r\n");
   if(mod_som_apf_ptr->daq){
       status= MOD_SOM_APF_STATUS_DAQ_ALREADY_STARTED;
       mod_som_apf_daq_stop_f();
   }
+
+  mod_som_apf_ptr->daq_requested=true;
 
   status=MOD_SOM_APF_STATUS_OK;
 
@@ -2791,6 +2858,12 @@ mod_som_apf_status_t mod_som_apf_daq_start_f(uint32_t profile_id){
 
   mod_som_sbe41_ptr_t local_sbe41_runtime_ptr =
       mod_som_sbe41_get_runtime_ptr_f();
+
+  ////  //ALB enable SDIO hardware
+    mod_som_sdio_enable_hardware_f();
+
+//    sl_sleeptimer_delay_millisecond(delay1s);
+
 
   //ALB start collecting CTD.
   status = mod_som_sbe41_connect_f();
@@ -2801,10 +2874,10 @@ mod_som_apf_status_t mod_som_apf_daq_start_f(uint32_t profile_id){
       return MOD_SOM_APF_STATUS_NO_CTD_DATA;
   }
 
-  ////  //ALB enable SDIO hardware
-  mod_som_sdio_enable_hardware_f();
+//  ////  //ALB enable SDIO hardware
+//  mod_som_sdio_enable_hardware_f();
 
-  sl_sleeptimer_delay_millisecond(delay2s);
+  sl_sleeptimer_delay_millisecond(3000);
 
 
   //ALB I am getting a pressure sample
@@ -2990,6 +3063,7 @@ mod_som_apf_status_t mod_som_apf_daq_start_f(uint32_t profile_id){
 
       //SAN 2023 02 20 added this to make sure daq is enabled
       mod_som_apf_ptr->daq=true;
+      mod_som_apf_ptr->daq_requested = false;
 //  }
 
 	return status;
@@ -3023,6 +3097,8 @@ mod_som_apf_status_t mod_som_apf_daq_stop_f(){
       mod_som_apf_ptr->producer_ptr->mod_som_apf_meta_data.sample_cnt=
           mod_som_apf_ptr->producer_ptr->stored_dissrates_cnt;
 
+      mod_som_apf_ptr->daq = false;
+
   // from the spec, it
 	// stop ADC master clock timer
   status|= mod_som_efe_stop_sampling_f();
@@ -3032,7 +3108,7 @@ mod_som_apf_status_t mod_som_apf_daq_stop_f(){
   status|= mod_som_sbe41_disconnect_f();
 
 	// stop turbulence processing task
-  status = mod_som_efe_obp_stop_fill_segment_task_f();
+  status|= mod_som_efe_obp_stop_fill_segment_task_f();
   status|= mod_som_efe_obp_stop_cpt_spectra_task_f();
   status|= mod_som_efe_obp_stop_cpt_dissrate_task_f();
   status|= mod_som_efe_obp_stop_consumer_task_f();
@@ -3097,7 +3173,6 @@ mod_som_apf_status_t mod_som_apf_daq_stop_f(){
   mod_som_sdio_stop_f();
   mod_som_sdio_disable_hardware_f();
 
-  mod_som_apf_ptr->daq = false;
   //2025 05 26 move this here to that everything else get executed
   //ALB stop APF producer task
   status |= mod_som_apf_stop_producer_task_f();

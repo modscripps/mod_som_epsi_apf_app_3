@@ -109,7 +109,7 @@ typedef struct{
  ******************************************************************************/
 typedef struct{
   uint64_t  timestamp;
-  uint64_t  cnsmr_cnt;
+  int32_t  cnsmr_cnt;
   uint64_t  record_timestamp[MOD_SOM_SBE41_DATA_DEFAULT_SAMPLES_PER_RECORD];
 
   uint32_t  record_length;           //ALB length of the streaming data buffer
@@ -297,7 +297,7 @@ typedef struct{
     volatile bool sample_timeout;
     uint8_t  consumer_mode;  //0:streaming, 1:SD_store, 2: on_board processing
     uint64_t timestamp;
-    uint64_t sample_count;
+    int32_t sample_count;
 
     mod_som_sbe41_config_ptr_t        config_ptr;
     mod_som_sbe41_settings_ptr_t      settings_ptr;
@@ -311,6 +311,9 @@ typedef struct{
     volatile bool collect_data_flag;
 //    volatile uint32_t newline_flag;
 //    volatile uint32_t carriage_return_flag;
+    //2025 06 14 adding this for monitoring the task
+    CPU_STK * sbe41_consumer_task_stk_ptr;
+    OS_TCB  * sbe41_consumer_task_tcb_ptr;
 
 }mod_som_sbe41_t,*mod_som_sbe41_ptr_t;
 
@@ -371,7 +374,7 @@ void mod_som_sbe41_store_f();
 mod_som_status_t mod_som_sbe41_stop_collect_data_f();
 void mod_som_sbe41_id_f(CPU_INT16U argc,CPU_CHAR *argv[]);
 
-static  void  mod_som_sbe41_consumer_task_f(void  *p_arg);
+void  mod_som_sbe41_consumer_task_f(void  *p_arg);
 mod_som_status_t mod_som_sbe41_stop_consumer_task_f(void);
 mod_som_status_t mod_som_sbe41_start_consumer_task_f(void);
 

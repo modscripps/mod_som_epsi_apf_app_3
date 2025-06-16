@@ -354,6 +354,22 @@ typedef struct{
     uint32_t sampling_flag;
     uint8_t data_ready_flag;
     mod_som_status_t status;
+    //2025 06 14 adding this for monitoring the task
+    CPU_STK* efe_obp_fill_segment_task_stk_ptr;
+    OS_TCB*  efe_obp_fill_segment_task_tcb_ptr;
+
+    // compute spectra
+    CPU_STK* efe_obp_cpt_spectra_task_stk_ptr;
+    OS_TCB*  efe_obp_cpt_spectra_task_tcb_ptr;
+
+    // compute dissrate
+    CPU_STK* efe_obp_cpt_dissrate_task_stk_ptr;
+    OS_TCB*  efe_obp_cpt_dissrate_task_tcb_ptr;
+
+
+    // Data consumer
+    CPU_STK* efe_obp_consumer_task_stk_ptr;
+    OS_TCB*  efe_obp_consumer_task_tcb_ptr;
 
 }mod_som_efe_obp_t,*mod_som_efe_obp_ptr_t;
 
@@ -362,6 +378,12 @@ typedef struct{
 //------------------------------------------------------------------------------
 // FUNCTIONS
 //------------------------------------------------------------------------------
+
+void mod_som_efe_obp_fill_segment_task_f(void  *p_arg);
+void mod_som_efe_obp_cpt_spectra_task_f(void  *p_arg);
+void mod_som_efe_obp_cpt_dissrate_task_f(void  *p_arg);
+void mod_som_efe_obp_consumer_task_f(void  *p_arg);
+
 
 /*******************************************************************************
  * @brief

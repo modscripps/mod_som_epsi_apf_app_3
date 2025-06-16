@@ -305,6 +305,9 @@ typedef struct{
     mod_som_efe_ldma_handle_t ldma;
     uint8_t sigramp_flag;
     uint32_t voltage;
+    //2025 06 14 adding this for monitoring the task
+    CPU_STK* efe_consumer_task_stk_ptr;
+    OS_TCB*  efe_consumer_task_tcb_ptr;
 
 }mod_som_efe_t,*mod_som_efe_ptr_t;
 
@@ -609,7 +612,7 @@ mod_som_status_t mod_som_efe_stop_sampling_f();
 mod_som_status_t mod_som_efe_sigramp_f();
 
 
-static  void  mod_som_efe_consumer_task_f (void  *p_arg);
+void  mod_som_efe_consumer_task_f (void  *p_arg);
 
 mod_som_status_t mod_som_efe_start_consumer_task_f (void);
 mod_som_status_t mod_som_efe_stop_consumer_task_f(void);

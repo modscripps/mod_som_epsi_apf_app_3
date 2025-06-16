@@ -32,6 +32,8 @@
 
 #define MOD_SOM_SDIO_WRITE_PADDING 1		// number of elements for padding for consumer 2
 
+CPU_STK mod_som_sdio_print_task_stk[MOD_SOM_SDIO_TASK_STK_SIZE];
+OS_TCB mod_som_sdio_print_task_tcb;
 mod_som_sdio_t mod_som_sdio_struct;
 sl_status_t mystatus;
 
@@ -1786,14 +1788,18 @@ mod_som_status_t mod_som_sdio_start_f(void){
 
     if(!mod_som_sdio_struct.initialized_flag)
         return mod_som_sdio_encode_status_f(MOD_SOM_SDIO_STATUS_ERR_NOT_INITIALIZED);
+    if(mod_som_sdio_struct.started_flag)
+      {
+        return mod_som_sdio_encode_status_f(MOD_SOM_STATUS_OK);
+      }
     RTOS_ERR err;
 
-    OSTaskCreate(&mod_som_sdio_struct.print_task_tcb, // Create the Start Print Task
+    OSTaskCreate(&mod_som_sdio_print_task_tcb, // Create the Start Print Task
             "MOD SOM SDIO Print Task",
             (OS_TASK_PTR)mod_som_sdio_print_task_f,
             DEF_NULL,
             MOD_SOM_SDIO_PRINT_TASK_PRIORITY,
-            &mod_som_sdio_struct.print_task_stack[0],
+            &mod_som_sdio_print_task_stk[0],
             (MOD_SOM_SDIO_TASK_STK_SIZE / 10u),
             MOD_SOM_SDIO_TASK_STK_SIZE,
             0u,
@@ -1818,15 +1824,17 @@ mod_som_status_t mod_som_sdio_start_f(void){
  *   or otherwise
  ******************************************************************************/
 mod_som_status_t mod_som_sdio_stop_f(){
+  if(!mod_som_sdio_struct.started_flag)
+    {
+      return mod_som_sdio_encode_status_f(MOD_SOM_STATUS_OK);
+    }
 
-
-  RTOS_ERR err;
-  OSTaskDel(&mod_som_sdio_struct.print_task_tcb,
-             &err);
-
-
-
-
+  if(mod_som_sdio_print_task_tcb.TaskState != OS_TASK_STATE_DEL){
+      RTOS_ERR err;
+      OSTaskDel(&mod_som_sdio_print_task_tcb,
+                &err);
+  }
+  mod_som_sdio_struct.started_flag = false;
   return mod_som_sdio_encode_status_f(MOD_SOM_STATUS_OK);
 }
 
