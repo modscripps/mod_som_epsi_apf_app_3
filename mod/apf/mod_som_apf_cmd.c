@@ -126,12 +126,14 @@ CPU_INT16S mod_som_apf_cmd_daq_f(CPU_INT16U argc,
   switch(argc)
   {
     case 1: // input: "daq" -- invalid command, not enough information
+      mod_som_io_print_f("DAQ: argv_0:%s;\r\n",argv[0]);
       // save time string into the temporary local string - Mai - Nov 18, 2021
       //ALB changing to %s,%s
       sprintf(apf_reply_str,"%s,%s,not enough arguments\r\n",MOD_SOM_APF_DAQ_STR,MOD_SOM_APF_NAK_STR);
       status |= MOD_SOM_APF_STATUS_WRONG_ARG;
       break;
     case 2: // input: "daq,stop", if "daq,start" or "daq,somethingelse" -> error
+      mod_som_io_print_f("DAQ: argv_0:%s; argv_1:%s;\r\n",argv[0],argv[1]);
       i = 1; // get the second argument
       if (!Str_Cmp(argv[i], "stop"))  // "daq,stop" ==> execute mod_som_apf_daq_stop_f() routine
       {
@@ -169,6 +171,7 @@ CPU_INT16S mod_som_apf_cmd_daq_f(CPU_INT16U argc,
       }
       break;
     case 3: // command: "daq,start,proid"
+      mod_som_io_print_f("DAQ: argv_0:%s; argv_1:%s; argv_2:%s;\r\n",argv[0],argv[1],argv[2]);
       i = 1; // get the second argument
       if (!Str_Cmp(argv[i], "stop"))  // daq stop arg => wrong stop command
       {
@@ -260,6 +263,7 @@ CPU_INT16S mod_som_apf_cmd_daq_f(CPU_INT16U argc,
         }
       break;
     default:  // more than 3 argc
+      mod_som_io_print_f("DAQ: argv_0:%s; argv_1:%s; argv_2:%s; argv_3:%s;\r\n",argv[0],argv[1],argv[2],argv[3]);
       i = 1;
       /*
       // save time string into the temporary local string - Mai - Nov 18, 2021
