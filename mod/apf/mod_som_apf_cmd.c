@@ -181,10 +181,10 @@ CPU_INT16S mod_som_apf_cmd_daq_f(CPU_INT16U argc,
       {
           // copy to the temp
           strcpy(third_arg,argv[i+1]);
-          reply_str_len = strnlen(third_arg,125);
-          for(bytes_sent =0; bytes_sent<reply_str_len; bytes_sent++){
-
-          }
+//          reply_str_len = strnlen(third_arg,125);
+//          for(bytes_sent =0; bytes_sent<reply_str_len; bytes_sent++){
+//
+//          }
           // detect for not interger, only need check the first element of the third argument
           if(isalpha(third_arg[0])) // daq start not_integer
           {
