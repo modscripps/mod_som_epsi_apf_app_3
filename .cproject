@@ -127,7 +127,7 @@
 						</toolChain>
 					</folderInfo>
 					<sourceEntries>
-						<entry excluding="bsp|FatFS/ccsbcs.c|mod/altimeter|mod/sbe49|mod/vec_nav|mod/actuator|.trash|trashed_modified_files|mod_som_epsi_apf_app_3_cmake|mod_som_epsi_apf_app_3_iar_cmake" flags="VALUE_WORKSPACE_PATH" kind="sourcePath" name=""/>
+						<entry excluding="mod/aggregator|bsp|FatFS/ccsbcs.c|mod/altimeter|mod/sbe49|mod/vec_nav|mod/actuator|.trash|trashed_modified_files|mod_som_epsi_apf_app_3_cmake|mod_som_epsi_apf_app_3_iar_cmake" flags="VALUE_WORKSPACE_PATH" kind="sourcePath" name=""/>
 					</sourceEntries>
 				</configuration>
 			</storageModule>
@@ -257,7 +257,7 @@
 						</toolChain>
 					</folderInfo>
 					<sourceEntries>
-						<entry excluding="bsp|FatFS/ccsbcs.c|bsp/siliconlabs/generic/source/bsp_net_ether_gem.c|bsp/siliconlabs/generic/source/bsp_os.c|bsp/siliconlabs/generic/source/bsp_usb_dev.c|bsp/siliconlabs/generic/source/bsp_fs_nor_quad_spi.c|bsp/siliconlabs/generic/source/bsp_can.c|bsp/siliconlabs/generic/source/bsp_usb_host_pbhcd.c|bsp/siliconlabs/generic/source/bsp_sd_hc.c|mod/altimeter|mod/sbe49|mod/vec_nav|mod/actuator|.trash|trashed_modified_files|mod_som_epsi_apf_app_3_cmake|mod_som_epsi_apf_app_3_iar_cmake" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
+						<entry excluding="mod/aggregator|bsp|FatFS/ccsbcs.c|bsp/siliconlabs/generic/source/bsp_net_ether_gem.c|bsp/siliconlabs/generic/source/bsp_os.c|bsp/siliconlabs/generic/source/bsp_usb_dev.c|bsp/siliconlabs/generic/source/bsp_fs_nor_quad_spi.c|bsp/siliconlabs/generic/source/bsp_can.c|bsp/siliconlabs/generic/source/bsp_usb_host_pbhcd.c|bsp/siliconlabs/generic/source/bsp_sd_hc.c|mod/altimeter|mod/sbe49|mod/vec_nav|mod/actuator|.trash|trashed_modified_files|mod_som_epsi_apf_app_3_cmake|mod_som_epsi_apf_app_3_iar_cmake" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
 					</sourceEntries>
 				</configuration>
 			</storageModule>
