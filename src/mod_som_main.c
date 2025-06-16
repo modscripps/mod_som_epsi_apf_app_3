@@ -291,6 +291,7 @@ mod_som_status_t mod_som_main_sleep_f()
       GPIO_PinModeSet(MOD_SOM_HFXO_EN_PORT,
                       MOD_SOM_HFXO_EN_PIN,
                       gpioModePushPull, 0);
+//      GPIO_PinModeSet(MOD_SOM_U16_3_PORT, MOD_SOM_U16_3_PIN,gpioModePushPull, 0);
 
 //WAKE UP CMD
 //      GPIO_PinModeSet(gpioPortF, 10, gpioModePushPull, 1);
@@ -335,6 +336,7 @@ mod_som_status_t mod_som_main_wake_up_f()
 
       //ALB      DC/DC not burst mode  PF10 high
       GPIO_PinModeSet(gpioPortF, 10, gpioModePushPull, 1);
+//      GPIO_PinModeSet(MOD_SOM_U16_3_PORT, MOD_SOM_U16_3_PIN, gpioModePushPull, 1);
 
       // turn dowm HFXO
       GPIO_PinModeSet(MOD_SOM_HFXO_EN_PORT, MOD_SOM_HFXO_EN_PIN, gpioModePushPull, 1);
