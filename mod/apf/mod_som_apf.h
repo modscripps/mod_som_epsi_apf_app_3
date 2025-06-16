@@ -145,6 +145,7 @@
 #define MOD_SOM_APF_STATUS_SLEEPING                             0x17U
 #define MOD_SOM_APF_STATUS_NO_DATA                              0x18U
 #define MOD_SOM_APF_STATUS_CANNOT_OPENFILE                      0x19U
+#define MOD_SOM_APF_STATUS_CTD_DATA_TIMEOUT                     0x20U
 
 
 #define MOD_SOM_APF_UPLOAD_DELAY                  500      // 500 ms delay upon reception of the upload cmd
@@ -524,7 +525,7 @@ typedef struct{
 
    uint32_t profile_id;
    volatile bool     daq;
-   volatile bool     daq_requested;
+//   volatile bool     daq_requested;
    float    dacq_start_pressure;
    float    dacq_pressure;
    float    dacq_dz;

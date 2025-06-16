@@ -1218,7 +1218,7 @@ void mod_som_efe_obp_fill_segment_task_f(void  *p_arg){
                   mod_som_efe_obp_ptr->fill_segment_ptr->efe_element_skipped = reset_segment_cnt -
                       mod_som_efe_obp_ptr->fill_segment_ptr->efe_element_cnt;
 
-                  mod_som_io_print_f("\n efe obp fill seg task: CB overflow: sample count = %lu,"
+                  mod_som_io_print_f("\nefe obp fill seg task: CB overflow: sample count = %lu,"
                       "cnsmr_cnt = %lu,skipped %lu elements \r\n ", \
                       (uint32_t)local_mod_som_efe_ptr->sample_count, \
                       (uint32_t)mod_som_efe_obp_ptr->fill_segment_ptr->efe_element_cnt, \
@@ -1423,7 +1423,7 @@ void mod_som_efe_obp_cpt_spectra_task_f(void  *p_arg){
                   mod_som_efe_obp_ptr->fill_segment_ptr->segment_skipped = reset_spectra_cnt -
                       mod_som_efe_obp_ptr->cpt_spectra_ptr->spectrum_cnt;
 
-                  mod_som_io_print_f("\n efe obp cpt spec: CB overflow: sample count = %lu,"
+                  mod_som_io_print_f("\nefe obp cpt spec: CB overflow: sample count = %lu,"
                       "cnsmr_cnt = %lu,skipped %lu elements \r\n ", \
                       (uint32_t)mod_som_efe_obp_ptr->fill_segment_ptr->segment_cnt, \
                       (uint32_t)mod_som_efe_obp_ptr->cpt_spectra_ptr->spectrum_cnt, \
@@ -2051,10 +2051,10 @@ void mod_som_efe_obp_consumer_task_f(void  *p_arg){
 
   RTOS_ERR err;
   int error_cnt = 0;
-  uint64_t segment_avail;
-  uint64_t spectrum_avail;
-  uint64_t rates_avail;
-  uint64_t avgspec_avail;
+  uint32_t segment_avail;
+  uint32_t spectrum_avail;
+  uint32_t rates_avail;
+  uint32_t avgspec_avail;
 
   uint32_t payload_length=0;
   int reset_segment_cnt=0;
@@ -2125,10 +2125,10 @@ void mod_som_efe_obp_consumer_task_f(void  *p_arg){
                           reset_segment_cnt -
                           mod_som_efe_obp_ptr->consumer_ptr->segment_cnt;
 
-                      mod_som_io_print_f("\n EFE OBP consumer task: "
+                      mod_som_io_print_f("\nEFE OBP consumer task: "
                                          "segment overflow sample count = "
                                          "%lu,cnsmr_cnt = %lu,"
-                                         "skipped %lu elements, ",
+                                         "skipped %lu elements\r\n",
                            (uint32_t)mod_som_efe_obp_ptr->fill_segment_ptr->half_segment_cnt,
                            (uint32_t)mod_som_efe_obp_ptr->consumer_ptr->segment_cnt,
                            (uint32_t)mod_som_efe_obp_ptr->consumer_ptr->elmnts_skipped);
@@ -2162,10 +2162,10 @@ void mod_som_efe_obp_consumer_task_f(void  *p_arg){
                           reset_spectrum_cnt -
                           mod_som_efe_obp_ptr->consumer_ptr->spectrum_cnt;
 
-                      mod_som_io_print_f("\n EFE OBP consumer task: "
+                      mod_som_io_print_f("\nEFE OBP consumer task: "
                                          "spectra overflow sample count = "
                                          "%lu,cnsmr_cnt = %lu,"
-                                         "skipped %lu elements, ",
+                                         "skipped %lu elements\r\n",
                            (uint32_t)mod_som_efe_obp_ptr->cpt_spectra_ptr->spectrum_cnt,
                            (uint32_t)mod_som_efe_obp_ptr->consumer_ptr->spectrum_cnt,
                            (uint32_t)mod_som_efe_obp_ptr->consumer_ptr->elmnts_skipped);
@@ -2197,10 +2197,10 @@ void mod_som_efe_obp_consumer_task_f(void  *p_arg){
                           reset_avgspec_cnt -
                           mod_som_efe_obp_ptr->consumer_ptr->avgspec_cnt;
 
-                      mod_som_io_print_f("\n EFE OBP consumer task: "
+                      mod_som_io_print_f("\nEFE OBP consumer task: "
                                          "rates overflow sample count = "
                                          "%lu,cnsmr_cnt = %lu,"
-                                         "skipped %lu elements, ",
+                                         "skipped %lu elements\r\n",
                            (uint32_t)mod_som_efe_obp_ptr->cpt_spectra_ptr->avg_spectrum_cnt,
                            (uint32_t)mod_som_efe_obp_ptr->consumer_ptr->avgspec_cnt,
                            (uint32_t)mod_som_efe_obp_ptr->consumer_ptr->elmnts_skipped);
@@ -2241,10 +2241,10 @@ void mod_som_efe_obp_consumer_task_f(void  *p_arg){
                       reset_rates_cnt -
                       mod_som_efe_obp_ptr->consumer_ptr->rates_cnt;
 
-                  mod_som_io_print_f("\n EFE OBP consumer task: "
+                  mod_som_io_print_f("EFE OBP consumer task: "
                                      "rates overflow sample count = "
                                      "%lu,cnsmr_cnt = %lu,"
-                                     "skipped %lu elements, ",
+                                     "skipped %lu elements\r\n",
                        (uint32_t)mod_som_efe_obp_ptr->cpt_dissrate_ptr->dissrates_cnt,
                        (uint32_t)mod_som_efe_obp_ptr->consumer_ptr->rates_cnt,
                        (uint32_t)mod_som_efe_obp_ptr->consumer_ptr->elmnts_skipped);

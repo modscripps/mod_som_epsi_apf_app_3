@@ -144,6 +144,13 @@ CPU_INT16S mod_som_apf_cmd_daq_f(CPU_INT16U argc,
              sprintf(apf_reply_str,"%s,stop,%s\r\n",MOD_SOM_APF_DAQ_STR,MOD_SOM_APF_ACK_STR);
              status |= return_status;
              break;
+         }else{
+             // save time string into the temporary local string - Mai - Nov 18, 2021
+             //ALB changing to %s,%s
+             sprintf(apf_reply_str,"%s,stop,%s,%lu\r\n",MOD_SOM_APF_DAQ_STR,MOD_SOM_APF_NAK_STR,
+                     return_status);
+             status |= return_status;
+             break;
          }
       }
       else if (!Str_Cmp(argv[i], "start"))  // "daq,start" => missing profile id
@@ -174,6 +181,10 @@ CPU_INT16S mod_som_apf_cmd_daq_f(CPU_INT16U argc,
       {
           // copy to the temp
           strcpy(third_arg,argv[i+1]);
+          reply_str_len = strnlen(third_arg,125);
+          for(bytes_sent =0; bytes_sent<reply_str_len; bytes_sent++){
+
+          }
           // detect for not interger, only need check the first element of the third argument
           if(isalpha(third_arg[0])) // daq start not_integer
           {
@@ -219,13 +230,20 @@ CPU_INT16S mod_som_apf_cmd_daq_f(CPU_INT16U argc,
 
           if (return_status == MOD_SOM_APF_STATUS_NO_CTD_DATA)
           {
-              // save time string into the temporary local string - Mai - Nov 18, 2021
               sprintf(apf_reply_str,"%s,start,%s,no valid CTD data\r\n",
                       MOD_SOM_APF_DAQ_STR,MOD_SOM_APF_NAK_STR);
               mod_som_apf_status_t temp_status = mod_som_apf_daq_stop_f();
               status |= return_status | temp_status;
               break;
           }
+          if (return_status == MOD_SOM_APF_STATUS_CTD_DATA_TIMEOUT)
+            {
+              sprintf(apf_reply_str,"%s,start,%s,CTD data timed out\r\n",
+                      MOD_SOM_APF_DAQ_STR,MOD_SOM_APF_NAK_STR);
+              mod_som_apf_status_t temp_status = mod_som_apf_daq_stop_f();
+              status |= return_status | temp_status;
+              break;
+            }
           // save time string into the temporary local string - Mai - Nov 18, 2021
           //ALB THIS THE ACK ANSWER
           sprintf(apf_reply_str,"%s,start,%s,%u\r\n",
@@ -282,6 +300,7 @@ CPU_INT16S mod_som_apf_cmd_daq_f(CPU_INT16U argc,
        status |= MOD_SOM_APF_STATUS_ERR;
    }
    reply_str_len = strlen(apf_reply_str);
+   bytes_sent = 0;
    // sending the above string to the APF port - Mai - Nov 18, 2021
    for (int tries = 0; tries< 3; tries++){
        bytes_sent = mod_som_apf_send_line_f(apf_leuart_ptr,apf_reply_str, reply_str_len);
@@ -643,6 +662,9 @@ CPU_INT16S mod_som_apf_cmd_probe_id_f(CPU_INT16U argc,
     }else{
         status = mod_som_apf_probe_id_f(argc,argv);
     }
+    if(status == MOD_SOM_APF_STATUS_DAQ_IS_RUNNING){
+        return SHELL_EXEC_ERR_NONE;
+    }
     if(status != MOD_SOM_APF_STATUS_OK)
         return SHELL_EXEC_ERR;
     return SHELL_EXEC_ERR_NONE;
@@ -809,6 +831,9 @@ CPU_INT16S mod_som_apf_cmd_time_f(CPU_INT16U argc,
   }else{
       status = mod_som_apf_time_f(argc,argv);
   }
+  if(status == MOD_SOM_APF_STATUS_DAQ_IS_RUNNING){
+      return SHELL_EXEC_ERR_NONE;
+  }
   if(status != MOD_SOM_APF_STATUS_OK)
     return SHELL_EXEC_ERR;
   return SHELL_EXEC_ERR_NONE;
@@ -895,6 +920,9 @@ CPU_INT16S mod_som_apf_cmd_packet_format_f(CPU_INT16U argc,
         status=MOD_SOM_APF_STATUS_OK;
     }else{
     status = mod_som_apf_packet_format_f(argc,argv);
+    }
+    if(status == MOD_SOM_APF_STATUS_DAQ_IS_RUNNING){
+        return SHELL_EXEC_ERR_NONE;
     }
     if(status != MOD_SOM_APF_STATUS_OK)
         return SHELL_EXEC_ERR;
@@ -990,6 +1018,9 @@ CPU_INT16S mod_som_apf_cmd_sd_format_f(CPU_INT16U argc,
         status=MOD_SOM_APF_STATUS_OK;
     }else{
         status = mod_som_apf_sd_format_f(argc,argv);
+    }
+    if(status == MOD_SOM_APF_STATUS_DAQ_IS_RUNNING){
+        return SHELL_EXEC_ERR_NONE;
     }
     if(status != MOD_SOM_APF_STATUS_OK)
         return SHELL_EXEC_ERR;

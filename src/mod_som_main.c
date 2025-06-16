@@ -267,7 +267,7 @@ mod_som_status_t mod_som_main_sleep_f()
 //  int delay =1000;
 
   if (mod_som_sleep_flag==false){
-      printf("Making all modules are stopped \r\n");
+      mod_som_io_print_f("Making all modules are stopped \r\n");
 //      mod_som_main_stop_modules_f();
 
       //Select intern HFRCO
@@ -331,7 +331,7 @@ mod_som_status_t mod_som_main_wake_up_f()
   int delay =1000;
 
   if (mod_som_sleep_flag==true){
-      printf("Waking up modules\r\n");
+      mod_som_io_print_f("Waking up modules\r\n");
 
       //ALB      DC/DC not burst mode  PF10 high
       GPIO_PinModeSet(gpioPortF, 10, gpioModePushPull, 1);
@@ -388,6 +388,8 @@ void mod_som_main_task_f(void *p_arg)
     RTOS_ERR err;
     int delay =10;
 
+//    CORE_DECLARE_IRQ_STATE;
+
     //initialize the SOM running flag
     mod_som_running_flag=false;
     /*****************************************
@@ -419,6 +421,11 @@ void mod_som_main_task_f(void *p_arg)
 #ifdef MOD_SOM_DEBUG_WDOG
     int32_t counter=0;
 #endif
+    //2025 06 14 adding this for monitoring the tasks
+    mod_som_apf_ptr_t mod_som_apf_runtime_ptr = mod_som_apf_get_runtime_ptr_f();
+    mod_som_sbe41_ptr_t mod_som_sbe41_ptr = mod_som_sbe41_get_runtime_ptr_f();
+    mod_som_efe_obp_ptr_t mod_som_efe_obp_ptr=mod_som_efe_obp_get_runtime_ptr_f();
+    mod_som_efe_ptr_t mod_som_efe_ptr = mod_som_efe_get_runtime_ptr_f();
 
     while (DEF_ON) {
 
@@ -438,6 +445,271 @@ void mod_som_main_task_f(void *p_arg)
             printf("##############################\r\n");
         }
 #endif
+        //2025 06 14 adding this for monitoring the tasks
+//        CORE_ENTER_ATOMIC();
+        /*
+        if(mod_som_apf_runtime_ptr->mod_som_apf_shell_task_tcb_ptr->TaskState == OS_TASK_STATE_DEL){
+            mod_som_io_print_f("$STAT: restarting apf shell task\r\n");
+               OSTaskCreate(mod_som_apf_runtime_ptr->mod_som_apf_shell_task_tcb_ptr,
+                         "apf shell task",
+                         mod_som_apf_shell_task_f,
+                         DEF_NULL,
+                         MOD_SOM_APF_SHELL_TASK_PRIO,
+                         &mod_som_apf_runtime_ptr->mod_som_apf_shell_task_stk_ptr,
+                         (MOD_SOM_APF_SHELL_TASK_STK_SIZE / 10u),
+                         MOD_SOM_APF_SHELL_TASK_STK_SIZE,
+                         0u,
+                         0u,
+                         DEF_NULL,
+                         (OS_OPT_TASK_STK_CLR),
+                         &err);
+            // Check error code
+              APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
+              if(RTOS_ERR_CODE_GET(err) != RTOS_ERR_NONE){
+//                  CORE_EXIT_ATOMIC();
+                  mod_som_io_print_f("$ERR: cannot restart apf shell task\r\n");
+              }
+
+        }
+        //*/
+//        CORE_EXIT_ATOMIC();
+//
+//        CORE_ENTER_ATOMIC();
+        ///*
+        if(mod_som_apf_runtime_ptr->daq){
+           if(mod_som_apf_runtime_ptr->mod_som_apf_producer_task_tcb_ptr->TaskState == OS_TASK_STATE_DEL){
+               mod_som_io_print_f("$STAT: restarting apf producer task\r\n");
+               OSTaskCreate(mod_som_apf_runtime_ptr->mod_som_apf_producer_task_tcb_ptr,
+                              "apf producer task",
+                              mod_som_apf_producer_task_f,
+                              DEF_NULL,
+                              MOD_SOM_APF_PRODUCER_TASK_PRIO,
+                              mod_som_apf_runtime_ptr->mod_som_apf_producer_task_stk_ptr,
+                              (MOD_SOM_APF_PRODUCER_TASK_STK_SIZE / 10u),
+                              MOD_SOM_APF_PRODUCER_TASK_STK_SIZE,
+                              0u,
+                              0u,
+                              DEF_NULL,
+                              (OS_OPT_TASK_STK_CLR),
+                              &err);
+               // Check error code
+               APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
+               if(RTOS_ERR_CODE_GET(err) != RTOS_ERR_NONE){
+//                   CORE_EXIT_ATOMIC();
+                   mod_som_io_print_f("$ERR: cannot restart apf producer task\r\n");
+               }
+           }
+
+           if(mod_som_apf_runtime_ptr->mod_som_apf_consumer_task_tcb_ptr->TaskState == OS_TASK_STATE_DEL){
+               mod_som_io_print_f("$STAT: restarting apf consumer task\r\n");
+               OSTaskCreate(mod_som_apf_runtime_ptr->mod_som_apf_consumer_task_tcb_ptr,
+                            "apf consumer task",
+                            mod_som_apf_consumer_task_f,
+                            DEF_NULL,
+                            MOD_SOM_APF_CONSUMER_TASK_PRIO,
+                            mod_som_apf_runtime_ptr->mod_som_apf_consumer_task_stk_ptr,
+                            (MOD_SOM_APF_CONSUMER_TASK_STK_SIZE / 10u),
+                            MOD_SOM_APF_CONSUMER_TASK_STK_SIZE,
+                            0u,
+                            0u,
+                            DEF_NULL,
+                            (OS_OPT_TASK_STK_CLR),
+                            &err);
+               // Check error code
+               APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
+               if(RTOS_ERR_CODE_GET(err) != RTOS_ERR_NONE){
+//                   CORE_EXIT_ATOMIC();
+                   mod_som_io_print_f("$ERR: cannot restart apf consumer task\r\n");
+               }
+           }
+
+           if(mod_som_sbe41_ptr->sbe41_consumer_task_tcb_ptr->TaskState == OS_TASK_STATE_DEL){
+               mod_som_io_print_f("$STAT: restarting sbe41 consumer task\r\n");
+               OSTaskCreate(mod_som_sbe41_ptr->sbe41_consumer_task_tcb_ptr,
+                            "sbe41 consumer task",
+                            mod_som_sbe41_consumer_task_f,
+                            DEF_NULL,
+                            MOD_SOM_SBE41_CONSUMER_TASK_PRIO,
+                            mod_som_sbe41_ptr->sbe41_consumer_task_stk_ptr,
+                            (MOD_SOM_SBE41_CONSUMER_TASK_STK_SIZE / 10u),
+                            MOD_SOM_SBE41_CONSUMER_TASK_STK_SIZE,
+                            0u,
+                            0u,
+                            DEF_NULL,
+                            (OS_OPT_TASK_STK_CLR),
+                            &err);
+               // Check error code
+               APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
+               if(RTOS_ERR_CODE_GET(err) != RTOS_ERR_NONE){
+//                   CORE_EXIT_ATOMIC();
+                   mod_som_io_print_f("$ERR: cannot restart sbe41 consumer task\r\n");
+               }
+           }
+
+           if(mod_som_efe_ptr->efe_consumer_task_tcb_ptr->TaskState == OS_TASK_STATE_DEL){
+               mod_som_io_print_f("$STAT: restarting efe consumer task\r\n");
+               OSTaskCreate(mod_som_efe_ptr->efe_consumer_task_tcb_ptr,
+                            "efe consumer task",
+                            mod_som_efe_consumer_task_f,
+                            DEF_NULL,
+                            MOD_SOM_EFE_CONSUMER_TASK_PRIO,
+                            mod_som_efe_ptr->efe_consumer_task_stk_ptr,
+                            (MOD_SOM_EFE_CONSUMER_TASK_STK_SIZE / 10u),
+                            MOD_SOM_EFE_CONSUMER_TASK_STK_SIZE,
+                            0u,
+                            0u,
+                            DEF_NULL,
+                            (OS_OPT_TASK_STK_CLR),
+                            &err);
+               // Check error code
+               APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
+               if(RTOS_ERR_CODE_GET(err) != RTOS_ERR_NONE){
+//                   CORE_EXIT_ATOMIC();
+                   mod_som_io_print_f("$ERR: cannot restart efe consumer task\r\n");
+               }
+           }
+
+           if(mod_som_efe_obp_ptr->efe_obp_fill_segment_task_tcb_ptr->TaskState == OS_TASK_STATE_DEL){
+               mod_som_io_print_f("$STAT: restarting efe obp fill segment task\r\n");
+               OSTaskCreate(mod_som_efe_obp_ptr->efe_obp_fill_segment_task_tcb_ptr,
+                            "efe obp fill segment task",
+                            mod_som_efe_obp_fill_segment_task_f,
+                            DEF_NULL,
+                            MOD_SOM_EFE_OBP_FILL_SEGMENT_TASK_PRIO,
+                            mod_som_efe_obp_ptr->efe_obp_fill_segment_task_stk_ptr,
+                            (MOD_SOM_EFE_OBP_FILL_SEGMENT_TASK_STK_SIZE / 10u),
+                            MOD_SOM_EFE_OBP_FILL_SEGMENT_TASK_STK_SIZE,
+                            0u,
+                            0u,
+                            DEF_NULL,
+                            (OS_OPT_TASK_STK_CLR),
+                            &err);
+               // Check error code
+               APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
+               if(RTOS_ERR_CODE_GET(err) != RTOS_ERR_NONE){
+                   //                   CORE_EXIT_ATOMIC();
+                   mod_som_io_print_f("$ERR: cannot restart efe obp fill segment task\r\n");
+               }
+           }
+           if(mod_som_efe_obp_ptr->efe_obp_cpt_spectra_task_tcb_ptr->TaskState == OS_TASK_STATE_DEL){
+               mod_som_io_print_f("$STAT: restarting efe obp spectra task\r\n");
+               OSTaskCreate(mod_som_efe_obp_ptr->efe_obp_cpt_spectra_task_tcb_ptr,
+                            "efe obp spectra task",
+                            mod_som_efe_obp_cpt_spectra_task_f,
+                            DEF_NULL,
+                            MOD_SOM_EFE_OBP_CPT_SPECTRA_TASK_PRIO,
+                            mod_som_efe_obp_ptr->efe_obp_cpt_spectra_task_stk_ptr,
+                            (MOD_SOM_EFE_OBP_CPT_SPECTRA_TASK_STK_SIZE / 10u),
+                            MOD_SOM_EFE_OBP_CPT_SPECTRA_TASK_STK_SIZE,
+                            0u,
+                            0u,
+                            DEF_NULL,
+                            (OS_OPT_TASK_STK_CLR),
+                            &err);
+               // Check error code
+               APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
+               if(RTOS_ERR_CODE_GET(err) != RTOS_ERR_NONE){
+                   //                   CORE_EXIT_ATOMIC();
+                   mod_som_io_print_f("$ERR: cannot restart efe obp spectra task\r\n");
+               }
+           }
+           if(mod_som_efe_obp_ptr->efe_obp_cpt_dissrate_task_tcb_ptr->TaskState == OS_TASK_STATE_DEL){
+               mod_som_io_print_f("$STAT: restarting efe obp cpt_dissrate task\r\n");
+               OSTaskCreate(mod_som_efe_obp_ptr->efe_obp_cpt_dissrate_task_tcb_ptr,
+                                   "efe obp cpt_dissrate task",
+                                   mod_som_efe_obp_cpt_dissrate_task_f,
+                                   DEF_NULL,
+                                   MOD_SOM_EFE_OBP_CPT_DISSRATE_TASK_PRIO,
+                                   mod_som_efe_obp_ptr->efe_obp_cpt_dissrate_task_tcb_ptr,
+                                   (MOD_SOM_EFE_OBP_CPT_DISSRATE_TASK_STK_SIZE / 10u),
+                                   MOD_SOM_EFE_OBP_CPT_DISSRATE_TASK_STK_SIZE,
+                                   0u,
+                                   0u,
+                                   DEF_NULL,
+                                   (OS_OPT_TASK_STK_CLR),
+                                   &err);
+               // Check error code
+               APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
+               if(RTOS_ERR_CODE_GET(err) != RTOS_ERR_NONE){
+                   //                   CORE_EXIT_ATOMIC();
+                   mod_som_io_print_f("$ERR: cannot restart efe obp cpt_dissrate task\r\n");
+               }
+           }
+           if(mod_som_efe_obp_ptr->efe_obp_consumer_task_tcb_ptr->TaskState == OS_TASK_STATE_DEL){
+               mod_som_io_print_f("$STAT: restarting efe obp consumer task\r\n");
+               OSTaskCreate(mod_som_efe_obp_ptr->efe_obp_consumer_task_tcb_ptr,
+                            "efe obp consumer task",
+                            mod_som_efe_obp_consumer_task_f,
+                            DEF_NULL,
+                            MOD_SOM_EFE_OBP_CONSUMER_TASK_PRIO,
+                            mod_som_efe_obp_ptr->efe_obp_consumer_task_stk_ptr,
+                            (MOD_SOM_EFE_OBP_CONSUMER_TASK_STK_SIZE / 10u),
+                            MOD_SOM_EFE_OBP_CONSUMER_TASK_STK_SIZE,
+                            0u,
+                            0u,
+                            DEF_NULL,
+                            (OS_OPT_TASK_STK_CLR),
+                            &err);
+               // Check error code
+               APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
+               if(RTOS_ERR_CODE_GET(err) != RTOS_ERR_NONE){
+                   //                   CORE_EXIT_ATOMIC();
+                   mod_som_io_print_f("$ERR: cannot restart efe obp consumer task\r\n");
+               }
+           }
+
+        }
+        //*/
+        /*
+        else{
+            if(!mod_som_apf_runtime_ptr->daq_requested){
+                CORE_EXIT_ATOMIC();
+                if(mod_som_efe_ptr->sampling_flag){
+                // from the spec, it
+                // stop ADC master clock timer
+                mod_som_efe_stop_sampling_f();
+                }
+
+                if(mod_som_sbe41_ptr->collect_data_flag){
+                    // stop collecting CTD data
+                    mod_som_sbe41_stop_collect_data_f();
+                    mod_som_sbe41_disconnect_f();
+                }
+
+                if(mod_som_efe_obp_ptr->fill_segment_ptr->started_flg){
+                    // stop turbulence processing task
+                    mod_som_efe_obp_stop_fill_segment_task_f();
+                }
+                if(mod_som_efe_obp_ptr->cpt_spectra_ptr->started_flg){
+                mod_som_efe_obp_stop_cpt_spectra_task_f();
+                }
+                if(mod_som_efe_obp_ptr->cpt_dissrate_ptr->started_flg){
+                mod_som_efe_obp_stop_cpt_dissrate_task_f();
+                }
+                if(mod_som_efe_obp_ptr->cpt_dissrate_ptr->started_flg){
+                mod_som_efe_obp_stop_consumer_task_f();
+                }
+                if(mod_som_apf_runtime_ptr->producer_ptr->started_flg){
+                mod_som_apf_stop_producer_task_f();
+                }
+
+                if(mod_som_apf_runtime_ptr->consumer_ptr->started_flg){
+                //ALB stop APF consumer task
+                mod_som_apf_stop_consumer_task_f();
+                }
+
+
+//                sl_sleeptimer_delay_millisecond(100);
+//                mod_som_sdio_stop_f();
+//                mod_som_sdio_disable_hardware_f();
+            }
+
+
+        }
+        //*/
+//        CORE_EXIT_ATOMIC();
+
+
 
         //ALB   feed (reset) the watchdog timer.
         //ALB   Be aware that the priorities of the tasks

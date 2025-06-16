@@ -186,11 +186,11 @@ typedef struct{
   uint32_t   rates_length;
   uint32_t   diffusitvity_length;
 
-  uint64_t   segment_cnt;
-  uint64_t   spectrum_cnt;
-  uint64_t   avgspec_cnt;
-  uint64_t   rates_cnt;
-  uint64_t   record_timestamp;
+  uint32_t   segment_cnt;
+  uint32_t   spectrum_cnt;
+  uint32_t   avgspec_cnt;
+  uint32_t   rates_cnt;
+  uint32_t   record_timestamp;
 
   uint8_t *  record_ptr;     //ALB pointer to the segments section in the record
 
@@ -208,12 +208,12 @@ mod_som_efe_obp_data_consumer_t, *mod_som_efe_obp_data_consumer_ptr_t;
  ******************************************************************************/
 typedef struct{
 
-  uint64_t efe_element_cnt;
-  uint64_t efe_element_skipped;
-  uint64_t ctd_element_cnt;
+  uint32_t efe_element_cnt;
+  uint32_t efe_element_skipped;
+  uint32_t ctd_element_cnt;
 
-  uint64_t segment_cnt;
-  uint64_t half_segment_cnt;
+  uint32_t segment_cnt;
+  uint32_t half_segment_cnt;
 
   uint64_t * timestamp_segment_ptr;
   float * segment_buffer_ptr;
@@ -242,8 +242,8 @@ mod_som_efe_obp_data_fill_segment_t, *mod_som_efe_obp_data_fill_segment_ptr_t;
  ******************************************************************************/
 typedef struct{
 
-  uint64_t spectrum_cnt;
-  uint64_t avg_spectrum_cnt;
+  uint32_t spectrum_cnt;
+  uint32_t avg_spectrum_cnt;
 
   uint32_t volt_read_index;
   uint8_t  dof;
@@ -339,7 +339,7 @@ typedef struct{
     uint32_t initialized_flag;
     uint32_t started_flag;
     uint32_t error_flag;
-    uint64_t sample_count;
+    uint32_t sample_count;
     uint64_t start_computation_timestamp;
     uint64_t stop_computation_timestamp;
 

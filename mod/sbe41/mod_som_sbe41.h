@@ -58,6 +58,7 @@
 #define MOD_SOM_SBE41_STATUS_NOT_CONNECTED           03U
 #define MOD_SOM_SBE41_STATUS_FAIL_TO_ALLOCATE_MEMORY 04U
 #define MOD_SOM_SBE41_STATUS_FAIL_INIT_CMD           0x11U
+#define MOD_SOM_SBE41_STATUS_FAIL_TO_START_CONSUMER_TASK 0x02u
 
 
 #define MOD_SOM_SBE41_STATUS_BUFFER_OVRFLW 05U
@@ -68,10 +69,10 @@
 // data consumer
 #define MOD_SOM_SBE41_CONSUMER_TASK_PRIO             18u
 #define MOD_SOM_SBE41_CONSUMER_TASK_STK_SIZE        512u
-#define MOD_SOM_SBE41_CONSUMER_DELAY                  1      // delay for consumer 2 (ex: 4000 = 1 time / 4 secs).
+#define MOD_SOM_SBE41_CONSUMER_DELAY                  10      // delay for consumer 2 (ex: 4000 = 1 time / 4 secs).
 #define MOD_SOM_SBE41_CONSUMER_PADDING                5      // number of elements for padding for data consumer.
-#define MOD_SOM_SBE41_SAMPLE_TIMEOUT                  20
-#define MOD_SOM_SBE41_STATUS_FAIL_TO_START_CONSUMER_TASK 0x02u
+#define MOD_SOM_SBE41_SAMPLE_TIMEOUT                  5
+
 
 //LDMA
 #define MOD_SOM_SBE41_LDMA_CH   1

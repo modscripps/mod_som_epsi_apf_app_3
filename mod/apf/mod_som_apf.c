@@ -240,7 +240,7 @@ mod_som_apf_status_t mod_som_apf_init_f(){
     mod_som_apf_ptr->upload_flag=0;
     mod_som_apf_ptr->profile_id=0;
     mod_som_apf_ptr->daq=false;
-    mod_som_apf_ptr->daq_requested=false;
+//    mod_som_apf_ptr->daq_requested=false;
     mod_som_apf_ptr->dacq_start_pressure=0;
     mod_som_apf_ptr->dacq_pressure=0;
     mod_som_apf_ptr->dacq_dz=0;
@@ -1421,7 +1421,6 @@ void mod_som_apf_consumer_task_f(void  *p_arg){
                       if (bytes_send==0){
                           //TODO handle the error
                       }
-
 
                       mod_som_apf_ptr->consumer_ptr->dissrates_cnt = reset_dissrate_cnt;
                   }
@@ -2838,7 +2837,7 @@ mod_som_apf_status_t mod_som_apf_daq_start_f(uint32_t profile_id){
   mod_som_apf_status_t status=0;
 //  uint32_t delay1s=1000;
 //  uint32_t delay2s=2000;
-    uint32_t delay10ms=10;
+    uint32_t delay100ms=100;
   uint32_t get_ctd_count=0;
   CPU_CHAR filename[100];
   uint32_t file_status;
@@ -2848,8 +2847,10 @@ mod_som_apf_status_t mod_som_apf_daq_start_f(uint32_t profile_id){
       status= MOD_SOM_APF_STATUS_DAQ_ALREADY_STARTED;
       mod_som_apf_daq_stop_f();
   }
-
-  mod_som_apf_ptr->daq_requested=true;
+  CORE_DECLARE_IRQ_STATE;
+//  CORE_ENTER_ATOMIC();
+//  mod_som_apf_ptr->daq_requested=true;
+//  CORE_EXIT_ATOMIC();
 
   status=MOD_SOM_APF_STATUS_OK;
 
@@ -2879,14 +2880,13 @@ mod_som_apf_status_t mod_som_apf_daq_start_f(uint32_t profile_id){
 
   sl_sleeptimer_delay_millisecond(3000);
 
-
   //ALB I am getting a pressure sample
   while(local_sbe41_runtime_ptr->consumer_ptr->record_pressure[1]==0){
       WDOG_Feed();
-      sl_sleeptimer_delay_millisecond(delay10ms);
+      sl_sleeptimer_delay_millisecond(delay100ms);
       get_ctd_count++;
-      //ALB SBE41 is 1Hz 300 counts x 10 ms is 3 seconds
-      if (get_ctd_count>300){
+      //ALB SBE41 is 1Hz 30 counts x 100 ms is 3 seconds
+      if (get_ctd_count>30){
           //ALB no CTD sample. Status no CTD data
           status = MOD_SOM_APF_STATUS_NO_CTD_DATA;
           get_ctd_count=0;
@@ -2896,7 +2896,7 @@ mod_som_apf_status_t mod_som_apf_daq_start_f(uint32_t profile_id){
   //SAN 2023 02 20 correct for something funny status not working properly
   if(status == MOD_SOM_APF_STATUS_NO_CTD_DATA){
       mod_som_sdio_disable_hardware_f();
-      sl_sleeptimer_delay_millisecond(delay10ms);
+      sl_sleeptimer_delay_millisecond(delay100ms);
       mod_som_sbe41_stop_collect_data_f();
       mod_som_sbe41_disconnect_f();
 
@@ -3061,9 +3061,24 @@ mod_som_apf_status_t mod_som_apf_daq_start_f(uint32_t profile_id){
 
       status|=mod_som_efe_sampling_f();
 
+      sl_sleeptimer_delay_millisecond(3000);
+      //2025 06 12 add another timeout condition for the SBE41
+      // we are assuming the data rate is 1Hz
+      if( local_sbe41_runtime_ptr->sample_timeout ||
+          (local_sbe41_runtime_ptr->sample_count - local_sbe41_runtime_ptr->consumer_ptr->cnsmr_cnt)>MOD_SOM_SBE41_SAMPLE_TIMEOUT/2){
+          CORE_ENTER_ATOMIC();
+          mod_som_apf_ptr->daq=true;
+//          mod_som_apf_ptr->daq_requested = false;
+          CORE_EXIT_ATOMIC();
+          mod_som_apf_daq_stop_f();
+
+          return MOD_SOM_APF_STATUS_CTD_DATA_TIMEOUT;
+      }
+      CORE_ENTER_ATOMIC();
       //SAN 2023 02 20 added this to make sure daq is enabled
       mod_som_apf_ptr->daq=true;
-      mod_som_apf_ptr->daq_requested = false;
+//      mod_som_apf_ptr->daq_requested = false;
+      CORE_EXIT_ATOMIC();
 //  }
 
 	return status;
@@ -3113,7 +3128,8 @@ mod_som_apf_status_t mod_som_apf_daq_stop_f(){
   status|= mod_som_efe_obp_stop_cpt_dissrate_task_f();
   status|= mod_som_efe_obp_stop_consumer_task_f();
 
-
+  //ALB stop APF producer task
+  status |= mod_som_apf_stop_producer_task_f();
   //ALB stop APF consumer task
   status |= mod_som_apf_stop_consumer_task_f();
 
@@ -3172,10 +3188,6 @@ mod_som_apf_status_t mod_som_apf_daq_stop_f(){
   sl_sleeptimer_delay_millisecond(delay);
   mod_som_sdio_stop_f();
   mod_som_sdio_disable_hardware_f();
-
-  //2025 05 26 move this here to that everything else get executed
-  //ALB stop APF producer task
-  status |= mod_som_apf_stop_producer_task_f();
 
   }
 	return status;
@@ -4401,7 +4413,7 @@ mod_som_apf_status_t mod_som_apf_time_f(CPU_INT16U argc,
       if(mod_som_apf_ptr->daq){
           sprintf(apf_reply_str,"%s\r\n",
                   "time,nak,daq is running");
-          status |= MOD_SOM_APF_STATUS_WRONG_ARG;
+          status = MOD_SOM_APF_STATUS_DAQ_IS_RUNNING;
           mod_som_io_print_f("%s\r\n",apf_reply_str);
           // save to the local string for sending out - Mai-Nov 18, 2021
           reply_str_len = strlen(apf_reply_str);
@@ -4571,7 +4583,7 @@ mod_som_apf_status_t mod_som_apf_packet_format_f(CPU_INT16U argc,
   if(mod_som_apf_ptr->daq){
             sprintf(apf_reply_str,"%s\r\n",
              "packet_format,nak,daq is running");
-      status |= MOD_SOM_APF_STATUS_WRONG_ARG;
+      status = MOD_SOM_APF_STATUS_DAQ_IS_RUNNING;
       mod_som_io_print_f("%s\r\n",apf_reply_str);
       // save to the local string for sending out - Mai-Nov 18, 2021
       reply_str_len = strlen(apf_reply_str);
@@ -4618,7 +4630,7 @@ mod_som_apf_status_t mod_som_apf_packet_format_f(CPU_INT16U argc,
               if(mod_som_apf_ptr->daq){
                   sprintf(apf_reply_str,"%s,%s\r\n",
                           MOD_SOM_APF_PACKETFORMAT_STR,"nak,daq is running");
-                  status |= MOD_SOM_APF_STATUS_WRONG_ARG;
+                  status = MOD_SOM_APF_STATUS_DAQ_IS_RUNNING;
                   mod_som_io_print_f("%s\r\n",apf_reply_str);
                   // save to the local string for sending out - Mai-Nov 18, 2021
                   reply_str_len = strlen(apf_reply_str);
@@ -4817,7 +4829,7 @@ mod_som_apf_status_t mod_som_apf_sd_format_f(CPU_INT16U argc,
   if(mod_som_apf_ptr->daq){
       sprintf(apf_reply_str,"%s\r\n",
               "sd_format,nak,daq is running");
-      status |= MOD_SOM_APF_STATUS_WRONG_ARG;
+      status = MOD_SOM_APF_STATUS_DAQ_IS_RUNNING;
       mod_som_io_print_f("%s\r\n",apf_reply_str);
       // save to the local string for sending out - Mai-Nov 18, 2021
       reply_str_len = strlen(apf_reply_str);

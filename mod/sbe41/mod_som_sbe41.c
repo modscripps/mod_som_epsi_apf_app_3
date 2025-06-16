@@ -984,12 +984,13 @@ void  mod_som_sbe41_consumer_task_f(void  *p_arg){
         mod_som_sbe41_ptr->rec_buff_ptr->elements_map
         [mod_som_sbe41_ptr->rec_buff_ptr->producer_indx]+
         MOD_SOM_SBE41_HEXTIMESTAMP_LENGTH);
-
+    CORE_ENTER_ATOMIC();
     mod_som_sbe41_ptr->consumer_ptr->cnsmr_cnt=0;
     mod_som_sbe41_ptr->consumer_ptr->consumed_flag=true;
     mod_som_sbe41_ptr->consumer_ptr->record_pressure[0]=0; //ALB I need to initialize these becasue I use record_pressure in daq_start
     mod_som_sbe41_ptr->consumer_ptr->record_pressure[1]=0;
     mod_som_sbe41_ptr->sample_timeout = false;
+    CORE_EXIT_ATOMIC();
 
     //cb_elmnt_ptr curr_read_elmnt_ptr = test_cb_param_block.base_ptr;
     // get local sbe41 element ptr and local sbe41 streamer ptr.
@@ -1027,7 +1028,6 @@ void  mod_som_sbe41_consumer_task_f(void  *p_arg){
 //    LEUART_TypeDef* apf_leuart_ptr;
 //    uint32_t bytes_sent;
 //    mod_som_apf_status_t status;
-
     //time0= mod_som_calendar_get_time_f();
     while (mod_som_sbe41_ptr->collect_data_flag) {
 
@@ -1040,7 +1040,9 @@ void  mod_som_sbe41_consumer_task_f(void  *p_arg){
                 first_sample_flag = false;
             }
             if (time1-time0>MOD_SOM_SBE41_SAMPLE_TIMEOUT){
+                CORE_ENTER_ATOMIC();
                 mod_som_sbe41_ptr->sample_timeout=true;
+                CORE_EXIT_ATOMIC();
                 ///*
                 //2025 05 25 BEGIN stop collect data because data hasn't come in a a while
                 // calculate the offset for current pointer
@@ -1083,12 +1085,14 @@ void  mod_som_sbe41_consumer_task_f(void  *p_arg){
                            (uint32_t)mod_som_sbe41_ptr->sample_count,
                            (uint32_t) mod_som_sbe41_ptr->consumer_ptr->cnsmr_cnt,
                            mod_som_sbe41_ptr->consumer_ptr->elmnts_skipped);
-
+                    CORE_ENTER_ATOMIC();
                     mod_som_sbe41_ptr->consumer_ptr->cnsmr_cnt = reset_cnsmr_cnt;
+                    CORE_EXIT_ATOMIC();
 //                    printf("new cns_cnt: %lu\n",(uint32_t) cnsmr_cnt);
                 }
-
+                CORE_ENTER_ATOMIC();
                 mod_som_sbe41_ptr->sample_timeout=false;
+                CORE_EXIT_ATOMIC();
 
                 // calculate the offset for current pointer
                 data_elmnts_offset     = mod_som_sbe41_ptr->consumer_ptr->cnsmr_cnt % mod_som_sbe41_ptr->config_ptr->elements_per_buffer;
@@ -1115,7 +1119,7 @@ void  mod_som_sbe41_consumer_task_f(void  *p_arg){
                         mod_som_sbe41_ptr->consumer_ptr->record_temp[1];
                     mod_som_sbe41_ptr->consumer_ptr->record_timestamp[0]=
                         mod_som_sbe41_ptr->consumer_ptr->record_timestamp[1];
-
+                    CORE_ENTER_ATOMIC();
                     mod_som_sbe41_ptr->consumer_ptr->record_pressure[1]=
                         curr_sbe_sample.pressure;
                     mod_som_sbe41_ptr->consumer_ptr->record_salinity[1]=
@@ -1124,6 +1128,7 @@ void  mod_som_sbe41_consumer_task_f(void  *p_arg){
                         curr_sbe_sample.temperature;
                     mod_som_sbe41_ptr->consumer_ptr->record_timestamp[1]=
                         curr_sbe_sample.timestamp;
+                    CORE_EXIT_ATOMIC();
 
                     //ALB compute dPdt to get a fall rate
                     float dP=mod_som_sbe41_ptr->consumer_ptr->record_pressure[1]-
@@ -1144,12 +1149,16 @@ void  mod_som_sbe41_consumer_task_f(void  *p_arg){
 //                    printf("fall rate %3.3f\r\n",mod_som_sbe41_ptr->consumer_ptr->dPdt);
                 }
                 time0 = time1; //mod_som_calendar_get_time_f(); // don't want to reacquire time
+                CORE_ENTER_ATOMIC();
                 mod_som_sbe41_ptr->consumer_ptr->cnsmr_cnt++;  // increment cnsmr count
+                CORE_EXIT_ATOMIC();
                 cnsmr_indx=mod_som_sbe41_ptr->consumer_ptr->cnsmr_cnt %
                            mod_som_sbe41_ptr->consumer_ptr->max_element_per_record;  // increment cnsmr count
                 elmnts_avail = mod_som_sbe41_ptr->sample_count - mod_som_sbe41_ptr->consumer_ptr->cnsmr_cnt; //elements available have been produced
+#ifdef MOD_SOM_DEBUG
                 mod_som_io_print_f("SBE41 elmnts_avail = %d, data_format = %lu\r\n",
                                    elmnts_avail,mod_som_sbe41_ptr->settings_ptr->data_format);
+#endif
                 //ALB this IF check if we have enough element in the consumer record
                 //ALB to be streamed/SD stored.
                 if(cnsmr_indx ==0){

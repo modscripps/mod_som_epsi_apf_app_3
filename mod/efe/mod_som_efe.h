@@ -248,7 +248,7 @@ typedef struct{
   uint32_t  max_sample_per_record;   //ALB maximum element per stream block
   uint32_t  payload_length;
   uint32_t  elmnts_skipped;
-  uint64_t  cnsmr_cnt;
+  uint32_t  cnsmr_cnt;
 
   uint8_t   data_ready_flg;           //ALB ???
   uint8_t   chksum;
@@ -289,7 +289,7 @@ mod_som_efe_data_consumer_t, *mod_som_efe_data_consumer_ptr_t;
 typedef struct{
     uint32_t initialized_flag;
     uint32_t error_flag;
-    uint64_t sample_count;
+    uint32_t sample_count;
     uint64_t timestamp;
     mod_som_efe_settings_ptr_t settings_ptr;      //
     mod_som_efe_config_ptr_t config_ptr;    //

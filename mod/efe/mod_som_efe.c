@@ -2266,7 +2266,7 @@ mod_som_status_t mod_som_efe_stop_sampling_f()
   }
 
   mod_som_status_t status = MOD_SOM_STATUS_OK;
-  RTOS_ERR  err;
+//  RTOS_ERR  err;
 
 	// Stop the timer drive the master clock controlling the ADCs
 
@@ -2293,8 +2293,8 @@ mod_som_status_t mod_som_efe_stop_sampling_f()
                     gpioModePushPull, 0);
 #endif
 
-  if(RTOS_ERR_CODE_GET(err) != RTOS_ERR_NONE)
-    return mod_som_efe_encode_status_f(MOD_SOM_EFE_STATUS_FAIL_TOP_SAMPLING);
+//  if(RTOS_ERR_CODE_GET(err) != RTOS_ERR_NONE)
+//    return mod_som_efe_encode_status_f(MOD_SOM_EFE_STATUS_FAIL_TOP_SAMPLING);
 
 	return status;
 }
