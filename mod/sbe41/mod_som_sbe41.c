@@ -1031,7 +1031,6 @@ void  mod_som_sbe41_consumer_task_f(void  *p_arg){
 //    LEUART_TypeDef* apf_leuart_ptr;
 //    uint32_t bytes_sent;
 //    mod_som_apf_status_t status;
-
     //time0= mod_som_calendar_get_time_f();
     while (mod_som_sbe41_ptr->collect_data_flag) {
 

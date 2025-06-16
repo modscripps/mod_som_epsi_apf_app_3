@@ -72,7 +72,7 @@
 #define MOD_SOM_SBE41_CONSUMER_DELAY                  10      // delay for consumer 2 (ex: 4000 = 1 time / 4 secs).
 #define MOD_SOM_SBE41_CONSUMER_PADDING                5      // number of elements for padding for data consumer.
 #define MOD_SOM_SBE41_SAMPLE_TIMEOUT                  5
-#define MOD_SOM_SBE41_STATUS_FAIL_TO_START_CONSUMER_TASK 0x02u
+
 
 //LDMA
 #define MOD_SOM_SBE41_LDMA_CH   1
