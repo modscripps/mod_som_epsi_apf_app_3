@@ -186,6 +186,12 @@
  ******************************************************************************/
 #define MOD_SOM_SDIO_STATUS_ERR_QUEUE_ITEM_NOT_FOUND 0x0BU
 
+/*******************************************************************************
+ * @define MOD_SOM_SDIO_STATUS_ERR_NO_CARD_DETECTED
+ *     error: can't detect card in slot
+ ******************************************************************************/
+#define MOD_SOM_SDIO_STATUS_ERR_NO_CARD_DETECTED 0x0CU
+
 
 /* local variable */
 #define MAXBUFLEN 5000

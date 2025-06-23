@@ -149,6 +149,7 @@ mod_som_status_t mod_som_sdio_enable_hardware_f(){
 //  int delay=833333; //ALB 60s at 50e6 Hz
   int delay=100; //ALB .1sec
   char str_adc1[100];
+  int status = 0;
 
   if(!mod_som_sdio_struct.enable_flag){
   CMU_ClockEnable(cmuClock_GPIO, true);
@@ -200,8 +201,12 @@ mod_som_status_t mod_som_sdio_enable_hardware_f(){
 
     sl_sleeptimer_delay_millisecond(delay);
     if (!mod_som_sdio_struct.fatfs_mounted){
-        mod_som_sdio_mount_fatfs_f();
-        mod_som_sdio_struct.fatfs_mounted=true;
+        status = mod_som_sdio_mount_fatfs_f();
+        if(status == MOD_SOM_STATUS_OK){
+            mod_som_sdio_struct.fatfs_mounted=true;
+        }else{
+            return status;
+        }
        //
     }
     sl_sleeptimer_delay_millisecond(delay);
@@ -318,6 +323,7 @@ mod_som_status_t mod_som_sdio_mount_fatfs_f(){
         // 2024 12 12 LW: Only attempt to mount if a card is detected.Add commentMore actions
 
         mod_som_io_print_f("FAT-mount failed: No SD card detected.\r\n");
+        return mod_som_sdio_encode_status_f(MOD_SOM_SDIO_STATUS_ERR_NO_CARD_DETECTED);
     }else
       {
         res=f_mount(&mod_som_sdio_struct.fat_fs,(TCHAR *) "" ,1);
@@ -577,6 +583,9 @@ mod_som_status_t mod_som_sdio_define_filename_f(CPU_CHAR* filename){
   //ALB I am using FA_OPEN_APPEND when I open the raw file so I am alsways keeping the previsous data.
   //ALB every time I open that file the settings are saved first.
 	status_data=mod_som_sdio_open_file_f(mod_som_sdio_struct.rawdata_file_ptr);
+	if(status_data != MOD_SOM_STATUS_OK){
+	    return MOD_SOM_STATUS_NOT_OK;
+	}
 	mod_som_sdio_struct.open_file_time=mod_som_calendar_get_time_f();
 	//store the date time when we open the file
 //	time_buff=mod_som_calendar_get_datetime_f();
@@ -1158,6 +1167,7 @@ mod_som_status_t mod_som_sdio_write_config_f(uint8_t *data_ptr,
 				FA_OPEN_APPEND);
 		if (res!=FR_OK){
 			printf("\n\rcannot open %s\r\n",file_ptr->file_name);
+			return MOD_SOM_STATUS_NOT_OK;
 		}
 	}
 
