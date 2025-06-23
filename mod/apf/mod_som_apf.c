@@ -1611,11 +1611,12 @@ void mod_som_apf_header_f(mod_som_apf_consumer_ptr_t consumer_ptr, uint8_t tag_i
       break;
   }
 
-  sprintf((char*) consumer_ptr->header,  \
-      "$%.4s%08x%08x%08x*FF", \
-      consumer_ptr->tag, \
-      (int) t_hex[0],\
-      (int) t_hex[1],\
+  snprintf((char*) consumer_ptr->header,
+           MOD_SOM_APF_MAX_HEADER_SIZE,
+      "$%.4s%08x%08x%08x*FF",
+      consumer_ptr->tag,
+      (int) t_hex[0],
+      (int) t_hex[1],
       (int) consumer_ptr->payload_length);
 
   consumer_ptr->header_chksum=0;
@@ -1977,37 +1978,6 @@ uint32_t mod_som_apf_send_line_f(LEUART_TypeDef *leuart_ptr,char * buf, uint32_t
   return nb_char_sent;
 
 }
-
-///*******************************************************************************
-// * @brief
-// *   Send a line from a PORT.
-// *
-// *
-// * @param buf
-// *   Buffer to hold the input string.
-// * @param buf_length
-// *  Length of buffer as the user is typing
-// *  edit: Nov 19, 2021
-// ******************************************************************************/
-//uint32_t mod_som_apf_make_nack_apf_reply_f(uint8_t * apf_reply_str,char * cmd1, uint32_t status)
-//{
-//  size_t reply_str_len = 0;
-//
-//  sprintf((char *) apf_reply_str,"%s,nack",cmd1);
-//  reply_str_len = strlen((char*)apf_reply_str);
-//
-//  memcpy(&apf_reply_str[reply_str_len],",",sizeof(char));
-//  reply_str_len++;
-//  memcpy(&apf_reply_str[reply_str_len],&status,sizeof(uint32_t));
-//  reply_str_len+=sizeof(uint32_t);
-//  memcpy(&apf_reply_str[reply_str_len],"\r",sizeof(char));
-//  reply_str_len++;
-//  memcpy(&apf_reply_str[reply_str_len],"\n",sizeof(char));
-//  reply_str_len++;
-//
-//  return reply_str_len;
-//
-//}
 
 
 
@@ -2916,7 +2886,7 @@ mod_som_apf_status_t mod_som_apf_daq_start_f(uint32_t profile_id){
 
 
       //ALB Always open raw SD file, in append write mode
-      sprintf(filename, "Profile%lu",(uint32_t) mod_som_apf_ptr->profile_id);
+      snprintf(filename,99, "Profile%lu",(uint32_t) mod_som_apf_ptr->profile_id);
       status = mod_som_sdio_define_filename_f(filename);
       if(status != MOD_SOM_STATUS_OK){
           mod_som_sdio_disable_hardware_f();
