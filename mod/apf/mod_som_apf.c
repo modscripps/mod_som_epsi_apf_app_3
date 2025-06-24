@@ -1841,6 +1841,12 @@ mod_som_apf_status_t mod_som_apf_shell_get_line_f(char *buf, uint32_t * bytes_re
 //            //TODO add a checker for that cmd
 //            time0= mod_som_calendar_get_time_f();
 //        }
+        //2025 06 24 SAN enter sleep mode when possible
+        if((!mod_som_apf_ptr->daq) && (mod_som_apf_ptr->sleep_flag)){
+//            mod_som_io_print_f("Enter EM2\r\n");
+            EMU_EnterEM2(false);
+        }
+        //2025 06 24 SAN character via LEUART will wakeup and execute lines below
 
         status = mod_som_apf_get_char_f(apf_leuart_ptr, &read_char); // call for getting char from LEUART
 
@@ -1849,10 +1855,17 @@ mod_som_apf_status_t mod_som_apf_shell_get_line_f(char *buf, uint32_t * bytes_re
         error_cnt = 0;
         while(status>0){
             WDOG_Feed();
-            OSTimeDly(
-                    (OS_TICK     )MOD_SOM_CFG_LOOP_TICK_DELAY,
+            if((!mod_som_apf_ptr->daq) && (mod_som_apf_ptr->sleep_flag)){
+                OSTimeDly(
+                    ((OS_TICK     )MOD_SOM_CFG_LOOP_TICK_DELAY)*100,
                     (OS_OPT      )OS_OPT_TIME_DLY,
                     &err);
+            }else{
+                OSTimeDly(
+                    ((OS_TICK     )MOD_SOM_CFG_LOOP_TICK_DELAY),
+                    (OS_OPT      )OS_OPT_TIME_DLY,
+                    &err);
+            }
             if(RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE){
                 error_cnt = 0;
             }
@@ -4040,7 +4053,7 @@ mod_som_apf_status_t mod_som_apf_sleep_f(){
   char reply_str[] = "sleep,ack\r\n";
 
 //ALB IDLE SLEEP
- if ((!mod_som_apf_ptr->daq) & (mod_som_apf_ptr->sleep_flag==0)){
+ if ((!mod_som_apf_ptr->daq) && (mod_som_apf_ptr->sleep_flag==0)){
       //ALB we are not in daq mode make sure
       //ALB efe,sdio,efe obp,sbe-sniffer are asleep
       // stop ADC master clock timer
