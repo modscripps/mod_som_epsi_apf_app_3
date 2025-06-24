@@ -103,7 +103,7 @@
 #define MOD_SOM_J9_8_PORT       gpioPortE   // See secondary pin under Analog Header J11, U16, and U27.
 #define MOD_SOM_J9_8_PIN        3
 //                              (U1_14)
-#define MOD_SOM_J9_10_PORT      gpioPortB   // See secondary pin under Q1.
+#define MOD_SOM_J9_10_PORT      gpioPortB   // See secondary pin under Q4 and U27.
 #define MOD_SOM_J9_10_PIN       5
 //                              (U1_22)
 #define MOD_SOM_J9_11_PORT      gpioPortC
@@ -471,7 +471,8 @@
 //                              (U1_63)
 #define MOD_SOM_U27_8_PORT      gpioPortE   // See secondary pin under Mezzanine Header J9, Analog Header J11, and U16.
 #define MOD_SOM_U27_8_PIN       3
-
+#define MOD_SOM_U27_8_PORT      gpioPortB   // See secondary pin under Mezzanine Header J9, pin 10.
+#define MOD_SOM_U27_8_PIN       5
 
 
 // U28

@@ -718,7 +718,7 @@ mod_som_apf_status_t mod_som_apf_construct_com_prf_f(){
         break;
   }
 
-  //    /* SBE Enable: configure the LEUART pins and SBE EN (send power to the SBE)*/
+  //    /* APF Enable: configure the LEUART pins and APF EN (send power to the SBE)*/
   GPIO_PinModeSet(mod_som_apf_ptr->config_ptr->port.en_port, mod_som_apf_ptr->config_ptr->port.en_pin,
                   gpioModePushPull, 1);
 
@@ -1931,9 +1931,11 @@ mod_som_status_t mod_som_apf_get_char_f(LEUART_TypeDef *leuart_ptr, int* read_ch
   if (apf_rxCount > 0) {
     *read_char_ptr = (int) apf_rxBuffer[apf_rxReadIndex];
     apf_rxReadIndex++;
-    if (apf_rxReadIndex == MOD_SOM_APF_SHELL_STR_LENGTH) {
-      apf_rxReadIndex = 0;
-    }
+    // 2025 06 24 change to circular buffer
+    apf_rxReadIndex %= MOD_SOM_APF_SHELL_STR_LENGTH;
+//    if (apf_rxReadIndex == MOD_SOM_APF_SHELL_STR_LENGTH) {
+//      apf_rxReadIndex = 0;
+//    }
     apf_rxCount--;
     /* Unconditionally enable the RX interrupt. RX interrupts are disabled when
      * a buffer full condition is entered. This way flow control can be handled
@@ -3409,11 +3411,11 @@ mod_som_apf_status_t mod_som_apf_ok_status_f(){
   if(mod_som_apf_ptr->daq){
       status=0;
   }
-  if(mod_som_apf_ptr->sleep_flag){
+  else if(mod_som_apf_ptr->sleep_flag){
       //ALB epsi is sleeping
       //ALB Wake Up
-      status|=mod_som_main_wake_up_f();
-      status=0;
+      status = mod_som_main_wake_up_f();
+//      status=0;
 
   }
 
@@ -5307,23 +5309,30 @@ void LEUART0_IRQHandler(){
 
 
   if(interrupt_sig & LEUART_IF_RXDATAV){
+//      if (apf_rxCount < (MOD_SOM_APF_SHELL_STR_LENGTH)) {
+      CORE_DECLARE_IRQ_STATE;
 
-      if (apf_rxCount < (MOD_SOM_APF_SHELL_STR_LENGTH)) {
+      CORE_ENTER_ATOMIC();
         /* There is room for data in the RX buffer so we store the data. */
         apf_rxBuffer[apf_rxWriteIndex] = LEUART_Rx(leuart_ptr);
         apf_rxWriteIndex++;
+        // 2025 06 24 change to circular buffer
+        apf_rxWriteIndex %= MOD_SOM_APF_SHELL_STR_LENGTH;
         apf_rxCount++;
-
-        if (apf_rxWriteIndex == (MOD_SOM_APF_SHELL_STR_LENGTH)) {
-            apf_rxWriteIndex = 0;
-        }
-      } else {
+        apf_rxCount %= MOD_SOM_APF_SHELL_STR_LENGTH;
+//        if (apf_rxWriteIndex == (MOD_SOM_APF_SHELL_STR_LENGTH)) {
+//            apf_rxWriteIndex = 0;
+//        }
+        CORE_EXIT_ATOMIC();
+//      } else {
         /* The RX buffer is full so we must wait for the RETARGET_ReadChar()
          * function to make some more room in the buffer. RX interrupts are
          * disabled to let the ISR exit. The RX interrupt will be enabled in
          * RETARGET_ReadChar(). */
-          LEUART_IntDisable(leuart_ptr, LEUART_IF_RXDATAV);
-      }
+//          LEUART_IntDisable(leuart_ptr, LEUART_IF_RXDATAV);
+//      }
+
+
   }
 }
 
