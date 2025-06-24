@@ -69,6 +69,7 @@
 // ALB I had to make a copy of  system_efm32gg11b.h in external_copied folder
 // ALB and comment void GPIO_ODD_IRQHandler
 #include <sbe41/mod_som_sbe41.h>
+#include <sbe41/mod_som_sbe41_bsp.h>
 #endif
 
 
@@ -291,7 +292,7 @@ mod_som_status_t mod_som_main_sleep_f()
       GPIO_PinModeSet(MOD_SOM_HFXO_EN_PORT,
                       MOD_SOM_HFXO_EN_PIN,
                       gpioModePushPull, 0);
-//      GPIO_PinModeSet(MOD_SOM_U16_3_PORT, MOD_SOM_U16_3_PIN,gpioModePushPull, 0);
+//      GPIO_PinModeSet(MOD_SOM_SBE41_EN_PORT, MOD_SOM_SBE41_EN_PIN,gpioModePushPull, 0);
 
 //WAKE UP CMD
 //      GPIO_PinModeSet(gpioPortF, 10, gpioModePushPull, 1);
@@ -336,7 +337,8 @@ mod_som_status_t mod_som_main_wake_up_f()
 
       //ALB      DC/DC not burst mode  PF10 high
       GPIO_PinModeSet(gpioPortF, 10, gpioModePushPull, 1);
-//      GPIO_PinModeSet(MOD_SOM_U16_3_PORT, MOD_SOM_U16_3_PIN, gpioModePushPull, 1);
+
+//      GPIO_PinModeSet(MOD_SOM_SBE41_EN_PORT, MOD_SOM_SBE41_EN_PIN, gpioModePushPull, 1);
 
       // turn dowm HFXO
       GPIO_PinModeSet(MOD_SOM_HFXO_EN_PORT, MOD_SOM_HFXO_EN_PIN, gpioModePushPull, 1);
@@ -360,11 +362,7 @@ mod_som_status_t mod_som_main_wake_up_f()
 
       sl_sleeptimer_delay_millisecond(delay);
 
-
       mod_som_sleep_flag=false;
-
-
-
 
   }
 
@@ -622,7 +620,7 @@ void mod_som_main_task_f(void *p_arg)
                                    mod_som_efe_obp_cpt_dissrate_task_f,
                                    DEF_NULL,
                                    MOD_SOM_EFE_OBP_CPT_DISSRATE_TASK_PRIO,
-                                   mod_som_efe_obp_ptr->efe_obp_cpt_dissrate_task_tcb_ptr,
+                                   mod_som_efe_obp_ptr->efe_obp_cpt_dissrate_task_stk_ptr,
                                    (MOD_SOM_EFE_OBP_CPT_DISSRATE_TASK_STK_SIZE / 10u),
                                    MOD_SOM_EFE_OBP_CPT_DISSRATE_TASK_STK_SIZE,
                                    0u,

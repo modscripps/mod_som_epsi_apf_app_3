@@ -300,8 +300,6 @@ mod_som_status_t mod_som_main_start_f(void){
     if(!mod_som_initialized_flag)
         return mod_som_encode_status_f(MOD_SOM_STATUS_ERR_NOT_INITIALIZED_MAIN);
 
-
-
     printf("\r\n==============================\r\n");
     printf(PROJECTNAME);
     printf("\r\n");
