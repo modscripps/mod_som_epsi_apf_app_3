@@ -251,26 +251,6 @@
 			<locationURI>STUDIO_SDK_LOC/platform/micrium_os/cpu/source/cpu_core.c</locationURI>
 		</link>
 		<link>
-			<name>kernel/include/os.h</name>
-			<type>1</type>
-			<locationURI>STUDIO_SDK_LOC/platform/micrium_os/kernel/include/os.h</locationURI>
-		</link>
-		<link>
-			<name>kernel/include/os_port_sel.h</name>
-			<type>1</type>
-			<locationURI>STUDIO_SDK_LOC/platform/micrium_os/kernel/include/os_port_sel.h</locationURI>
-		</link>
-		<link>
-			<name>kernel/include/os_trace.h</name>
-			<type>1</type>
-			<locationURI>STUDIO_SDK_LOC/platform/micrium_os/kernel/include/os_trace.h</locationURI>
-		</link>
-		<link>
-			<name>kernel/include/os_type.h</name>
-			<type>1</type>
-			<locationURI>STUDIO_SDK_LOC/platform/micrium_os/kernel/include/os_type.h</locationURI>
-		</link>
-		<link>
 			<name>kernel/source/os_cfg_app.c</name>
 			<type>1</type>
 			<locationURI>STUDIO_SDK_LOC/platform/micrium_os/kernel/source/os_cfg_app.c</locationURI>
@@ -311,11 +291,6 @@
 			<locationURI>STUDIO_SDK_LOC/platform/micrium_os/kernel/source/os_prio.c</locationURI>
 		</link>
 		<link>
-			<name>kernel/source/os_priv.h</name>
-			<type>1</type>
-			<locationURI>STUDIO_SDK_LOC/platform/micrium_os/kernel/source/os_priv.h</locationURI>
-		</link>
-		<link>
 			<name>kernel/source/os_q.c</name>
 			<type>1</type>
 			<locationURI>STUDIO_SDK_LOC/platform/micrium_os/kernel/source/os_q.c</locationURI>
@@ -329,11 +304,6 @@
 			<name>kernel/source/os_stat.c</name>
 			<type>1</type>
 			<locationURI>STUDIO_SDK_LOC/platform/micrium_os/kernel/source/os_stat.c</locationURI>
-		</link>
-		<link>
-			<name>kernel/source/os_task.c</name>
-			<type>1</type>
-			<locationURI>STUDIO_SDK_LOC/platform/micrium_os/kernel/source/os_task.c</locationURI>
 		</link>
 		<link>
 			<name>kernel/source/os_time.c</name>
