@@ -248,7 +248,7 @@ typedef struct{
   uint32_t  max_sample_per_record;   //ALB maximum element per stream block
   uint32_t  payload_length;
   uint32_t  elmnts_skipped;
-  uint64_t  cnsmr_cnt;
+  uint32_t  cnsmr_cnt;
 
   uint8_t   data_ready_flg;           //ALB ???
   uint8_t   chksum;
@@ -289,7 +289,7 @@ mod_som_efe_data_consumer_t, *mod_som_efe_data_consumer_ptr_t;
 typedef struct{
     uint32_t initialized_flag;
     uint32_t error_flag;
-    uint64_t sample_count;
+    uint32_t sample_count;
     uint64_t timestamp;
     mod_som_efe_settings_ptr_t settings_ptr;      //
     mod_som_efe_config_ptr_t config_ptr;    //
@@ -305,6 +305,9 @@ typedef struct{
     mod_som_efe_ldma_handle_t ldma;
     uint8_t sigramp_flag;
     uint32_t voltage;
+    //2025 06 14 adding this for monitoring the task
+    CPU_STK* efe_consumer_task_stk_ptr;
+    OS_TCB*  efe_consumer_task_tcb_ptr;
 
 }mod_som_efe_t,*mod_som_efe_ptr_t;
 
@@ -609,7 +612,7 @@ mod_som_status_t mod_som_efe_stop_sampling_f();
 mod_som_status_t mod_som_efe_sigramp_f();
 
 
-static  void  mod_som_efe_consumer_task_f (void  *p_arg);
+void  mod_som_efe_consumer_task_f (void  *p_arg);
 
 mod_som_status_t mod_som_efe_start_consumer_task_f (void);
 mod_som_status_t mod_som_efe_stop_consumer_task_f(void);

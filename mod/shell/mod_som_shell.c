@@ -216,6 +216,10 @@ mod_som_status_t mod_som_shell_execute_input_f(char* input,uint32_t input_len){
         shellPrint(mod_som_shell_output_f, "Error, command failed to execute.\n\r");
         status=MOD_SOM_STATUS_NOT_OK;
         break;
+    case RTOS_ERR_CMD_EMPTY:
+        shellPrint(mod_som_shell_output_f, "Error, shell command is empty.\n\r");
+        status=MOD_SOM_STATUS_NOT_OK;
+        break;
     case RTOS_ERR_NONE: /* No errors. */
         break;
     default:

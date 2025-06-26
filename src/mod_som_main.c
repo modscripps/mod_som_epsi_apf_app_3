@@ -267,7 +267,7 @@ mod_som_status_t mod_som_main_sleep_f()
 //  int delay =1000;
 
   if (mod_som_sleep_flag==false){
-      printf("Making all modules are stopped \r\n");
+      mod_som_io_print_f("Making all modules are stopped \r\n");
 //      mod_som_main_stop_modules_f();
 
       //Select intern HFRCO
@@ -291,6 +291,7 @@ mod_som_status_t mod_som_main_sleep_f()
       GPIO_PinModeSet(MOD_SOM_HFXO_EN_PORT,
                       MOD_SOM_HFXO_EN_PIN,
                       gpioModePushPull, 0);
+//      GPIO_PinModeSet(MOD_SOM_SBE41_EN_PORT, MOD_SOM_SBE41_EN_PIN,gpioModePushPull, 0);
 
 //WAKE UP CMD
 //      GPIO_PinModeSet(gpioPortF, 10, gpioModePushPull, 1);
@@ -331,10 +332,12 @@ mod_som_status_t mod_som_main_wake_up_f()
   int delay =1000;
 
   if (mod_som_sleep_flag==true){
-      printf("Waking up modules\r\n");
+      mod_som_io_print_f("Waking up modules\r\n");
 
       //ALB      DC/DC not burst mode  PF10 high
       GPIO_PinModeSet(gpioPortF, 10, gpioModePushPull, 1);
+
+//      GPIO_PinModeSet(MOD_SOM_SBE41_EN_PORT, MOD_SOM_SBE41_EN_PIN, gpioModePushPull, 1);
 
       // turn dowm HFXO
       GPIO_PinModeSet(MOD_SOM_HFXO_EN_PORT, MOD_SOM_HFXO_EN_PIN, gpioModePushPull, 1);

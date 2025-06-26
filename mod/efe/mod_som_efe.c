@@ -281,6 +281,10 @@ mod_som_status_t mod_som_efe_init_f(){
 	//ALB It will be set to true once the module is initialized at the end of mod_som_efe_init_f().
 	mod_som_efe_ptr->initialized_flag = false;
 
+	//2025 06 14 adding this for monitoring the task
+	mod_som_efe_ptr->efe_consumer_task_stk_ptr = efe_consumer_task_stk;
+	mod_som_efe_ptr->efe_consumer_task_tcb_ptr = &efe_consumer_task_tcb;
+
 	// ALB allocate memory for the settings_ptr.
 	// ALB WARNING: The setup pointer CAN NOT have pointers inside.
 	status |= mod_som_efe_allocate_settings_ptr_f();
@@ -823,13 +827,14 @@ mod_som_status_t  mod_som_efe_stop_consumer_task_f(){
   mod_som_status_t status = MOD_SOM_STATUS_OK;
   RTOS_ERR err;
 
+  if(efe_consumer_task_tcb.TaskState != OS_TASK_STATE_DEL){
   // delete the task
   OSTaskDel(&efe_consumer_task_tcb,
             &err);
 
   if(RTOS_ERR_CODE_GET(err) != RTOS_ERR_NONE)
     status = 1;
-
+  }
   return status;
 }
 
@@ -863,8 +868,9 @@ mod_som_status_t  mod_som_efe_stop_consumer_task_f(){
  *   or otherwise
  ******************************************************************************/
 
-static  void  mod_som_efe_consumer_task_f(void  *p_arg){
+void  mod_som_efe_consumer_task_f(void  *p_arg){
     RTOS_ERR  err;
+    int error_cnt = 0;
 
     //cb_elmnt_ptr curr_read_elmnt_ptr = test_cb_param_block.base_ptr;
     // get local efe element ptr and local efe streamer ptr.
@@ -1050,8 +1056,18 @@ static  void  mod_som_efe_consumer_task_f(void  *p_arg){
         OSTimeDly( MOD_SOM_EFE_CONSUMER_DELAY,             //   consumer delay is #define at the beginning OS Ticks
                    OS_OPT_TIME_DLY,          //   from now.
                    &err);
-        //   Check error code.
-        APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), ;);
+        if(RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE){
+            error_cnt = 0;
+        }
+        else{
+            error_cnt++;
+        }
+        if(error_cnt>MOD_SOM_MAX_ERROR_CNT){
+            mod_som_io_print_f("%s error accumulation maxed\r\n",__func__);
+            return;
+        }
+//        //   Check error code.
+//        APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), ;);
     } // end of while (DEF_ON)
 
     PP_UNUSED_PARAM(p_arg);                                     // Prevent config warning.
@@ -2250,7 +2266,7 @@ mod_som_status_t mod_som_efe_stop_sampling_f()
   }
 
   mod_som_status_t status = MOD_SOM_STATUS_OK;
-  RTOS_ERR  err;
+//  RTOS_ERR  err;
 
 	// Stop the timer drive the master clock controlling the ADCs
 
@@ -2277,8 +2293,8 @@ mod_som_status_t mod_som_efe_stop_sampling_f()
                     gpioModePushPull, 0);
 #endif
 
-  if(RTOS_ERR_CODE_GET(err) != RTOS_ERR_NONE)
-    return mod_som_efe_encode_status_f(MOD_SOM_EFE_STATUS_FAIL_TOP_SAMPLING);
+//  if(RTOS_ERR_CODE_GET(err) != RTOS_ERR_NONE)
+//    return mod_som_efe_encode_status_f(MOD_SOM_EFE_STATUS_FAIL_TOP_SAMPLING);
 
 	return status;
 }

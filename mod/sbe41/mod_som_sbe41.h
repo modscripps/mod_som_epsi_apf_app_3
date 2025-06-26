@@ -58,6 +58,7 @@
 #define MOD_SOM_SBE41_STATUS_NOT_CONNECTED           03U
 #define MOD_SOM_SBE41_STATUS_FAIL_TO_ALLOCATE_MEMORY 04U
 #define MOD_SOM_SBE41_STATUS_FAIL_INIT_CMD           0x11U
+#define MOD_SOM_SBE41_STATUS_FAIL_TO_START_CONSUMER_TASK 0x02u
 
 
 #define MOD_SOM_SBE41_STATUS_BUFFER_OVRFLW 05U
@@ -68,9 +69,9 @@
 // data consumer
 #define MOD_SOM_SBE41_CONSUMER_TASK_PRIO             18u
 #define MOD_SOM_SBE41_CONSUMER_TASK_STK_SIZE        512u
-#define MOD_SOM_SBE41_CONSUMER_DELAY                  1      // delay for consumer 2 (ex: 4000 = 1 time / 4 secs).
+#define MOD_SOM_SBE41_CONSUMER_DELAY                  10      // delay for consumer 2 (ex: 4000 = 1 time / 4 secs).
 #define MOD_SOM_SBE41_CONSUMER_PADDING                5      // number of elements for padding for data consumer.
-#define MOD_SOM_SBE41_SAMPLE_TIMEOUT                  20
+#define MOD_SOM_SBE41_SAMPLE_TIMEOUT                  5
 #define MOD_SOM_SBE41_STATUS_FAIL_TO_START_CONSUMER_TASK 0x02u
 
 //LDMA
@@ -109,7 +110,7 @@ typedef struct{
  ******************************************************************************/
 typedef struct{
   uint64_t  timestamp;
-  uint64_t  cnsmr_cnt;
+  int32_t  cnsmr_cnt;
   uint64_t  record_timestamp[MOD_SOM_SBE41_DATA_DEFAULT_SAMPLES_PER_RECORD];
 
   uint32_t  record_length;           //ALB length of the streaming data buffer
@@ -297,7 +298,7 @@ typedef struct{
     volatile bool sample_timeout;
     uint8_t  consumer_mode;  //0:streaming, 1:SD_store, 2: on_board processing
     uint64_t timestamp;
-    uint64_t sample_count;
+    int32_t sample_count;
 
     mod_som_sbe41_config_ptr_t        config_ptr;
     mod_som_sbe41_settings_ptr_t      settings_ptr;
@@ -311,6 +312,9 @@ typedef struct{
     volatile bool collect_data_flag;
 //    volatile uint32_t newline_flag;
 //    volatile uint32_t carriage_return_flag;
+    //2025 06 14 adding this for monitoring the task
+    CPU_STK * sbe41_consumer_task_stk_ptr;
+    OS_TCB  * sbe41_consumer_task_tcb_ptr;
 
 }mod_som_sbe41_t,*mod_som_sbe41_ptr_t;
 
@@ -371,7 +375,7 @@ void mod_som_sbe41_store_f();
 mod_som_status_t mod_som_sbe41_stop_collect_data_f();
 void mod_som_sbe41_id_f(CPU_INT16U argc,CPU_CHAR *argv[]);
 
-static  void  mod_som_sbe41_consumer_task_f(void  *p_arg);
+void  mod_som_sbe41_consumer_task_f(void  *p_arg);
 mod_som_status_t mod_som_sbe41_stop_consumer_task_f(void);
 mod_som_status_t mod_som_sbe41_start_consumer_task_f(void);
 

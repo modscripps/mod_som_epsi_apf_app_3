@@ -231,9 +231,6 @@ mod_som_status_t mod_som_main_init_f(void){
 
     OSInit(&err); // Initialize the Kernel
 
-// mai bui - try to turn on the main shell - May 4, 2022
-//    mod_som_main_com_on_f();
-
     // Check error code
     APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
     if(RTOS_ERR_CODE_GET(err) != RTOS_ERR_NONE)

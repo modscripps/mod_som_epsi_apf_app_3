@@ -145,6 +145,7 @@
 #define MOD_SOM_APF_STATUS_SLEEPING                             0x17U
 #define MOD_SOM_APF_STATUS_NO_DATA                              0x18U
 #define MOD_SOM_APF_STATUS_CANNOT_OPENFILE                      0x19U
+#define MOD_SOM_APF_STATUS_CTD_DATA_TIMEOUT                     0x20U
 
 
 #define MOD_SOM_APF_UPLOAD_DELAY                  500      // 500 ms delay upon reception of the upload cmd
@@ -524,11 +525,25 @@ typedef struct{
 
    uint32_t profile_id;
    volatile bool     daq;
+//   volatile bool     daq_requested;
    float    dacq_start_pressure;
    float    dacq_pressure;
    float    dacq_dz;
 
    char apf_reply_str[MOD_SOM_APF_REPLY_MAX_LEN];   // add reply str from APF - Arnaud&Mai Nov 16, 2021
+
+   //2025 06 14 adding this for monitoring the task
+   // producer task
+   CPU_STK* mod_som_apf_producer_task_stk_ptr;
+   OS_TCB*  mod_som_apf_producer_task_tcb_ptr;
+
+   // consumer task
+   CPU_STK* mod_som_apf_consumer_task_stk_ptr;
+   OS_TCB*  mod_som_apf_consumer_task_tcb_ptr;
+
+   // apf shell task
+   CPU_STK* mod_som_apf_shell_task_stk_ptr;
+   OS_TCB*  mod_som_apf_shell_task_tcb_ptr;
 
 }
 mod_som_apf_t, *mod_som_apf_ptr_t;
