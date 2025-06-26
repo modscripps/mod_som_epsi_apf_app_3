@@ -161,6 +161,9 @@
 
 #define MOD_SOM_APF_META_TIMEOUT                  10800UL
 
+#define MOD_SOM_APF_FORMAT_3_NFFT_DIAG            10
+#define MOD_SOM_APF_FORMAT_3_NFFT_FREQ_INDCS      {14,84,154,223,293,363,432,502,572,641}
+
 
 #define MIN(X, Y) (((X) < (Y)) ? (X) : (Y))
 #define MAX(X, Y) (((X) > (Y)) ? (X) : (Y))
@@ -1089,6 +1092,25 @@ uint32_t mod_som_apf_copy_F2_element_f(  uint64_t * curr_avg_timestamp_ptr,
                                 float * curr_temp_avg_spectra_ptr,
                                 float * curr_shear_avg_spectra_ptr,
                                 float * curr_accel_avg_spectra_ptr);
+
+/*******************************************************************************
+ * @brief
+ * convert the dissrates into MOD format
+ *    MOD epsilon is 3 bytes ranging from log10(1e-12) and log10(1e-3) V^2/Hz
+ *    MOD chi is 3 bytes ranging from log10(1e-12) and log10(1e-3) V^2/Hz
+ *    MOD fom is 1 byte
+ * @return
+ *   MOD_SOM_STATUS_OK if initialization goes well
+ *   or otherwise
+ ******************************************************************************/
+  uint32_t mod_som_apf_copy_F3_element_f(  uint64_t * curr_avg_timestamp_ptr,
+                                           float * curr_avg_pressure_ptr,
+                                           float * curr_epsilon_ptr,
+                                           float * curr_chi_ptr,
+                                           float * curr_fom_epsi_ptr,
+                                           float * curr_fom_chi_ptr,
+                                           float * curr_temp_avg_spectra_ptr,
+                                           float * curr_shear_avg_spectra_ptr);
 
 void mod_som_apf_copy_sd_element_f(  uint64_t * curr_avg_timestamp_ptr,
                                      float * curr_avg_pressure_ptr,

@@ -28,6 +28,9 @@
 #define MOD_SOM_IO_TASK_PRIORITY 16u
 #define MOD_SOM_CFG_LOOP_TICK_DELAY 1u
 
+//2025 06 14 added error accumulation for the purpose of restarting tasks
+#define MOD_SOM_MAX_ERROR_CNT 10
+
 #if defined(MOD_SOM_BOARD)
 
 // MOD SOM High frequency oscillator enable
