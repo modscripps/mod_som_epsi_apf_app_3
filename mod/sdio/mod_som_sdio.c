@@ -203,7 +203,7 @@ mod_som_status_t mod_som_sdio_enable_hardware_f(){
     if (!mod_som_sdio_struct.fatfs_mounted){
         status = mod_som_sdio_mount_fatfs_f();
         if(status == MOD_SOM_STATUS_OK){
-        mod_som_sdio_struct.fatfs_mounted=true;
+            mod_som_sdio_struct.fatfs_mounted=true;
         }else{
             return status;
         }
@@ -1840,9 +1840,9 @@ mod_som_status_t mod_som_sdio_stop_f(){
     }
 
   if(mod_som_sdio_print_task_tcb.TaskState != OS_TASK_STATE_DEL){
-  RTOS_ERR err;
+      RTOS_ERR err;
       OSTaskDel(&mod_som_sdio_print_task_tcb,
-             &err);
+                &err);
   }
   mod_som_sdio_struct.started_flag = false;
   return mod_som_sdio_encode_status_f(MOD_SOM_STATUS_OK);

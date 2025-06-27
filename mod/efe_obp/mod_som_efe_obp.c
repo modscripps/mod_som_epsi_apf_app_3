@@ -52,11 +52,6 @@ mod_som_calendar_settings_t mod_som_calendar_settings;
  *   MOD_SOM_STATUS_OK if initialization goes well
  *   or otherwise
  ******************************************************************************/
-static void mod_som_efe_obp_fill_segment_task_f();
-static void mod_som_efe_obp_cpt_spectra_task_f();
-static void mod_som_efe_obp_cpt_dissrate_task_f();
-
-static void mod_som_efe_obp_consumer_task_f(void  *p_arg);
 mod_som_status_t mod_som_efe_obp_cnt2volt_f(uint8_t * efe_sample,
                                             float   * local_efeobp_efe_temp_ptr,
                                             float   * local_efeobp_efe_shear_ptr,
@@ -133,6 +128,23 @@ mod_som_status_t mod_som_efe_obp_init_f(){
     //ALB It will be set to true once the module is initialized at the
     //ALB end of mod_som_efe_init_f().
     mod_som_efe_obp_ptr->initialized_flag = false;
+
+    //2025 06 14 adding this for monitoring the task
+    mod_som_efe_obp_ptr->efe_obp_fill_segment_task_stk_ptr = efe_obp_fill_segment_task_stk;
+    mod_som_efe_obp_ptr->efe_obp_fill_segment_task_tcb_ptr = &efe_obp_fill_segment_task_tcb;
+
+    // compute spectra
+    mod_som_efe_obp_ptr->efe_obp_cpt_spectra_task_stk_ptr = efe_obp_cpt_spectra_task_stk;
+    mod_som_efe_obp_ptr->efe_obp_cpt_spectra_task_tcb_ptr = &efe_obp_cpt_spectra_task_tcb;
+
+    // compute dissrate
+    mod_som_efe_obp_ptr->efe_obp_cpt_dissrate_task_stk_ptr = efe_obp_cpt_dissrate_task_stk;
+    mod_som_efe_obp_ptr->efe_obp_cpt_dissrate_task_tcb_ptr = &efe_obp_cpt_dissrate_task_tcb;
+
+
+    // Data consumer
+    mod_som_efe_obp_ptr->efe_obp_consumer_task_stk_ptr = efe_obp_consumer_task_stk;
+    mod_som_efe_obp_ptr->efe_obp_consumer_task_tcb_ptr = &efe_obp_consumer_task_tcb;
 
     // ALB allocate memory for the settings_ptr.
     // ALB WARNING: The setup pointer CAN NOT have pointers inside.
@@ -864,16 +876,17 @@ mod_som_status_t mod_som_efe_obp_stop_fill_segment_task_f(){
   if(!mod_som_efe_obp_ptr->fill_segment_ptr->started_flg)
     return mod_som_efe_encode_status_f(MOD_SOM_STATUS_OK);
 
+  if(efe_obp_fill_segment_task_tcb.TaskState != OS_TASK_STATE_DEL){
+      RTOS_ERR err;
+      OSTaskDel(&efe_obp_fill_segment_task_tcb,
+                &err);
 
-  RTOS_ERR err;
-  OSTaskDel(&efe_obp_fill_segment_task_tcb,
-             &err);
-
-//  mod_som_efe_obp_ptr->started_flag=false;
+      //  mod_som_efe_obp_ptr->started_flag=false;
 
 
-  if(RTOS_ERR_CODE_GET(err) != RTOS_ERR_NONE)
-    return (mod_som_efe_obp_ptr->status = mod_som_efe_encode_status_f(MOD_SOM_EFE_OPB_STATUS_FAIL_TO_START_CONSUMER_TASK));
+      if(RTOS_ERR_CODE_GET(err) != RTOS_ERR_NONE)
+        return (mod_som_efe_obp_ptr->status = mod_som_efe_encode_status_f(MOD_SOM_EFE_OPB_STATUS_FAIL_TO_START_CONSUMER_TASK));
+  }
   mod_som_efe_obp_ptr->fill_segment_ptr->started_flg = false;
   return mod_som_efe_encode_status_f(MOD_SOM_STATUS_OK);
 }
@@ -893,15 +906,17 @@ mod_som_status_t mod_som_efe_obp_stop_cpt_spectra_task_f(){
       return mod_som_efe_encode_status_f(MOD_SOM_STATUS_OK);
   }
 
-  RTOS_ERR err;
-  OSTaskDel(&efe_obp_cpt_spectra_task_tcb,
-             &err);
+  if(efe_obp_cpt_spectra_task_tcb.TaskState != OS_TASK_STATE_DEL){
+      RTOS_ERR err;
+      OSTaskDel(&efe_obp_cpt_spectra_task_tcb,
+                &err);
 
-//  mod_som_efe_obp_ptr->started_flag=false;
+      //  mod_som_efe_obp_ptr->started_flag=false;
 
 
-  if(RTOS_ERR_CODE_GET(err) != RTOS_ERR_NONE)
-    return (mod_som_efe_obp_ptr->status = mod_som_efe_encode_status_f(MOD_SOM_EFE_OPB_STATUS_FAIL_TO_START_CONSUMER_TASK));
+      if(RTOS_ERR_CODE_GET(err) != RTOS_ERR_NONE)
+        return (mod_som_efe_obp_ptr->status = mod_som_efe_encode_status_f(MOD_SOM_EFE_OPB_STATUS_FAIL_TO_START_CONSUMER_TASK));
+  }
   mod_som_efe_obp_ptr->cpt_spectra_ptr->started_flg =false;
   return mod_som_efe_encode_status_f(MOD_SOM_STATUS_OK);
 }
@@ -920,15 +935,16 @@ mod_som_status_t mod_som_efe_obp_stop_cpt_dissrate_task_f(){
       return mod_som_efe_encode_status_f(MOD_SOM_STATUS_OK);
   }
 
-  RTOS_ERR err;
-  OSTaskDel(&efe_obp_cpt_dissrate_task_tcb,
-             &err);
+  if(efe_obp_cpt_dissrate_task_tcb.TaskState != OS_TASK_STATE_DEL){
+      RTOS_ERR err;
+      OSTaskDel(&efe_obp_cpt_dissrate_task_tcb,
+                &err);
 
-//  mod_som_efe_obp_ptr->started_flag=false;
+      //  mod_som_efe_obp_ptr->started_flag=false;
 
-
-  if(RTOS_ERR_CODE_GET(err) != RTOS_ERR_NONE)
-    return (mod_som_efe_obp_ptr->status = mod_som_efe_encode_status_f(MOD_SOM_EFE_OPB_STATUS_FAIL_TO_START_CONSUMER_TASK));
+      if(RTOS_ERR_CODE_GET(err) != RTOS_ERR_NONE)
+        return (mod_som_efe_obp_ptr->status = mod_som_efe_encode_status_f(MOD_SOM_EFE_OPB_STATUS_FAIL_TO_START_CONSUMER_TASK));
+  }
   mod_som_efe_obp_ptr->cpt_dissrate_ptr->started_flg = false;
   return mod_som_efe_encode_status_f(MOD_SOM_STATUS_OK);
 }
@@ -1076,19 +1092,19 @@ mod_som_status_t mod_som_efe_obp_start_cpt_dissrate_task_f(){
   //ALB re-initialize sample count
   mod_som_efe_obp_ptr->sample_count=0;
 
-   OSTaskCreate(&efe_obp_cpt_dissrate_task_tcb,
-                        "efe obp cpt_dissrate task",
-                        mod_som_efe_obp_cpt_dissrate_task_f,
-                        DEF_NULL,
-                        MOD_SOM_EFE_OBP_CPT_DISSRATE_TASK_PRIO,
-            &efe_obp_cpt_dissrate_task_stk[0],
-            (MOD_SOM_EFE_OBP_CPT_DISSRATE_TASK_STK_SIZE / 10u),
-            MOD_SOM_EFE_OBP_CPT_DISSRATE_TASK_STK_SIZE,
-            0u,
-            0u,
-            DEF_NULL,
-            (OS_OPT_TASK_STK_CLR),
-            &err);
+  OSTaskCreate(&efe_obp_cpt_dissrate_task_tcb,
+               "efe obp cpt_dissrate task",
+               mod_som_efe_obp_cpt_dissrate_task_f,
+               DEF_NULL,
+               MOD_SOM_EFE_OBP_CPT_DISSRATE_TASK_PRIO,
+               efe_obp_cpt_dissrate_task_stk,
+               (MOD_SOM_EFE_OBP_CPT_DISSRATE_TASK_STK_SIZE / 10u),
+               MOD_SOM_EFE_OBP_CPT_DISSRATE_TASK_STK_SIZE,
+               0u,
+               0u,
+               DEF_NULL,
+               (OS_OPT_TASK_STK_CLR),
+               &err);
 
 
   // Check error code
@@ -1111,6 +1127,7 @@ mod_som_status_t mod_som_efe_obp_start_cpt_dissrate_task_f(){
  ******************************************************************************/
 void mod_som_efe_obp_fill_segment_task_f(void  *p_arg){
   RTOS_ERR  err;
+  int error_cnt = 0;
 
   (void)p_arg; // Deliberately unused argument
 
@@ -1200,7 +1217,7 @@ void mod_som_efe_obp_fill_segment_task_f(void  *p_arg){
                   mod_som_efe_obp_ptr->fill_segment_ptr->efe_element_skipped = reset_segment_cnt -
                       mod_som_efe_obp_ptr->fill_segment_ptr->efe_element_cnt;
 
-                  mod_som_io_print_f("\n efe obp fill seg task: CB overflow: sample count = %lu,"
+                  mod_som_io_print_f("\nefe obp fill seg task: CB overflow: sample count = %lu,"
                       "cnsmr_cnt = %lu,skipped %lu elements \r\n ", \
                       (uint32_t)local_mod_som_efe_ptr->sample_count, \
                       (uint32_t)mod_som_efe_obp_ptr->fill_segment_ptr->efe_element_cnt, \
@@ -1328,8 +1345,18 @@ void mod_som_efe_obp_fill_segment_task_f(void  *p_arg){
       OSTimeDly( MOD_SOM_EFE_OBP_FILL_SEGMENT_DELAY,             //   consumer delay is #define at the beginning OS Ticks
                  OS_OPT_TIME_DLY,          //   from now.
                  &err);
-      //   Check error code.
-      APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), ;);
+      if(RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE){
+          error_cnt = 0;
+      }
+      else{
+          error_cnt++;
+      }
+      if(error_cnt>MOD_SOM_MAX_ERROR_CNT){
+          mod_som_io_print_f("%s error accumulation maxed\r\n",__func__);
+          return;
+      }
+//      //   Check error code.
+//      APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), ;);
   } // end of while (DEF_ON)
 
   PP_UNUSED_PARAM(p_arg);                                     // Prevent config warning.
@@ -1351,6 +1378,7 @@ void mod_som_efe_obp_fill_segment_task_f(void  *p_arg){
 void mod_som_efe_obp_cpt_spectra_task_f(void  *p_arg){
 
   RTOS_ERR  err;
+  int error_cnt = 0;
   uint64_t tick;
 
   (void)p_arg; // Deliberately unused argument
@@ -1394,7 +1422,7 @@ void mod_som_efe_obp_cpt_spectra_task_f(void  *p_arg){
                   mod_som_efe_obp_ptr->fill_segment_ptr->segment_skipped = reset_spectra_cnt -
                       mod_som_efe_obp_ptr->cpt_spectra_ptr->spectrum_cnt;
 
-                  mod_som_io_print_f("\n efe obp cpt spec: CB overflow: sample count = %lu,"
+                  mod_som_io_print_f("\nefe obp cpt spec: CB overflow: sample count = %lu,"
                       "cnsmr_cnt = %lu,skipped %lu elements \r\n ", \
                       (uint32_t)mod_som_efe_obp_ptr->fill_segment_ptr->segment_cnt, \
                       (uint32_t)mod_som_efe_obp_ptr->cpt_spectra_ptr->spectrum_cnt, \
@@ -1614,8 +1642,18 @@ void mod_som_efe_obp_cpt_spectra_task_f(void  *p_arg){
       OSTimeDly( MOD_SOM_EFE_OBP_CPT_SPECTRA_DELAY,             //   consumer delay is #define at the beginning OS Ticks
                  OS_OPT_TIME_DLY,          //   from now.
                  &err);
+      if(RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE){
+          error_cnt = 0;
+      }
+      else{
+          error_cnt++;
+      }
+      if(error_cnt>MOD_SOM_MAX_ERROR_CNT){
+          mod_som_io_print_f("%s error accumulation maxed\r\n",__func__);
+          return;
+      }
       //   Check error code.
-      APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), ;);
+//      APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), ;);
   } // end of while (DEF_ON)
   PP_UNUSED_PARAM(p_arg);                                     // Prevent config warning.
 
@@ -1641,7 +1679,7 @@ void mod_som_efe_obp_cpt_spectra_task_f(void  *p_arg){
  ******************************************************************************/
 void mod_som_efe_obp_cpt_dissrate_task_f(void  *p_arg){
   RTOS_ERR  err;
-
+  int error_cnt = 0;
   (void)p_arg; // Deliberately unused argument
 
 
@@ -1740,8 +1778,18 @@ void mod_som_efe_obp_cpt_dissrate_task_f(void  *p_arg){
       OSTimeDly( MOD_SOM_EFE_OBP_CPT_DISSRATE_DELAY,             //   consumer delay is #define at the beginning OS Ticks
                  OS_OPT_TIME_DLY,          //   from now.
                  &err);
+      if(RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE){
+          error_cnt = 0;
+      }
+      else{
+          error_cnt++;
+      }
+      if(error_cnt>MOD_SOM_MAX_ERROR_CNT){
+          mod_som_io_print_f("%s error accumulation maxed\r\n",__func__);
+          return;
+      }
       //   Check error code.
-      APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), ;);
+//      APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), ;);
 
  } // end of while (DEF_ON)
 
@@ -1964,16 +2012,20 @@ mod_som_status_t mod_som_efe_obp_start_consumer_task_f(){
  ******************************************************************************/
 mod_som_status_t mod_som_efe_obp_stop_consumer_task_f(){
 
+  if(!mod_som_efe_obp_ptr->started_flag){
+      return mod_som_efe_encode_status_f(MOD_SOM_STATUS_OK);
+  }
 
-  RTOS_ERR err;
-  OSTaskDel(&efe_obp_consumer_task_tcb,
-             &err);
+  if(efe_obp_consumer_task_tcb.TaskState != OS_TASK_STATE_DEL){
+      RTOS_ERR err;
+      OSTaskDel(&efe_obp_consumer_task_tcb,
+                &err);
 
+      if(RTOS_ERR_CODE_GET(err) != RTOS_ERR_NONE)
+        return (mod_som_efe_obp_ptr->status = mod_som_efe_encode_status_f(MOD_SOM_EFE_OPB_STATUS_FAIL_TO_START_CONSUMER_TASK));
+  }
   mod_som_efe_obp_ptr->started_flag=false;
-  mod_som_efe_obp_ptr->settings_ptr->format=1;
-
-  if(RTOS_ERR_CODE_GET(err) != RTOS_ERR_NONE)
-    return (mod_som_efe_obp_ptr->status = mod_som_efe_encode_status_f(MOD_SOM_EFE_OPB_STATUS_FAIL_TO_START_CONSUMER_TASK));
+   mod_som_efe_obp_ptr->settings_ptr->format=1;
 
   return mod_som_efe_encode_status_f(MOD_SOM_STATUS_OK);
 }
@@ -1997,10 +2049,11 @@ mod_som_status_t mod_som_efe_obp_stop_consumer_task_f(){
 void mod_som_efe_obp_consumer_task_f(void  *p_arg){
 
   RTOS_ERR err;
-  uint64_t segment_avail;
-  uint64_t spectrum_avail;
-  uint64_t rates_avail;
-  uint64_t avgspec_avail;
+  int error_cnt = 0;
+  uint32_t segment_avail;
+  uint32_t spectrum_avail;
+  uint32_t rates_avail;
+  uint32_t avgspec_avail;
 
   uint32_t payload_length=0;
   int reset_segment_cnt=0;
@@ -2071,10 +2124,10 @@ void mod_som_efe_obp_consumer_task_f(void  *p_arg){
                           reset_segment_cnt -
                           mod_som_efe_obp_ptr->consumer_ptr->segment_cnt;
 
-                      mod_som_io_print_f("\n EFE OBP consumer task: "
+                      mod_som_io_print_f("\nEFE OBP consumer task: "
                                          "segment overflow sample count = "
                                          "%lu,cnsmr_cnt = %lu,"
-                                         "skipped %lu elements, ",
+                                         "skipped %lu elements\r\n",
                            (uint32_t)mod_som_efe_obp_ptr->fill_segment_ptr->half_segment_cnt,
                            (uint32_t)mod_som_efe_obp_ptr->consumer_ptr->segment_cnt,
                            (uint32_t)mod_som_efe_obp_ptr->consumer_ptr->elmnts_skipped);
@@ -2108,10 +2161,10 @@ void mod_som_efe_obp_consumer_task_f(void  *p_arg){
                           reset_spectrum_cnt -
                           mod_som_efe_obp_ptr->consumer_ptr->spectrum_cnt;
 
-                      mod_som_io_print_f("\n EFE OBP consumer task: "
+                      mod_som_io_print_f("\nEFE OBP consumer task: "
                                          "spectra overflow sample count = "
                                          "%lu,cnsmr_cnt = %lu,"
-                                         "skipped %lu elements, ",
+                                         "skipped %lu elements\r\n",
                            (uint32_t)mod_som_efe_obp_ptr->cpt_spectra_ptr->spectrum_cnt,
                            (uint32_t)mod_som_efe_obp_ptr->consumer_ptr->spectrum_cnt,
                            (uint32_t)mod_som_efe_obp_ptr->consumer_ptr->elmnts_skipped);
@@ -2143,10 +2196,10 @@ void mod_som_efe_obp_consumer_task_f(void  *p_arg){
                           reset_avgspec_cnt -
                           mod_som_efe_obp_ptr->consumer_ptr->avgspec_cnt;
 
-                      mod_som_io_print_f("\n EFE OBP consumer task: "
+                      mod_som_io_print_f("\nEFE OBP consumer task: "
                                          "rates overflow sample count = "
                                          "%lu,cnsmr_cnt = %lu,"
-                                         "skipped %lu elements, ",
+                                         "skipped %lu elements\r\n",
                            (uint32_t)mod_som_efe_obp_ptr->cpt_spectra_ptr->avg_spectrum_cnt,
                            (uint32_t)mod_som_efe_obp_ptr->consumer_ptr->avgspec_cnt,
                            (uint32_t)mod_som_efe_obp_ptr->consumer_ptr->elmnts_skipped);
@@ -2187,10 +2240,10 @@ void mod_som_efe_obp_consumer_task_f(void  *p_arg){
                       reset_rates_cnt -
                       mod_som_efe_obp_ptr->consumer_ptr->rates_cnt;
 
-                  mod_som_io_print_f("\n EFE OBP consumer task: "
+                  mod_som_io_print_f("EFE OBP consumer task: "
                                      "rates overflow sample count = "
                                      "%lu,cnsmr_cnt = %lu,"
-                                     "skipped %lu elements, ",
+                                     "skipped %lu elements\r\n",
                        (uint32_t)mod_som_efe_obp_ptr->cpt_dissrate_ptr->dissrates_cnt,
                        (uint32_t)mod_som_efe_obp_ptr->consumer_ptr->rates_cnt,
                        (uint32_t)mod_som_efe_obp_ptr->consumer_ptr->elmnts_skipped);
@@ -2318,8 +2371,18 @@ void mod_som_efe_obp_consumer_task_f(void  *p_arg){
   OSTimeDly( MOD_SOM_EFE_OBP_CONSUMER_DELAY,             //   consumer delay is #define at the beginning OS Ticks
              OS_OPT_TIME_DLY,          //   from now.
              &err);
+  if(RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE){
+      error_cnt = 0;
+  }
+  else{
+      error_cnt++;
+  }
+  if(error_cnt>MOD_SOM_MAX_ERROR_CNT){
+      mod_som_io_print_f("%s error accumulation maxed\r\n",__func__);
+      return;
+  }
   //   Check error code.
-  APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), ;);
+//  APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), ;);
 } // end of while (DEF_ON)
 
 PP_UNUSED_PARAM(p_arg);                                     // Prevent config warning.

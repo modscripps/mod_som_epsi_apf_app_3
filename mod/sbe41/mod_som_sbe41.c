@@ -932,10 +932,10 @@ mod_som_status_t  mod_som_sbe41_stop_consumer_task_f(){
 
 
   if(sbe41_consumer_task_tcb.TaskState != OS_TASK_STATE_DEL){
-  RTOS_ERR err;
+      RTOS_ERR err;
 
-  OSTaskDel(&sbe41_consumer_task_tcb,
-            &err);
+      OSTaskDel(&sbe41_consumer_task_tcb,
+                &err);
   }
 
   return mod_som_sbe41_encode_status_f(MOD_SOM_STATUS_OK);
@@ -1710,21 +1710,21 @@ void mod_som_sbe41_ldma_irq_handler_f(){
       t_hex[0] = (uint32_t) (mod_som_sbe41_ptr->timestamp>>32);
       t_hex[1] = (uint32_t) mod_som_sbe41_ptr->timestamp;
 
-      sprintf(hextimestamp,  \
-          "%08x%08x", \
-          (int) t_hex[0],\
+      sprintf(hextimestamp,  
+          "%08x%08x", 
+          (int) t_hex[0],
           (int) t_hex[1]);
 
-      memcpy(local_elements_map, \
-             hextimestamp,\
+      memcpy(local_elements_map, 
+             hextimestamp,
              MOD_SOM_SBE41_HEXTIMESTAMP_LENGTH);
 
 
       //ALB increment sample count
       mod_som_sbe41_ptr->sample_count++;
       //ALB adjust producer_indx
-      mod_som_sbe41_ptr->rec_buff_ptr->producer_indx= \
-          mod_som_sbe41_ptr->sample_count % \
+      mod_som_sbe41_ptr->rec_buff_ptr->producer_indx= 
+          mod_som_sbe41_ptr->sample_count % 
           MOD_SOM_SBE41_DATA_SAMPLES_PER_BUFFER;
 
       }else{
@@ -1737,14 +1737,14 @@ void mod_som_sbe41_ldma_irq_handler_f(){
       }
 
       //update the address in the ldma descriptor list
-      descriptor_read_sbe.xfer.dstAddr=(uint32_t) ( \
-                                 mod_som_sbe41_ptr->rec_buff_ptr->elements_map \
-                             [mod_som_sbe41_ptr->rec_buff_ptr->producer_indx]+ \
+      descriptor_read_sbe.xfer.dstAddr=(uint32_t) ( 
+                                 mod_som_sbe41_ptr->rec_buff_ptr->elements_map 
+                             [mod_som_sbe41_ptr->rec_buff_ptr->producer_indx]+ 
                                                 MOD_SOM_SBE41_HEXTIMESTAMP_LENGTH);
 
 
-      LDMA_StartTransfer( mod_som_sbe41_ptr->ldma.ch ,\
-                          (void*)&sbe_ldma_signal, \
+      LDMA_StartTransfer( mod_som_sbe41_ptr->ldma.ch ,
+                          (void*)&sbe_ldma_signal, 
                           (void*)&descriptor_read_sbe);
 
     }else{
