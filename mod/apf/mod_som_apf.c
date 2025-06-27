@@ -305,7 +305,7 @@ mod_som_apf_status_t mod_som_apf_default_settings_f(
   strncpy(settings_ptr->header,
           MOD_SOM_APF_HEADER0,MOD_SOM_APF_SETTINGS_STR_LENGTH);
 
-  settings_ptr->comm_telemetry_packet_format=1;
+  settings_ptr->comm_telemetry_packet_format=3;
   settings_ptr->sd_packet_format=1;
 
 
@@ -2558,7 +2558,7 @@ uint32_t mod_som_apf_send_line_f(LEUART_TypeDef *leuart_ptr,char * buf, uint32_t
            MOD_SOM_APF_PRODUCER_FOM_RES);
     dacq_ptr+=MOD_SOM_APF_PRODUCER_FOM_RES;
 
-    dacq_size1=dacq_ptr-mod_som_apf_ptr->producer_ptr->dacq_ptr;
+
 
 
 
@@ -2595,11 +2595,11 @@ uint32_t mod_som_apf_send_line_f(LEUART_TypeDef *leuart_ptr,char * buf, uint32_t
                MOD_SOM_APF_PRODUCER_FOCO_RES);
         dacq_ptr+=MOD_SOM_APF_PRODUCER_FOCO_RES;
         //ALB i+i-1 = every other foco
-        local_shear_avg_fft   = log10(*(curr_shear_avg_spectra_ptr+2*indices[i]/MOD_SOM_APF_DACQ_F3_NFFT_DECIM_COEF-1));
-        local_temp_avg_fft    = log10(*(curr_temp_avg_spectra_ptr+2*indices[i]/MOD_SOM_APF_DACQ_F3_NFFT_DECIM_COEF-1));
-
+        local_shear_avg_fft   = log10(*(curr_shear_avg_spectra_ptr+indices[i]));
+        local_temp_avg_fft    = log10(*(curr_temp_avg_spectra_ptr+indices[i]));
       }
 
+    dacq_size1=dacq_ptr-mod_som_apf_ptr->producer_ptr->dacq_ptr;
     mod_som_apf_ptr->producer_ptr->done_sd_flag=false;
     mod_som_sdio_write_data_f(processfile_ptr,
                               mod_som_apf_ptr->producer_ptr->dacq_ptr,
@@ -4992,6 +4992,10 @@ mod_som_apf_status_t mod_som_apf_upload_f(){
             case 2:
               sample_cnt /= (30+mod_som_apf_ptr->producer_ptr->
                   mod_som_apf_meta_data.nfftdiag*6);
+              break;
+            case 3:
+              sample_cnt /= (10+
+                  MOD_SOM_APF_FORMAT_3_NFFT_DIAG*4);
               break;
             default:
               status = MOD_SOM_APF_STATUS_CANNOT_OPENFILE;
