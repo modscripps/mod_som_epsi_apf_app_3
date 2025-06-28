@@ -4631,7 +4631,7 @@ mod_som_apf_status_t mod_som_apf_packet_format_f(CPU_INT16U argc,
  ******************************************************************************/
 mod_som_apf_status_t mod_som_apf_packet_format_status_f(){
 
-  mod_som_apf_status_t status=0;
+  mod_som_apf_status_t status=MOD_SOM_APF_STATUS_OK;
   uint32_t bytes_sent = 0;
   // for send_string to the port
   char apf_reply_str[MOD_SOM_SHELL_INPUT_BUF_SIZE]="\0";
@@ -4643,9 +4643,9 @@ mod_som_apf_status_t mod_som_apf_packet_format_status_f(){
 
   uint32_t mode=mod_som_apf_ptr->settings_ptr->comm_telemetry_packet_format;
 
-  if ( (mode<0) | (mode>2)){
-      status=MOD_SOM_APF_STATUS_ERR;
-  }
+//  if ( (mode<0) | (mode>3)){
+//      status=MOD_SOM_APF_STATUS_ERR;
+//  }
 
 
   if (status==MOD_SOM_APF_STATUS_OK){
@@ -4839,7 +4839,7 @@ mod_som_apf_status_t mod_som_apf_sd_format_f(CPU_INT16U argc,
 mod_som_apf_status_t mod_som_apf_sd_format_status_f(CPU_INT16U argc,
                                                       CPU_CHAR *argv[])
 {
-  mod_som_apf_status_t status = 0;
+  mod_som_apf_status_t status = MOD_SOM_APF_STATUS_OK;
 //  uint32_t bytes_sent = 0;
   // for send_string to the port
   char apf_reply_str[MOD_SOM_SHELL_INPUT_BUF_SIZE]="\0";
@@ -4850,11 +4850,11 @@ mod_som_apf_status_t mod_som_apf_sd_format_status_f(CPU_INT16U argc,
 
 
 
-  uint32_t mode=mod_som_apf_ptr->settings_ptr->comm_telemetry_packet_format;
+  uint32_t mode=mod_som_apf_ptr->settings_ptr->sd_packet_format;
 
-  if ( (mode<0) | (mode>2)){
-      status=MOD_SOM_APF_STATUS_ERR;
-  }
+//  if ( (mode<0) | (mode>2)){
+//      status=MOD_SOM_APF_STATUS_ERR;
+//  }
 
 
   if (status==MOD_SOM_APF_STATUS_OK){
@@ -5369,7 +5369,7 @@ void LEUART0_IRQHandler(){
 
       CORE_ENTER_ATOMIC();
         /* There is room for data in the RX buffer so we store the data. */
-        apf_rxBuffer[apf_rxWriteIndex] = LEUART_Rx(leuart_ptr);
+        apf_rxBuffer[apf_rxWriteIndex] = leuart_ptr->RXDATA;//LEUART_Rx(leuart_ptr);
         apf_rxWriteIndex++;
         // 2025 06 24 change to circular buffer
         apf_rxWriteIndex %= MOD_SOM_APF_SHELL_STR_LENGTH;
