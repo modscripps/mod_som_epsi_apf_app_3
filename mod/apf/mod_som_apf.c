@@ -3302,16 +3302,16 @@ void mod_som_apf_init_meta_data(mod_som_apf_meta_data_ptr_t mod_som_apf_meta_dat
   // 2025 05 12 update to change probe type to be consistent with probe number
   mod_som_apf_meta_data_ptr->probe1.type=probe_type1;
   mod_som_apf_meta_data_ptr->probe1.sn=
-   (uint16_t)  strtol(local_efe_obp->efe_settings_ptr->sensors[0].sn, NULL, 10);
+   (uint16_t)  strtol(local_efe_obp->efe_settings_ptr->sensors[1].sn, NULL, 10);
   mod_som_apf_meta_data_ptr->probe1.cal=
-   (uint16_t) ceil(local_efe_obp->efe_settings_ptr->sensors[0].cal);
+   (uint16_t) ceil(local_efe_obp->efe_settings_ptr->sensors[1].cal);
 
   // 2025 05 12 update to change probe type to be consistent with probe number
   mod_som_apf_meta_data_ptr->probe2.type=probe_type2;
   mod_som_apf_meta_data_ptr->probe2.sn=
-  (uint16_t)  strtol(local_efe_obp->efe_settings_ptr->sensors[1].sn, NULL, 10);
+  (uint16_t)  strtol(local_efe_obp->efe_settings_ptr->sensors[0].sn, NULL, 10);
   mod_som_apf_meta_data_ptr->probe2.cal=
-      (uint16_t) ceil(local_efe_obp->efe_settings_ptr->sensors[1].cal);
+      (uint16_t) ceil(local_efe_obp->efe_settings_ptr->sensors[0].cal);
 
   mod_som_apf_meta_data_ptr->profile_id=mod_som_apf_ptr->profile_id;
 
@@ -3986,10 +3986,10 @@ mod_som_apf_status_t mod_som_apf_probe_id_status_f(){
       // save to the local string for sending out - Mai-Nov 18, 2021
       snprintf(apf_reply_str,MOD_SOM_SHELL_INPUT_BUF_SIZE-1,"%s,%s,%s,%s,%u,%s,%s,%u\r\n",
               MOD_SOM_APF_PROBENO_STAT_STR,MOD_SOM_APF_ACK_STR,
-              "S",
+              "s",
               local_efe_settings_ptr->sensors[1].sn,
               (uint16_t)local_efe_settings_ptr->sensors[1].cal,
-              "F",
+              "f",
               local_efe_settings_ptr->sensors[0].sn,
               (uint16_t)local_efe_settings_ptr->sensors[0].cal);
       mod_som_io_print_f("%s",apf_reply_str);
