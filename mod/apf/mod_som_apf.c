@@ -3841,16 +3841,12 @@ mod_som_apf_status_t mod_som_apf_probe_id_f(CPU_INT16U argc,
           // save all parameters' value
           status|= mod_som_settings_save_settings_f();
 
+          mod_som_efe_obp_ptr_t mod_som_efe_obp_ptr = mod_som_efe_obp_get_runtime_ptr_f();
+
+          mod_som_efe_obp_ptr->calibration_ptr->shear_sv=mod_som_efe_obp_ptr->efe_settings_ptr->sensors[1].cal;;
+          mod_som_efe_obp_ptr->calibration_ptr->fp07_dTdV=mod_som_efe_obp_ptr->efe_settings_ptr->sensors[0].cal;
+
           // send 'ack' to screen
-          status|= mod_som_io_print_f("%s,%s,s,%s,%lu,f,%s,%lu\r\n",
-                                      MOD_SOM_APF_PROBENO_STR,MOD_SOM_APF_ACK_STR,
-                                      local_efe_settings_ptr->sensors[1].sn,
-                                      (uint32_t)local_efe_settings_ptr->sensors[1].cal,
-                                      local_efe_settings_ptr->sensors[0].sn,
-                                      (uint32_t)local_efe_settings_ptr->sensors[0].cal);
-          if (status==MOD_SOM_IO_STATUS_ERR_NOT_STARTED){
-              status=MOD_SOM_APF_STATUS_OK;
-          }
           snprintf(apf_reply_str,MOD_SOM_SHELL_INPUT_BUF_SIZE-1,"%s,%s,s,%s,%lu,f,%s,%lu\r\n",
                   MOD_SOM_APF_PROBENO_STR,MOD_SOM_APF_ACK_STR,
                   local_efe_settings_ptr->sensors[1].sn,
@@ -3956,33 +3952,8 @@ mod_som_apf_status_t mod_som_apf_probe_id_status_f(){
   }
   status|= mod_som_settings_save_settings_f();
 
-  /*
-   // this point, the input command is valid command
-          channel_id = 1;  // save 'f' set in channel 1
-
-          memcpy(&local_efe_settings_ptr->sensors[channel_id].sn,argv[2],3);
-          local_efe_settings_ptr->sensors[channel_id].cal = cal1;
-
-          channel_id = 0; // save 's' set in channel 0 - Maibui 5 May, 2022
-
-          memcpy(&local_efe_settings_ptr->sensors[channel_id].sn,argv[5],3);
-          local_efe_settings_ptr->sensors[channel_id].cal = cal2;
-          // save all parameters' value
-          status|= mod_som_settings_save_settings_f();
-   */
-
   if (status==MOD_SOM_APF_STATUS_OK){
       //ALB good case
-
-      //    mod_som_io_print_f("%s,%s,%s,%s,%lu,%s,%s,%lu\r\n",
-      //                       MOD_SOM_APF_PROBENO_STAT_STR,MOD_SOM_APF_ACK_STR,
-      //                       "S",
-      //                       local_efe_settings_ptr->sensors[1].sn,
-      //                       (uint16_t)local_efe_settings_ptr->sensors[1].cal,
-      //                       "F",
-      //                       local_efe_settings_ptr->sensors[0].sn,
-      //                       (uint16_t)local_efe_settings_ptr->sensors[0].cal);
-
       // save to the local string for sending out - Mai-Nov 18, 2021
       snprintf(apf_reply_str,MOD_SOM_SHELL_INPUT_BUF_SIZE-1,"%s,%s,%s,%s,%u,%s,%s,%u\r\n",
               MOD_SOM_APF_PROBENO_STAT_STR,MOD_SOM_APF_ACK_STR,
@@ -4850,7 +4821,7 @@ mod_som_apf_status_t mod_som_apf_sd_format_status_f(CPU_INT16U argc,
 
 
 
-  uint32_t mode=mod_som_apf_ptr->settings_ptr->sd_packet_format;
+//  uint32_t mode=mod_som_apf_ptr->settings_ptr->sd_packet_format;
 
 //  if ( (mode<0) | (mode>2)){
 //      status=MOD_SOM_APF_STATUS_ERR;

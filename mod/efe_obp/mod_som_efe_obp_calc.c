@@ -39,7 +39,7 @@ static mod_som_efe_obp_settings_ptr_t settings;
 // static uint32_t dof;
 
 // calibration struct
-static mod_som_efe_obp_calibration_ptr_t cals;
+static mod_som_efe_obp_calibration_ptr_t cals_ptr;
 // will contain following variables
 // static float *sv; // Sensitivity; this should be put into a structure with other needed constants and params.
 // static float *cafilter_freq; // empirical charge filter frequency vector
@@ -128,7 +128,7 @@ void mod_som_epsiobp_init_f(mod_som_efe_obp_config_ptr_t config_ptr_in, mod_som_
 {
   config = config_ptr_in;
   settings = settings_ptr_in;
-  cals = cals_ptr_in;
+  cals_ptr = cals_ptr_in;
 
 //  // read in calibration inputs
 //  num_shear = config.num_shear;
@@ -354,7 +354,7 @@ void mod_som_epsiobp_init_f(mod_som_efe_obp_config_ptr_t config_ptr_in, mod_som_
 //  float kvec_start=2.0;
   for (uint16_t i = 0; i < settings->nfft/2; i++) {
     vals->freq[i] = (float) (i + 1)/(settings->nfft)*config->f_samp;
-    filters_ptr->ca_shear[i]=cals->cafilter_coeff[i];
+    filters_ptr->ca_shear[i]=cals_ptr->cafilter_coeff[i];
   }
 
 
@@ -802,8 +802,8 @@ void mod_som_efe_obp_correct_convert_avg_spectra_f(float * temp_spectrum,
       //Make the k vector from the freq vector with the appropriate fall speed
       vals->kvec[i] = vals->freq[i]/fall_rate;
 
-      shear_spectrum[i] = shear_spectrum[i]*pow(2*g/(cals->shear_sv*fall_rate), 2)*fall_rate*pow((2*M_PI*vals->kvec[i]), 2.0);
-      temp_spectrum[i]  = temp_spectrum[i]*pow(cals->fp07_dTdV, 2)*fall_rate*pow((2*M_PI*vals->kvec[i]), 2.0);
+      shear_spectrum[i] = shear_spectrum[i]*pow(2*g/(cals_ptr->shear_sv*fall_rate), 2)*fall_rate*pow((2*M_PI*vals->kvec[i]), 2.0);
+      temp_spectrum[i]  = temp_spectrum[i]*pow(cals_ptr->fp07_dTdV, 2)*fall_rate*pow((2*M_PI*vals->kvec[i]), 2.0);
       shear_spectrum[i] = shear_spectrum[i]/filters_ptr->shear_filter[i];
       temp_spectrum[i]  = temp_spectrum[i]/filters_ptr->fp07_filter[i];
 
@@ -889,7 +889,7 @@ void mod_som_epsiobp_fp07_noise_f()
 {
   // loop over all frequencies using the noise calibration values
   for (uint16_t i = 0; i < settings->nfft/2; i++) {
-    vals->fp07_noise[i] = pow(10, (cals->fp07_noise[0] + cals->fp07_noise[1]*log10(vals->freq[i]) + cals->fp07_noise[2]*pow(log10(vals->freq[i]), 2) + cals->fp07_noise[3]*pow(log10(vals->freq[i]), 3)));
+    vals->fp07_noise[i] = pow(10, (cals_ptr->fp07_noise[0] + cals_ptr->fp07_noise[1]*log10(vals->freq[i]) + cals_ptr->fp07_noise[2]*pow(log10(vals->freq[i]), 2) + cals_ptr->fp07_noise[3]*pow(log10(vals->freq[i]), 3)));
   }
 }
 
