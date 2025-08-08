@@ -17,6 +17,7 @@
 #include "diskio.h"
 #include "sdio.h"
 #include "em_cmu.h"
+#include "em_wdog.h"
 
 static DSTATUS stat = STA_NOINIT;  /* Disk status */
 static UINT CardType;
@@ -36,6 +37,9 @@ DSTATUS disk_initialize (
 )
 {
 
+  // 2025 04 25 LW: Check if SD card is present before trying to initialize
+  disk_status(drv);
+
   if (drv) return STA_NOINIT;                   /* Supports only single drive */
   if (stat & STA_NODISK) return stat;           /* No card in the socket */
 
@@ -43,18 +47,26 @@ DSTATUS disk_initialize (
   {
     // Initialization of SDIO and Card
     // 2024 12 12 LW: Use HF clock instead of HFPER clock
-    SDIO_Init(SDIO,
+    uint8_t resp =
+        SDIO_Init(SDIO,
               400000,             // 400kHz
               cmuClock_HF);
     //ALB check status again because I added a stat = NODISK inside SendCMDWithOutDAT
     //ALB TODO figure how cmd are sent exactly to the SD card and set the timer inside disk_status
+
+    if(resp)
+    {
+        stat |= STA_NOINIT;
+        return stat;
+    }
+
     if (stat & STA_NODISK) return stat;           /* No card in the socket */
 
 	uint8_t a_u8 = SDIO_GetActCardStateType();
 	switch(a_u8){
 	  case SDHC_SDXC:
 	  {
-	    CardType = CT_BLOCK;  //CardType = CT_SD2;
+	    CardType = CT_BLOCK;
 	    break;
 	  }
 	  case SDSC_Ver200_or_Ver300:
@@ -76,7 +88,8 @@ DSTATUS disk_status (
   BYTE drv                        /* Physical drive nmuber (0) */
 )
 {
-  if (drv) return STA_NOINIT;     /* Supports only single drive */
+  //if (drv) return STA_NOINIT;     /* Supports only single drive */
+
   //ALB quick change to detect absence of SD card with software.
   //ALB the check is done inside sdio.c SDIO_S_CardInitialization_and_Identification
   //ALB using a delay I set inside SDIO_S_SendCMDWithOutDAT. SDIO_S_SendCMDWithOutDAT will return
@@ -84,7 +97,20 @@ DSTATUS disk_status (
 //  if (drv==STA_NODISK){
 //      stat=STA_NODISK;
 //  }
+
+  if (drv) return STA_NOINIT;     /* Supports only single drive */
+
+  if(GPIO_PinInGet(gpioPortF, 8))         // Check Card Detect pin
+  {
+      stat |= (STA_NOINIT | STA_NODISK);  // No card present
+  }
+  else
+  {
+      stat &= ~(STA_NODISK);              // Card present
+  }
+
   return stat;
+
 }
 
 /*-----------------------------------------------------------------------*/
@@ -101,8 +127,7 @@ DRESULT disk_read (
   if (drv || !count) return RES_PARERR;
   if (stat & STA_NOINIT) return RES_NOTRDY;
 
-  //if (!(CardType & CT_BLOCK)) sector = sector;  /* Convert to byte address if needed */
-  // 2025 01 02 LW: Proper sector ID to byte address conversionAdd commentMore actions
+  // 2025 01 02 LW: Proper sector ID to byte address conversion
   if (!(CardType & CT_BLOCK)) sector = sector << 9;  /* Convert to byte address if needed */
 
   while(count != 0)
@@ -110,6 +135,8 @@ DRESULT disk_read (
 	  SDIO_ReadSingleBlock(SDIO,sector,buff);
 	  sector++;
 	  count--;
+	  // 2025 07 08 LW: Feed watchdog after successful read
+	  WDOG_Feed();
   }
   return count ? RES_ERROR : RES_OK;
 }
@@ -130,7 +157,7 @@ DRESULT disk_write (
   if (stat & STA_NOINIT) return RES_NOTRDY;
   if (stat & STA_PROTECT) return RES_WRPRT;
 
-  // 2025 01 02 LW: Proper sector ID to byte address conversionAdd commentMore actions
+  // 2025 01 02 LW: Proper sector ID to byte address conversion
   if (!(CardType & CT_BLOCK)) sector = sector << 9;  /* Convert to byte address if needed */
 
   while(count != 0)
@@ -138,6 +165,8 @@ DRESULT disk_write (
 	  SDIO_WriteSingleBlock(SDIO,sector,buff);
 	  sector++;
 	  count--;
+	  // 2025 07 08 LW: Feed watchdog after successful write
+	  WDOG_Feed();
   }
   return count ? RES_ERROR : RES_OK;
 }
@@ -159,6 +188,7 @@ DRESULT disk_ioctl (
   DRESULT res;
   BYTE n, csd[16], *ptr = buff;
   DWORD csize;
+  uint32_t val = 0;
 
   if (drv) return RES_PARERR;
   if (stat & STA_NOINIT) return RES_NOTRDY;
@@ -166,7 +196,8 @@ DRESULT disk_ioctl (
   res = RES_ERROR;
   switch (ctrl) {
     case CTRL_SYNC :                /* Flush dirty buffer if present */
-        res = RES_OK;
+      SDIO_WaitForWriteFinish(SDIO);
+      res = RES_OK;
       break;
 
     case CTRL_INVALIDATE :          /* Used when unmounting */
@@ -175,18 +206,20 @@ DRESULT disk_ioctl (
       break;
 
     case GET_SECTOR_COUNT :         /* Get number of sectors on the disk (WORD) */
-      *(DWORD*)buff = 0x200;
-      res = RES_OK;
+      res = SDIO_GetSectorCount(SDIO, &val);
+      if(res == RES_OK) *(DWORD*)buff = val;
       break;
 
     case GET_SECTOR_SIZE :          /* Get sectors on the disk (WORD) */
-      *(WORD*)buff = 512;
+      *(DWORD*)buff = 512;
       res = RES_OK;
       break;
 
     case GET_BLOCK_SIZE :           /* Get erase block size in unit of sectors (DWORD) */
-      *(DWORD*)buff = 0xFF;
-      res = RES_OK;
+      res = SDIO_GetBlockSize(SDIO, &val);
+      if(res == RES_OK) *(DWORD*)buff = val;
+//      *(DWORD*)buff = 0x01;
+//      res = RES_OK;
       break;
 
     default:

@@ -64,6 +64,14 @@
 #define CMD8 8UL //	argument - applied v - R7 response
 #define _CMD8_27V_36V_SHIFT 8
 
+/* CMD9 - Send CSD (Card-Specific Data) */
+#define CMD9 9UL  // R2 response
+#define _CMD9_RCA_SHIFT 16 // 16 bit long
+
+/* CMD10 - Send CID (Card Identification) */
+#define CMD10 10UL
+#define _CMD10_RCA_SHIFT 16 // 16 bit long
+
 /* CMD11 - Voltage Switch to 1.8V */
 #define CMD11 11UL // R1; ac; no argument
 
@@ -76,6 +84,10 @@
 #define _CMD13_STATUSTASK_SHIFT 15 //  1 bit long
 #define CMD13_SEND_STATUS (0<<_CMD15_STATUSTASK_SHIFT)
 #define CMD13_TASK_STATUS (1<<_CMD15_STATUSTASK_SHIFT)
+
+/* ACMD13 - Send SD Status */
+#define ACMD13 13UL
+#define ACMD13_TFRMODE ((ACMD13 << _SDIO_TFRMODE_CMDINDEX_SHIFT) | SDIO_TFRMODE_DATPRESSEL_DATA | SDIO_TFRMODE_RESPTYPESEL_RESP48 | SDIO_TFRMODE_DATDIRSEL_ENABLE)
 
 #define CMD16 16UL
 
@@ -124,7 +136,7 @@ typedef enum
 /**********************************************************
  * Global prototypes
  *********************************************************/
-void SDIO_Init(SDIO_TypeDef *sdio_t,
+uint8_t SDIO_Init(SDIO_TypeDef *sdio_t,
                uint32_t sdioFreq_u32,
                CMU_Clock_TypeDef mainClock_t);
 void SDIO_WriteSingleBlock(SDIO_TypeDef *sdio_t,
@@ -134,5 +146,14 @@ void SDIO_ReadSingleBlock(SDIO_TypeDef *sdio_t,
                           uint32_t SD_dest_u32,
                           uint32_t* origin_pu32);
 uint8_t SDIO_GetActCardStateType(void);
+
+// 2025 04 28 LW: Adding functions to complete disk_ioctl stubs
+void SDIO_WaitForWriteFinish(SDIO_TypeDef *sdio_t);
+
+uint8_t SDIO_GetSectorCount(SDIO_TypeDef *sdio_t,
+                             uint32_t *sector_cnt);
+
+uint8_t SDIO_GetBlockSize(SDIO_TypeDef *sdio_t,
+                             uint32_t *block_sz);
 
 #endif //__SDIO_H__

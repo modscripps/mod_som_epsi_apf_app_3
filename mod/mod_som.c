@@ -32,6 +32,9 @@
 #include "retargetserialconfig.h"
 #endif
 
+#ifdef MOD_SOM_SETTINGS_EN
+#include "mod_som_settings.h"
+#endif
 
 //TODO remove once we have multiple LDMA ISR
 #ifdef  MOD_SOM_EFE_EN
@@ -300,9 +303,9 @@ mod_som_status_t mod_som_main_start_f(void){
     printf("\r\n==============================\r\n");
     printf(PROJECTNAME);
     printf("\r\n");
-    printf("Version: " __DATE__);
+    printf("Version: %s, %s", MOD_SOM_SETTINGS_DEFAULT_FIRMWARE_GITID, __DATE__);
     printf(" ");
-    printf(__TIME__);
+    printf("%s",__TIME__);
     printf("\r\n");
     printf("==============================\r\n");
 

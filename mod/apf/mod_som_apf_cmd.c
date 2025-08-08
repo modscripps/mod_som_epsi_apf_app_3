@@ -261,7 +261,7 @@ CPU_INT16S mod_som_apf_cmd_daq_f(CPU_INT16U argc,
               mod_som_apf_status_t temp_status = mod_som_apf_daq_stop_f();
               status |= return_status | temp_status;
               break;
-            }
+          }
           // save time string into the temporary local string - Mai - Nov 18, 2021
           //ALB THIS THE ACK ANSWER
           snprintf(apf_reply_str,MOD_SOM_SHELL_INPUT_BUF_SIZE-1,"%s,start,%s,%u\r\n",
@@ -351,17 +351,17 @@ CPU_INT16S mod_som_apf_cmd_daq_f(CPU_INT16U argc,
    bytes_sent = 0;
    // sending the above string to the APF port - Mai - Nov 18, 2021
    for (int tries = 0; tries< 3; tries++){
-       bytes_sent = mod_som_apf_send_line_f(apf_leuart_ptr,apf_reply_str, reply_str_len);
+   bytes_sent = mod_som_apf_send_line_f(apf_leuart_ptr,apf_reply_str, reply_str_len);
        if(bytes_sent>0){
            break;
        }
        sl_sleeptimer_delay_millisecond(10);
    }
    if (bytes_sent==0)
-     {
-       mod_som_io_print_f("Failed on mod_som_apf_send_line_f\r\n");
-       status |= MOD_SOM_APF_STATUS_ERR;
-     }
+   {
+     mod_som_io_print_f("Failed on mod_som_apf_send_line_f\r\n");
+     status |= MOD_SOM_APF_STATUS_ERR;
+   }
 //   if(status != MOD_SOM_APF_STATUS_OK)
 //       return MOD_SOM_APF_STATUS_ERR;
   }

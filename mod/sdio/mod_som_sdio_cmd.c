@@ -37,8 +37,11 @@ static SHELL_CMD  mod_som_sdio_cmd_tbl[] =
         { "sdio.rm",        mod_som_sdio_rm_cmd_f          },
         { "sdio.enable",    mod_som_sdio_enable_cmd_f          },
         { "sdio.disable",   mod_som_sdio_disable_cmd_f          },
+        { "sdio.fmt",       mod_som_sdio_fmt_cmd_f          },
         { 0, 0 }
 };
+
+static char resp_buf[128];
 
 /*******************************************************************************
  * @brief
@@ -260,4 +263,28 @@ CPU_INT16S mod_som_sdio_disable_cmd_f(CPU_INT16U argc,
     return status;
 }
 
+CPU_INT16S mod_som_sdio_fmt_cmd_f(CPU_INT16U argc,
+        CPU_CHAR *argv[],
+        SHELL_OUT_FNCT out_put_f,
+        SHELL_CMD_PARAM *cmd_param){
+    mod_som_status_t status=MOD_SOM_STATUS_OK;
 
+    // LW: Ask for confirmation before formatting
+    mod_som_io_print_f("Formatting will delete all data.\r\nAre you sure? (y/n)");
+
+    // LW: Get response
+    uint32_t resp_len = 0;
+    mod_som_shell_get_input_f((char*)&resp_buf, &resp_len);
+
+    // LW: Format card or abort command
+    if(resp_buf[0] == 'y' || resp_buf[0] == 'Y')
+    {
+        mod_som_io_print_f("\r\nFormatting SD card. Please wait...");
+        status = mod_som_sdio_fmt_f();
+        if(status == MOD_SOM_STATUS_OK) mod_som_io_print_f(" Done!\r\nSD card formatted successfully.\r\n");
+        else mod_som_io_print_f("\r\nError occurred during SD card formatting.\r\n");
+    }
+    else mod_som_io_print_f("\r\nNevermind then!\r\n");
+
+    return status;
+}

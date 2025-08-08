@@ -942,7 +942,6 @@ mod_som_status_t mod_som_efe_obp_stop_cpt_dissrate_task_f(){
 
       //  mod_som_efe_obp_ptr->started_flag=false;
 
-
       if(RTOS_ERR_CODE_GET(err) != RTOS_ERR_NONE)
         return (mod_som_efe_obp_ptr->status = mod_som_efe_encode_status_f(MOD_SOM_EFE_OPB_STATUS_FAIL_TO_START_CONSUMER_TASK));
   }
@@ -1098,7 +1097,7 @@ mod_som_status_t mod_som_efe_obp_start_cpt_dissrate_task_f(){
                mod_som_efe_obp_cpt_dissrate_task_f,
                DEF_NULL,
                MOD_SOM_EFE_OBP_CPT_DISSRATE_TASK_PRIO,
-               &efe_obp_cpt_dissrate_task_stk[0],
+               efe_obp_cpt_dissrate_task_stk,
                (MOD_SOM_EFE_OBP_CPT_DISSRATE_TASK_STK_SIZE / 10u),
                MOD_SOM_EFE_OBP_CPT_DISSRATE_TASK_STK_SIZE,
                0u,

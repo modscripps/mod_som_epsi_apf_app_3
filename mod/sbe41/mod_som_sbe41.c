@@ -61,6 +61,7 @@ mod_som_calendar_settings_t mod_som_calendar_settings;
 //------------------------------------------------------------------------------
 //#define MOD_SOM_SBE41_DATA_RX_LENGTH 64
 //#define MOD_SOM_SBE41_DATA_LENGTH_TRUNCATION 2U
+#define MOD_SOM_SBE41_DATA_WRITE_TIMEOUT 10U
 
 // Data consumer
 static CPU_STK sbe41_consumer_task_stk[MOD_SOM_SBE41_CONSUMER_TASK_STK_SIZE];
@@ -900,7 +901,7 @@ mod_som_status_t  mod_som_sbe41_start_consumer_task_f(){
                         mod_som_sbe41_consumer_task_f,
                         DEF_NULL,
                         MOD_SOM_SBE41_CONSUMER_TASK_PRIO,
-            &sbe41_consumer_task_stk[0],
+            sbe41_consumer_task_stk,
             (MOD_SOM_SBE41_CONSUMER_TASK_STK_SIZE / 10u),
             MOD_SOM_SBE41_CONSUMER_TASK_STK_SIZE,
             0u,
@@ -987,7 +988,7 @@ void  mod_som_sbe41_consumer_task_f(void  *p_arg){
     CORE_ENTER_ATOMIC();
     mod_som_sbe41_ptr->consumer_ptr->cnsmr_cnt=0;
     mod_som_sbe41_ptr->consumer_ptr->consumed_flag=true;
-    mod_som_sbe41_ptr->consumer_ptr->record_pressure[0]=0; //ALB I need to initialize these becasue I use record_pressure in daq_start
+    mod_som_sbe41_ptr->consumer_ptr->record_pressure[0]=0; //ALB I need to initialize these because I use record_pressure in daq_start
     mod_som_sbe41_ptr->consumer_ptr->record_pressure[1]=0;
     mod_som_sbe41_ptr->sample_timeout = false;
     CORE_EXIT_ATOMIC();
@@ -1006,7 +1007,9 @@ void  mod_som_sbe41_consumer_task_f(void  *p_arg){
     mod_som_sbe41_sample_t curr_sbe_sample;
     static sl_sleeptimer_timestamp_t time0 = 0;
     bool first_sample_flag = true;
-    sl_sleeptimer_timestamp_t        time1= 0;;
+    sl_sleeptimer_timestamp_t        time1= 0;
+    sl_sleeptimer_timestamp_t file_write_time0, current_time; //this is for timing how long it takes for things to time
+    uint32_t file_write_counter;
     char last_sbe42sample[mod_som_sbe41_ptr->config_ptr->sample_data_length+1];
 
 
@@ -1028,6 +1031,7 @@ void  mod_som_sbe41_consumer_task_f(void  *p_arg){
 //    LEUART_TypeDef* apf_leuart_ptr;
 //    uint32_t bytes_sent;
 //    mod_som_apf_status_t status;
+
     //time0= mod_som_calendar_get_time_f();
     while (mod_som_sbe41_ptr->collect_data_flag) {
 
@@ -1245,10 +1249,10 @@ void  mod_som_sbe41_consumer_task_f(void  *p_arg){
                     break;
                   case 1:
 //                    if(rawfile_ptr->initialized_flag && rawfile_ptr->is_open_flag){
-                        mod_som_sdio_write_data_f(rawfile_ptr,
-                                                  mod_som_sbe41_ptr->consumer_ptr->record_data_ptr,
-                                                  mod_som_sbe41_ptr->consumer_ptr->record_length,
-                                                  &mod_som_sbe41_ptr->consumer_ptr->consumed_flag);
+                    mod_som_sdio_write_data_f(rawfile_ptr,
+                        mod_som_sbe41_ptr->consumer_ptr->record_data_ptr,
+                        mod_som_sbe41_ptr->consumer_ptr->record_length,
+                        &mod_som_sbe41_ptr->consumer_ptr->consumed_flag);
 //                    }
                     break;
                   case 2:
@@ -1259,6 +1263,12 @@ void  mod_som_sbe41_consumer_task_f(void  *p_arg){
                     printf("wrong sbe.mode\r\n");
                     break;
                 }
+                file_write_time0 = mod_som_calendar_get_time_f();
+                current_time = file_write_time0;
+                file_write_counter = 0;
+                // this is to wait for the data to be written
+                // once it is written, then we can move on
+                // this will timeout after a while
                 while(!mod_som_sbe41_ptr->consumer_ptr->consumed_flag){
                     //2023 06 08 added watchdog feed and a release from this task
                     // this is to prevent the system to hang on to the processor
@@ -1277,6 +1287,14 @@ void  mod_som_sbe41_consumer_task_f(void  *p_arg){
                         return;
                     }
                     WDOG_Feed();
+
+                    file_write_counter++;
+                    if((file_write_counter%1000)==0){
+                        current_time = mod_som_calendar_get_time_f();
+                        if((current_time-file_write_time0)>MOD_SOM_SBE41_DATA_WRITE_TIMEOUT){
+                            break;
+                        }
+                    }
                 };
 
                 mod_som_sbe41_ptr->consumer_ptr->elmnts_skipped = 0;
@@ -1689,42 +1707,42 @@ void mod_som_sbe41_ldma_irq_handler_f(){
 
     {
       if( (mod_som_sbe41_ptr->collect_data_flag)){
-        tick=sl_sleeptimer_get_tick_count64();
-        mystatus = sl_sleeptimer_tick64_to_ms(tick,\
-                                              &mod_som_sbe41_ptr->timestamp);
+      tick=sl_sleeptimer_get_tick_count64();
+        mystatus = sl_sleeptimer_tick64_to_ms(tick,
+                                            &mod_som_sbe41_ptr->timestamp);
 
-        //MHA: Now augment timestamp by poweron_offset_ms
-        mod_som_calendar_settings=mod_som_calendar_get_settings_f(); //get the calendar settings pointer
-        mod_som_sbe41_ptr->timestamp += mod_som_calendar_settings.poweron_offset_ms;
-
-
-        if(mystatus != SL_STATUS_OK)
-          {
-            //ALB TODO handle get timestamps errors
-          }
-        //need to cast local_elements_map as uint64_t.
-        local_elements_map=(uint8_t*)mod_som_sbe41_ptr->rec_buff_ptr->elements_map \
-            [mod_som_sbe41_ptr->rec_buff_ptr->producer_indx];
-
-        t_hex[0] = (uint32_t) (mod_som_sbe41_ptr->timestamp>>32);
-        t_hex[1] = (uint32_t) mod_som_sbe41_ptr->timestamp;
-
-        sprintf(hextimestamp,  \
-                "%08x%08x", \
-                (int) t_hex[0],\
-                (int) t_hex[1]);
-
-        memcpy(local_elements_map, \
-               hextimestamp,\
-               MOD_SOM_SBE41_HEXTIMESTAMP_LENGTH);
+      //MHA: Now augment timestamp by poweron_offset_ms
+      mod_som_calendar_settings=mod_som_calendar_get_settings_f(); //get the calendar settings pointer
+      mod_som_sbe41_ptr->timestamp += mod_som_calendar_settings.poweron_offset_ms;
 
 
-        //ALB increment sample count
-        mod_som_sbe41_ptr->sample_count++;
-        //ALB adjust producer_indx
-        mod_som_sbe41_ptr->rec_buff_ptr->producer_indx= \
-            mod_som_sbe41_ptr->sample_count % \
-            MOD_SOM_SBE41_DATA_SAMPLES_PER_BUFFER;
+      if(mystatus != SL_STATUS_OK)
+        {
+          //ALB TODO handle get timestamps errors
+        }
+      //need to cast local_elements_map as uint64_t.
+        local_elements_map=(uint8_t*)mod_som_sbe41_ptr->rec_buff_ptr->elements_map
+          [mod_som_sbe41_ptr->rec_buff_ptr->producer_indx];
+
+      t_hex[0] = (uint32_t) (mod_som_sbe41_ptr->timestamp>>32);
+      t_hex[1] = (uint32_t) mod_som_sbe41_ptr->timestamp;
+
+      sprintf(hextimestamp,  
+          "%08x%08x", 
+          (int) t_hex[0],
+          (int) t_hex[1]);
+
+      memcpy(local_elements_map, 
+             hextimestamp,
+             MOD_SOM_SBE41_HEXTIMESTAMP_LENGTH);
+
+
+      //ALB increment sample count
+      mod_som_sbe41_ptr->sample_count++;
+      //ALB adjust producer_indx
+      mod_som_sbe41_ptr->rec_buff_ptr->producer_indx= 
+          mod_som_sbe41_ptr->sample_count % 
+          MOD_SOM_SBE41_DATA_SAMPLES_PER_BUFFER;
 
       }else{
           CORE_ENTER_ATOMIC();
@@ -1736,16 +1754,15 @@ void mod_som_sbe41_ldma_irq_handler_f(){
       }
 
       //update the address in the ldma descriptor list
-      descriptor_read_sbe.xfer.dstAddr=(uint32_t) ( \
-                                 mod_som_sbe41_ptr->rec_buff_ptr->elements_map \
-                             [mod_som_sbe41_ptr->rec_buff_ptr->producer_indx]+ \
+      descriptor_read_sbe.xfer.dstAddr=(uint32_t) ( 
+                                 mod_som_sbe41_ptr->rec_buff_ptr->elements_map 
+                             [mod_som_sbe41_ptr->rec_buff_ptr->producer_indx]+ 
                                                 MOD_SOM_SBE41_HEXTIMESTAMP_LENGTH);
 
 
-      LDMA_StartTransfer( mod_som_sbe41_ptr->ldma.ch ,\
-                          (void*)&sbe_ldma_signal, \
+      LDMA_StartTransfer( mod_som_sbe41_ptr->ldma.ch ,
+                          (void*)&sbe_ldma_signal, 
                           (void*)&descriptor_read_sbe);
-
 
     }else{
         //reset the LEUART IRQ and look for the next SBE sample.
