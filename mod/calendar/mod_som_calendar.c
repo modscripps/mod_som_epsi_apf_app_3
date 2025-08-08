@@ -213,19 +213,7 @@ char * mod_som_calendar_get_datetime_f(){
  *   or otherwise
  ******************************************************************************/
 sl_sleeptimer_timestamp_t mod_som_calendar_get_time_f(){
-//	char buff[20];
-	sl_sleeptimer_timestamp_t time;
-//	sl_sleeptimer_date_t      adate;//,adate_1970;
-	time = sl_sleeptimer_get_time();
-//	//get timestamp for 1970
-//      sl_sleeptimer_build_datetime(
-//                  &adate,
-//                   1970,0,1,0,0,0,0); //MHA: month starts with 0, day starts with 1, HMS all start with 0
-//  sl_sleeptimer_convert_date_to_time(&adate, &atime);
-//
-//  time-=atime;
-
-	return time;
+	return sl_sleeptimer_get_time();
 }
 
 /*******************************************************************************

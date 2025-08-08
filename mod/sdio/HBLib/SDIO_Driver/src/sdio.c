@@ -33,9 +33,7 @@
 #include "em_device.h"
 #include "em_cmu.h"
 
-//ALB
 #include "diskio.h"
-
 /******************************************************************************
  * Local defines
  *****************************************************************************/
@@ -43,7 +41,7 @@
 /******************************************************************************
  * Local prototypes
  *****************************************************************************/
-static uint32_t SDIO_S_SetCommandResponseType(uint32_t cmd_u32);
+static uint32_t SDIO_S_SetCommandResponseType(uint32_t cmd_u32, uint32_t arg_u32);
 static uint32_t SDIO_S_SetDataPresentSelect(uint32_t cmd_u32);
 static uint32_t SDIO_S_SetCommandSpecificCrcAndIndexCheck(uint32_t cmd_u32);
 static uint32_t SDIO_S_SendCMDWithOutDAT( SDIO_TypeDef *sdio_t,
@@ -52,9 +50,18 @@ static uint32_t SDIO_S_SendCMDWithOutDAT( SDIO_TypeDef *sdio_t,
 static void SDIO_S_LowLevelRegisterInit(SDIO_TypeDef *sdio_t,
                                         uint32_t sdioFreq_u32,
                                         CMU_Clock_TypeDef mainClock_t);
-static void SDIO_S_CardInitialization_and_Identification(SDIO_TypeDef *sdio_t);
+static uint8_t SDIO_S_CardInitialization_and_Identification(SDIO_TypeDef *sdio_t);
 static void SDIO_S_CardStdbyToTrsfrMode(SDIO_TypeDef *sdio_t);
 static void SDIO_S_TimeoutSettingonDATLine(SDIO_TypeDef *sdio_t);
+
+static int SDIO_S_SendCMD(SDIO_TypeDef *sdio_t,
+                          BYTE cmd,
+                          DWORD arg,
+                          BYTE rt,
+                          DWORD *buff);
+
+
+void SDIO_GetR2(SDIO_TypeDef *sdio_t, uint32_t *buf);
 
 
 /******************************************************************************
@@ -81,15 +88,15 @@ static struct
  * 		                        sd card)
  * 		 CMU_Clock_TypeDef mainClock_t: used main clock source
  *****************************************************************************/
-void SDIO_Init(SDIO_TypeDef *sdio_t,
+uint8_t SDIO_Init(SDIO_TypeDef *sdio_t,
                uint32_t sdioFreq_u32,
                CMU_Clock_TypeDef mainClock_t)
 {
   CMU_ClockEnable(cmuClock_SDIO, true);
   SDIO_S_LowLevelRegisterInit(sdio_t, sdioFreq_u32, mainClock_t);
-  SDIO_S_CardInitialization_and_Identification(sdio_t);
+  uint8_t status = SDIO_S_CardInitialization_and_Identification(sdio_t);
+  if(status) return status;
   SDIO_S_CardStdbyToTrsfrMode(sdio_t);
-
 }
 
 /**************************************************************************//**
@@ -135,7 +142,7 @@ void SDIO_ReadSingleBlock(SDIO_TypeDef *sdio_t,
              | SDIO_TFRMODE_DMAEN_DISABLE
 
              // 5. Set Command Reg
-             | SDIO_S_SetCommandResponseType(CMD17)
+             | SDIO_S_SetCommandResponseType(CMD17, -1)
              | SDIO_TFRMODE_CMDCRCCHKEN_DISABLE
              | SDIO_TFRMODE_CMDINDXCHKEN_DISABLE
              | SDIO_TFRMODE_DATPRESSEL_DATA
@@ -219,7 +226,7 @@ void SDIO_WriteSingleBlock( SDIO_TypeDef *sdio_t,
       | SDIO_TFRMODE_DMAEN_DISABLE
 
       // 5. Set Command Reg
-      | SDIO_S_SetCommandResponseType(CMD24) 
+      | SDIO_S_SetCommandResponseType(CMD24, -1)
 	  | SDIO_TFRMODE_CMDCRCCHKEN_DISABLE
       | SDIO_TFRMODE_CMDINDXCHKEN_DISABLE 
 	  | SDIO_TFRMODE_DATPRESSEL_DATA      
@@ -276,6 +283,7 @@ uint32_t SDIO_S_SendCMDWithOutDAT(SDIO_TypeDef *sdio_t,
                                 uint32_t cmd_u32,
                                 uint32_t cmdArg_u32)
 {
+  uint32_t status = 0;
   uint32_t tmpReg_u32;
   uint32_t regVal_u32 = sdio_t->PRSSTAT;
 //  //ALB add delay
@@ -307,9 +315,10 @@ uint32_t SDIO_S_SendCMDWithOutDAT(SDIO_TypeDef *sdio_t,
   sdio_t->CMDARG1 = cmdArg_u32;
 
   /* 6. Set Command Reg */
-  tmpReg_u32 = sdio_t->TFRMODE;
+  //tmpReg_u32 = sdio_t->TFRMODE;
+  tmpReg_u32 = 0;
   tmpReg_u32 &= (~_SDIO_TFRMODE_RESPTYPESEL_MASK);
-  tmpReg_u32 |= SDIO_S_SetCommandResponseType(cmd_u32);
+  tmpReg_u32 |= SDIO_S_SetCommandResponseType(cmd_u32, cmdArg_u32);
   tmpReg_u32 &= (~_SDIO_TFRMODE_CMDCRCCHKEN_MASK);
   tmpReg_u32 &= (~_SDIO_TFRMODE_CMDINDXCHKEN_MASK);
   tmpReg_u32 &= (~_SDIO_TFRMODE_DATPRESSEL_MASK);
@@ -321,19 +330,59 @@ uint32_t SDIO_S_SendCMDWithOutDAT(SDIO_TypeDef *sdio_t,
   tmpReg_u32 |= (cmd_u32 << _SDIO_TFRMODE_CMDINDEX_SHIFT);
   sdio_t->TFRMODE = tmpReg_u32;
 
+  // 2025 04 25 LW: Implemented CMD timeout catching
+
   // Sequence to Finalize Command
   // 1. Wait for Command Complete
-  //SAN added to ensure no hanging
-//  SDIO_S_TimeoutSettingonDATLine(sdio_t);
-  while (!(sdio_t->IFCR & _SDIO_IFCR_CMDCOM_MASK));
+  while (!(sdio_t->IFCR & _SDIO_IFCR_CMDCOM_MASK) & !(sdio_t->IFCR & _SDIO_IFCR_CMDTOUTERR_MASK));
+
+  // Capture whether or not the command timed out
+  if(sdio_t->IFCR & _SDIO_IFCR_CMDTOUTERR_MASK || sdio_t->IFCR & _SDIO_IFCR_ERRINT_MASK)
+  {
+      status = -1;
+      sdio_t->CLOCKCTRL |= (_SDIO_CLOCKCTRL_SFTRSTCMD_MASK);
+  }
+
   // 2. clear previous command complete int
   while ((sdio_t->IFCR & _SDIO_IFCR_CMDCOM_MASK))
   {
-    sdio_t->IFCR = (_SDIO_IFCR_CMDCOM_MASK);
+      sdio_t->IFCR |= (_SDIO_IFCR_CMDCOM_MASK);
   }
 
-  return 1;
+  return status;
 }
+
+// 2025 06 30 LW: Trying new CMD function based on mmc_lpc23xx_mci.c from Elm-Chan FATFS ffsamples
+/*
+static int SDIO_S_SendCMD(SDIO_TypeDef *sdio_t,
+                          BYTE cmd,
+                          DWORD arg,
+                          BYTE rt,
+                          DWORD *buff)
+{
+  uint32_t tmpReg_u32 = 0;
+
+  // If the command is an ACMD, send CMD55 first
+  if(cmd & 0x80){
+      SDIO_S_SendCMD(CMD55, SDIO_ActCardState_st.cardRCA_u16 << 16, 1, buff);
+  } // TODO: error handling if CMD55 fails
+
+  // Clear the ACMD flag
+  cmd &= 0x3F;
+
+  // Wait until the card is ready for this command
+  while(sdio_t->PRSSTAT & _SDIO_PRSSTAT_CMDINHIBITCMD_MASK);
+
+  // Write arguments to CMDARG1 register
+  sdio_t->CMDARG1 = (uint32_t) arg;
+
+  // Set up the bits to write to the TFRMODE register
+  tmpReg_u32 |= cmd << _SDIO_TFRMODE_CMDINDEX_SHIFT;
+  tmpReg_u32 |=
+
+
+}
+*/
 
 /**************************************************************************//**
  * @brief Set the data transition related timeout (max time)
@@ -385,7 +434,7 @@ static uint32_t SDIO_S_SetCommandSpecificCrcAndIndexCheck(uint32_t cmd_u32)
  *****************************************************************************/
 static uint32_t SDIO_S_SetDataPresentSelect(uint32_t cmd_u32)
 {
-  if (	cmd_u32 == CMD7 || 
+  if (	//cmd_u32 == CMD7 ||
   		cmd_u32 == CMD12)
   {
     return SDIO_TFRMODE_DATPRESSEL_DATA;
@@ -406,7 +455,7 @@ static uint32_t SDIO_S_SetDataPresentSelect(uint32_t cmd_u32)
  * @Outputs:
  * 		 Function's return value: the desired command related response type
  *****************************************************************************/
-static uint32_t SDIO_S_SetCommandResponseType(uint32_t cmd_u32)
+static uint32_t SDIO_S_SetCommandResponseType(uint32_t cmd_u32, uint32_t arg_u32)
 {
   /*Check the command in the valid range*/
   if (cmd_u32 >= 64)
@@ -426,17 +475,27 @@ static uint32_t SDIO_S_SetCommandResponseType(uint32_t cmd_u32)
 			|| cmd_u32 == CMD17
       		|| cmd_u32 == CMD24 
 			|| cmd_u32 == ACMD6 
-			|| cmd_u32 == CMD13)
+			|| cmd_u32 == CMD13
+			|| cmd_u32 == ACMD13)
   {
     return SDIO_TFRMODE_RESPTYPESEL_RESP48;
   }
   /*R1b response*/
   else if (cmd_u32 == CMD7)
   {
-    return SDIO_TFRMODE_RESPTYPESEL_BUSYAFTRESP;
+    if(arg_u32 == 0)
+    {
+      return SDIO_TFRMODE_RESPTYPESEL_NORESP;
+    }
+    else
+    {
+      return SDIO_TFRMODE_RESPTYPESEL_BUSYAFTRESP;
+    }
   }
   /*R2 response*/
-  else if (cmd_u32 == CMD2)
+  else if (cmd_u32 == CMD2
+      || cmd_u32 == CMD9
+      || cmd_u32 == CMD10)
   {
     return SDIO_TFRMODE_RESPTYPESEL_RESP136;
   }
@@ -480,10 +539,9 @@ static void SDIO_S_LowLevelRegisterInit(SDIO_TypeDef *sdio_t,
    * Board specific register adjustment
    * Route soldered microSD card slot
    */
-  //SML CDLOC_LOC0 is actually correct by the hardware copper routing.  not sure why it sometimes works with LOC3
   //ALB Make CD LOC since the SOM use LOC0 (F8) but for some reason it chokes when I do this
   sdio_t->ROUTELOC0 = 	SDIO_ROUTELOC0_DATLOC_LOC1 
-						| SDIO_ROUTELOC0_CDLOC_LOC0
+						| SDIO_ROUTELOC0_CDLOC_LOC3
 						//| SDIO_ROUTELOC0_WPLOC_LOC3
 						| SDIO_ROUTELOC0_CLKLOC_LOC1;
   sdio_t->ROUTELOC1 = 	SDIO_ROUTELOC1_CMDLOC_LOC1;
@@ -564,7 +622,9 @@ static void SDIO_S_LowLevelRegisterInit(SDIO_TypeDef *sdio_t,
                         | SDIO_IFENC_TRANCOMEN
                         | SDIO_IFENC_BUFWRRDYEN
                         | SDIO_IFENC_BUFRDRDYEN
+                        | SDIO_IFENC_CMDTOUTERREN
                         | SDIO_IFENC_CMDCRCERREN
+                        | SDIO_IFENC_CMDENDBITERREN
                         | SDIO_IFENC_CMDINDEXERREN
                         | SDIO_IFENC_DATTOUTERREN
                         | SDIO_IFENC_DATCRCERREN
@@ -573,25 +633,24 @@ static void SDIO_S_LowLevelRegisterInit(SDIO_TypeDef *sdio_t,
                         | SDIO_IFENC_CARDINTEN;
 
   {
-    // 2024 12 12 LW: Configure CMU for SDIOCLK to use HFXOAdd commentMore actions
-    CMU->SDIOCTRL = CMU_SDIOCTRL_SDIOCLKSEL_HFXO;
+
+    // 2024 12 12 LW: Configure CMU for SDIOCLK to use HFXO
+        CMU->SDIOCTRL = CMU_SDIOCTRL_SDIOCLKSEL_HFXO;
+
     // Calculate the divisor for SD clock frequency
-    // 2024 12 12 LW: Divide divisor by 2 for correct frequencyAdd commentMore actions
+    // 2024 12 12 LW: Divide divisor by 2 for correct frequency
     uint32_t divisor_u32 = (CMU_ClockFreqGet(mainClock_t) / sdioFreq_u32) / 2;
     sdio_t->CLOCKCTRL = ((divisor_u32 << _SDIO_CLOCKCTRL_SDCLKFREQSEL_SHIFT))
                         | (SDIO_CLOCKCTRL_INTCLKEN)
                         | (SDIO_CLOCKCTRL_SDCLKEN);
   }
-
-//ALB I am changing to 3P3 because that is what we have
-//SML added SIGDET for TSTLVL mode (but I removed it later)
+//ALB I am changing to 3P3 becasue that is what we have
   sdio_t->HOSTCTRL1 =   (SDIO_HOSTCTRL1_SDBUSVOLTSEL_3P3V)
                         | (SDIO_HOSTCTRL1_SDBUSPOWER)
                         | (SDIO_HOSTCTRL1_DATTRANWD_SD4);
   //ALB
   //ALB CDSIGDET should trigger the toggling of the register CDTSTLLVL
 //  SDIO->HOSTCTRL1|=(_SDIO_HOSTCTRL1_CDSIGDET_MASK & SDIO_HOSTCTRL1_CDSIGDET);
-
 }
 
 /**************************************************************************//**
@@ -610,11 +669,12 @@ static void SDIO_S_LowLevelRegisterInit(SDIO_TypeDef *sdio_t,
  * @Outputs:
  * 		 SDIO_ActCardState_st: the initialized SD card related informations
  *****************************************************************************/
-static void SDIO_S_CardInitialization_and_Identification(SDIO_TypeDef *sdio_t)
+static uint8_t SDIO_S_CardInitialization_and_Identification(SDIO_TypeDef *sdio_t)
 {
-
+  uint8_t status = 0;
   uint32_t tempVar_u32 = 0x0;
   uint8_t attemptCnt_u8 = 2;
+  uint32_t resp = 0;
 //  //ALB add result of SDIO_S_SendCMDWithOutDAT
 //  uint8_t return_SendCMDWithOutDAT=0;
 
@@ -630,6 +690,7 @@ static void SDIO_S_CardInitialization_and_Identification(SDIO_TypeDef *sdio_t)
     tempVar_u32 = sdio_t->RESP0;
 
     SDIO_S_SendCMDWithOutDAT(sdio_t, CMD8, 1 << _CMD8_27V_36V_SHIFT);
+
     // 3. Check response
     if (sdio_t->RESP0 == tempVar_u32)
     {
@@ -652,7 +713,7 @@ static void SDIO_S_CardInitialization_and_Identification(SDIO_TypeDef *sdio_t)
         if (attemptCnt_u8 == 1)
         {
           // 4. Unusable card
-          return;
+          return -1;
         }
       }
     }
@@ -667,9 +728,9 @@ static void SDIO_S_CardInitialization_and_Identification(SDIO_TypeDef *sdio_t)
   if (SDIO_ActCardState_st.F8_u1 == 1)
   {
     // 19.Get OCR(ACMD41) Voltage window = 0
-    SDIO_S_SendCMDWithOutDAT(sdio_t, CMD55, RCA_DEFAULT << _CMD55_RCA_SHIFT);
+    status = SDIO_S_SendCMDWithOutDAT(sdio_t, CMD55, RCA_DEFAULT << _CMD55_RCA_SHIFT);
     tempVar_u32 = sdio_t->RESP0;
-    SDIO_S_SendCMDWithOutDAT(sdio_t, ACMD41, 0 << _ACMD41_VW_SHIFT); // voltage window = 0
+    status = SDIO_S_SendCMDWithOutDAT(sdio_t, ACMD41, 0 << _ACMD41_VW_SHIFT); // voltage window = 0
 
     // 20. Check OCR
     if (tempVar_u32 != sdio_t->RESP0)
@@ -708,7 +769,14 @@ static void SDIO_S_CardInitialization_and_Identification(SDIO_TypeDef *sdio_t)
     // 12.Get OCR(ACMD41) Voltage window = 0
     SDIO_S_SendCMDWithOutDAT(sdio_t, CMD55, RCA_DEFAULT << _CMD55_RCA_SHIFT);
     tempVar_u32 = sdio_t->RESP0;
-    SDIO_S_SendCMDWithOutDAT(sdio_t, ACMD41, 0 << _ACMD41_VW_SHIFT); // voltage window = 0
+    status = SDIO_S_SendCMDWithOutDAT(sdio_t, ACMD41, 0 << _ACMD41_VW_SHIFT); // voltage window = 0
+
+    // 2025 04 25 LW: Exit here if a card is inserted but not responding to commands
+    if(status)
+    {
+        SDIO_ActCardState_st.cardType_u3 = Unusable_Card;
+        return -1;
+    }
 
     // 13. Check OCR
     if (tempVar_u32 != sdio_t->RESP0)
@@ -730,7 +798,7 @@ static void SDIO_S_CardInitialization_and_Identification(SDIO_TypeDef *sdio_t)
       // OCR NOK
       // 17. Not SD Card
       SDIO_ActCardState_st.cardType_u3 = Not_SD_Card;
-      return;
+      return -1;
     }
   }
 
@@ -741,6 +809,8 @@ static void SDIO_S_CardInitialization_and_Identification(SDIO_TypeDef *sdio_t)
   SDIO_S_SendCMDWithOutDAT(sdio_t, CMD3, 0);
   // The upper 16 bit of the response is the RCA
   SDIO_ActCardState_st.cardRCA_u16 = ((sdio_t->RESP0  & 0xFFFF0000) >> 16);
+
+  return 0;
 }
 
 /**************************************************************************//**
@@ -782,4 +852,169 @@ static void SDIO_S_CardStdbyToTrsfrMode(SDIO_TypeDef *sdio_t)
 uint8_t SDIO_GetActCardStateType(void)
 {
     return ((uint8_t)(SDIO_ActCardState_st.cardType_u3));
+}
+
+
+// 2025 04 28 LW: Return when there is no write in progress (for CTRL_SYNC)
+void SDIO_WaitForWriteFinish(SDIO_TypeDef *sdio_t)
+{
+    while(sdio_t->PRSSTAT & _SDIO_PRSSTAT_WRTRANACT_MASK);
+    return;
+}
+
+uint8_t SDIO_GetSectorCount(SDIO_TypeDef *sdio_t,
+                             uint32_t *sector_cnt)
+{
+    uint8_t status = 0;
+    uint32_t csd[4] = {0, 0, 0, 0};
+    uint32_t c_size = 0;
+    uint32_t current_state = 0;
+
+
+    // Get card state
+    status = SDIO_S_SendCMDWithOutDAT(sdio_t, CMD13,
+        SDIO_ActCardState_st.cardRCA_u16 << _CMD13_RCA_SHIFT);
+    current_state = (SDIO->RESP0 & 0x1E00) >> 9;
+
+    // If card is not in standby, put it in standby
+    if(current_state != 3){
+      // CMD7 with RCA 0x0000 to return card to Stand-By state (SDIO Physical Layer Spec page 50)
+      status = SDIO_S_SendCMDWithOutDAT(sdio_t, CMD7,0);
+    }
+
+    // CMD9 to get the CSD contents
+    status = SDIO_S_SendCMDWithOutDAT(sdio_t, CMD9,
+        SDIO_ActCardState_st.cardRCA_u16 << _CMD9_RCA_SHIFT);
+
+    // Copy the response to our local CSD buffer
+    SDIO_GetR2(sdio_t, &csd);
+
+    // Determine the sector count from the CSD response
+    switch( (csd[0] & 0xC0000000) >> 30 ){ // CSD[127:126]
+
+      case 0: // CSD Ver 1.0
+        c_size = (csd[1] & 0x3FF) << 2 | (csd[2] & 0xC0000000) >> 30; // CSD[73:62]
+        // elm-chan stm32 example calculates it this way:
+        // n = READ_BL_LEN + C_SIZE_MULT + 2
+        // *sector_cnt = (c_size + 1) << (n - 9);
+        uint32_t n = ((csd[1] & 0x000F0000) >> 16) + ((csd[2] & 0x38000) >> 15) + 2;
+        *sector_cnt = (c_size + 1) << (n - 9);
+        break;
+
+      case 1: // CSD Ver 2.0
+        c_size = (csd[1] & 0x1F) << 16 | (csd[2] & 0xFFFF0000) >> 16;
+        *sector_cnt = (c_size + 1) << 10; // memory capacity = (c_size + 1) * 1024
+        break;
+
+      default:
+        return -1;
+    }
+
+    // Return card to transfer mode if it started there
+    if(current_state != 3){
+        status = SDIO_S_SendCMDWithOutDAT(sdio_t, CMD7,
+                                          SDIO_ActCardState_st.cardRCA_u16 << _CMD13_RCA_SHIFT);
+        status = SDIO_S_SendCMDWithOutDAT(sdio_t, CMD13,
+            SDIO_ActCardState_st.cardRCA_u16 << _CMD13_RCA_SHIFT);
+        current_state = (SDIO->RESP0 & 0x1E00) >> 9;
+
+    }
+
+    return status;
+}
+
+uint8_t SDIO_GetBlockSize(SDIO_TypeDef *sdio_t,
+                             uint32_t *block_sz)
+{
+  uint8_t status = 0;
+  uint32_t current_state = 0;
+  uint32_t tmpReg_u32 = 0;
+  uint32_t rcv_buf[16];
+  uint32_t* localbuffptr_pu32;
+
+  // Get card state
+  status = SDIO_S_SendCMDWithOutDAT(sdio_t, CMD13,
+      SDIO_ActCardState_st.cardRCA_u16 << _CMD13_RCA_SHIFT);
+  current_state = (sdio_t->RESP0 & 0x1E00) >> 9;
+
+  // If card is not in transfer mode, put it in transfer mode
+  if(current_state != 4){
+      status = SDIO_S_SendCMDWithOutDAT(sdio_t, CMD7,
+                                        SDIO_ActCardState_st.cardRCA_u16 << _CMD7_RCA_SHIFT);
+  }
+
+  // Send CMD55
+  SDIO_S_SendCMDWithOutDAT(sdio_t, CMD55,
+      SDIO_ActCardState_st.cardRCA_u16 << _CMD55_RCA_SHIFT);
+
+
+  ////// SEND ACMD13 //////
+
+  // Wait until the card is ready for the command
+  while (sdio_t->PRSSTAT & _SDIO_PRSSTAT_CMDINHIBITCMD_MASK);
+
+  // Disable DAT CRC check (broken for this command?)
+  sdio_t->IFENC &= ~(SDIO_IFENC_DATCRCERREN);
+
+  // Set the argument to 0
+  sdio_t->CMDARG1 = 0;
+  // Configure the command
+  tmpReg_u32 = ACMD13_TFRMODE;
+  // Issue the command
+  sdio_t->TFRMODE = tmpReg_u32;
+
+  // Wait for Command Complete
+  while (!(sdio_t->IFCR & _SDIO_IFCR_CMDCOM_MASK));
+  // Clear previous command complete int
+  sdio_t->IFCR = (_SDIO_IFCR_CMDCOM_MASK);
+
+  // 10. wait for Buffer Read Ready int
+  while (!(sdio_t->IFCR & _SDIO_IFCR_BFRRDRDY_MASK));
+
+  // 11. clear previous Buffer Read Ready Int
+  sdio_t->IFCR = (_SDIO_IFCR_BFRRDRDY_MASK);
+
+  // 12. Set Block Data
+  localbuffptr_pu32 = &sdio_t->BUFDATPORT;
+  for (int i = 0; i < 16; i++)
+  {
+    uint32_t tmpData_u32 = *localbuffptr_pu32;
+    // 2025 07 01 LW: Byte swap to get the bits in the correct order
+    rcv_buf[i] = ((tmpData_u32 & 0xFF000000) >> 24) |
+                  ((tmpData_u32 & 0x00FF0000) >> 8)  |
+                  ((tmpData_u32 & 0x0000FF00) << 8)  |
+                  ((tmpData_u32 & 0x000000FF) << 24);
+
+  }
+
+
+  // Issue CMD12 to terminate the ACMD13 data transfer
+  status = SDIO_S_SendCMDWithOutDAT(sdio_t, CMD12,
+      SDIO_ActCardState_st.cardRCA_u16 << _CMD13_RCA_SHIFT);
+
+  // 19. Wait for transfer completed int
+  while (!(sdio_t->IFCR & _SDIO_IFCR_TRANCOM_MASK));
+
+  // 20. CLear Transfer completed status
+  while (sdio_t->IFCR & (_SDIO_IFCR_TRANCOM_MASK))
+  {
+    sdio_t->IFCR = (_SDIO_IFCR_TRANCOM_MASK);
+  }
+
+
+  // Determine erase block size
+  uint32_t erase_size = rcv_buf[2] & 0x0000FFFF;
+  //uint32_t au_size = (rcv_buf[2] & 0x00FF0000) >> 16;
+  *block_sz = erase_size;
+
+
+  return status;
+}
+
+void SDIO_GetR2(SDIO_TypeDef *sdio_t, uint32_t *buf)
+{
+  buf[0] = (sdio_t->RESP6 << 8) | (sdio_t->RESP4 >> 24);
+  buf[1] = (sdio_t->RESP4 << 8) | (sdio_t->RESP2 >> 24);
+  buf[2] = (sdio_t->RESP2 << 8) | (sdio_t->RESP0 >> 24);
+  buf[3] = (sdio_t->RESP0 << 8);
 }

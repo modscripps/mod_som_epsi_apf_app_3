@@ -142,6 +142,11 @@ CPU_INT16S mod_som_sdio_disable_cmd_f(CPU_INT16U argc,
         SHELL_OUT_FNCT out_put_f,
         SHELL_CMD_PARAM *cmd_param);
 
+CPU_INT16S mod_som_sdio_fmt_cmd_f(CPU_INT16U argc,
+        CPU_CHAR *argv[],
+        SHELL_OUT_FNCT out_put_f,
+        SHELL_CMD_PARAM *cmd_param);
+
 
 
 #endif //RTOS_MODULE_COMMON_SHELL_AVAIL

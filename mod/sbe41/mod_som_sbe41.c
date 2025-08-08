@@ -61,6 +61,7 @@ mod_som_calendar_settings_t mod_som_calendar_settings;
 //------------------------------------------------------------------------------
 //#define MOD_SOM_SBE41_DATA_RX_LENGTH 64
 //#define MOD_SOM_SBE41_DATA_LENGTH_TRUNCATION 2U
+#define MOD_SOM_SBE41_DATA_WRITE_TIMEOUT 10U
 
 // Data consumer
 static CPU_STK sbe41_consumer_task_stk[MOD_SOM_SBE41_CONSUMER_TASK_STK_SIZE];
@@ -987,7 +988,7 @@ void  mod_som_sbe41_consumer_task_f(void  *p_arg){
     CORE_ENTER_ATOMIC();
     mod_som_sbe41_ptr->consumer_ptr->cnsmr_cnt=0;
     mod_som_sbe41_ptr->consumer_ptr->consumed_flag=true;
-    mod_som_sbe41_ptr->consumer_ptr->record_pressure[0]=0; //ALB I need to initialize these becasue I use record_pressure in daq_start
+    mod_som_sbe41_ptr->consumer_ptr->record_pressure[0]=0; //ALB I need to initialize these because I use record_pressure in daq_start
     mod_som_sbe41_ptr->consumer_ptr->record_pressure[1]=0;
     mod_som_sbe41_ptr->sample_timeout = false;
     CORE_EXIT_ATOMIC();
@@ -1006,7 +1007,9 @@ void  mod_som_sbe41_consumer_task_f(void  *p_arg){
     mod_som_sbe41_sample_t curr_sbe_sample;
     static sl_sleeptimer_timestamp_t time0 = 0;
     bool first_sample_flag = true;
-    sl_sleeptimer_timestamp_t        time1= 0;;
+    sl_sleeptimer_timestamp_t        time1= 0;
+    sl_sleeptimer_timestamp_t file_write_time0, current_time; //this is for timing how long it takes for things to time
+    uint32_t file_write_counter;
     char last_sbe42sample[mod_som_sbe41_ptr->config_ptr->sample_data_length+1];
 
 
@@ -1260,6 +1263,12 @@ void  mod_som_sbe41_consumer_task_f(void  *p_arg){
                     printf("wrong sbe.mode\r\n");
                     break;
                 }
+                file_write_time0 = mod_som_calendar_get_time_f();
+                current_time = file_write_time0;
+                file_write_counter = 0;
+                // this is to wait for the data to be written
+                // once it is written, then we can move on
+                // this will timeout after a while
                 while(!mod_som_sbe41_ptr->consumer_ptr->consumed_flag){
                     //2023 06 08 added watchdog feed and a release from this task
                     // this is to prevent the system to hang on to the processor
@@ -1278,6 +1287,14 @@ void  mod_som_sbe41_consumer_task_f(void  *p_arg){
                         return;
                     }
                     WDOG_Feed();
+
+                    file_write_counter++;
+                    if((file_write_counter%1000)==0){
+                        current_time = mod_som_calendar_get_time_f();
+                        if((current_time-file_write_time0)>MOD_SOM_SBE41_DATA_WRITE_TIMEOUT){
+                            break;
+                        }
+                    }
                 };
 
                 mod_som_sbe41_ptr->consumer_ptr->elmnts_skipped = 0;

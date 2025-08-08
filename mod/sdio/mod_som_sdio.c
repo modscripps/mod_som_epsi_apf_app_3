@@ -50,7 +50,22 @@ sl_status_t mystatus;
  ******************************************************************************/
 DWORD get_fattime(void)
 {
-  return (28 << 25) | (2 << 21) | (1 << 16);
+  // 2025 01 27 LW: SD card file create/modify times now pull from the system time
+  // See http://elm-chan.org/fsw/ff/doc/fattime.html
+
+  //return (28 << 25) | (2 << 21) | (1 << 16);
+
+  DWORD fattime = 0;
+  sl_sleeptimer_date_t date;
+  sl_sleeptimer_get_datetime(&date);
+  //char *format="%Y-%m-%d %H:%M:%S";
+  //char str_date[50];
+  //sl_sleeptimer_convert_date_to_str(str_date,50,(uint8_t*)format,&date);
+
+  fattime = ((date.year - 80) << 25) | ((date.month + 1) << 21) | (date.month_day << 16) |
+      (date.hour << 11) | (date.min << 5) | (date.sec / 2);
+
+  return fattime;
 }
 
 
@@ -2142,3 +2157,27 @@ mod_som_status_t mod_som_sdio_add_to_queue_f(mod_som_sdio_xfer_ptr_t xfer_item_p
     return mod_som_sdio_encode_status_f(MOD_SOM_STATUS_OK);
 }
 
+mod_som_status_t mod_som_sdio_fmt_f(){
+
+  int rc;
+  //DWORD buff[FF_MAX_SS * 4];  /* Working buffer (4 sector in size) */
+
+  mod_som_sdio_enable_hardware_f();
+
+  DWORD *buff;
+  RTOS_ERR err;
+  uint32_t buflen = 512 * 4;
+
+  buff = (DWORD*)Mem_SegAlloc(
+          "SDIO_FORMAT_BUFF",0,
+          buflen,
+          &err);
+
+  APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
+
+
+  rc = f_mkfs((const TCHAR* )"", 0x02, 0x8000, buff, buflen);
+
+  if(rc) return mod_som_sdio_encode_status_f(MOD_SOM_STATUS_NOT_OK);
+  else return mod_som_sdio_encode_status_f(MOD_SOM_STATUS_OK);
+}

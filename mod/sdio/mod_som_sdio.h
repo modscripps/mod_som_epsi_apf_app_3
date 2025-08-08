@@ -292,6 +292,7 @@ mod_som_status_t mod_som_sdio_mount_fatfs_f();
 mod_som_status_t mod_som_sdio_allocate_memory_f();
 mod_som_status_t mod_som_sdio_default_settings_f();
 
+mod_som_status_t mod_som_sdio_fmt_f();
 
 /*******************************************************************************
  * @brief
