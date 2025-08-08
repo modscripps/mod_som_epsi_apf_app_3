@@ -69,7 +69,6 @@
 // ALB I had to make a copy of  system_efm32gg11b.h in external_copied folder
 // ALB and comment void GPIO_ODD_IRQHandler
 #include <sbe41/mod_som_sbe41.h>
-#include <sbe41/mod_som_sbe41_bsp.h>
 #endif
 
 
@@ -437,7 +436,7 @@ void mod_som_main_task_f(void *p_arg)
 
 #ifdef MOD_SOM_DEBUG_WDOG
         counter++;
-        if((counter%3)==0){
+        if((counter%10)==0){
             printf("\r\n##############################\r\n");
             printf("##############################\r\n");
             printf("MOD_SOM_DEBUG_WDOG is enabled\r\n");
