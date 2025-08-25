@@ -703,8 +703,8 @@ mod_som_apf_status_t mod_som_apf_construct_com_prf_f(){
 //        //ALB I use this interrupt to store the SBE data.
 //        leuart_ptr->SIGFRAME = MOD_SOM_APF_SAMPLE_LASTCHAR;
 //
-//        //flush data from RX and TX.
-//        leuart_ptr->CMD = LEUART_CMD_CLEARRX | LEUART_CMD_CLEARTX;
+        //flush data from RX and TX.
+        leuart_ptr->CMD = LEUART_CMD_CLEARRX | LEUART_CMD_CLEARTX;
 //
 //        /* Clear previous RX interrupts. */
         LEUART_IntClear(leuart_ptr, ~0x0);
@@ -1905,8 +1905,8 @@ mod_som_apf_status_t mod_som_apf_shell_get_line_f(char *buf, uint32_t * bytes_re
             time1= mod_som_calendar_get_time_f();
             status = mod_som_apf_get_char_f(apf_leuart_ptr, &read_char); // call for getting char from LEUART
             if((time1-time0)>MOD_SOM_APF_SHELL_TIMEOUT){
-                i=5;
-                memcpy(buf,"sleep",i);
+                i = 5;
+                memcpy(buf,"sleep",5);
                 read_char = '\r';
                 status=0;
                 break;
@@ -3090,7 +3090,7 @@ mod_som_apf_status_t mod_som_apf_daq_start_f(uint32_t profile_id){
 
       status|=mod_som_efe_sampling_f();
 
-      sl_sleeptimer_delay_millisecond(2000);
+      sl_sleeptimer_delay_millisecond(3000);
       //2025 06 12 add another timeout condition for the SBE41
       // we are assuming the data rate is 1Hz
       if( local_sbe41_runtime_ptr->sample_timeout ||
@@ -3454,6 +3454,7 @@ mod_som_apf_status_t mod_som_apf_ok_status_f(){
       //ALB epsi is sleeping
       //ALB Wake Up
       status = mod_som_main_wake_up_f();
+      sl_sleeptimer_delay_millisecond(1000);
 //      status=0;
 
   }

@@ -280,6 +280,11 @@ mod_som_status_t mod_som_main_sleep_f()
       /* Power External Oscillator SOM-U8-U4*/
       // HF oscillator disable.
 
+      /* Freeze registers to avoid stalling for LF synchronization. */
+      LEUART_FreezeEnable(LEUART0, true);
+
+      LEUART0->CMD = LEUART_CMD_RXDIS | LEUART_CMD_TXDIS | LEUART_CMD_RXBLOCKEN
+          | LEUART_CMD_CLEARTX | LEUART_CMD_CLEARRX;
       // turn dowm HFXO
       //
       //ALB      DC/DC burst mode  PF10 low
@@ -292,6 +297,31 @@ mod_som_status_t mod_som_main_sleep_f()
       GPIO_PinModeSet(MOD_SOM_HFXO_EN_PORT,
                       MOD_SOM_HFXO_EN_PIN,
                       gpioModePushPull, 0);
+
+      //2025 08 22 trying to mitigate clock errors for LEUART0
+      CMU_ClockEnable(cmuClock_GPIO, true);
+
+      /* Enable CORE LE clock in order to access LE modules */
+      CMU_ClockEnable(cmuClock_HFLE, true);
+      //        CMU_ClockSelectSet(cmuClock_LFB, cmuSelect_HFCLKLE);
+      CMU_ClockSelectSet(cmuClock_LFB, cmuSelect_LFXO); // Set a reference clock
+
+      //ALB cmuClkDiv_1 works with baudrate 115200. Only for testing
+      //        CMU_ClockDivSet(MOD_SOM_APF_USART_CLK,cmuClkDiv_1);
+      //ALB cmuClkDiv_4 works with baudrate 9600. apex mode
+      CMU_ClockDivSet(cmuClock_LEUART0, cmuClkDiv_1); // Don't prescale LEUART clock
+      //        CMU_ClockDivSet(MOD_SOM_APF_USART_CLK,cmuClkDiv_4);
+      CMU_ClockEnable(cmuClock_LEUART0, true);    /* Enable device clock */
+
+      // 2d) Clear any error/overflow that might have occurred during the gate
+      LEUART0->IFC = LEUART_IF_FERR | LEUART_IF_PERR | LEUART_IF_RXOF;
+
+      LEUART0->CMD = LEUART_CMD_RXEN | LEUART_CMD_TXEN | LEUART_CMD_RXBLOCKDIS
+                        | LEUART_CMD_CLEARTX | LEUART_CMD_CLEARRX;
+             /* Freeze registers to avoid stalling for LF synchronization. */
+             LEUART_FreezeEnable(LEUART0, false);
+
+
 //      GPIO_PinModeSet(MOD_SOM_SBE41_EN_PORT, MOD_SOM_SBE41_EN_PIN,gpioModePushPull, 0);
 
 //WAKE UP CMD
@@ -335,6 +365,12 @@ mod_som_status_t mod_som_main_wake_up_f()
   if (mod_som_sleep_flag==true){
       mod_som_io_print_f("Waking up modules\r\n");
 
+      /* Freeze registers to avoid stalling for LF synchronization. */
+      LEUART_FreezeEnable(LEUART0, true);
+
+      LEUART0->CMD = LEUART_CMD_RXDIS | LEUART_CMD_TXDIS | LEUART_CMD_RXBLOCKEN
+          | LEUART_CMD_CLEARTX | LEUART_CMD_CLEARRX;
+
       //ALB      DC/DC not burst mode  PF10 high
       GPIO_PinModeSet(gpioPortF, 10, gpioModePushPull, 1);
 
@@ -347,7 +383,7 @@ mod_som_status_t mod_som_main_wake_up_f()
       RETARGET_SerialFlush(); // Wait for UART TX buffer to be empty
       CMU_ClockSelectSet(cmuClock_HF, cmuSelect_HFXO);
       RETARGET_SerialInit(); // Re-enable VCOM
-      sl_sleeptimer_delay_millisecond(delay);
+      sl_sleeptimer_delay_millisecond(delay/2);
 
 //      // HFRCO oscillator disable.
 //      CMU_OscillatorEnable(cmuOsc_HFRCO, false, false);
@@ -360,7 +396,99 @@ mod_som_status_t mod_som_main_wake_up_f()
       //ALB Software reset of SDIO
       SDIO->CLOCKCTRL|=(_SDIO_CLOCKCTRL_SFTRSTA_MASK & SDIO_CLOCKCTRL_SFTRSTA);
 
-      sl_sleeptimer_delay_millisecond(delay);
+      sl_sleeptimer_delay_millisecond(delay/2);
+
+      //2025 08 22 SAN testing a fix for LEUART Timing when waking up
+////      LEUART0->CMD = LEUART_CMD_CLEARRX | LEUART_CMD_CLEARTX;
+//      LEUART_Init_TypeDef     leuart_init = LEUART_INIT_DEFAULT;
+//
+//
+//      NVIC_DisableIRQ(LEUART0_IRQn);
+//      LEUART_IntDisable(LEUART0,~0x0);
+//      LEUART_IntClear(LEUART0, ~0x0);
+//
+#if defined(_CMU_HFPERCLKEN0_MASK)
+       CMU_ClockEnable(cmuClock_HFPER, true);
+#endif
+       CMU_ClockEnable(cmuClock_GPIO, true);
+
+       /* Enable CORE LE clock in order to access LE modules */
+       CMU_ClockEnable(cmuClock_HFLE, true);
+//        CMU_ClockSelectSet(cmuClock_LFB, cmuSelect_HFCLKLE);
+       CMU_ClockSelectSet(cmuClock_LFB, cmuSelect_LFXO); // Set a reference clock
+
+       //ALB cmuClkDiv_1 works with baudrate 115200. Only for testing
+//        CMU_ClockDivSet(MOD_SOM_APF_USART_CLK,cmuClkDiv_1);
+       //ALB cmuClkDiv_4 works with baudrate 9600. apex mode
+       CMU_ClockDivSet(cmuClock_LEUART0, cmuClkDiv_1); // Don't prescale LEUART clock
+//        CMU_ClockDivSet(MOD_SOM_APF_USART_CLK,cmuClkDiv_4);
+       CMU_ClockEnable(cmuClock_LEUART0, true);    /* Enable device clock */
+
+//       leuart_init.baudrate   = mod_som_apf_get_runtime_ptr_f()->config_ptr->baud_rate;
+//
+//      //parity set
+//      //ALB the switch statements are a legacy from the previous APF module
+//      switch(mod_som_apf_get_runtime_ptr_f()->config_ptr->port.parity){
+//        case mod_som_uart_parity_none:
+//          leuart_init.parity = leuartNoParity;
+//          break;
+//        case mod_som_uart_parity_even:
+//          leuart_init.parity = leuartEvenParity;
+//          break;
+//        case mod_som_uart_parity_odd:
+//          leuart_init.parity = leuartOddParity;
+//          break;
+//      }
+//      //data bits
+//      switch(mod_som_apf_get_runtime_ptr_f()->config_ptr->port.data_bits){
+//        case mod_som_uart_data_bits_8:
+//          leuart_init.databits = leuartDatabits8;
+//          break;
+//        case mod_som_uart_data_bits_9:
+//          leuart_init.databits = leuartDatabits9;
+//          break;
+//      }
+//      //stop bits
+//      switch(mod_som_apf_get_runtime_ptr_f()->config_ptr->port.stop_bits){
+//        case mod_som_uart_stop_bits_1:
+//          leuart_init.stopbits = leuartStopbits1;
+//          break;
+//        case mod_som_uart_stop_bits_2:
+//          leuart_init.stopbits = leuartStopbits2;
+//          break;
+//      }
+//
+//      //reset leuart driver before initialization
+//      LEUART_Reset(LEUART0);
+//      leuart_init.enable = leuartDisable;
+//      LEUART_Init(LEUART0, &leuart_init);
+//
+//      //ALB define the LEUART ROUTE.
+//      LEUART0->ROUTELOC0 = (LEUART0->ROUTELOC0
+//          & ~(_LEUART_ROUTELOC0_TXLOC_MASK
+//              | _LEUART_ROUTELOC0_RXLOC_MASK))
+//                                           | (mod_som_apf_get_runtime_ptr_f()->config_ptr->port.route
+//                                               << _LEUART_ROUTELOC0_TXLOC_SHIFT)
+//                                               | (mod_som_apf_get_runtime_ptr_f()->config_ptr->port.route
+//                                                   << _LEUART_ROUTELOC0_RXLOC_SHIFT);
+//
+//      //ALB enable the LEUART ROUTE.
+//      LEUART0->ROUTEPEN = LEUART_ROUTEPEN_TXPEN
+//          | LEUART_ROUTEPEN_RXPEN;
+
+       LEUART0->IFC = LEUART_IF_FERR | LEUART_IF_PERR | LEUART_IF_RXOF;
+       LEUART0->CMD = LEUART_CMD_RXEN | LEUART_CMD_TXEN | LEUART_CMD_RXBLOCKDIS
+                  | LEUART_CMD_CLEARTX | LEUART_CMD_CLEARRX;
+       /* Freeze registers to avoid stalling for LF synchronization. */
+       LEUART_FreezeEnable(LEUART0, false);
+
+
+
+
+//      LEUART_IntClear(LEUART0, ~0x0);
+//      LEUART_IntEnable(LEUART0, LEUART_IF_RXDATAV);
+//      NVIC_EnableIRQ(LEUART0_IRQn);
+      sl_sleeptimer_delay_millisecond(delay/2);
 
       mod_som_sleep_flag=false;
 
