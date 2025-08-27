@@ -3454,7 +3454,7 @@ mod_som_apf_status_t mod_som_apf_ok_status_f(){
       //ALB epsi is sleeping
       //ALB Wake Up
       status = mod_som_main_wake_up_f();
-      sl_sleeptimer_delay_millisecond(1000);
+//      sl_sleeptimer_delay_millisecond(1000);
 //      status=0;
 
   }

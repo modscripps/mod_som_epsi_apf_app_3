@@ -488,7 +488,7 @@ mod_som_status_t mod_som_main_wake_up_f()
 //      LEUART_IntClear(LEUART0, ~0x0);
 //      LEUART_IntEnable(LEUART0, LEUART_IF_RXDATAV);
 //      NVIC_EnableIRQ(LEUART0_IRQn);
-      sl_sleeptimer_delay_millisecond(delay/2);
+      sl_sleeptimer_delay_millisecond(delay*2);
 
       mod_som_sleep_flag=false;
 
