@@ -386,7 +386,7 @@ mod_som_status_t mod_som_main_wake_up_f()
       RETARGET_SerialFlush(); // Wait for UART TX buffer to be empty
       CMU_ClockSelectSet(cmuClock_HF, cmuSelect_HFXO);
       RETARGET_SerialInit(); // Re-enable VCOM
-      sl_sleeptimer_delay_millisecond(delay/2);
+      sl_sleeptimer_delay_millisecond(delay/4);
 
 //      // HFRCO oscillator disable.
 //      CMU_OscillatorEnable(cmuOsc_HFRCO, false, false);
@@ -399,7 +399,7 @@ mod_som_status_t mod_som_main_wake_up_f()
       //ALB Software reset of SDIO
       SDIO->CLOCKCTRL|=(_SDIO_CLOCKCTRL_SFTRSTA_MASK & SDIO_CLOCKCTRL_SFTRSTA);
 
-      sl_sleeptimer_delay_millisecond(delay/2);
+      sl_sleeptimer_delay_millisecond(delay/4);
 
       //2025 08 22 SAN testing a fix for LEUART Timing when waking up
 
@@ -432,11 +432,11 @@ mod_som_status_t mod_som_main_wake_up_f()
        LEUART_FreezeEnable(LEUART0, false);
 
 
-       sl_sleeptimer_delay_millisecond(delay*2);
+       sl_sleeptimer_delay_millisecond(delay/2);
 
        int i;
 
-       char send_char = 0x1b;//'A';
+       char send_char = 0x07;//0x1b;//'A';
        char rx_char[21];
        for(i=0; i<10;i++){
            while (!(LEUART0->STATUS & LEUART_STATUS_TXBL));
