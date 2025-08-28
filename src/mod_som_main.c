@@ -453,8 +453,10 @@ mod_som_status_t mod_som_main_wake_up_f()
        while((LEUART0->STATUS & _LEUART_STATUS_RXDATAV_MASK)){
            rx_char[0] = LEUART_Rx(LEUART0);
        }
+#ifdef MOD_SOM_DEBUG
        rx_char[20] = '\0';
        mod_som_io_print_f("rx_chars: %s\r\n",rx_char);
+#endif
 
        while (!(LEUART0->STATUS & LEUART_STATUS_TXC));
 //       LEUART_FreezeEnable(LEUART0, true);
