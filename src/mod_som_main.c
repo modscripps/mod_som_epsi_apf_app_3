@@ -318,8 +318,8 @@ mod_som_status_t mod_som_main_sleep_f()
 
       LEUART0->CMD = LEUART_CMD_RXEN | LEUART_CMD_TXEN | LEUART_CMD_RXBLOCKDIS
                         | LEUART_CMD_CLEARTX | LEUART_CMD_CLEARRX;
-             /* Freeze registers to avoid stalling for LF synchronization. */
-             LEUART_FreezeEnable(LEUART0, false);
+      /* Freeze registers to avoid stalling for LF synchronization. */
+      LEUART_FreezeEnable(LEUART0, false);
 
 
 //      GPIO_PinModeSet(MOD_SOM_SBE41_EN_PORT, MOD_SOM_SBE41_EN_PIN,gpioModePushPull, 0);
@@ -367,6 +367,9 @@ mod_som_status_t mod_som_main_wake_up_f()
 
       /* Freeze registers to avoid stalling for LF synchronization. */
       LEUART_FreezeEnable(LEUART0, true);
+      NVIC_DisableIRQ(LEUART0_IRQn);
+      LEUART_IntDisable(LEUART0,~0x0);
+      LEUART_IntClear(LEUART0, ~0x0);
 
       LEUART0->CMD = LEUART_CMD_RXDIS | LEUART_CMD_TXDIS | LEUART_CMD_RXBLOCKEN
           | LEUART_CMD_CLEARTX | LEUART_CMD_CLEARRX;
@@ -399,14 +402,7 @@ mod_som_status_t mod_som_main_wake_up_f()
       sl_sleeptimer_delay_millisecond(delay/2);
 
       //2025 08 22 SAN testing a fix for LEUART Timing when waking up
-////      LEUART0->CMD = LEUART_CMD_CLEARRX | LEUART_CMD_CLEARTX;
-//      LEUART_Init_TypeDef     leuart_init = LEUART_INIT_DEFAULT;
-//
-//
-//      NVIC_DisableIRQ(LEUART0_IRQn);
-//      LEUART_IntDisable(LEUART0,~0x0);
-//      LEUART_IntClear(LEUART0, ~0x0);
-//
+
 #if defined(_CMU_HFPERCLKEN0_MASK)
        CMU_ClockEnable(cmuClock_HFPER, true);
 #endif
@@ -424,71 +420,54 @@ mod_som_status_t mod_som_main_wake_up_f()
 //        CMU_ClockDivSet(MOD_SOM_APF_USART_CLK,cmuClkDiv_4);
        CMU_ClockEnable(cmuClock_LEUART0, true);    /* Enable device clock */
 
-//       leuart_init.baudrate   = mod_som_apf_get_runtime_ptr_f()->config_ptr->baud_rate;
-//
-//      //parity set
-//      //ALB the switch statements are a legacy from the previous APF module
-//      switch(mod_som_apf_get_runtime_ptr_f()->config_ptr->port.parity){
-//        case mod_som_uart_parity_none:
-//          leuart_init.parity = leuartNoParity;
-//          break;
-//        case mod_som_uart_parity_even:
-//          leuart_init.parity = leuartEvenParity;
-//          break;
-//        case mod_som_uart_parity_odd:
-//          leuart_init.parity = leuartOddParity;
-//          break;
-//      }
-//      //data bits
-//      switch(mod_som_apf_get_runtime_ptr_f()->config_ptr->port.data_bits){
-//        case mod_som_uart_data_bits_8:
-//          leuart_init.databits = leuartDatabits8;
-//          break;
-//        case mod_som_uart_data_bits_9:
-//          leuart_init.databits = leuartDatabits9;
-//          break;
-//      }
-//      //stop bits
-//      switch(mod_som_apf_get_runtime_ptr_f()->config_ptr->port.stop_bits){
-//        case mod_som_uart_stop_bits_1:
-//          leuart_init.stopbits = leuartStopbits1;
-//          break;
-//        case mod_som_uart_stop_bits_2:
-//          leuart_init.stopbits = leuartStopbits2;
-//          break;
-//      }
-//
-//      //reset leuart driver before initialization
-//      LEUART_Reset(LEUART0);
-//      leuart_init.enable = leuartDisable;
-//      LEUART_Init(LEUART0, &leuart_init);
-//
-//      //ALB define the LEUART ROUTE.
-//      LEUART0->ROUTELOC0 = (LEUART0->ROUTELOC0
-//          & ~(_LEUART_ROUTELOC0_TXLOC_MASK
-//              | _LEUART_ROUTELOC0_RXLOC_MASK))
-//                                           | (mod_som_apf_get_runtime_ptr_f()->config_ptr->port.route
-//                                               << _LEUART_ROUTELOC0_TXLOC_SHIFT)
-//                                               | (mod_som_apf_get_runtime_ptr_f()->config_ptr->port.route
-//                                                   << _LEUART_ROUTELOC0_RXLOC_SHIFT);
-//
-//      //ALB enable the LEUART ROUTE.
-//      LEUART0->ROUTEPEN = LEUART_ROUTEPEN_TXPEN
-//          | LEUART_ROUTEPEN_RXPEN;
+
 
        LEUART0->IFC = LEUART_IF_FERR | LEUART_IF_PERR | LEUART_IF_RXOF;
        LEUART0->CMD = LEUART_CMD_RXEN | LEUART_CMD_TXEN | LEUART_CMD_RXBLOCKDIS
                   | LEUART_CMD_CLEARTX | LEUART_CMD_CLEARRX;
+
+       //2025 08 28 SAN add a loopback to tickle the receive section with some signals
+       LEUART0->CTRL |= LEUART_CTRL_LOOPBK;
        /* Freeze registers to avoid stalling for LF synchronization. */
        LEUART_FreezeEnable(LEUART0, false);
 
 
+       sl_sleeptimer_delay_millisecond(delay*2);
 
+       int i;
 
-//      LEUART_IntClear(LEUART0, ~0x0);
-//      LEUART_IntEnable(LEUART0, LEUART_IF_RXDATAV);
-//      NVIC_EnableIRQ(LEUART0_IRQn);
-      sl_sleeptimer_delay_millisecond(delay*2);
+       char send_char = 0x1b;//'A';
+       char rx_char[21];
+       for(i=0; i<10;i++){
+           while (!(LEUART0->STATUS & LEUART_STATUS_TXBL));
+           LEUART_Tx(LEUART0,  send_char);
+//           send_char++;
+
+           sl_sleeptimer_delay_millisecond(10);
+           if((LEUART0->STATUS & _LEUART_STATUS_RXDATAV_MASK)){
+               rx_char[i] = LEUART_Rx(LEUART0);
+           }
+
+       }
+
+       while((LEUART0->STATUS & _LEUART_STATUS_RXDATAV_MASK)){
+           rx_char[0] = LEUART_Rx(LEUART0);
+       }
+       rx_char[20] = '\0';
+       mod_som_io_print_f("rx_chars: %s\r\n",rx_char);
+
+       while (!(LEUART0->STATUS & LEUART_STATUS_TXC));
+//       LEUART_FreezeEnable(LEUART0, true);
+       LEUART0->CTRL &= ~LEUART_CTRL_LOOPBK;
+//       LEUART_FreezeEnable(LEUART0, false);
+       while(LEUART0->SYNCBUSY){
+
+       }
+
+      LEUART_IntClear(LEUART0, ~0x0);
+      LEUART_IntEnable(LEUART0, LEUART_IF_RXDATAV);
+      NVIC_EnableIRQ(LEUART0_IRQn);
+
 
       mod_som_sleep_flag=false;
 
