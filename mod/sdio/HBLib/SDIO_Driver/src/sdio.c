@@ -34,10 +34,12 @@
 #include "em_cmu.h"
 
 #include "diskio.h"
+#include "sl_sleeptimer.h"
 /******************************************************************************
  * Local defines
  *****************************************************************************/
 #define LOCAL_STA_NODISK    0x02
+#define WAIT_TIME_OUT_MS    1000UL
 /******************************************************************************
  * Local prototypes
  *****************************************************************************/
@@ -112,7 +114,7 @@ uint8_t SDIO_Init(SDIO_TypeDef *sdio_t,
  * 		 *destination_pu32: address of the data space, where the data will be
  * 		 					transfered from SD card. It shall be 512byte
  *****************************************************************************/
-void SDIO_ReadSingleBlock(SDIO_TypeDef *sdio_t,
+int32_t SDIO_ReadSingleBlock(SDIO_TypeDef *sdio_t,
                           uint32_t SD_origin_u32,
                           uint32_t* destination_pu32)
 {
@@ -150,15 +152,34 @@ void SDIO_ReadSingleBlock(SDIO_TypeDef *sdio_t,
              | (CMD17 << _SDIO_TFRMODE_CMDINDEX_SHIFT);
 
   sdio_t->TFRMODE = tmpReg_u32;
-
+  //2025 08 28 SAN update to give each while loop a timeout cased on  WAIT_TIME_OUT_MS
+  uint32_t tick;
+  uint32_t start_time_ms;
+  uint32_t curr_time_ms;
+  tick = sl_sleeptimer_get_tick_count();
+  start_time_ms = sl_sleeptimer_tick_to_ms(tick);
   // 6. wait for Command Complete
-  while (!(sdio_t->IFCR & _SDIO_IFCR_CMDCOM_MASK));
+  while (!(sdio_t->IFCR & _SDIO_IFCR_CMDCOM_MASK)){
+      tick = sl_sleeptimer_get_tick_count();
+      curr_time_ms = sl_sleeptimer_tick_to_ms(tick);
+      if((curr_time_ms-start_time_ms)>WAIT_TIME_OUT_MS){
+          return -1;
+      }
+  }
 
   // 7. clear previous command complete int
   sdio_t->IFCR = (_SDIO_IFCR_CMDCOM_MASK);
 
+  tick = sl_sleeptimer_get_tick_count();
+  start_time_ms = sl_sleeptimer_tick_to_ms(tick);
   // 10. wait for Buffer Read Ready int
-  while (!(sdio_t->IFCR & _SDIO_IFCR_BFRRDRDY_MASK));
+  while (!(sdio_t->IFCR & _SDIO_IFCR_BFRRDRDY_MASK)){
+      tick = sl_sleeptimer_get_tick_count();
+      curr_time_ms = sl_sleeptimer_tick_to_ms(tick);
+      if((curr_time_ms-start_time_ms)>WAIT_TIME_OUT_MS){
+          return -1;
+      }
+  }
 
   // 11. clear previous Buffer Read Ready Int
   sdio_t->IFCR = (_SDIO_IFCR_BFRRDRDY_MASK);
@@ -172,14 +193,30 @@ void SDIO_ReadSingleBlock(SDIO_TypeDef *sdio_t,
     destination_pu32++;
   }
 
+  tick = sl_sleeptimer_get_tick_count();
+  start_time_ms = sl_sleeptimer_tick_to_ms(tick);
   // 19. Wait for transfer completed int
-  while (!(sdio_t->IFCR & _SDIO_IFCR_TRANCOM_MASK));
+  while (!(sdio_t->IFCR & _SDIO_IFCR_TRANCOM_MASK)){
+      tick = sl_sleeptimer_get_tick_count();
+      curr_time_ms = sl_sleeptimer_tick_to_ms(tick);
+      if((curr_time_ms-start_time_ms)>WAIT_TIME_OUT_MS){
+          return -1;
+      }
+  }
 
+  tick = sl_sleeptimer_get_tick_count();
+  start_time_ms = sl_sleeptimer_tick_to_ms(tick);
   // 20. CLear Transfer completed status
   while (sdio_t->IFCR & (_SDIO_IFCR_TRANCOM_MASK))
   {
     sdio_t->IFCR = (_SDIO_IFCR_TRANCOM_MASK);
+    tick = sl_sleeptimer_get_tick_count();
+    curr_time_ms = sl_sleeptimer_tick_to_ms(tick);
+    if((curr_time_ms-start_time_ms)>WAIT_TIME_OUT_MS){
+        return -1;
+    }
   }
+  return 0;
 }
 
 /**************************************************************************//**
@@ -195,7 +232,7 @@ void SDIO_ReadSingleBlock(SDIO_TypeDef *sdio_t,
  * 		 *origin_pu32: address of the data, from the data will be transfered
  * 		 				to SD card. It shall be 512byte
  *****************************************************************************/
-void SDIO_WriteSingleBlock( SDIO_TypeDef *sdio_t,
+int32_t SDIO_WriteSingleBlock( SDIO_TypeDef *sdio_t,
                             uint32_t SD_dest_u32,
                             uint32_t* origin_pu32)
 {
@@ -234,15 +271,34 @@ void SDIO_WriteSingleBlock( SDIO_TypeDef *sdio_t,
 	  | (CMD24 << _SDIO_TFRMODE_CMDINDEX_SHIFT);
 
   sdio_t->TFRMODE = tmpReg_u32;
-
+  //2025 08 28 SAN update to give each while loop a timeout cased on  WAIT_TIME_OUT_MS
+  uint32_t tick;
+  uint32_t start_time_ms;
+  uint32_t curr_time_ms;
+  tick = sl_sleeptimer_get_tick_count();
+  start_time_ms = sl_sleeptimer_tick_to_ms(tick);
   // 6. wait for Command Complete
-  while (!(sdio_t->IFCR & _SDIO_IFCR_CMDCOM_MASK));
+  while (!(sdio_t->IFCR & _SDIO_IFCR_CMDCOM_MASK)){
+      tick = sl_sleeptimer_get_tick_count();
+      curr_time_ms = sl_sleeptimer_tick_to_ms(tick);
+      if((curr_time_ms-start_time_ms)>WAIT_TIME_OUT_MS){
+          return -1;
+      }
+  }
 
   // 7. clear previous command complete int
   sdio_t->IFCR = (_SDIO_IFCR_CMDCOM_MASK);
 
+  tick = sl_sleeptimer_get_tick_count();
+  start_time_ms = sl_sleeptimer_tick_to_ms(tick);
   // 10. wait for Buffer Write Ready int
-  while (!(sdio_t->IFCR & _SDIO_IFCR_BFRWRRDY_MASK));
+  while (!(sdio_t->IFCR & _SDIO_IFCR_BFRWRRDY_MASK)){
+      tick = sl_sleeptimer_get_tick_count();
+      curr_time_ms = sl_sleeptimer_tick_to_ms(tick);
+      if((curr_time_ms-start_time_ms)>WAIT_TIME_OUT_MS){
+          return -1;
+      }
+  }
 
   // 11. clear previous Buffer Write Ready Int
   sdio_t->IFCR = (_SDIO_IFCR_BFRWRRDY_MASK);
@@ -256,15 +312,31 @@ void SDIO_WriteSingleBlock( SDIO_TypeDef *sdio_t,
     origin_pu32++;
   }
 
+  tick = sl_sleeptimer_get_tick_count();
+  start_time_ms = sl_sleeptimer_tick_to_ms(tick);
   // 19. Wait for transfer completed int
-  while (!(sdio_t->IFCR & _SDIO_IFCR_TRANCOM_MASK));
+  while (!(sdio_t->IFCR & _SDIO_IFCR_TRANCOM_MASK)){
+      tick = sl_sleeptimer_get_tick_count();
+      curr_time_ms = sl_sleeptimer_tick_to_ms(tick);
+      if((curr_time_ms-start_time_ms)>WAIT_TIME_OUT_MS){
+          return -1;
+      }
+  }
 
+  tick = sl_sleeptimer_get_tick_count();
+  start_time_ms = sl_sleeptimer_tick_to_ms(tick);
   // 20. CLear Transfer completed status
   while (sdio_t->IFCR & (_SDIO_IFCR_TRANCOM_MASK))
   {
-    sdio_t->IFCR = (_SDIO_IFCR_TRANCOM_MASK);
+      sdio_t->IFCR = (_SDIO_IFCR_TRANCOM_MASK);
+      tick = sl_sleeptimer_get_tick_count();
+      curr_time_ms = sl_sleeptimer_tick_to_ms(tick);
+      if((curr_time_ms-start_time_ms)>WAIT_TIME_OUT_MS){
+          return -1;
+      }
   }
 
+  return 0;
 }
 
 /**************************************************************************//**

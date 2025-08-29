@@ -139,10 +139,10 @@ typedef enum
 uint8_t SDIO_Init(SDIO_TypeDef *sdio_t,
                uint32_t sdioFreq_u32,
                CMU_Clock_TypeDef mainClock_t);
-void SDIO_WriteSingleBlock(SDIO_TypeDef *sdio_t,
+int32_t SDIO_WriteSingleBlock(SDIO_TypeDef *sdio_t,
                            uint32_t SD_dest_u32,
                            uint32_t* origin_pu32);
-void SDIO_ReadSingleBlock(SDIO_TypeDef *sdio_t,
+int32_t SDIO_ReadSingleBlock(SDIO_TypeDef *sdio_t,
                           uint32_t SD_dest_u32,
                           uint32_t* origin_pu32);
 uint8_t SDIO_GetActCardStateType(void);

@@ -129,10 +129,20 @@ DRESULT disk_read (
 
   // 2025 01 02 LW: Proper sector ID to byte address conversion
   if (!(CardType & CT_BLOCK)) sector = sector << 9;  /* Convert to byte address if needed */
-
+  //2025 08 28 SAN update to give each read a few tries if error
+    int32_t tries, res = 0;
   while(count != 0)
   {
-	  SDIO_ReadSingleBlock(SDIO,sector,buff);
+      for(tries=0;tries<5;tries++){
+          res = SDIO_ReadSingleBlock(SDIO,sector,buff);
+          if(res==0){
+              break;
+          }
+      }
+      if(res){
+          return RES_ERROR;
+          break;
+      }
 	  sector++;
 	  count--;
 	  // 2025 07 08 LW: Feed watchdog after successful read
@@ -160,9 +170,20 @@ DRESULT disk_write (
   // 2025 01 02 LW: Proper sector ID to byte address conversion
   if (!(CardType & CT_BLOCK)) sector = sector << 9;  /* Convert to byte address if needed */
 
+  //2025 08 28 update to give each write a few tries if error
+  int32_t tries, res = 0;
   while(count != 0)
   {
-	  SDIO_WriteSingleBlock(SDIO,sector,buff);
+      for(tries=0;tries<5;tries++){
+          res = SDIO_WriteSingleBlock(SDIO,sector,buff);
+          if(res==0){
+              break;
+          }
+      }
+      if(res){
+          return RES_ERROR;
+          break;
+      }
 	  sector++;
 	  count--;
 	  // 2025 07 08 LW: Feed watchdog after successful write

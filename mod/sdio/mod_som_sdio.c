@@ -1939,10 +1939,12 @@ static void mod_som_sdio_print_task_f(void *p_arg)
     OS_MSG_SIZE tmp_mod_som_sdio_xfer_item_size;
     CPU_TS time_passed_msg_pend;
     uint32_t i;
+    mod_som_status_t status=0;
 
 //    CORE_DECLARE_IRQ_STATE;
 
 //    uint32_t n_count = 0;
+
     while(DEF_ON){
         WDOG_Feed();
         //necessary for every task
@@ -1988,7 +1990,7 @@ static void mod_som_sdio_print_task_f(void *p_arg)
                 UINT byteswritten;
                 FRESULT res;
                 remaining_bytes=tmp_mod_som_sdio_xfer_item_ptr->data_length;
-
+                uint32_t tries = 0;
                 while(remaining_bytes>0)
                   {
 //                    WDOG_Feed();
@@ -2001,8 +2003,19 @@ static void mod_som_sdio_print_task_f(void *p_arg)
                     remaining_bytes=remaining_bytes-byteswritten;
                     if (res != FR_OK)
                       {
-                        //TODO write an error code
+                        if(tries>5){
+                            break;
+                        }
+                        tries++;
+                        mod_som_sdio_disable_hardware_f();
+                        status = mod_som_sdio_enable_hardware_f();
+                        if(status != MOD_SOM_STATUS_OK){
+                            break;
+                        }
+                        sl_sleeptimer_delay_millisecond(200);
+                        continue;
                       }
+                    tries=0;
                   }
                 f_sync(tmp_mod_som_sdio_xfer_item_ptr->file_ptr->fp);
 
