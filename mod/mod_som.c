@@ -325,7 +325,7 @@ mod_som_status_t mod_som_main_start_f(void){
             mod_som_main_task_f,
             DEF_NULL,
             MOD_SOM_MAIN_TASK_PRIORITY,
-            &mod_som_main_task_stack[0],
+            mod_som_main_task_stack,
             (MOD_SOM_MAIN_TASK_STK_SIZE / 10u),
             MOD_SOM_MAIN_TASK_STK_SIZE,
             0u,

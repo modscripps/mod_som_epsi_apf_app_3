@@ -828,12 +828,17 @@ mod_som_status_t  mod_som_efe_stop_consumer_task_f(){
   RTOS_ERR err;
 
   if(efe_consumer_task_tcb.TaskState != OS_TASK_STATE_DEL){
-  // delete the task
-  OSTaskDel(&efe_consumer_task_tcb,
-            &err);
+      // delete the task
+      OSTaskDel(&efe_consumer_task_tcb,
+                &err);
 
-  if(RTOS_ERR_CODE_GET(err) != RTOS_ERR_NONE)
-    status = 1;
+      if(RTOS_ERR_CODE_GET(err) != RTOS_ERR_NONE)
+        {
+          status = 1;
+        }
+      else{
+          mod_som_io_print_f("%s accomplished\r\n",__func__);
+      }
   }
   return status;
 }

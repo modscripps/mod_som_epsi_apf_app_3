@@ -885,8 +885,13 @@ mod_som_status_t mod_som_efe_obp_stop_fill_segment_task_f(){
       //  mod_som_efe_obp_ptr->started_flag=false;
 
 
-      if(RTOS_ERR_CODE_GET(err) != RTOS_ERR_NONE)
-        return (mod_som_efe_obp_ptr->status = mod_som_efe_encode_status_f(MOD_SOM_EFE_OPB_STATUS_FAIL_TO_START_CONSUMER_TASK));
+      if(RTOS_ERR_CODE_GET(err) != RTOS_ERR_NONE){
+        return (mod_som_efe_obp_ptr->status =
+            mod_som_efe_encode_status_f(MOD_SOM_EFE_OPB_STATUS_FAIL_TO_START_CONSUMER_TASK));
+      }
+      else{
+          mod_som_io_print_f("%s accomplished\r\n",__func__);
+      }
   }
   mod_som_efe_obp_ptr->fill_segment_ptr->started_flg = false;
   return mod_som_efe_encode_status_f(MOD_SOM_STATUS_OK);
@@ -915,8 +920,12 @@ mod_som_status_t mod_som_efe_obp_stop_cpt_spectra_task_f(){
       //  mod_som_efe_obp_ptr->started_flag=false;
 
 
-      if(RTOS_ERR_CODE_GET(err) != RTOS_ERR_NONE)
-        return (mod_som_efe_obp_ptr->status = mod_som_efe_encode_status_f(MOD_SOM_EFE_OPB_STATUS_FAIL_TO_START_CONSUMER_TASK));
+      if(RTOS_ERR_CODE_GET(err) != RTOS_ERR_NONE){
+        return (mod_som_efe_obp_ptr->status =
+            mod_som_efe_encode_status_f(MOD_SOM_EFE_OPB_STATUS_FAIL_TO_START_CONSUMER_TASK));}
+      else{
+          mod_som_io_print_f("%s accomplished\r\n",__func__);
+      }
   }
   mod_som_efe_obp_ptr->cpt_spectra_ptr->started_flg =false;
   return mod_som_efe_encode_status_f(MOD_SOM_STATUS_OK);
@@ -943,8 +952,12 @@ mod_som_status_t mod_som_efe_obp_stop_cpt_dissrate_task_f(){
 
       //  mod_som_efe_obp_ptr->started_flag=false;
 
-      if(RTOS_ERR_CODE_GET(err) != RTOS_ERR_NONE)
-        return (mod_som_efe_obp_ptr->status = mod_som_efe_encode_status_f(MOD_SOM_EFE_OPB_STATUS_FAIL_TO_START_CONSUMER_TASK));
+      if(RTOS_ERR_CODE_GET(err) != RTOS_ERR_NONE){
+        return (mod_som_efe_obp_ptr->status =
+            mod_som_efe_encode_status_f(MOD_SOM_EFE_OPB_STATUS_FAIL_TO_START_CONSUMER_TASK));}
+      else{
+          mod_som_io_print_f("%s accomplished\r\n",__func__);
+      }
   }
   mod_som_efe_obp_ptr->cpt_dissrate_ptr->started_flg = false;
   return mod_som_efe_encode_status_f(MOD_SOM_STATUS_OK);
@@ -1967,7 +1980,9 @@ mod_som_status_t mod_som_efe_obp_start_consumer_task_f(){
 
   RTOS_ERR err;
   // Consumer Task 2
-
+  if(mod_som_efe_obp_ptr->consumer_ptr->started_flg){
+      return mod_som_efe_encode_status_f(MOD_SOM_STATUS_OK);
+  }
   if(!mod_som_efe_obp_ptr->fill_segment_ptr->started_flg){
       printf("EFE OBP not started\r\n");
       return (mod_som_efe_obp_ptr->status = mod_som_efe_obp_encode_status_f(MOD_SOM_EFE_OBP_NOT_STARTED));
@@ -2013,18 +2028,27 @@ mod_som_status_t mod_som_efe_obp_start_consumer_task_f(){
  ******************************************************************************/
 mod_som_status_t mod_som_efe_obp_stop_consumer_task_f(){
 
-  if(!mod_som_efe_obp_ptr->started_flag){
+  if(!mod_som_efe_obp_ptr->consumer_ptr->started_flg){
       return mod_som_efe_encode_status_f(MOD_SOM_STATUS_OK);
   }
+
+  mod_som_efe_obp_ptr->consumer_ptr->started_flg = false;
+  sl_sleeptimer_delay_millisecond(100);
 
   if(efe_obp_consumer_task_tcb.TaskState != OS_TASK_STATE_DEL){
       RTOS_ERR err;
       OSTaskDel(&efe_obp_consumer_task_tcb,
                 &err);
 
-      if(RTOS_ERR_CODE_GET(err) != RTOS_ERR_NONE)
-        return (mod_som_efe_obp_ptr->status = mod_som_efe_encode_status_f(MOD_SOM_EFE_OPB_STATUS_FAIL_TO_START_CONSUMER_TASK));
+      if(RTOS_ERR_CODE_GET(err) != RTOS_ERR_NONE){
+        return (mod_som_efe_obp_ptr->status =
+            mod_som_efe_encode_status_f(MOD_SOM_EFE_OPB_STATUS_FAIL_TO_START_CONSUMER_TASK));
+      }
+      else{
+          mod_som_io_print_f("%s accomplished\r\n",__func__);
+      }
   }
+
   mod_som_efe_obp_ptr->started_flag=false;
    mod_som_efe_obp_ptr->settings_ptr->format=1;
 
@@ -2076,350 +2100,349 @@ void mod_som_efe_obp_consumer_task_f(void  *p_arg){
    uint32_t file_write_counter;
 
   //        printf("In Consumer Task 2\n");
-  while (DEF_ON) {
+   while (mod_som_efe_obp_ptr->consumer_ptr->started_flg) {
 
-      if (mod_som_efe_obp_ptr->consumer_ptr->started_flg &
-          (mod_som_efe_obp_ptr->fill_segment_ptr->segment_cnt>=1)){
+       if ((mod_som_efe_obp_ptr->fill_segment_ptr->segment_cnt>=1)){
 
-          switch(mod_som_efe_obp_ptr->settings_ptr->format){
-            case 1:
-              //spit out segment
-              memcpy(mod_som_efe_obp_ptr->consumer_ptr->tag,
+           switch(mod_som_efe_obp_ptr->settings_ptr->format){
+             case 1:
+               //spit out segment
+               memcpy(mod_som_efe_obp_ptr->consumer_ptr->tag,
                       MOD_SOM_EFE_OBP_CONSUMER_SEGMENT_TAG,
                       MOD_SOM_EFE_OBP_TAG_LENGTH);
-              break;
-            case 2:
-              //spit out freq spectrum
-              memcpy(mod_som_efe_obp_ptr->consumer_ptr->tag,
+               break;
+             case 2:
+               //spit out freq spectrum
+               memcpy(mod_som_efe_obp_ptr->consumer_ptr->tag,
                       MOD_SOM_EFE_OBP_CONSUMER_SPECTRA_TAG,
                       MOD_SOM_EFE_OBP_TAG_LENGTH);
-              break;
-            case 3:
-              //spit out avg spectrum
-              memcpy(mod_som_efe_obp_ptr->consumer_ptr->tag,
+               break;
+             case 3:
+               //spit out avg spectrum
+               memcpy(mod_som_efe_obp_ptr->consumer_ptr->tag,
                       MOD_SOM_EFE_OBP_CONSUMER_AVGSPEC_TAG,
                       MOD_SOM_EFE_OBP_TAG_LENGTH);
-              break;
-            case 0:
-              //spit out dissrate
-              memcpy(mod_som_efe_obp_ptr->consumer_ptr->tag,
+               break;
+             case 0:
+               //spit out dissrate
+               memcpy(mod_som_efe_obp_ptr->consumer_ptr->tag,
                       MOD_SOM_EFE_OBP_CONSUMER_RATE_TAG,
                       MOD_SOM_EFE_OBP_TAG_LENGTH);
-              break;
-          }
+               break;
+           }
 
-          switch(mod_som_efe_obp_ptr->settings_ptr->format){
-            case 1:
-//              memcpy(mod_som_efe_obp_ptr->consumer_ptr->tag,
-//                     MOD_SOM_EFE_OBP_CONSUMER_SEGMENT_TAG,
-//                     MOD_SOM_EFE_OBP_TAG_LENGTH);
+           switch(mod_som_efe_obp_ptr->settings_ptr->format){
+             case 1:
+               //              memcpy(mod_som_efe_obp_ptr->consumer_ptr->tag,
+               //                     MOD_SOM_EFE_OBP_CONSUMER_SEGMENT_TAG,
+               //                     MOD_SOM_EFE_OBP_TAG_LENGTH);
 
-              //ALB phase 1: check elements available and copy them in the cnsmr buffer
-              segment_avail=mod_som_efe_obp_ptr->fill_segment_ptr->half_segment_cnt-1-
-                                mod_som_efe_obp_ptr->consumer_ptr->segment_cnt;
+               //ALB phase 1: check elements available and copy them in the cnsmr buffer
+               segment_avail=mod_som_efe_obp_ptr->fill_segment_ptr->half_segment_cnt-1-
+               mod_som_efe_obp_ptr->consumer_ptr->segment_cnt;
 
-              if(segment_avail>0){
-                  if (segment_avail>(2*MOD_SOM_EFE_OBP_FILL_SEGMENT_NB_SEGMENT_PER_RECORD)){
-                      reset_segment_cnt =
-                          mod_som_efe_obp_ptr->fill_segment_ptr->half_segment_cnt -
-                          (2*MOD_SOM_EFE_OBP_FILL_SEGMENT_NB_SEGMENT_PER_RECORD) ;
-                      // calculate the number of skipped elements
-                      mod_som_efe_obp_ptr->consumer_ptr->elmnts_skipped =
-                          reset_segment_cnt -
-                          mod_som_efe_obp_ptr->consumer_ptr->segment_cnt;
+               if(segment_avail>0){
+                   if (segment_avail>(2*MOD_SOM_EFE_OBP_FILL_SEGMENT_NB_SEGMENT_PER_RECORD)){
+                       reset_segment_cnt =
+                           mod_som_efe_obp_ptr->fill_segment_ptr->half_segment_cnt -
+                           (2*MOD_SOM_EFE_OBP_FILL_SEGMENT_NB_SEGMENT_PER_RECORD) ;
+                       // calculate the number of skipped elements
+                       mod_som_efe_obp_ptr->consumer_ptr->elmnts_skipped =
+                           reset_segment_cnt -
+                           mod_som_efe_obp_ptr->consumer_ptr->segment_cnt;
 
-                      mod_som_io_print_f("\nEFE OBP consumer task: "
-                                         "segment overflow sample count = "
-                                         "%lu,cnsmr_cnt = %lu,"
-                                         "skipped %lu elements\r\n",
+                       mod_som_io_print_f("\nEFE OBP consumer task: "
+                           "segment overflow sample count = "
+                           "%lu,cnsmr_cnt = %lu,"
+                           "skipped %lu elements\r\n",
                            (uint32_t)mod_som_efe_obp_ptr->fill_segment_ptr->half_segment_cnt,
                            (uint32_t)mod_som_efe_obp_ptr->consumer_ptr->segment_cnt,
                            (uint32_t)mod_som_efe_obp_ptr->consumer_ptr->elmnts_skipped);
 
-                      mod_som_efe_obp_ptr->consumer_ptr->segment_cnt =
-                                                                  reset_segment_cnt;
-                  }//ALB end deal with overflow
+                       mod_som_efe_obp_ptr->consumer_ptr->segment_cnt =
+                           reset_segment_cnt;
+                   }//ALB end deal with overflow
 
 
-                  //ALB cpy the segments in the cnsmr buffer.
-                  payload_length=mod_som_efe_obp_copy_producer_segment_f();
-                  //ALB increase counter.
-                  mod_som_efe_obp_ptr->consumer_ptr->segment_cnt++;
+                   //ALB cpy the segments in the cnsmr buffer.
+                   payload_length=mod_som_efe_obp_copy_producer_segment_f();
+                   //ALB increase counter.
+                   mod_som_efe_obp_ptr->consumer_ptr->segment_cnt++;
 
-                  segment_avail=mod_som_efe_obp_ptr->fill_segment_ptr->half_segment_cnt-1-
-                                    mod_som_efe_obp_ptr->consumer_ptr->segment_cnt;
-            }
-              break;
+                   segment_avail=mod_som_efe_obp_ptr->fill_segment_ptr->half_segment_cnt-1-
+                       mod_som_efe_obp_ptr->consumer_ptr->segment_cnt;
+               }
+               break;
 
-            case 2:
-              //ALB phase 1: check elements available and copy them in the cnsmr buffer
-              spectrum_avail=mod_som_efe_obp_ptr->cpt_spectra_ptr->spectrum_cnt-
-                                mod_som_efe_obp_ptr->consumer_ptr->spectrum_cnt;
-              if(spectrum_avail>0){
-                  if (spectrum_avail>MOD_SOM_EFE_OBP_CPT_SPECTRA_NB_SPECTRA_PER_RECORD){
-                      reset_spectrum_cnt =
-                          mod_som_efe_obp_ptr->cpt_spectra_ptr->spectrum_cnt -
-                          MOD_SOM_EFE_OBP_CPT_SPECTRA_NB_SPECTRA_PER_RECORD ;
-                      // calculate the number of skipped elements
-                      mod_som_efe_obp_ptr->consumer_ptr->elmnts_skipped =
-                          reset_spectrum_cnt -
-                          mod_som_efe_obp_ptr->consumer_ptr->spectrum_cnt;
+             case 2:
+               //ALB phase 1: check elements available and copy them in the cnsmr buffer
+               spectrum_avail=mod_som_efe_obp_ptr->cpt_spectra_ptr->spectrum_cnt-
+               mod_som_efe_obp_ptr->consumer_ptr->spectrum_cnt;
+               if(spectrum_avail>0){
+                   if (spectrum_avail>MOD_SOM_EFE_OBP_CPT_SPECTRA_NB_SPECTRA_PER_RECORD){
+                       reset_spectrum_cnt =
+                           mod_som_efe_obp_ptr->cpt_spectra_ptr->spectrum_cnt -
+                           MOD_SOM_EFE_OBP_CPT_SPECTRA_NB_SPECTRA_PER_RECORD ;
+                       // calculate the number of skipped elements
+                       mod_som_efe_obp_ptr->consumer_ptr->elmnts_skipped =
+                           reset_spectrum_cnt -
+                           mod_som_efe_obp_ptr->consumer_ptr->spectrum_cnt;
 
-                      mod_som_io_print_f("\nEFE OBP consumer task: "
-                                         "spectra overflow sample count = "
-                                         "%lu,cnsmr_cnt = %lu,"
-                                         "skipped %lu elements\r\n",
+                       mod_som_io_print_f("\nEFE OBP consumer task: "
+                           "spectra overflow sample count = "
+                           "%lu,cnsmr_cnt = %lu,"
+                           "skipped %lu elements\r\n",
                            (uint32_t)mod_som_efe_obp_ptr->cpt_spectra_ptr->spectrum_cnt,
                            (uint32_t)mod_som_efe_obp_ptr->consumer_ptr->spectrum_cnt,
                            (uint32_t)mod_som_efe_obp_ptr->consumer_ptr->elmnts_skipped);
 
-                      mod_som_efe_obp_ptr->consumer_ptr->spectrum_cnt =
-                                                                  reset_spectrum_cnt;
-                  }//ALB end deal with overflow
+                       mod_som_efe_obp_ptr->consumer_ptr->spectrum_cnt =
+                           reset_spectrum_cnt;
+                   }//ALB end deal with overflow
 
-                  //ALB cpy the segments in the cnsmr buffer.
-                  payload_length=mod_som_efe_obp_copy_producer_spectra_f();
-                  //ALB increase counter.
-                  mod_som_efe_obp_ptr->consumer_ptr->spectrum_cnt++;
-                  spectrum_avail=mod_som_efe_obp_ptr->cpt_spectra_ptr->spectrum_cnt-
-                      mod_som_efe_obp_ptr->consumer_ptr->spectrum_cnt;
-              }
-              break;
+                   //ALB cpy the segments in the cnsmr buffer.
+                   payload_length=mod_som_efe_obp_copy_producer_spectra_f();
+                   //ALB increase counter.
+                   mod_som_efe_obp_ptr->consumer_ptr->spectrum_cnt++;
+                   spectrum_avail=mod_som_efe_obp_ptr->cpt_spectra_ptr->spectrum_cnt-
+                       mod_som_efe_obp_ptr->consumer_ptr->spectrum_cnt;
+               }
+               break;
 
-            case 3:
-              //ALB phase 1: check elements available and copy them in the cnsmr buffer
-              avgspec_avail=mod_som_efe_obp_ptr->cpt_spectra_ptr->avg_spectrum_cnt-
-                                mod_som_efe_obp_ptr->consumer_ptr->avgspec_cnt;
-              if(avgspec_avail>0){
-                  if (avgspec_avail>MOD_SOM_EFE_OBP_CPT_DISSRATE_NB_RATES_PER_RECORD){
-                      reset_avgspec_cnt =
-                          mod_som_efe_obp_ptr->cpt_dissrate_ptr->dissrates_cnt -
-                          MOD_SOM_EFE_OBP_CPT_DISSRATE_NB_RATES_PER_RECORD ;
-                      // calculate the number of skipped elements
-                      mod_som_efe_obp_ptr->consumer_ptr->elmnts_skipped =
-                          reset_avgspec_cnt -
-                          mod_som_efe_obp_ptr->consumer_ptr->avgspec_cnt;
+             case 3:
+               //ALB phase 1: check elements available and copy them in the cnsmr buffer
+               avgspec_avail=mod_som_efe_obp_ptr->cpt_spectra_ptr->avg_spectrum_cnt-
+               mod_som_efe_obp_ptr->consumer_ptr->avgspec_cnt;
+               if(avgspec_avail>0){
+                   if (avgspec_avail>MOD_SOM_EFE_OBP_CPT_DISSRATE_NB_RATES_PER_RECORD){
+                       reset_avgspec_cnt =
+                           mod_som_efe_obp_ptr->cpt_dissrate_ptr->dissrates_cnt -
+                           MOD_SOM_EFE_OBP_CPT_DISSRATE_NB_RATES_PER_RECORD ;
+                       // calculate the number of skipped elements
+                       mod_som_efe_obp_ptr->consumer_ptr->elmnts_skipped =
+                           reset_avgspec_cnt -
+                           mod_som_efe_obp_ptr->consumer_ptr->avgspec_cnt;
 
-                      mod_som_io_print_f("\nEFE OBP consumer task: "
-                                         "rates overflow sample count = "
-                                         "%lu,cnsmr_cnt = %lu,"
-                                         "skipped %lu elements\r\n",
+                       mod_som_io_print_f("\nEFE OBP consumer task: "
+                           "rates overflow sample count = "
+                           "%lu,cnsmr_cnt = %lu,"
+                           "skipped %lu elements\r\n",
                            (uint32_t)mod_som_efe_obp_ptr->cpt_spectra_ptr->avg_spectrum_cnt,
                            (uint32_t)mod_som_efe_obp_ptr->consumer_ptr->avgspec_cnt,
                            (uint32_t)mod_som_efe_obp_ptr->consumer_ptr->elmnts_skipped);
 
-                      mod_som_efe_obp_ptr->consumer_ptr->avgspec_cnt =
-                          reset_avgspec_cnt;
-                  }//ALB end deal with overflow
+                       mod_som_efe_obp_ptr->consumer_ptr->avgspec_cnt =
+                           reset_avgspec_cnt;
+                   }//ALB end deal with overflow
 
 
-                  //ALB cpy the segments in the cnsmr buffer.
-                  payload_length=mod_som_efe_obp_copy_producer_avgspectra_f();
+                   //ALB cpy the segments in the cnsmr buffer.
+                   payload_length=mod_som_efe_obp_copy_producer_avgspectra_f();
 
-                  mod_som_efe_obp_ptr->consumer_ptr->avgspec_cnt++;
-                  avgspec_avail=mod_som_efe_obp_ptr->cpt_spectra_ptr->avg_spectrum_cnt-
-                                    mod_som_efe_obp_ptr->consumer_ptr->avgspec_cnt;
+                   mod_som_efe_obp_ptr->consumer_ptr->avgspec_cnt++;
+                   avgspec_avail=mod_som_efe_obp_ptr->cpt_spectra_ptr->avg_spectrum_cnt-
+                       mod_som_efe_obp_ptr->consumer_ptr->avgspec_cnt;
 
-              }
-              break;
-            case 0:
-              break;
+               }
+               break;
+             case 0:
+               break;
 
-          }
+           }
 
-          //ALB consume the dissrates
-          rates_avail=mod_som_efe_obp_ptr->cpt_dissrate_ptr->dissrates_cnt-
-                            mod_som_efe_obp_ptr->consumer_ptr->rates_cnt;
-          if((rates_avail>0) & (payload_length==0)){
-              memcpy(mod_som_efe_obp_ptr->consumer_ptr->tag,
-                     MOD_SOM_EFE_OBP_CONSUMER_RATE_TAG,
-                     MOD_SOM_EFE_OBP_TAG_LENGTH);
+           //ALB consume the dissrates
+           rates_avail=mod_som_efe_obp_ptr->cpt_dissrate_ptr->dissrates_cnt-
+               mod_som_efe_obp_ptr->consumer_ptr->rates_cnt;
+           if((rates_avail>0) & (payload_length==0)){
+               memcpy(mod_som_efe_obp_ptr->consumer_ptr->tag,
+                      MOD_SOM_EFE_OBP_CONSUMER_RATE_TAG,
+                      MOD_SOM_EFE_OBP_TAG_LENGTH);
 
-              if (rates_avail>MOD_SOM_EFE_OBP_CPT_DISSRATE_NB_RATES_PER_RECORD){
-                  reset_rates_cnt =
-                      mod_som_efe_obp_ptr->cpt_dissrate_ptr->dissrates_cnt -
-                      MOD_SOM_EFE_OBP_CPT_DISSRATE_NB_RATES_PER_RECORD ;
-                  // calculate the number of skipped elements
-                  mod_som_efe_obp_ptr->consumer_ptr->elmnts_skipped =
-                      reset_rates_cnt -
-                      mod_som_efe_obp_ptr->consumer_ptr->rates_cnt;
+               if (rates_avail>MOD_SOM_EFE_OBP_CPT_DISSRATE_NB_RATES_PER_RECORD){
+                   reset_rates_cnt =
+                       mod_som_efe_obp_ptr->cpt_dissrate_ptr->dissrates_cnt -
+                       MOD_SOM_EFE_OBP_CPT_DISSRATE_NB_RATES_PER_RECORD ;
+                   // calculate the number of skipped elements
+                   mod_som_efe_obp_ptr->consumer_ptr->elmnts_skipped =
+                       reset_rates_cnt -
+                       mod_som_efe_obp_ptr->consumer_ptr->rates_cnt;
 
-                  mod_som_io_print_f("EFE OBP consumer task: "
-                                     "rates overflow sample count = "
-                                     "%lu,cnsmr_cnt = %lu,"
-                                     "skipped %lu elements\r\n",
+                   mod_som_io_print_f("EFE OBP consumer task: "
+                       "rates overflow sample count = "
+                       "%lu,cnsmr_cnt = %lu,"
+                       "skipped %lu elements\r\n",
                        (uint32_t)mod_som_efe_obp_ptr->cpt_dissrate_ptr->dissrates_cnt,
                        (uint32_t)mod_som_efe_obp_ptr->consumer_ptr->rates_cnt,
                        (uint32_t)mod_som_efe_obp_ptr->consumer_ptr->elmnts_skipped);
 
-                  mod_som_efe_obp_ptr->consumer_ptr->rates_cnt =
-                                                              reset_rates_cnt;
-              }//ALB end deal with overflow
+                   mod_som_efe_obp_ptr->consumer_ptr->rates_cnt =
+                       reset_rates_cnt;
+               }//ALB end deal with overflow
 
 
-              //ALB cpy the segments in the cnsmr buffer.
-              payload_length=mod_som_efe_obp_copy_producer_dissrate_f();
+               //ALB cpy the segments in the cnsmr buffer.
+               payload_length=mod_som_efe_obp_copy_producer_dissrate_f();
 
-              mod_som_efe_obp_ptr->consumer_ptr->rates_cnt++;
-              rates_avail=mod_som_efe_obp_ptr->cpt_dissrate_ptr->dissrates_cnt-
-                                mod_som_efe_obp_ptr->consumer_ptr->rates_cnt;
+               mod_som_efe_obp_ptr->consumer_ptr->rates_cnt++;
+               rates_avail=mod_som_efe_obp_ptr->cpt_dissrate_ptr->dissrates_cnt-
+                   mod_som_efe_obp_ptr->consumer_ptr->rates_cnt;
 
-          }
-
-
-          if(payload_length>0){
-
-          //get the timestamp for the record header
-          tick=sl_sleeptimer_get_tick_count64();
-          mystatus = sl_sleeptimer_tick64_to_ms(tick,\
-                           &mod_som_efe_obp_ptr->consumer_ptr->record_timestamp);
-
-          //MHA: Now augment timestamp by poweron_offset_ms
-          mod_som_calendar_settings=mod_som_calendar_get_settings_f(); //get the calendar settings pointer
-          mod_som_efe_obp_ptr->consumer_ptr->record_timestamp +=
-                                    mod_som_calendar_settings.poweron_offset_ms;
+           }
 
 
-          mod_som_efe_obp_ptr->consumer_ptr->payload_length=payload_length;
+           if(payload_length>0){
 
-          //ALB create header
-          mod_som_efe_obp_header_f(mod_som_efe_obp_ptr->consumer_ptr);
-          //add header to the beginning of the stream block
-          memcpy(mod_som_efe_obp_ptr->consumer_ptr->record_ptr, \
-                 mod_som_efe_obp_ptr->consumer_ptr->header,
-                 mod_som_efe_obp_ptr->consumer_ptr->length_header);
+               //get the timestamp for the record header
+               tick=sl_sleeptimer_get_tick_count64();
+               mystatus = sl_sleeptimer_tick64_to_ms(tick,\
+                                                     &mod_som_efe_obp_ptr->consumer_ptr->record_timestamp);
 
-
-          //ALB compute checksum
-          curr_consumer_record_ptr=mod_som_efe_obp_ptr->consumer_ptr->record_ptr+
-              mod_som_efe_obp_ptr->consumer_ptr->length_header;
-          mod_som_efe_obp_ptr->consumer_ptr->chksum=0;
-          for(int i=0;i<mod_som_efe_obp_ptr->consumer_ptr->payload_length;i++)
-            {
-              mod_som_efe_obp_ptr->consumer_ptr->chksum ^=\
-                  curr_consumer_record_ptr[i];
-            }
+               //MHA: Now augment timestamp by poweron_offset_ms
+               mod_som_calendar_settings=mod_som_calendar_get_settings_f(); //get the calendar settings pointer
+               mod_som_efe_obp_ptr->consumer_ptr->record_timestamp +=
+                   mod_som_calendar_settings.poweron_offset_ms;
 
 
-          //ALB the curr_consumer_element_ptr should be at the right place to
-          //ALB write checksum at the end of the record.
-          curr_consumer_record_ptr+=
-                              mod_som_efe_obp_ptr->consumer_ptr->payload_length;
-          *(curr_consumer_record_ptr++) = '*';
-          *((uint16_t*)curr_consumer_record_ptr) = \
-              mod_som_int8_2hex_f(mod_som_efe_obp_ptr->consumer_ptr->chksum);
-          curr_consumer_record_ptr += 2;
-          *(curr_consumer_record_ptr++) = '\r';
-          *(curr_consumer_record_ptr++) = '\n';
+               mod_som_efe_obp_ptr->consumer_ptr->payload_length=payload_length;
 
-          //ALB get the length of the record with the checksum
-          mod_som_efe_obp_ptr->consumer_ptr->record_length= \
-              (int) &curr_consumer_record_ptr[0]- \
-              (int) &mod_som_efe_obp_ptr->consumer_ptr->record_ptr[0];
+               //ALB create header
+               mod_som_efe_obp_header_f(mod_som_efe_obp_ptr->consumer_ptr);
+               //add header to the beginning of the stream block
+               memcpy(mod_som_efe_obp_ptr->consumer_ptr->record_ptr, \
+                      mod_som_efe_obp_ptr->consumer_ptr->header,
+                      mod_som_efe_obp_ptr->consumer_ptr->length_header);
 
 
+               //ALB compute checksum
+               curr_consumer_record_ptr=mod_som_efe_obp_ptr->consumer_ptr->record_ptr+
+                   mod_som_efe_obp_ptr->consumer_ptr->length_header;
+               mod_som_efe_obp_ptr->consumer_ptr->chksum=0;
+               for(int i=0;i<mod_som_efe_obp_ptr->consumer_ptr->payload_length;i++)
+                 {
+                   mod_som_efe_obp_ptr->consumer_ptr->chksum ^=\
+                       curr_consumer_record_ptr[i];
+                 }
 
 
-          switch(mod_som_efe_obp_ptr->settings_ptr->mode){
-            case 0:
-              //ALB stream
+               //ALB the curr_consumer_element_ptr should be at the right place to
+               //ALB write checksum at the end of the record.
+               curr_consumer_record_ptr+=
+                   mod_som_efe_obp_ptr->consumer_ptr->payload_length;
+               *(curr_consumer_record_ptr++) = '*';
+               *((uint16_t*)curr_consumer_record_ptr) = \
+                   mod_som_int8_2hex_f(mod_som_efe_obp_ptr->consumer_ptr->chksum);
+               curr_consumer_record_ptr += 2;
+               *(curr_consumer_record_ptr++) = '\r';
+               *(curr_consumer_record_ptr++) = '\n';
 
-              mod_som_efe_obp_ptr->consumer_ptr->consumed_flag=false;
-              mod_som_io_stream_data_f(
-                  mod_som_efe_obp_ptr->consumer_ptr->record_ptr,
-                  mod_som_efe_obp_ptr->consumer_ptr->record_length,
-                  &mod_som_efe_obp_ptr->consumer_ptr->consumed_flag);
-
-              break;
-            case 1:
-              //ALB store
-              mod_som_efe_obp_ptr->consumer_ptr->consumed_flag=false;
-              mod_som_sdio_write_data_f(rawfile_ptr,
-                  mod_som_efe_obp_ptr->consumer_ptr->record_ptr,
-                  mod_som_efe_obp_ptr->consumer_ptr->record_length,
-                  &mod_som_efe_obp_ptr->consumer_ptr->consumed_flag);
+               //ALB get the length of the record with the checksum
+               mod_som_efe_obp_ptr->consumer_ptr->record_length= \
+                   (int) &curr_consumer_record_ptr[0]- \
+                   (int) &mod_som_efe_obp_ptr->consumer_ptr->record_ptr[0];
 
 
-              break;
-            case 2:
-              //ALB stream and store
-              break;
 
-          }//end switch efe_obp mode
 
-          file_write_time0 = mod_som_calendar_get_time_f();
-          current_time = file_write_time0;
-          file_write_counter = 0;
-          while(!mod_som_efe_obp_ptr->consumer_ptr->consumed_flag){
-              //2023 06 08 added watchdog feed and a release from this task
-              // this is to prevent the system to hang on to the processor
-              // when there isn't nothing going on
-              OSTimeDly( MOD_SOM_EFE_OBP_CONSUMER_DELAY,             //   consumer delay is #define at the beginning OS Ticks
-                         OS_OPT_TIME_DLY,          //   from now.
-                         &err);
-              if(RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE){
-                  error_cnt = 0;
-              }
-              else{
-                  error_cnt++;
-              }
-              if(error_cnt>MOD_SOM_MAX_ERROR_CNT){
-                  mod_som_io_print_f("%s sd error accumulation maxxed\r\n",__func__);
-                  return;
-              }
-              WDOG_Feed();
+               switch(mod_som_efe_obp_ptr->settings_ptr->mode){
+                 case 0:
+                   //ALB stream
 
-              file_write_counter++;
-              if((file_write_counter%1000)==0){
-                  current_time = mod_som_calendar_get_time_f();
-                  if((current_time-file_write_time0)>MOD_SOM_EFE_OBP_DATA_WRITE_TIMEOUT){
-                      break;
-                  }
-              }
-          };
-          payload_length=0;
-          //ALB small code to switch between spectrum and shear output
-          switch(mod_som_efe_obp_ptr->settings_ptr->format){
-            case 1:
-              mod_som_efe_obp_ptr->settings_ptr->format=2;
-              break;
-            case 2:
-              if(mod_som_efe_obp_ptr->cpt_dissrate_ptr->dissrates_cnt-
-              mod_som_efe_obp_ptr->consumer_ptr->avgspec_cnt){
-                  mod_som_efe_obp_ptr->settings_ptr->format=3;
-              }else{
-                  mod_som_efe_obp_ptr->settings_ptr->format=1;
-              }
-              break;
-            case 3:
-              mod_som_efe_obp_ptr->settings_ptr->format=1;
-              break;
-            default:
-              mod_som_efe_obp_ptr->settings_ptr->format=1;
-              break;
+                   mod_som_efe_obp_ptr->consumer_ptr->consumed_flag=false;
+                   mod_som_io_stream_data_f(
+                       mod_som_efe_obp_ptr->consumer_ptr->record_ptr,
+                       mod_som_efe_obp_ptr->consumer_ptr->record_length,
+                       &mod_som_efe_obp_ptr->consumer_ptr->consumed_flag);
 
-          }
-          }// end if payload length =0
-  }//end if mod_som_efe_obp_ptr->consumer_ptr->started_flg
-  // Delay Start Task execution for
-  OSTimeDly( MOD_SOM_EFE_OBP_CONSUMER_DELAY,             //   consumer delay is #define at the beginning OS Ticks
-             OS_OPT_TIME_DLY,          //   from now.
-             &err);
-  if(RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE){
-      error_cnt = 0;
-  }
-  else{
-      error_cnt++;
-  }
-  if(error_cnt>MOD_SOM_MAX_ERROR_CNT){
-      mod_som_io_print_f("%s error accumulation maxed\r\n",__func__);
-      return;
-  }
-  //   Check error code.
-//  APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), ;);
-} // end of while (DEF_ON)
+                   break;
+                 case 1:
+                   //ALB store
+                   mod_som_efe_obp_ptr->consumer_ptr->consumed_flag=false;
+                   mod_som_sdio_write_data_f(rawfile_ptr,
+                                             mod_som_efe_obp_ptr->consumer_ptr->record_ptr,
+                                             mod_som_efe_obp_ptr->consumer_ptr->record_length,
+                                             &mod_som_efe_obp_ptr->consumer_ptr->consumed_flag);
 
-PP_UNUSED_PARAM(p_arg);                                     // Prevent config warning.
+
+                   break;
+                 case 2:
+                   //ALB stream and store
+                   break;
+
+               }//end switch efe_obp mode
+
+               file_write_time0 = mod_som_calendar_get_time_f();
+               current_time = file_write_time0;
+               file_write_counter = 0;
+               while(!mod_som_efe_obp_ptr->consumer_ptr->consumed_flag){
+                   //2023 06 08 added watchdog feed and a release from this task
+                   // this is to prevent the system to hang on to the processor
+                   // when there isn't nothing going on
+                   OSTimeDly( MOD_SOM_EFE_OBP_CONSUMER_DELAY,             //   consumer delay is #define at the beginning OS Ticks
+                              OS_OPT_TIME_DLY,          //   from now.
+                              &err);
+                   if(RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE){
+                       error_cnt = 0;
+                   }
+                   else{
+                       error_cnt++;
+                   }
+                   if(error_cnt>MOD_SOM_MAX_ERROR_CNT){
+                       mod_som_io_print_f("%s sd error accumulation maxxed\r\n",__func__);
+                       return;
+                   }
+                   WDOG_Feed();
+
+                   file_write_counter++;
+                   if((file_write_counter%1000)==0){
+                       current_time = mod_som_calendar_get_time_f();
+                       if((current_time-file_write_time0)>MOD_SOM_EFE_OBP_DATA_WRITE_TIMEOUT){
+                           break;
+                       }
+                   }
+               };
+               payload_length=0;
+               //ALB small code to switch between spectrum and shear output
+               switch(mod_som_efe_obp_ptr->settings_ptr->format){
+                 case 1:
+                   mod_som_efe_obp_ptr->settings_ptr->format=2;
+                   break;
+                 case 2:
+                   if(mod_som_efe_obp_ptr->cpt_dissrate_ptr->dissrates_cnt-
+                       mod_som_efe_obp_ptr->consumer_ptr->avgspec_cnt){
+                       mod_som_efe_obp_ptr->settings_ptr->format=3;
+                   }else{
+                       mod_som_efe_obp_ptr->settings_ptr->format=1;
+                   }
+                   break;
+                 case 3:
+                   mod_som_efe_obp_ptr->settings_ptr->format=1;
+                   break;
+                 default:
+                   mod_som_efe_obp_ptr->settings_ptr->format=1;
+                   break;
+
+               }
+           }// end if payload length =0
+       }//end if mod_som_efe_obp_ptr->consumer_ptr->started_flg
+       // Delay Start Task execution for
+       OSTimeDly( MOD_SOM_EFE_OBP_CONSUMER_DELAY,             //   consumer delay is #define at the beginning OS Ticks
+                  OS_OPT_TIME_DLY,          //   from now.
+                  &err);
+       if(RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE){
+           error_cnt = 0;
+       }
+       else{
+           error_cnt++;
+       }
+       if(error_cnt>MOD_SOM_MAX_ERROR_CNT){
+           mod_som_io_print_f("%s error accumulation maxed\r\n",__func__);
+           return;
+       }
+       //   Check error code.
+       //  APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), ;);
+   } // end of while (DEF_ON)
+   mod_som_io_print_f("%s accomplished\r\n",__func__);
+   PP_UNUSED_PARAM(p_arg);                                     // Prevent config warning.
 
 
 }//end consumer task

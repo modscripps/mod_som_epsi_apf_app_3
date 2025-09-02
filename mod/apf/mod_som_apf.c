@@ -901,12 +901,16 @@ mod_som_apf_status_t mod_som_apf_stop_producer_task_f(){
   mod_som_apf_ptr->producer_ptr->started_flg=false;
   sl_sleeptimer_delay_millisecond(100);
   if(mod_som_apf_producer_task_tcb.TaskState != OS_TASK_STATE_DEL){
-  RTOS_ERR err;
-    OSTaskDel(&mod_som_apf_producer_task_tcb,
-               &err);
+      RTOS_ERR err;
+      OSTaskDel(&mod_som_apf_producer_task_tcb,
+                &err);
 
-  if(RTOS_ERR_CODE_GET(err) != RTOS_ERR_NONE)
-    return (mod_som_apf_ptr->status = mod_som_apf_encode_status_f(MOD_SOM_APF_STATUS_FAIL_TO_STOP_PRODUCER_TASK));
+      if(RTOS_ERR_CODE_GET(err) != RTOS_ERR_NONE){
+          return (mod_som_apf_ptr->status = mod_som_apf_encode_status_f(MOD_SOM_APF_STATUS_FAIL_TO_STOP_PRODUCER_TASK));
+      }
+      else{
+          mod_som_io_print_f("%s accomplished\r\n",__func__);
+      }
   }
 
   return mod_som_apf_encode_status_f(MOD_SOM_STATUS_OK);
@@ -970,17 +974,22 @@ mod_som_apf_status_t mod_som_apf_stop_consumer_task_f(){
   if(!mod_som_apf_ptr->consumer_ptr->started_flg){
       return mod_som_apf_encode_status_f(MOD_SOM_STATUS_OK);
   }
-  
-  RTOS_ERR err;
-  OSTaskDel(&mod_som_apf_consumer_task_tcb,
-             &err);
 
-  mod_som_apf_ptr->consumer_ptr->started_flg=false;
+  if(mod_som_apf_consumer_task_tcb.TaskState != OS_TASK_STATE_DEL){
+      RTOS_ERR err;
+      OSTaskDel(&mod_som_apf_consumer_task_tcb,
+                &err);
+
+      mod_som_apf_ptr->consumer_ptr->started_flg=false;
 
 
-  if(RTOS_ERR_CODE_GET(err) != RTOS_ERR_NONE)
-    return (mod_som_apf_ptr->status = mod_som_apf_encode_status_f(MOD_SOM_APF_STATUS_FAIL_TO_STOP_CONSUMER_TASK));
-
+      if(RTOS_ERR_CODE_GET(err) != RTOS_ERR_NONE){
+          return (mod_som_apf_ptr->status = mod_som_apf_encode_status_f(MOD_SOM_APF_STATUS_FAIL_TO_STOP_CONSUMER_TASK));
+      }
+      else{
+          mod_som_io_print_f("%s accomplished\r\n",__func__);
+      }
+  }
   return mod_som_apf_encode_status_f(MOD_SOM_STATUS_OK);
 }
 
@@ -1327,8 +1336,7 @@ void mod_som_apf_producer_task_f(void  *p_arg){
 
   } // end of while (DEF_ON)
 
-  mod_som_apf_ptr->producer_ptr->started_flg = false;
-  mod_som_apf_ptr->daq = false;
+  mod_som_io_print_f("%s accomplished\r\n",__func__);
   PP_UNUSED_PARAM(p_arg);                                     // Prevent config warning.
   //this function only reaches when the loop ends
   mod_som_apf_daq_stop_f();

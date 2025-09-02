@@ -937,6 +937,9 @@ mod_som_status_t  mod_som_sbe41_stop_consumer_task_f(){
 
       OSTaskDel(&sbe41_consumer_task_tcb,
                 &err);
+      if(RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE){
+          mod_som_io_print_f("%s accomplished\r\n",__func__);
+      }
   }
 
   return mod_som_sbe41_encode_status_f(MOD_SOM_STATUS_OK);

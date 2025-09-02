@@ -114,12 +114,16 @@ mod_som_status_t mod_som_shell_stop_f(){
         OSTaskDel(&mod_som_shell_task_tcb,
                   &err);
 
-        APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
+//        APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
 
 
 
-        if(RTOS_ERR_CODE_GET(err) != RTOS_ERR_NONE)
+        if(RTOS_ERR_CODE_GET(err) != RTOS_ERR_NONE){
           return mod_som_shell_encode_status_f(MOD_SOM_SHELL_STATUS_ERR_FAIL_TO_RUN);
+        }
+        else{
+            mod_som_io_print_f("%s accomplished\r\n",__func__);
+        }
     }
 
     return MOD_SOM_STATUS_OK;

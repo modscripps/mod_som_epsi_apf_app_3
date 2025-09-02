@@ -1860,6 +1860,9 @@ mod_som_status_t mod_som_sdio_stop_f(){
       RTOS_ERR err;
       OSTaskDel(&mod_som_sdio_print_task_tcb,
                 &err);
+      if(RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE){
+          mod_som_io_print_f("%s accomplished\r\n",__func__);
+      }
   }
   return mod_som_sdio_encode_status_f(MOD_SOM_STATUS_OK);
 }
