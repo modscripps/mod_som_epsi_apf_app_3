@@ -57,7 +57,7 @@
 //ALB data consumer
 #define MOD_SOM_EFE_OBP_CONSUMER_TASK_PRIO           18u
 #define MOD_SOM_EFE_OBP_CONSUMER_TASK_STK_SIZE       512u
-#define MOD_SOM_EFE_OBP_CONSUMER_DELAY               10          // delay for consumer 2 (ex: 4000 = 1 time / 4 secs).
+#define MOD_SOM_EFE_OBP_CONSUMER_DELAY               100          // delay for consumer 2 (ex: 4000 = 1 time / 4 secs).
 #define MOD_SOM_EFE_OBP_CONSUMER_PADDING             5          // number of elements for padding for data consumer.
 #define MOD_SOM_EFE_OBP_CONSUMER_NB_SEGMENT_PER_RECORD       1
 #define MOD_SOM_EFE_OBP_CONSUMER_NB_SPECTRA_PER_RECORD       1

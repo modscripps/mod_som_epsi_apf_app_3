@@ -61,7 +61,7 @@ mod_som_calendar_settings_t mod_som_calendar_settings;
 //------------------------------------------------------------------------------
 //#define MOD_SOM_SBE41_DATA_RX_LENGTH 64
 //#define MOD_SOM_SBE41_DATA_LENGTH_TRUNCATION 2U
-#define MOD_SOM_SBE41_DATA_WRITE_TIMEOUT 10U
+#define MOD_SOM_SBE41_DATA_WRITE_TIMEOUT 5U
 
 // Data consumer
 static CPU_STK sbe41_consumer_task_stk[MOD_SOM_SBE41_CONSUMER_TASK_STK_SIZE];
@@ -778,7 +778,7 @@ mod_som_status_t mod_som_sbe41_start_collect_data_f(){
   }
   if(mod_som_sbe41_ptr->collect_data_flag){
       mod_som_io_print_f("$%s: already started!\r\n",mod_som_sbe41_ptr->settings_ptr->data_header_text);
-      return (mod_som_sbe41_ptr->status = mod_som_sbe41_encode_status_f(MOD_SOM_SBE41_STATUS_NOT_INITIALIZED));
+      return (mod_som_sbe41_ptr->status = mod_som_sbe41_encode_status_f(MOD_SOM_SBE41_STATUS_AlREADY_STARTED));
   }
 
     USART_TypeDef           *usart_ptr;
@@ -1074,6 +1074,7 @@ void  mod_som_sbe41_consumer_task_f(void  *p_arg){
             // LOOP without delay until caught up to latest produced element
             while (elmnts_avail > 0)
               {
+                mod_som_io_print_f("\n\rSBE41: elmnts_avail1: %d\r\n",elmnts_avail);
                 // When have circular buffer overflow: have produced data bigger than consumer data: 1 circular buffer (n_elmnts)
                 // calculate new consumer count to skip ahead to the tail of the circular buffer (with optional padding),
                 // calculate the number of data we skipped, report number of elements skipped.
@@ -1169,13 +1170,14 @@ void  mod_som_sbe41_consumer_task_f(void  *p_arg){
                     mod_som_sbe41_ptr->consumer_ptr->data_ready_flg=1;
                     break;
                 }
+                mod_som_io_print_f("\n\rSBE41: elmnts_avail1.9: %d\r\n",elmnts_avail);
               }  // end of while (elemts_avail > 0)
             // No more data available. All data are stored in the stream buffer.
 
 
             if (mod_som_sbe41_ptr->consumer_ptr->data_ready_flg &
                 mod_som_sbe41_ptr->consumer_ptr->consumed_flag) {
-
+                mod_som_io_print_f("\n\rSBE41: elmnts_avail2: %d\r\n",elmnts_avail);
                 // We are almost ready to send. Just need to get the header, compute the chcksum, append it
                 // to the stream buffer and send to the stream task
 
@@ -1269,7 +1271,9 @@ void  mod_som_sbe41_consumer_task_f(void  *p_arg){
                 // this is to wait for the data to be written
                 // once it is written, then we can move on
                 // this will timeout after a while
+                mod_som_io_print_f("\n\rSBE41: elmnts_avail3: %d\r\n",elmnts_avail);
                 while(!mod_som_sbe41_ptr->consumer_ptr->consumed_flag){
+                    mod_som_io_print_f("\n\rSBE41: elmnts_avail4: %d\r\n",elmnts_avail);
                     //2023 06 08 added watchdog feed and a release from this task
                     // this is to prevent the system to hang on to the processor
                     // when there isn't nothing going on
@@ -1295,6 +1299,7 @@ void  mod_som_sbe41_consumer_task_f(void  *p_arg){
                             break;
                         }
                     }
+                    mod_som_io_print_f("\n\rSBE41: elmnts_avail5: %d\r\n",elmnts_avail);
                 };
 
                 mod_som_sbe41_ptr->consumer_ptr->elmnts_skipped = 0;
@@ -1311,7 +1316,9 @@ void  mod_som_sbe41_consumer_task_f(void  *p_arg){
                   {
 //                    printf("CNSMR2: Waiting for available data in sbe streamer ....\n\n");
                   }
-            }//end if (mod_som_sbe41_ptr->collect_data_flag)
+            }//end mod_som_sbe41_ptr->consumer_ptr->data_ready_flg & mod_som_sbe41_ptr->consumer_ptr->consumed_flag
+            mod_som_io_print_f("\n\rSBE41: elmnts_avail6: %d\r\n",elmnts_avail);
+//            mod_som_io_print_f("\n\rSBE41: elmnts_avail6: %d\r\n",elmnts_avail);
 //        } // collect_data_flag
 
         // Delay Start Task execution for
@@ -1328,6 +1335,7 @@ void  mod_som_sbe41_consumer_task_f(void  *p_arg){
             mod_som_io_print_f("%s error accumulation maxed\r\n",__func__);
             return;
         }
+//        mod_som_io_print_f("\n\rSBE41: elmnts_avail7: %d\r\n",elmnts_avail);
         //   Check error code.
 //        APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), ;);
     } // end of while (DEF_ON)

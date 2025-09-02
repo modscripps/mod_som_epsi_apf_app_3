@@ -1853,13 +1853,14 @@ mod_som_status_t mod_som_sdio_stop_f(){
     {
       return mod_som_sdio_encode_status_f(MOD_SOM_STATUS_OK);
     }
+  mod_som_sdio_struct.started_flag = false;
+  sl_sleeptimer_delay_millisecond(100);
 
   if(mod_som_sdio_print_task_tcb.TaskState != OS_TASK_STATE_DEL){
       RTOS_ERR err;
       OSTaskDel(&mod_som_sdio_print_task_tcb,
                 &err);
   }
-  mod_som_sdio_struct.started_flag = false;
   return mod_som_sdio_encode_status_f(MOD_SOM_STATUS_OK);
 }
 
@@ -1944,8 +1945,8 @@ static void mod_som_sdio_print_task_f(void *p_arg)
 //    CORE_DECLARE_IRQ_STATE;
 
 //    uint32_t n_count = 0;
-
-    while(DEF_ON){
+    mod_som_sdio_struct.started_flag = true;
+    while(mod_som_sdio_struct.started_flag){
         WDOG_Feed();
         //necessary for every task
         tmp_mod_som_sdio_xfer_item_ptr =

@@ -113,7 +113,7 @@
 
 #define MOD_SOM_APF_CONSUMER_TASK_PRIO              18u
 #define MOD_SOM_APF_CONSUMER_TASK_STK_SIZE          512u
-#define MOD_SOM_APF_CONSUMER_DELAY                  10      // delay for fill segment task
+#define MOD_SOM_APF_CONSUMER_DELAY                  100      // delay for fill segment task
 #define MOD_SOM_APF_CONSUMER_TIMESTAMP_SIZE         8
 #define MOD_SOM_APF_CONSUMER_CHECKSUM_SIZE          5
 
@@ -1112,7 +1112,7 @@ uint32_t mod_som_apf_copy_F2_element_f(  uint64_t * curr_avg_timestamp_ptr,
                                            float * curr_temp_avg_spectra_ptr,
                                            float * curr_shear_avg_spectra_ptr);
 
-void mod_som_apf_copy_sd_element_f(  uint64_t * curr_avg_timestamp_ptr,
+int32_t mod_som_apf_copy_sd_element_f(  uint64_t * curr_avg_timestamp_ptr,
                                      float * curr_avg_pressure_ptr,
                                      float * curr_temperature_ptr,
                                      float * curr_salinity_ptr,

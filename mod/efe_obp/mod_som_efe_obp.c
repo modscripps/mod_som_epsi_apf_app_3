@@ -37,6 +37,7 @@ mod_som_calendar_settings_t mod_som_calendar_settings;
 //PRIVATE DEFINE
 #define MOD_SOM_EFE_OBP_DEFAULT_SIZE_LARGEST_BLOCK 128U
 #define MOD_SOM_EFE_OBP_MSG_QUEUE_COUNT 64U
+#define MOD_SOM_EFE_OBP_DATA_WRITE_TIMEOUT 10U
 
 //PRIVATE FUNCTIONS
 /*******************************************************************************
@@ -2071,6 +2072,9 @@ void mod_som_efe_obp_consumer_task_f(void  *p_arg){
    mod_som_sdio_file_ptr_t rawfile_ptr =
        local_mod_som_sdio_ptr_t->rawdata_file_ptr;
 
+   sl_sleeptimer_timestamp_t file_write_time0, current_time; //this is for timing how long it takes for things to time
+   uint32_t file_write_counter;
+
   //        printf("In Consumer Task 2\n");
   while (DEF_ON) {
 
@@ -2342,7 +2346,37 @@ void mod_som_efe_obp_consumer_task_f(void  *p_arg){
               break;
 
           }//end switch efe_obp mode
-          while(!mod_som_efe_obp_ptr->consumer_ptr->consumed_flag){};
+
+          file_write_time0 = mod_som_calendar_get_time_f();
+          current_time = file_write_time0;
+          file_write_counter = 0;
+          while(!mod_som_efe_obp_ptr->consumer_ptr->consumed_flag){
+              //2023 06 08 added watchdog feed and a release from this task
+              // this is to prevent the system to hang on to the processor
+              // when there isn't nothing going on
+              OSTimeDly( MOD_SOM_EFE_OBP_CONSUMER_DELAY,             //   consumer delay is #define at the beginning OS Ticks
+                         OS_OPT_TIME_DLY,          //   from now.
+                         &err);
+              if(RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE){
+                  error_cnt = 0;
+              }
+              else{
+                  error_cnt++;
+              }
+              if(error_cnt>MOD_SOM_MAX_ERROR_CNT){
+                  mod_som_io_print_f("%s sd error accumulation maxxed\r\n",__func__);
+                  return;
+              }
+              WDOG_Feed();
+
+              file_write_counter++;
+              if((file_write_counter%1000)==0){
+                  current_time = mod_som_calendar_get_time_f();
+                  if((current_time-file_write_time0)>MOD_SOM_EFE_OBP_DATA_WRITE_TIMEOUT){
+                      break;
+                  }
+              }
+          };
           payload_length=0;
           //ALB small code to switch between spectrum and shear output
           switch(mod_som_efe_obp_ptr->settings_ptr->format){

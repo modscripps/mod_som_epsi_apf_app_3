@@ -16,8 +16,8 @@
 #include <mod_som_common.h>
 #include "em_cmu.h"
 
-//#define MOD_SOM_DEBUG_WDOG
-//#define MOD_SOM_DEBUG
+#define MOD_SOM_DEBUG_WDOG
+#define MOD_SOM_DEBUG
 #define MOD_SOM_BOARD // this definition is to make sure you are using the som board
 //#define MOD_SOM_MEZZANINE_BOARD // this definition is to make sure you are using the som board
 //#define RETARGET_VCOM
@@ -29,7 +29,7 @@
 #define MOD_SOM_CFG_LOOP_TICK_DELAY 1u
 
 //2025 06 14 added error accumulation for the purpose of restarting tasks
-#define MOD_SOM_MAX_ERROR_CNT 10
+#define MOD_SOM_MAX_ERROR_CNT 5
 
 #if defined(MOD_SOM_BOARD)
 

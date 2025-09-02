@@ -139,7 +139,11 @@ CPU_INT16S mod_som_apf_cmd_daq_f(CPU_INT16U argc,
       i = 1; // get the second argument
       if (!Str_Cmp(argv[i], "stop"))  // "daq,stop" ==> execute mod_som_apf_daq_stop_f() routine
       {
-         return_status = mod_som_apf_daq_stop_f();
+          if(local_apf_runtime_ptr->daq){
+              return_status = mod_som_apf_daq_stop_f();
+          }else{
+              return_status = MOD_SOM_APF_STATUS_OK;
+          }
          //ALB display msg
          if (return_status == MOD_SOM_APF_STATUS_OK)
          {
@@ -242,24 +246,39 @@ CPU_INT16S mod_som_apf_cmd_daq_f(CPU_INT16U argc,
           {
               snprintf(apf_reply_str,MOD_SOM_SHELL_INPUT_BUF_SIZE-1,"%s,start,%s,no valid CTD data\r\n",
                       MOD_SOM_APF_DAQ_STR,MOD_SOM_APF_NAK_STR);
-              mod_som_apf_status_t temp_status = mod_som_apf_daq_stop_f();
-              status |= return_status | temp_status;
+              status |= return_status;
+              if(local_apf_runtime_ptr->daq){
+                  return_status = mod_som_apf_daq_stop_f();
+              }else{
+                  return_status = MOD_SOM_APF_STATUS_OK;
+              }
+              status |= return_status;
               break;
           }
           if (return_status == MOD_SOM_APF_STATUS_CTD_DATA_TIMEOUT)
             {
               snprintf(apf_reply_str,MOD_SOM_SHELL_INPUT_BUF_SIZE-1,"%s,start,%s,CTD data timed out\r\n",
                       MOD_SOM_APF_DAQ_STR,MOD_SOM_APF_NAK_STR);
-              mod_som_apf_status_t temp_status = mod_som_apf_daq_stop_f();
-              status |= return_status | temp_status;
+              status |= return_status;
+              if(local_apf_runtime_ptr->daq){
+                  return_status = mod_som_apf_daq_stop_f();
+              }else{
+                  return_status = MOD_SOM_APF_STATUS_OK;
+              }
+              status |= return_status;
               break;
             }
           if (return_status == MOD_SOM_APF_STATUS_CANNOT_OPENFILE)
             {
               snprintf(apf_reply_str,MOD_SOM_SHELL_INPUT_BUF_SIZE-1,"%s,start,%s,cannot open SD card for file writing\r\n",
                       MOD_SOM_APF_DAQ_STR,MOD_SOM_APF_NAK_STR);
-              mod_som_apf_status_t temp_status = mod_som_apf_daq_stop_f();
-              status |= return_status | temp_status;
+              status |= return_status;
+              if(local_apf_runtime_ptr->daq){
+                  return_status = mod_som_apf_daq_stop_f();
+              }else{
+                  return_status = MOD_SOM_APF_STATUS_OK;
+              }
+              status |= return_status;
               break;
           }
           // save time string into the temporary local string - Mai - Nov 18, 2021

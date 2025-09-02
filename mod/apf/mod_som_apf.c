@@ -26,7 +26,7 @@
   #include <mod_som_settings.h>
 #endif
 
-#define SOM_APF_NOT_DEBUG_MODE 1  // use this flag to turn on main command for debugging: 0: turn off,1: debug -- mai bui 5 May, 2022
+#define MOD_SOM_APF_DATA_WRITE_TIMEOUT 10U
 
 #include <efe_obp/mod_som_efe_obp.h>
 
@@ -1328,6 +1328,7 @@ void mod_som_apf_producer_task_f(void  *p_arg){
   } // end of while (DEF_ON)
 
   mod_som_apf_ptr->producer_ptr->started_flg = false;
+  mod_som_apf_ptr->daq = false;
   PP_UNUSED_PARAM(p_arg);                                     // Prevent config warning.
   //this function only reaches when the loop ends
   mod_som_apf_daq_stop_f();
@@ -1403,6 +1404,7 @@ void mod_som_apf_consumer_task_f(void  *p_arg){
   //MHA: Now augment timestamp by poweron_offset_ms
   mod_som_calendar_settings=mod_som_calendar_get_settings_f(); //get the calendar settings pointer
 
+  int32_t status;
 
   while (DEF_ON) {
       WDOG_Feed();
@@ -1546,7 +1548,7 @@ void mod_som_apf_consumer_task_f(void  *p_arg){
                       //ALB convert and store the current dissrate and FFT into the MOD format
                       // log10(epsi) log10(chi):  3bytes (12 bits for each epsi and chi sample)
                       //  log10(FFT_shear),log10(FFT_temp),log10(FFT_accel)
-                      mod_som_apf_copy_sd_element_f( curr_avg_timestamp_ptr,
+                      status = mod_som_apf_copy_sd_element_f( curr_avg_timestamp_ptr,
                                                      curr_avg_pressure_ptr,
                                                      curr_avg_temperature_ptr,
                                                      curr_avg_salinity_ptr,
@@ -1561,6 +1563,9 @@ void mod_som_apf_consumer_task_f(void  *p_arg){
                                                      curr_shear_avg_spectra_ptr,
                                                      curr_accel_avg_spectra_ptr);
 
+                      if(status==-1){
+                          break;
+                      }
 //                      mod_som_apf_ptr->consumer_ptr->stored_dissrates_cnt++;
 
                       //ALB increment cnsmr count
@@ -2627,7 +2632,7 @@ uint32_t mod_som_apf_send_line_f(LEUART_TypeDef *leuart_ptr,char * buf, uint32_t
  *   MOD_SOM_STATUS_OK if initialization goes well
  *   or otherwise
  ******************************************************************************/
-void mod_som_apf_copy_sd_element_f(  uint64_t * curr_avg_timestamp_ptr,
+  int32_t mod_som_apf_copy_sd_element_f(  uint64_t * curr_avg_timestamp_ptr,
                                      float * curr_avg_pressure_ptr,
                                      float * curr_avg_temperature_ptr,
                                      float * curr_avg_salinity_ptr,
@@ -2761,11 +2766,43 @@ dacq_ptr+=spectra_length;
                             mod_som_apf_ptr->consumer_ptr->dacq_ptr,
                             payload_length,
                             &mod_som_apf_ptr->consumer_ptr->consumed_flag);
+
+  sl_sleeptimer_timestamp_t file_write_time0, current_time; //this is for timing how long it takes for things to time
+  uint32_t file_write_counter;
+  RTOS_ERR err;
+  file_write_time0 = mod_som_calendar_get_time_f();
+  current_time = file_write_time0;
+  file_write_counter = 0;
+  int error_cnt = 0;
   while(!mod_som_apf_ptr->consumer_ptr->consumed_flag){
+      //2023 06 08 added watchdog feed and a release from this task
+      // this is to prevent the system to hang on to the processor
+      // when there isn't nothing going on
+      OSTimeDly( MOD_SOM_EFE_OBP_CONSUMER_DELAY,             //   consumer delay is #define at the beginning OS Ticks
+                 OS_OPT_TIME_DLY,          //   from now.
+                 &err);
+      if(RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE){
+          error_cnt = 0;
+      }
+      else{
+          error_cnt++;
+      }
+      if(error_cnt>MOD_SOM_MAX_ERROR_CNT){
+          mod_som_io_print_f("%s error accumulation maxed\r\n",__func__);
+          return -1;
+      }
       WDOG_Feed();
+
+      file_write_counter++;
+      if((file_write_counter%1000)==0){
+          current_time = mod_som_calendar_get_time_f();
+          if((current_time-file_write_time0)>MOD_SOM_APF_DATA_WRITE_TIMEOUT){
+              break;
+          }
+      }
   };
 
-
+  return 0;
 
 }
 
@@ -2851,7 +2888,7 @@ mod_som_apf_status_t mod_som_apf_daq_start_f(uint32_t profile_id){
     uint32_t delay100ms=100;
   uint32_t get_ctd_count=0;
   CPU_CHAR filename[100];
-  uint32_t file_status;
+//  uint32_t file_status = 0;
 
   mod_som_io_print_f("Requesting daq_start\r\n");
   if(mod_som_apf_ptr->daq){
@@ -2877,18 +2914,51 @@ mod_som_apf_status_t mod_som_apf_daq_start_f(uint32_t profile_id){
         return MOD_SOM_APF_STATUS_CANNOT_OPENFILE;
     }
 
-    sl_sleeptimer_delay_millisecond(200);
+    sl_sleeptimer_delay_millisecond(100);
 
+    //ALB initialize Meta_Data Structure, TODO
+    mod_som_apf_ptr->profile_id=profile_id;
+
+
+
+    //ALB Always open raw SD file, in append write mode
+    snprintf(filename,99, "Profile%lu",(uint32_t) mod_som_apf_ptr->profile_id);
+    for(uint32_t tries = 0; tries < 5; tries++){
+        status = mod_som_sdio_define_filename_f(filename);
+        if(status != MOD_SOM_STATUS_OK){
+            mod_som_sdio_disable_hardware_f();
+            sl_sleeptimer_delay_millisecond(delay100ms);
+            status = mod_som_sdio_enable_hardware_f();
+            if(status != MOD_SOM_STATUS_OK){
+                sl_sleeptimer_delay_millisecond(delay100ms);
+                break;
+            }
+            sl_sleeptimer_delay_millisecond(delay100ms);
+            continue;
+        }else{
+            break;
+        }
+    }
+    if(status != MOD_SOM_STATUS_OK){
+        mod_som_sdio_disable_hardware_f();
+        return MOD_SOM_APF_STATUS_CANNOT_OPENFILE;
+    }
+    mod_som_settings_save_settings_f();
 
   //ALB start collecting CTD.
   status = mod_som_sbe41_connect_f();
   status = mod_som_sbe41_start_collect_data_f();
   if(status){
-      mod_som_sbe41_stop_collect_data_f();
-      mod_som_sbe41_disconnect_f();
+      mod_som_sdio_disable_hardware_f();
       return MOD_SOM_APF_STATUS_NO_CTD_DATA;
   }
-
+#ifdef MOD_SOM_DEBUG
+  uint32_t tick;
+    uint32_t start_time_ms;
+    uint32_t curr_time_ms;
+    tick = sl_sleeptimer_get_tick_count();
+    start_time_ms = sl_sleeptimer_tick_to_ms(tick);
+#endif
 //  ////  //ALB enable SDIO hardware
 //  mod_som_sdio_enable_hardware_f();
 
@@ -2907,43 +2977,25 @@ mod_som_apf_status_t mod_som_apf_daq_start_f(uint32_t profile_id){
           break;
       }
   }
+
   //SAN 2023 02 20 correct for something funny status not working properly
   if(status){
       mod_som_sdio_disable_hardware_f();
       sl_sleeptimer_delay_millisecond(delay100ms);
       mod_som_sbe41_stop_collect_data_f();
       mod_som_sbe41_disconnect_f();
-
     return status;
   }
 
   //SAN 2023 02 20 correct for something funny status not working properly
 //  if (status==MOD_SOM_APF_STATUS_OK){
 
-
-      //ALB initialize Meta_Data Structure, TODO
-      mod_som_apf_ptr->profile_id=profile_id;
-
-
-
-      //ALB Always open raw SD file, in append write mode
-      snprintf(filename,99, "Profile%lu",(uint32_t) mod_som_apf_ptr->profile_id);
-      status = mod_som_sdio_define_filename_f(filename);
-      if(status != MOD_SOM_STATUS_OK){
-          mod_som_sdio_disable_hardware_f();
-          sl_sleeptimer_delay_millisecond(delay100ms);
-          mod_som_sbe41_stop_collect_data_f();
-          mod_som_sbe41_disconnect_f();
-              return MOD_SOM_APF_STATUS_CANNOT_OPENFILE;
-          }
-      mod_som_settings_save_settings_f();
-
-
-      mod_som_sdio_ptr_t local_mod_som_sdio_ptr_t=
+      mod_som_sdio_ptr_t local_mod_som_sdio_ptr=
           mod_som_sdio_get_runtime_ptr_f();
 
       mod_som_sdio_file_ptr_t processfile_ptr =
-          local_mod_som_sdio_ptr_t->processdata_file_ptr;
+          local_mod_som_sdio_ptr->processdata_file_ptr;
+
 
       // 2023 12 20 SAN removed file checking for previous data
       /*
@@ -3015,12 +3067,30 @@ mod_som_apf_status_t mod_som_apf_daq_start_f(uint32_t profile_id){
       mod_som_apf_ptr->producer_ptr->done_sd_flag=false;
       mod_som_apf_ptr->producer_ptr->meta_data_buffer_byte_cnt = mod_som_apf_meta_data_pack_f(
           mod_som_apf_ptr->producer_ptr->meta_data_buffer_ptr, sizeof(mod_som_apf_meta_data_t));
+          if (file_status>0){
+          status|=file_status;
+      }
       //*/
 
       ///*
       // 2023 12 20 SAN added this to initialize meta data
-      file_status=mod_som_sdio_new_processfilename_f("OBPdata");
-      if(file_status != MOD_SOM_STATUS_OK){
+      for(uint32_t tries = 0; tries < 5; tries++){
+          status = mod_som_sdio_new_processfilename_f("OBPdata");
+          if(status != MOD_SOM_STATUS_OK){
+              mod_som_sdio_disable_hardware_f();
+              sl_sleeptimer_delay_millisecond(delay100ms);
+              status = mod_som_sdio_enable_hardware_f();
+              if(status != MOD_SOM_STATUS_OK){
+                  sl_sleeptimer_delay_millisecond(delay100ms);
+                  continue;
+              }
+              sl_sleeptimer_delay_millisecond(delay100ms);
+              continue;
+          }else{
+              break;
+          }
+      }
+      if(status != MOD_SOM_STATUS_OK){
           mod_som_sdio_disable_hardware_f();
           sl_sleeptimer_delay_millisecond(delay100ms);
           mod_som_sbe41_stop_collect_data_f();
@@ -3053,9 +3123,7 @@ mod_som_apf_status_t mod_som_apf_daq_start_f(uint32_t profile_id){
       //*/
 
 
-      if (file_status>0){
-          status|=file_status;
-      }
+
 
 
 
@@ -3090,19 +3158,28 @@ mod_som_apf_status_t mod_som_apf_daq_start_f(uint32_t profile_id){
 
       status|=mod_som_efe_sampling_f();
 
-      sl_sleeptimer_delay_millisecond(3000);
+      sl_sleeptimer_delay_millisecond(5000);
       //2025 06 12 add another timeout condition for the SBE41
       // we are assuming the data rate is 1Hz
+#ifdef MOD_SOM_DEBUG
+      tick = sl_sleeptimer_get_tick_count();
+          curr_time_ms = sl_sleeptimer_tick_to_ms(tick);
+      mod_som_io_print_f("$DEBUG: Time passed since SBE41 started: %ld ms\r\n",curr_time_ms-start_time_ms);
+#endif
       if( local_sbe41_runtime_ptr->sample_timeout ||
           (local_sbe41_runtime_ptr->sample_count - local_sbe41_runtime_ptr->consumer_ptr->cnsmr_cnt)>MOD_SOM_SBE41_SAMPLE_TIMEOUT/2){
           CORE_ENTER_ATOMIC();
-          mod_som_apf_ptr->daq=false;
+          mod_som_apf_ptr->daq=true;
 //          mod_som_apf_ptr->daq_requested = false;
           CORE_EXIT_ATOMIC();
+
           mod_som_apf_daq_stop_f();
 
           return MOD_SOM_APF_STATUS_CTD_DATA_TIMEOUT;
       }
+
+
+
       CORE_ENTER_ATOMIC();
       //SAN 2023 02 20 added this to make sure daq is enabled
       mod_som_apf_ptr->daq=true;
@@ -3133,10 +3210,28 @@ mod_som_apf_status_t mod_som_apf_daq_stop_f(){
   int delay =100; //0.1 sec
 //  static int16_t data_terminator = 0xffff; // this is to terminate the data section
 //  FRESULT res=0;
+  static bool is_running = false;
   mod_som_apf_status_t status;
-  status=MOD_SOM_APF_STATUS_OK;
+    status=MOD_SOM_APF_STATUS_OK;
 
-  if(mod_som_apf_ptr->daq){
+  if(!is_running){
+      is_running = true;
+  }else{
+      return status;
+  }
+
+  mod_som_sbe41_ptr_t local_sbe41_runtime_ptr =
+        mod_som_sbe41_get_runtime_ptr_f();
+  mod_som_io_print_f(
+      "SBE sample count:%ld\r\n"
+      "SBE consumer count: %ld\r\n"
+      "APF dissrates count: %lu\r\n",
+      local_sbe41_runtime_ptr->sample_count,
+      local_sbe41_runtime_ptr->consumer_ptr->cnsmr_cnt,
+      mod_som_apf_ptr->producer_ptr->stored_dissrates_cnt);
+
+
+//  if(mod_som_apf_ptr->daq){
       //ALB update the Meta Data sample cnt.
       mod_som_apf_ptr->producer_ptr->mod_som_apf_meta_data.sample_cnt=
           mod_som_apf_ptr->producer_ptr->stored_dissrates_cnt;
@@ -3213,12 +3308,14 @@ mod_som_apf_status_t mod_som_apf_daq_stop_f(){
 
 
   //ALB disable SDIO hardware
+  mod_som_sdio_stop_f();
+  sl_sleeptimer_delay_millisecond(delay);
   status |=mod_som_sdio_stop_store_f();
   sl_sleeptimer_delay_millisecond(delay);
-  mod_som_sdio_stop_f();
   mod_som_sdio_disable_hardware_f();
+  is_running = false;
 
-  }
+//  }
 	return status;
 }
 
@@ -3504,9 +3601,10 @@ mod_som_apf_status_t mod_som_apf_poweroff_f(){
   apf_leuart_ptr = (LEUART_TypeDef *)mod_som_apf_ptr->com_prf_ptr->handle_port;
   uint32_t bytes_sent = 0;
 //  CPU_CHAR filename[100];
-
-  //make sure we are not in daq mode
-  mod_som_apf_daq_stop_f();
+  if(mod_som_apf_ptr->daq){
+      //make sure we are not in daq mode
+      mod_som_apf_daq_stop_f();
+  }
   //ALB save settings in the UserData page
 	mod_som_io_print_f("%s,%s\r\n",MOD_SOM_APF_POWEROFF_STR,MOD_SOM_APF_ACK_STR);
 
