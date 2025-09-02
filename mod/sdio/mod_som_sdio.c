@@ -1730,75 +1730,6 @@ uint32_t mod_som_sdio_get_max_size_of_complete_data_block_f(void){
     return mod_som_sdio_struct.max_size_of_complete_data_block;
 }
 
-///*******************************************************************************
-// * @function
-// *     mod_som_sdio_init_f
-// * @abstract
-// *     Initializes MOD SOM I/O and start MOD SOM I/O Task for data piping
-// * @discussion
-// *     The initialization function creates a dynamic memory pool of memory block
-// *     of the size of the largest data block to transfer/pipe. It also
-// *     initialized the queue for transfer. And it create and OS task via
-// *     OSTaskCreate to run in parallels with the main task
-// *     TODO we need to work out the MUTEX part of things
-// * @return
-// *     status would indicate error in initialization
-// ******************************************************************************/
-//mod_som_status_t mod_som_sdio_init_f(void){
-//    mod_som_sdio_struct.initialized_flag = false;
-//    mod_som_sdio_struct.started_flag = false;
-//    if(mod_som_sdio_struct.max_size_of_complete_data_block == 0)
-//        mod_som_sdio_struct.max_size_of_complete_data_block = MOD_SOM_SDIO_DEFAULT_SIZE_LARGEST_BLOCK;
-////    if(mod_som_sdio_struct.started_flag)
-////        return mod_som_sdio_encode_status_f(MOD_SOM_SDIO_STATUS_ERR_ALREADY_STARTED);
-//    RTOS_ERR err;
-//
-//    OSQCreate(&mod_som_sdio_struct.msg_queue,           /*   Pointer to user-allocated message queue.          */
-//            "MOD SOM Message Queue",          /*   Name used for debugging.                          */
-//            MOD_SOM_SDIO_MSG_QUEUE_COUNT,                     /*   Queue will have 10 messages maximum.              */
-//            &err);
-//    APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
-//    if((RTOS_ERR_CODE_GET(err) != RTOS_ERR_NONE))
-//        return mod_som_sdio_encode_status_f(MOD_SOM_SDIO_STATUS_ERR_FAIL_TO_CREATE_MSG_QUEUE);
-//
-//    OSQFlush(&mod_som_sdio_struct.msg_queue,&err);
-//    APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
-//    if((RTOS_ERR_CODE_GET(err) != RTOS_ERR_NONE))
-//        return mod_som_sdio_encode_status_f(MOD_SOM_SDIO_STATUS_ERR_ALREADY_STARTED);
-//
-//    Mem_DynPoolCreate(
-//            "MOD SOM IO Dynamic Memory Pool",
-//            &mod_som_sdio_struct.dyn_mem_pool,
-//            DEF_NULL,
-//            sizeof(mod_som_sdio_xfer_t)+mod_som_sdio_struct.max_size_of_complete_data_block,
-//            sizeof(CPU_ALIGN),//LIB_MEM_BUF_ALIGN_AUTO,
-//            MOD_SOM_SDIO_MSG_QUEUE_COUNT,
-//            2*MOD_SOM_SDIO_MSG_QUEUE_COUNT,
-//            &err);
-//    APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
-//    if((RTOS_ERR_CODE_GET(err) != RTOS_ERR_NONE))
-//        return mod_som_sdio_encode_status_f(MOD_SOM_SDIO_STATUS_ERR_FAIL_TO_ALLOCATE_DYNAMIC_MEMORY);
-//
-//
-////    Mem_DynPoolCreate(
-////            "MOD SOM IO circular buffer list Dynamic Memory Pool",
-////            &mod_som_sdio_struct.cir_buff_dyn_mem_pool_ptr,
-////            DEF_NULL,
-////            sizeof(mod_som_sdio_cir_buff_list_item_t),
-////            LIB_MEM_BUF_ALIGN_AUTO,
-////            16,
-////            128,
-////            &err);
-////    APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
-////    if(RTOS_ERR_CODE_GET(err) != RTOS_ERR_NONE)
-////        return mod_som_sdio_encode_status_f(MOD_SOM_SDIO_STATUS_ERR_FAIL_TO_ALLOCATE_MEMORY);
-////    mod_som_sdio_struct.cir_buff_list_head_ptr = DEF_NULL;
-////    mod_som_sdio_struct.cir_buff_list_head_ptr = DEF_NULL;
-//
-//    mod_som_sdio_struct.initialized_flag = true;
-//    return mod_som_sdio_encode_status_f(MOD_SOM_STATUS_OK);
-//}
-
 /*******************************************************************************
  * @function
  *     mod_som_sdio_start_f
@@ -1811,12 +1742,13 @@ uint32_t mod_som_sdio_get_max_size_of_complete_data_block_f(void){
  ******************************************************************************/
 mod_som_status_t mod_som_sdio_start_f(void){
 
-    if(!mod_som_sdio_struct.initialized_flag)
+    if(!mod_som_sdio_struct.initialized_flag){
         return mod_som_sdio_encode_status_f(MOD_SOM_SDIO_STATUS_ERR_NOT_INITIALIZED);
+    }
     if(mod_som_sdio_struct.started_flag)
-      {
+    {
         return mod_som_sdio_encode_status_f(MOD_SOM_STATUS_OK);
-      }
+    }
     RTOS_ERR err;
 
     OSTaskCreate(&mod_som_sdio_print_task_tcb, // Create the Start Print Task
@@ -1833,10 +1765,9 @@ mod_som_status_t mod_som_sdio_start_f(void){
             (OS_OPT      )(OS_OPT_TASK_STK_CHK | OS_OPT_TASK_STK_CLR),
             &err);
     APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
-    if((RTOS_ERR_CODE_GET(err) != RTOS_ERR_NONE))
+    if((RTOS_ERR_CODE_GET(err) != RTOS_ERR_NONE)){
         return mod_som_sdio_encode_status_f(MOD_SOM_SDIO_STATUS_ERR_FAIL_TO_CREATE_TASK);
-
-    mod_som_sdio_struct.started_flag = true;
+    }
     return mod_som_sdio_encode_status_f(MOD_SOM_STATUS_OK);
 }
 
@@ -1853,16 +1784,20 @@ mod_som_status_t mod_som_sdio_stop_f(){
     {
       return mod_som_sdio_encode_status_f(MOD_SOM_STATUS_OK);
     }
+
   mod_som_sdio_struct.started_flag = false;
   sl_sleeptimer_delay_millisecond(100);
 
+  //this is a force quit
   if(mod_som_sdio_print_task_tcb.TaskState != OS_TASK_STATE_DEL){
       RTOS_ERR err;
       OSTaskDel(&mod_som_sdio_print_task_tcb,
                 &err);
+#ifdef MOD_SOM_DEBUG
       if(RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE){
           mod_som_io_print_f("%s accomplished\r\n",__func__);
       }
+#endif
   }
   return mod_som_sdio_encode_status_f(MOD_SOM_STATUS_OK);
 }
@@ -2045,7 +1980,12 @@ static void mod_som_sdio_print_task_f(void *p_arg)
             }//end if printf
           //free memory
           mod_som_sdio_free_xfer_item_f(tmp_mod_som_sdio_xfer_item_ptr);
-      }//end while DEF_ON
+      }//end while loop
+
+#ifdef MOD_SOM_DEBUG
+  mod_som_io_print_f("%s done\r\n",__func__);
+#endif
+  PP_UNUSED_PARAM(p_arg);                                     // Prevent config warning.
   }//end function
 
 /*******************************************************************************

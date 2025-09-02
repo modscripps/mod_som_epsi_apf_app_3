@@ -900,6 +900,8 @@ mod_som_apf_status_t mod_som_apf_stop_producer_task_f(){
 
   mod_som_apf_ptr->producer_ptr->started_flg=false;
   sl_sleeptimer_delay_millisecond(100);
+
+  //this is a force restart
   if(mod_som_apf_producer_task_tcb.TaskState != OS_TASK_STATE_DEL){
       RTOS_ERR err;
       OSTaskDel(&mod_som_apf_producer_task_tcb,
@@ -908,9 +910,11 @@ mod_som_apf_status_t mod_som_apf_stop_producer_task_f(){
       if(RTOS_ERR_CODE_GET(err) != RTOS_ERR_NONE){
           return (mod_som_apf_ptr->status = mod_som_apf_encode_status_f(MOD_SOM_APF_STATUS_FAIL_TO_STOP_PRODUCER_TASK));
       }
+#ifdef MOD_SOM_DEBUG
       else{
           mod_som_io_print_f("%s accomplished\r\n",__func__);
       }
+#endif
   }
 
   return mod_som_apf_encode_status_f(MOD_SOM_STATUS_OK);
@@ -975,6 +979,10 @@ mod_som_apf_status_t mod_som_apf_stop_consumer_task_f(){
       return mod_som_apf_encode_status_f(MOD_SOM_STATUS_OK);
   }
 
+  mod_som_apf_ptr->consumer_ptr->started_flg = false;
+  sl_sleeptimer_delay_millisecond(100);
+
+  //if task the doesn't stop then this is a force stop
   if(mod_som_apf_consumer_task_tcb.TaskState != OS_TASK_STATE_DEL){
       RTOS_ERR err;
       OSTaskDel(&mod_som_apf_consumer_task_tcb,
@@ -986,9 +994,11 @@ mod_som_apf_status_t mod_som_apf_stop_consumer_task_f(){
       if(RTOS_ERR_CODE_GET(err) != RTOS_ERR_NONE){
           return (mod_som_apf_ptr->status = mod_som_apf_encode_status_f(MOD_SOM_APF_STATUS_FAIL_TO_STOP_CONSUMER_TASK));
       }
+#ifdef MOD_SOM_DEBUG
       else{
           mod_som_io_print_f("%s accomplished\r\n",__func__);
       }
+#endif
   }
   return mod_som_apf_encode_status_f(MOD_SOM_STATUS_OK);
 }
@@ -1336,7 +1346,9 @@ void mod_som_apf_producer_task_f(void  *p_arg){
 
   } // end of while (DEF_ON)
 
-  mod_som_io_print_f("%s accomplished\r\n",__func__);
+#ifdef MOD_SOM_DEBUG
+  mod_som_io_print_f("%s done\r\n",__func__);
+#endif
   PP_UNUSED_PARAM(p_arg);                                     // Prevent config warning.
   //this function only reaches when the loop ends
   mod_som_apf_daq_stop_f();
@@ -1413,10 +1425,10 @@ void mod_som_apf_consumer_task_f(void  *p_arg){
   mod_som_calendar_settings=mod_som_calendar_get_settings_f(); //get the calendar settings pointer
 
   int32_t status;
-
-  while (DEF_ON) {
+  mod_som_apf_ptr->consumer_ptr->started_flg = true;
+  while (mod_som_apf_ptr->consumer_ptr->started_flg) {
       WDOG_Feed();
-      if (mod_som_apf_ptr->consumer_ptr->started_flg & (mod_som_apf_ptr->settings_ptr->sd_packet_format>=1)){
+      if ((mod_som_apf_ptr->settings_ptr->sd_packet_format>=1)){
           /************************************************************************/
           //ALB APF producer phase 1
           //ALB check if producer is started, and if the dacp_profile is NOT full
@@ -1606,6 +1618,10 @@ void mod_som_apf_consumer_task_f(void  *p_arg){
 //      APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), ;);
   } // end of while (DEF_ON)
 
+#ifdef MOD_SOM_DEBUG
+  mod_som_io_print_f("%s done\r\n",__func__);
+#endif
+
   PP_UNUSED_PARAM(p_arg);                                     // Prevent config warning.
 
 }
@@ -1769,6 +1785,9 @@ void mod_som_apf_shell_task_f(void  *p_arg){
       }
 
   }
+#ifdef MOD_SOM_DEBUG
+  mod_som_io_print_f("%s done\r\n",__func__);
+#endif
 }
 
 //TODO Modify the string to match the APF shell rules

@@ -289,16 +289,18 @@ mod_som_status_t  mod_som_io_stop_task_f(){
 
   mod_som_status_t status=MOD_SOM_STATUS_OK;
   RTOS_ERR err;
-  if(&mod_som_io_struct.print_task_tcb.TaskState != OS_TASK_STATE_DEL){
+  if(mod_som_io_struct.print_task_tcb.TaskState != OS_TASK_STATE_DEL){
       OSTaskDel(&mod_som_io_struct.print_task_tcb,
                 &err);
 
       if(RTOS_ERR_CODE_GET(err) != RTOS_ERR_NONE){
           status=1;
       }
+#ifdef MOD_SOM_DEBUG
       else{
           mod_som_io_print_f("%s accomplished\r\n",__func__);
       }
+#endif
 
 
   }

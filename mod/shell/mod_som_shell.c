@@ -121,9 +121,12 @@ mod_som_status_t mod_som_shell_stop_f(){
         if(RTOS_ERR_CODE_GET(err) != RTOS_ERR_NONE){
           return mod_som_shell_encode_status_f(MOD_SOM_SHELL_STATUS_ERR_FAIL_TO_RUN);
         }
+
+#ifdef MOD_SOM_DEBUG
         else{
             mod_som_io_print_f("%s accomplished\r\n",__func__);
         }
+#endif
     }
 
     return MOD_SOM_STATUS_OK;

@@ -836,9 +836,11 @@ mod_som_status_t  mod_som_efe_stop_consumer_task_f(){
         {
           status = 1;
         }
+#ifdef MOD_SOM_DEBUG
       else{
           mod_som_io_print_f("%s accomplished\r\n",__func__);
       }
+#endif
   }
   return status;
 }
@@ -1075,6 +1077,9 @@ void  mod_som_efe_consumer_task_f(void  *p_arg){
 //        APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), ;);
     } // end of while (DEF_ON)
 
+#ifdef MOD_SOM_DEBUG
+  mod_som_io_print_f("%s done\r\n",__func__);
+#endif
     PP_UNUSED_PARAM(p_arg);                                     // Prevent config warning.
 }
 

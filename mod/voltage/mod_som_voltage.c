@@ -419,9 +419,11 @@ mod_som_status_t mod_som_voltage_stop_scan_task_f(){
 
       OSTaskDel(&voltage_scan_task_tcb,
                 &err);
+#ifdef MOD_SOM_DEBUG
       if(RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE){
           mod_som_io_print_f("%s accomplished\r\n",__func__);
       }
+#endif
   }
   return mod_som_voltage_encode_status_f(MOD_SOM_STATUS_OK);
 }
@@ -442,9 +444,11 @@ mod_som_status_t mod_som_voltage_stop_adc1_scan_task_f(){
       RTOS_ERR err;
       OSTaskDel(&voltage_adc1_scan_task_tcb,
                 &err);
+#ifdef MOD_SOM_DEBUG
       if(RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE){
           mod_som_io_print_f("%s accomplished\r\n",__func__);
       }
+#endif
   }
   return mod_som_voltage_encode_status_f(MOD_SOM_STATUS_OK);
 }

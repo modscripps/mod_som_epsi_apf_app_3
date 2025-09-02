@@ -791,7 +791,6 @@ mod_som_status_t mod_som_sbe41_start_collect_data_f(){
     mod_som_sbe41_ptr->sample_count= 0;
     //ALB adjust producer_indx
     mod_som_sbe41_ptr->rec_buff_ptr->producer_indx= 0;
-    mod_som_sbe41_ptr->collect_data_flag = true;
     CORE_EXIT_ATOMIC();
 
     mod_som_sbe41_start_consumer_task_f();
@@ -890,6 +889,9 @@ void mod_som_sbe41_id_f(CPU_INT16U argc,CPU_CHAR *argv[]){
  ******************************************************************************/
 
 mod_som_status_t  mod_som_sbe41_start_consumer_task_f(){
+  if(mod_som_sbe41_ptr->collect_data_flag){
+      return mod_som_sbe41_encode_status_f(MOD_SOM_STATUS_OK);
+  }
 
   RTOS_ERR err;
   mod_som_sbe41_ptr->consumer_ptr->record_pressure[0]=0; //ALB I need to initialize these becasue I use record_pressure in daq_start
@@ -930,16 +932,24 @@ mod_som_status_t  mod_som_sbe41_start_consumer_task_f(){
 
 mod_som_status_t  mod_som_sbe41_stop_consumer_task_f(){
 
+  if(!mod_som_sbe41_ptr->collect_data_flag){
+        return mod_som_sbe41_encode_status_f(MOD_SOM_STATUS_OK);
+    }
 
+  mod_som_sbe41_ptr->collect_data_flag = false;
+  sl_sleeptimer_delay_millisecond(100);
 
+  //this is a force restart
   if(sbe41_consumer_task_tcb.TaskState != OS_TASK_STATE_DEL){
       RTOS_ERR err;
 
       OSTaskDel(&sbe41_consumer_task_tcb,
                 &err);
+#ifdef MOD_SOM_DEBUG
       if(RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE){
           mod_som_io_print_f("%s accomplished\r\n",__func__);
       }
+#endif
   }
 
   return mod_som_sbe41_encode_status_f(MOD_SOM_STATUS_OK);
@@ -1024,6 +1034,10 @@ void  mod_som_sbe41_consumer_task_f(void  *p_arg){
 
     int padding = MOD_SOM_SBE41_CONSUMER_PADDING; // the padding should include the variance.
 
+#ifdef MOD_SOM_DEBUG
+    uint32_t loop_counter = 0;
+#endif
+
     mod_som_sdio_ptr_t local_mod_som_sdio_ptr_t=
         mod_som_sdio_get_runtime_ptr_f();
 
@@ -1036,7 +1050,11 @@ void  mod_som_sbe41_consumer_task_f(void  *p_arg){
 //    mod_som_apf_status_t status;
 
     //time0= mod_som_calendar_get_time_f();
+    mod_som_sbe41_ptr->collect_data_flag = true;
     while (mod_som_sbe41_ptr->collect_data_flag) {
+#ifdef MOD_SOM_DEBUG
+        loop_counter++;
+#endif
 
 //        if (mod_som_sbe41_ptr->collect_data_flag){
             elmnts_avail = mod_som_sbe41_ptr->sample_count - mod_som_sbe41_ptr->consumer_ptr->cnsmr_cnt;  //calculate number of elements available have been produced
@@ -1077,7 +1095,9 @@ void  mod_som_sbe41_consumer_task_f(void  *p_arg){
             // LOOP without delay until caught up to latest produced element
             while (elmnts_avail > 0)
               {
+#ifdef MOD_SOM_DEBUG
                 mod_som_io_print_f("\n\rSBE41: elmnts_avail1: %d\r\n",elmnts_avail);
+#endif
                 // When have circular buffer overflow: have produced data bigger than consumer data: 1 circular buffer (n_elmnts)
                 // calculate new consumer count to skip ahead to the tail of the circular buffer (with optional padding),
                 // calculate the number of data we skipped, report number of elements skipped.
@@ -1173,14 +1193,19 @@ void  mod_som_sbe41_consumer_task_f(void  *p_arg){
                     mod_som_sbe41_ptr->consumer_ptr->data_ready_flg=1;
                     break;
                 }
+#ifdef MOD_SOM_DEBUG
                 mod_som_io_print_f("\n\rSBE41: elmnts_avail1.9: %d\r\n",elmnts_avail);
+#endif
               }  // end of while (elemts_avail > 0)
             // No more data available. All data are stored in the stream buffer.
 
 
             if (mod_som_sbe41_ptr->consumer_ptr->data_ready_flg &
                 mod_som_sbe41_ptr->consumer_ptr->consumed_flag) {
+
+#ifdef MOD_SOM_DEBUG
                 mod_som_io_print_f("\n\rSBE41: elmnts_avail2: %d\r\n",elmnts_avail);
+#endif
                 // We are almost ready to send. Just need to get the header, compute the chcksum, append it
                 // to the stream buffer and send to the stream task
 
@@ -1274,9 +1299,15 @@ void  mod_som_sbe41_consumer_task_f(void  *p_arg){
                 // this is to wait for the data to be written
                 // once it is written, then we can move on
                 // this will timeout after a while
+
+#ifdef MOD_SOM_DEBUG
                 mod_som_io_print_f("\n\rSBE41: elmnts_avail3: %d\r\n",elmnts_avail);
+#endif
                 while(!mod_som_sbe41_ptr->consumer_ptr->consumed_flag){
+
+#ifdef MOD_SOM_DEBUG
                     mod_som_io_print_f("\n\rSBE41: elmnts_avail4: %d\r\n",elmnts_avail);
+#endif
                     //2023 06 08 added watchdog feed and a release from this task
                     // this is to prevent the system to hang on to the processor
                     // when there isn't nothing going on
@@ -1302,7 +1333,9 @@ void  mod_som_sbe41_consumer_task_f(void  *p_arg){
                             break;
                         }
                     }
+#ifdef MOD_SOM_DEBUG
                     mod_som_io_print_f("\n\rSBE41: elmnts_avail5: %d\r\n",elmnts_avail);
+#endif
                 };
 
                 mod_som_sbe41_ptr->consumer_ptr->elmnts_skipped = 0;
@@ -1320,7 +1353,12 @@ void  mod_som_sbe41_consumer_task_f(void  *p_arg){
 //                    printf("CNSMR2: Waiting for available data in sbe streamer ....\n\n");
                   }
             }//end mod_som_sbe41_ptr->consumer_ptr->data_ready_flg & mod_som_sbe41_ptr->consumer_ptr->consumed_flag
-            mod_som_io_print_f("\n\rSBE41: elmnts_avail6: %d\r\n",elmnts_avail);
+
+#ifdef MOD_SOM_DEBUG
+            if((loop_counter % 5) == 0){
+                mod_som_io_print_f("\n\rSBE41: elmnts_avail6: %d\r\n",elmnts_avail);
+            }
+#endif
 //            mod_som_io_print_f("\n\rSBE41: elmnts_avail6: %d\r\n",elmnts_avail);
 //        } // collect_data_flag
 
@@ -1343,6 +1381,9 @@ void  mod_som_sbe41_consumer_task_f(void  *p_arg){
 //        APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), ;);
     } // end of while (DEF_ON)
 
+#ifdef MOD_SOM_DEBUG
+  mod_som_io_print_f("%s done\r\n",__func__);
+#endif
     PP_UNUSED_PARAM(p_arg);                                     // Prevent config warning.
 }
 

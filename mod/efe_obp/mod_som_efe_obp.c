@@ -874,9 +874,14 @@ mod_som_status_t mod_som_efe_obp_construct_cpt_dissrate_ptr_f(){
  *   or otherwise
  ******************************************************************************/
 mod_som_status_t mod_som_efe_obp_stop_fill_segment_task_f(){
-  if(!mod_som_efe_obp_ptr->fill_segment_ptr->started_flg)
+  if(!mod_som_efe_obp_ptr->fill_segment_ptr->started_flg){
     return mod_som_efe_encode_status_f(MOD_SOM_STATUS_OK);
+  }
 
+  mod_som_efe_obp_ptr->fill_segment_ptr->started_flg=false;
+    sl_sleeptimer_delay_millisecond(100);
+
+    //this is a force restart
   if(efe_obp_fill_segment_task_tcb.TaskState != OS_TASK_STATE_DEL){
       RTOS_ERR err;
       OSTaskDel(&efe_obp_fill_segment_task_tcb,
@@ -889,9 +894,11 @@ mod_som_status_t mod_som_efe_obp_stop_fill_segment_task_f(){
         return (mod_som_efe_obp_ptr->status =
             mod_som_efe_encode_status_f(MOD_SOM_EFE_OPB_STATUS_FAIL_TO_START_CONSUMER_TASK));
       }
+#ifdef MOD_SOM_DEBUG
       else{
           mod_som_io_print_f("%s accomplished\r\n",__func__);
       }
+#endif
   }
   mod_som_efe_obp_ptr->fill_segment_ptr->started_flg = false;
   return mod_som_efe_encode_status_f(MOD_SOM_STATUS_OK);
@@ -912,6 +919,10 @@ mod_som_status_t mod_som_efe_obp_stop_cpt_spectra_task_f(){
       return mod_som_efe_encode_status_f(MOD_SOM_STATUS_OK);
   }
 
+  mod_som_efe_obp_ptr->cpt_spectra_ptr->started_flg=false;
+    sl_sleeptimer_delay_millisecond(100);
+
+    //this is a force restart
   if(efe_obp_cpt_spectra_task_tcb.TaskState != OS_TASK_STATE_DEL){
       RTOS_ERR err;
       OSTaskDel(&efe_obp_cpt_spectra_task_tcb,
@@ -922,10 +933,13 @@ mod_som_status_t mod_som_efe_obp_stop_cpt_spectra_task_f(){
 
       if(RTOS_ERR_CODE_GET(err) != RTOS_ERR_NONE){
         return (mod_som_efe_obp_ptr->status =
-            mod_som_efe_encode_status_f(MOD_SOM_EFE_OPB_STATUS_FAIL_TO_START_CONSUMER_TASK));}
+            mod_som_efe_encode_status_f(MOD_SOM_EFE_OPB_STATUS_FAIL_TO_START_CONSUMER_TASK));
+      }
+#ifdef MOD_SOM_DEBUG
       else{
           mod_som_io_print_f("%s accomplished\r\n",__func__);
       }
+#endif
   }
   mod_som_efe_obp_ptr->cpt_spectra_ptr->started_flg =false;
   return mod_som_efe_encode_status_f(MOD_SOM_STATUS_OK);
@@ -945,6 +959,10 @@ mod_som_status_t mod_som_efe_obp_stop_cpt_dissrate_task_f(){
       return mod_som_efe_encode_status_f(MOD_SOM_STATUS_OK);
   }
 
+  mod_som_efe_obp_ptr->cpt_dissrate_ptr->started_flg=false;
+    sl_sleeptimer_delay_millisecond(100);
+
+    //this is a force restart
   if(efe_obp_cpt_dissrate_task_tcb.TaskState != OS_TASK_STATE_DEL){
       RTOS_ERR err;
       OSTaskDel(&efe_obp_cpt_dissrate_task_tcb,
@@ -954,10 +972,13 @@ mod_som_status_t mod_som_efe_obp_stop_cpt_dissrate_task_f(){
 
       if(RTOS_ERR_CODE_GET(err) != RTOS_ERR_NONE){
         return (mod_som_efe_obp_ptr->status =
-            mod_som_efe_encode_status_f(MOD_SOM_EFE_OPB_STATUS_FAIL_TO_START_CONSUMER_TASK));}
+            mod_som_efe_encode_status_f(MOD_SOM_EFE_OPB_STATUS_FAIL_TO_START_CONSUMER_TASK));
+      }
+#ifdef MOD_SOM_DEBUG
       else{
           mod_som_io_print_f("%s accomplished\r\n",__func__);
       }
+#endif
   }
   mod_som_efe_obp_ptr->cpt_dissrate_ptr->started_flg = false;
   return mod_som_efe_encode_status_f(MOD_SOM_STATUS_OK);
@@ -987,7 +1008,7 @@ mod_som_status_t mod_som_efe_obp_start_fill_segment_task_f(){
   mod_som_efe_obp_ptr->fill_segment_ptr->segment_cnt=0;
   mod_som_efe_obp_ptr->fill_segment_ptr->half_segment_cnt=0;
   mod_som_efe_obp_ptr->fill_segment_ptr->segment_skipped=0;
-  mod_som_efe_obp_ptr->fill_segment_ptr->started_flg=true;
+
 
   //ALB initialize field ctd data
   mod_som_efe_obp_ptr->fill_segment_ptr->ctd_pressure=0;
@@ -1038,7 +1059,6 @@ mod_som_status_t mod_som_efe_obp_start_cpt_spectra_task_f(){
    mod_som_efe_obp_ptr->cpt_spectra_ptr->spectrum_cnt=0;
    mod_som_efe_obp_ptr->cpt_spectra_ptr->avg_spectrum_cnt=0;
    mod_som_efe_obp_ptr->cpt_spectra_ptr->volt_read_index=0;
-   mod_som_efe_obp_ptr->cpt_spectra_ptr->started_flg=true;
 
    //ALB initialize field ctd data
    mod_som_efe_obp_ptr->cpt_spectra_ptr->avg_ctd_pressure     = 0;
@@ -1094,8 +1114,6 @@ mod_som_status_t mod_som_efe_obp_start_cpt_dissrate_task_f(){
   mod_som_efe_obp_ptr->cpt_dissrate_ptr->consumed_flag=false;
   mod_som_efe_obp_ptr->cpt_dissrate_ptr->dissrates_cnt    = 0;
   mod_som_efe_obp_ptr->cpt_dissrate_ptr->dissrate_skipped = 0;
-  mod_som_efe_obp_ptr->cpt_dissrate_ptr->started_flg      = true;
-
 
   //ALB initialize field ctd data
   mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_ctd_pressure=0;
@@ -1190,8 +1208,8 @@ void mod_som_efe_obp_fill_segment_task_f(void  *p_arg){
       local_sbe41_ptr->consumer_ptr->dPdt;
 
   local_fill_segment_ctd_direction=local_sbe41_ptr->consumer_ptr->direction;
-
-  while (DEF_ON) {
+  mod_som_efe_obp_ptr->fill_segment_ptr->started_flg=true;
+  while (mod_som_efe_obp_ptr->fill_segment_ptr->started_flg) {
 
 
 
@@ -1372,7 +1390,10 @@ void mod_som_efe_obp_fill_segment_task_f(void  *p_arg){
 //      //   Check error code.
 //      APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), ;);
   } // end of while (DEF_ON)
-
+  mod_som_efe_obp_ptr->fill_segment_ptr->started_flg = false;
+#ifdef MOD_SOM_DEBUG
+  mod_som_io_print_f("%s done\r\n",__func__);
+#endif
   PP_UNUSED_PARAM(p_arg);                                     // Prevent config warning.
 
 }
@@ -1402,8 +1423,8 @@ void mod_som_efe_obp_cpt_spectra_task_f(void  *p_arg){
   int spectra_offset=0;
   int padding = 0; // the padding should be big enough to include the time variance.
 
-
-  while (DEF_ON) {
+  mod_som_efe_obp_ptr->cpt_spectra_ptr->started_flg=true;
+  while (mod_som_efe_obp_ptr->cpt_spectra_ptr->started_flg) {
 
 
 
@@ -1669,6 +1690,10 @@ void mod_som_efe_obp_cpt_spectra_task_f(void  *p_arg){
       //   Check error code.
 //      APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), ;);
   } // end of while (DEF_ON)
+  mod_som_efe_obp_ptr->cpt_spectra_ptr->started_flg=false;
+#ifdef MOD_SOM_DEBUG
+  mod_som_io_print_f("%s done\r\n",__func__);
+#endif
   PP_UNUSED_PARAM(p_arg);                                     // Prevent config warning.
 
 }
@@ -1711,8 +1736,8 @@ void mod_som_efe_obp_cpt_dissrate_task_f(void  *p_arg){
 
 
 
-
-  while (DEF_ON) {
+  mod_som_efe_obp_ptr->cpt_dissrate_ptr->started_flg = true;
+  while (mod_som_efe_obp_ptr->cpt_dissrate_ptr->started_flg) {
       /************************************************************************/
       //ALB phase 3
       //ALB start computing epsilon chi.
@@ -1806,7 +1831,10 @@ void mod_som_efe_obp_cpt_dissrate_task_f(void  *p_arg){
 //      APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), ;);
 
  } // end of while (DEF_ON)
-
+  mod_som_efe_obp_ptr->cpt_dissrate_ptr->started_flg = false;
+#ifdef MOD_SOM_DEBUG
+  mod_som_io_print_f("%s done\r\n",__func__);
+#endif
   PP_UNUSED_PARAM(p_arg);                                     // Prevent config warning.
 
 }
@@ -2044,9 +2072,11 @@ mod_som_status_t mod_som_efe_obp_stop_consumer_task_f(){
         return (mod_som_efe_obp_ptr->status =
             mod_som_efe_encode_status_f(MOD_SOM_EFE_OPB_STATUS_FAIL_TO_START_CONSUMER_TASK));
       }
+#ifdef MOD_SOM_DEBUG
       else{
           mod_som_io_print_f("%s accomplished\r\n",__func__);
       }
+#endif
   }
 
   mod_som_efe_obp_ptr->started_flag=false;
@@ -2100,6 +2130,7 @@ void mod_som_efe_obp_consumer_task_f(void  *p_arg){
    uint32_t file_write_counter;
 
   //        printf("In Consumer Task 2\n");
+   mod_som_efe_obp_ptr->consumer_ptr->started_flg = true;
    while (mod_som_efe_obp_ptr->consumer_ptr->started_flg) {
 
        if ((mod_som_efe_obp_ptr->fill_segment_ptr->segment_cnt>=1)){
@@ -2441,7 +2472,10 @@ void mod_som_efe_obp_consumer_task_f(void  *p_arg){
        //   Check error code.
        //  APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), ;);
    } // end of while (DEF_ON)
-   mod_som_io_print_f("%s accomplished\r\n",__func__);
+
+#ifdef MOD_SOM_DEBUG
+  mod_som_io_print_f("%s done\r\n",__func__);
+#endif
    PP_UNUSED_PARAM(p_arg);                                     // Prevent config warning.
 
 
