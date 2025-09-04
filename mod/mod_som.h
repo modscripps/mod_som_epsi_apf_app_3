@@ -154,7 +154,14 @@ mod_som_status_t mod_som_prep_sleep_f(void);
  * @brief
  *   start the som board in main()
  ******************************************************************************/
-mod_som_status_t mod_som_main_start_f(void);
+mod_som_status_t mod_som_main_task_start_f(void);
+
+/*******************************************************************************
+ * @brief
+ *   stop the som board in main()
+ ******************************************************************************/
+mod_som_status_t mod_som_main_task_stop_f(void);
+
 /*******************************************************************************
  * @brief
  *   initialize additional steps of the som board in the main_task_f()

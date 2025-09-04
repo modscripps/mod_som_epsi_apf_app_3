@@ -269,7 +269,6 @@ mod_som_status_t mod_som_io_start_f(void){
     if((RTOS_ERR_CODE_GET(err) != RTOS_ERR_NONE))
         return mod_som_io_encode_status_f(MOD_SOM_IO_STATUS_ERR_FAIL_TO_CREATE_TASK);
 
-    mod_som_io_struct.started_flag = true;
     return mod_som_io_encode_status_f(MOD_SOM_STATUS_OK);
 }
 /*******************************************************************************
@@ -287,8 +286,14 @@ mod_som_status_t  mod_som_io_stop_task_f(){
       return mod_som_io_encode_status_f(MOD_SOM_STATUS_OK);
   }
 
+
+  mod_som_io_struct.started_flag = false;
+  sl_sleeptimer_delay_millisecond(100);
+
   mod_som_status_t status=MOD_SOM_STATUS_OK;
   RTOS_ERR err;
+
+  //this is a force quit
   if(mod_som_io_struct.print_task_tcb.TaskState != OS_TASK_STATE_DEL){
       OSTaskDel(&mod_som_io_struct.print_task_tcb,
                 &err);
@@ -528,8 +533,10 @@ void mod_som_io_print_task_f(void *p_arg)
 
     CORE_DECLARE_IRQ_STATE;
 
-    while(DEF_ON)
-        {
+    mod_som_io_struct.started_flag = true;
+
+    while(mod_som_io_struct.started_flag)
+    {
         WDOG_Feed();
 //        mod_som_io_struct.done_flag=false;
         //necessary for every task
@@ -578,6 +585,13 @@ void mod_som_io_print_task_f(void *p_arg)
         WDOG_Feed();
 
     }
+    mod_som_io_struct.started_flag = false;
+
+#ifdef MOD_SOM_DEBUG
+  mod_som_io_print_f("%s done\r\n",__func__);
+#endif
+
+  PP_UNUSED_PARAM(p_arg); // Prevent config warning.
 }
 
 /*******************************************************************************

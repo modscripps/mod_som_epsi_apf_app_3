@@ -414,6 +414,7 @@ mod_som_status_t mod_som_voltage_start_scan_task_f(){
 
 mod_som_status_t mod_som_voltage_stop_scan_task_f(){
 
+  //this is a force quit
   if (voltage_scan_task_tcb.TaskState != OS_TASK_STATE_DEL){
       RTOS_ERR err;
 
@@ -439,7 +440,7 @@ mod_som_status_t mod_som_voltage_stop_scan_task_f(){
  ******************************************************************************/
 
 mod_som_status_t mod_som_voltage_stop_adc1_scan_task_f(){
-
+  //this is a force quit
   if (voltage_adc1_scan_task_tcb.TaskState != OS_TASK_STATE_DEL){
       RTOS_ERR err;
       OSTaskDel(&voltage_adc1_scan_task_tcb,

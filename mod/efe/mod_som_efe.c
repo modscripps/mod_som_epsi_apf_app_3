@@ -826,7 +826,7 @@ mod_som_status_t  mod_som_efe_stop_consumer_task_f(){
 
   mod_som_status_t status = MOD_SOM_STATUS_OK;
   RTOS_ERR err;
-
+  //this is a force quit
   if(efe_consumer_task_tcb.TaskState != OS_TASK_STATE_DEL){
       // delete the task
       OSTaskDel(&efe_consumer_task_tcb,

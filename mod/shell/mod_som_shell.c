@@ -58,7 +58,6 @@ mod_som_status_t mod_som_shell_init_f(){
     //ALB because I need to get access to it so I can easily stop the shell from anywhere
     mod_som_shell.initialized_flag = true;
     mod_som_shell.running_flag    = 0;
-    mod_som_shell.stop_flag       = 1;
     return MOD_SOM_STATUS_OK;
 }
 
@@ -68,7 +67,6 @@ mod_som_status_t mod_som_shell_start_f(){
     if(!mod_som_shell.initialized_flag)
         return mod_som_shell_encode_status_f(MOD_SOM_SHELL_STATUS_ERR_NOT_INIT);
     RTOS_ERR err;
-    mod_som_shell.stop_flag = false;
 
     OSTaskCreate(&mod_som_shell_task_tcb, // Create the Start Task
                 "MOD SOM Shell Task",
@@ -84,7 +82,6 @@ mod_som_status_t mod_som_shell_start_f(){
                 (OS_OPT_TASK_STK_CHK | OS_OPT_TASK_STK_CLR),
                 &err);
     APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
-    mod_som_shell.running_flag    = 1;
 
 
     if(RTOS_ERR_CODE_GET(err) != RTOS_ERR_NONE)
@@ -96,28 +93,16 @@ mod_som_status_t mod_som_shell_stop_f(){
     if(!mod_som_shell.running_flag)
         return mod_som_shell_encode_status_f(MOD_SOM_SHELL_STATUS_ERR_NOT_INIT);
 
-    mod_som_shell.stop_flag = true;
-
-    RTOS_ERR err;
-
-//    while(!mod_som_shell.stopped_flag){
-//        WDOG_Feed();
-//        OSTimeDly(
-//                        (OS_TICK     )MOD_SOM_CFG_LOOP_TICK_DELAY,
-//                        (OS_OPT      )OS_OPT_TIME_DLY,
-//                        &err);
-//    }
     mod_som_shell.running_flag = false;
-    if (mod_som_shell_task_tcb.TaskState != OS_TASK_STATE_DEL){
 
+    sl_sleeptimer_delay_millisecond(100);
+
+    //this is a force quit
+    if (mod_som_shell_task_tcb.TaskState != OS_TASK_STATE_DEL){
+        RTOS_ERR err;
         //ALB kill shell task
         OSTaskDel(&mod_som_shell_task_tcb,
                   &err);
-
-//        APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
-
-
-
         if(RTOS_ERR_CODE_GET(err) != RTOS_ERR_NONE){
           return mod_som_shell_encode_status_f(MOD_SOM_SHELL_STATUS_ERR_FAIL_TO_RUN);
         }
@@ -327,6 +312,8 @@ void mod_som_shell_task_f(void *p_arg){
     char     input_buf[MOD_SOM_SHELL_INPUT_BUF_SIZE];
     uint32_t input_buf_len;
 
+    mod_som_shell.running_flag    = true;
+
     //clearing out the serial port
     RETARGET_SerialFlush();
     int c = 0;
@@ -339,8 +326,7 @@ void mod_som_shell_task_f(void *p_arg){
         APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
     }
 
-//    mod_som_shell.stopped_flag = false;
-    while (!mod_som_shell.stop_flag) {
+    while (mod_som_shell.running_flag) {
         OSTimeDly(
                 (OS_TICK     )MOD_SOM_CFG_LOOP_TICK_DELAY,
                 (OS_OPT      )OS_OPT_TIME_DLY,
@@ -352,12 +338,17 @@ void mod_som_shell_task_f(void *p_arg){
 
         if (!Str_Cmp(input_buf, "exit") ) {
             mod_som_shell.running_flag    = 0;
-            mod_som_shell.stop_flag       = 0;
             break;
         }
 
         mod_som_shell_execute_input_f(input_buf,input_buf_len);
     }
+    mod_som_shell.running_flag = true;
+#ifdef MOD_SOM_DEBUG
+  mod_som_io_print_f("%s done\r\n",__func__);
+#endif
+
+  PP_UNUSED_PARAM(p_arg); // Prevent config warning.
 //    mod_som_shell.stopped_flag = true;
 }
 #endif

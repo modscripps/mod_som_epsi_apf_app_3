@@ -922,6 +922,16 @@ mod_som_status_t mod_som_apf_construct_com_prf_f();
 
 /*******************************************************************************
  * @brief
+ *   stop shell task
+ *
+ * @return
+ *   MOD_SOM_STATUS_OK if stopping goes well
+ *   or otherwise
+ ******************************************************************************/
+mod_som_apf_status_t mod_som_apf_stop_shell_task_f();
+
+/*******************************************************************************
+ * @brief
  *   start apf producer task
  *
  * @return

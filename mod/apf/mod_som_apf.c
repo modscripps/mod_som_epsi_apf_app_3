@@ -759,7 +759,31 @@ mod_som_apf_status_t mod_som_apf_construct_com_prf_f(){
   return mod_som_apf_encode_status_f(MOD_SOM_STATUS_OK);
 }
 
+/*******************************************************************************
+ * @brief
+ *   stop shell task
+ *
+ * @return
+ *   MOD_SOM_STATUS_OK if initialization goes well
+ *   or otherwise
+ ******************************************************************************/
+mod_som_apf_status_t mod_som_apf_stop_shell_task_f(){
 
+  //this is a force quit
+  if(mod_som_apf_producer_task_tcb.TaskState != OS_TASK_STATE_DEL){
+      RTOS_ERR err;
+      OSTaskDel(&mod_som_apf_shell_task_tcb,
+                &err);
+
+#ifdef MOD_SOM_DEBUG
+      if(RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE){
+          mod_som_io_print_f("%s accomplished\r\n",__func__);
+      }
+#endif
+  }
+
+  return mod_som_apf_encode_status_f(MOD_SOM_STATUS_OK);
+}
 
 
 
@@ -901,7 +925,7 @@ mod_som_apf_status_t mod_som_apf_stop_producer_task_f(){
   mod_som_apf_ptr->producer_ptr->started_flg=false;
   sl_sleeptimer_delay_millisecond(100);
 
-  //this is a force restart
+  //this is a force quit
   if(mod_som_apf_producer_task_tcb.TaskState != OS_TASK_STATE_DEL){
       RTOS_ERR err;
       OSTaskDel(&mod_som_apf_producer_task_tcb,
@@ -1622,7 +1646,7 @@ void mod_som_apf_consumer_task_f(void  *p_arg){
   mod_som_io_print_f("%s done\r\n",__func__);
 #endif
 
-  PP_UNUSED_PARAM(p_arg);                                     // Prevent config warning.
+  PP_UNUSED_PARAM(p_arg); // Prevent config warning.
 
 }
 
@@ -3249,6 +3273,7 @@ mod_som_apf_status_t mod_som_apf_daq_stop_f(){
 
   mod_som_sbe41_ptr_t local_sbe41_runtime_ptr =
         mod_som_sbe41_get_runtime_ptr_f();
+#ifdef MOD_SOM_DEBUG
   mod_som_io_print_f(
       "SBE sample count:%ld\r\n"
       "SBE consumer count: %ld\r\n"
@@ -3256,6 +3281,7 @@ mod_som_apf_status_t mod_som_apf_daq_stop_f(){
       local_sbe41_runtime_ptr->sample_count,
       local_sbe41_runtime_ptr->consumer_ptr->cnsmr_cnt,
       mod_som_apf_ptr->producer_ptr->stored_dissrates_cnt);
+#endif
 
 
 //  if(mod_som_apf_ptr->daq){

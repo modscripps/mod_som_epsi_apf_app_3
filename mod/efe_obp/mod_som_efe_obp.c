@@ -881,7 +881,7 @@ mod_som_status_t mod_som_efe_obp_stop_fill_segment_task_f(){
   mod_som_efe_obp_ptr->fill_segment_ptr->started_flg=false;
     sl_sleeptimer_delay_millisecond(100);
 
-    //this is a force restart
+    //this is a force quit
   if(efe_obp_fill_segment_task_tcb.TaskState != OS_TASK_STATE_DEL){
       RTOS_ERR err;
       OSTaskDel(&efe_obp_fill_segment_task_tcb,
@@ -922,7 +922,7 @@ mod_som_status_t mod_som_efe_obp_stop_cpt_spectra_task_f(){
   mod_som_efe_obp_ptr->cpt_spectra_ptr->started_flg=false;
     sl_sleeptimer_delay_millisecond(100);
 
-    //this is a force restart
+    //this is a force quit
   if(efe_obp_cpt_spectra_task_tcb.TaskState != OS_TASK_STATE_DEL){
       RTOS_ERR err;
       OSTaskDel(&efe_obp_cpt_spectra_task_tcb,
@@ -962,7 +962,7 @@ mod_som_status_t mod_som_efe_obp_stop_cpt_dissrate_task_f(){
   mod_som_efe_obp_ptr->cpt_dissrate_ptr->started_flg=false;
     sl_sleeptimer_delay_millisecond(100);
 
-    //this is a force restart
+    //this is a force quit
   if(efe_obp_cpt_dissrate_task_tcb.TaskState != OS_TASK_STATE_DEL){
       RTOS_ERR err;
       OSTaskDel(&efe_obp_cpt_dissrate_task_tcb,
@@ -2063,6 +2063,7 @@ mod_som_status_t mod_som_efe_obp_stop_consumer_task_f(){
   mod_som_efe_obp_ptr->consumer_ptr->started_flg = false;
   sl_sleeptimer_delay_millisecond(100);
 
+  //this is a force quit
   if(efe_obp_consumer_task_tcb.TaskState != OS_TASK_STATE_DEL){
       RTOS_ERR err;
       OSTaskDel(&efe_obp_consumer_task_tcb,

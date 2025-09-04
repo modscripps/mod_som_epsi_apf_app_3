@@ -939,7 +939,7 @@ mod_som_status_t  mod_som_sbe41_stop_consumer_task_f(){
   mod_som_sbe41_ptr->collect_data_flag = false;
   sl_sleeptimer_delay_millisecond(100);
 
-  //this is a force restart
+  //this is a force quit
   if(sbe41_consumer_task_tcb.TaskState != OS_TASK_STATE_DEL){
       RTOS_ERR err;
 
@@ -1424,6 +1424,7 @@ mod_som_sbe41_sample_t mod_som_sbe41_parse_sample_f(uint8_t * element)
   sbe_sample.pressure=strtof(str_pressure,NULL);
   sbe_sample.salinity=strtof(str_salinity,NULL);
 
+#ifdef MOD_SOM_DEBUG
   ///*2025 05 25 display every sample
 //  char apf_reply_str[MOD_SOM_SHELL_INPUT_BUF_SIZE]="\0";
 //  size_t reply_str_len = 0;
@@ -1435,7 +1436,8 @@ mod_som_sbe41_sample_t mod_som_sbe41_parse_sample_f(uint8_t * element)
   char last_sbe42sample[mod_som_sbe41_ptr->config_ptr->sample_data_length+1];
   memcpy(last_sbe42sample,&element[MOD_SOM_SBE41_HEXTIMESTAMP_LENGTH],mod_som_sbe41_ptr->config_ptr->sample_data_length);
   last_sbe42sample[mod_som_sbe41_ptr->config_ptr->sample_data_length] = '\0';
-  mod_som_io_print_f("SBE41:%s\rINTRP:%8.2f,%8.4f,%8.4f\r\n",last_sbe42sample,sbe_sample.pressure,sbe_sample.temperature,sbe_sample.salinity);
+
+  mod_som_io_print_f("SBE41:%sINTRP:%8.2f,%8.4f,%8.4f\r\n",last_sbe42sample,sbe_sample.pressure,sbe_sample.temperature,sbe_sample.salinity);
   //  sprintf(apf_reply_str, "SBE41:%s",last_sbe42sample);
   //  reply_str_len = strlen(apf_reply_str);
   //  apf_leuart_ptr =(LEUART_TypeDef *) mod_som_apf_get_port_ptr_f();
@@ -1447,7 +1449,7 @@ mod_som_sbe41_sample_t mod_som_sbe41_parse_sample_f(uint8_t * element)
 //      status= MOD_SOM_STATUS_NOT_OK;
 //  }
   //2025 05 25 end display every sample */
-
+#endif
   return sbe_sample;
 }
 
