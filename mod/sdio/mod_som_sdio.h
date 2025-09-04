@@ -63,9 +63,9 @@
  *     size of the tcb stack of the task
  ******************************************************************************/
 #ifndef MOD_SOM_SDIO_TASK_STK_SIZE
-#define MOD_SOM_SDIO_TASK_STK_SIZE 128u
+//#define MOD_SOM_SDIO_TASK_STK_SIZE 128u
 ////ALB increase stack size to try to fix the hang up during sd write task
-//#define MOD_SOM_SDIO_TASK_STK_SIZE 256u
+#define MOD_SOM_SDIO_TASK_STK_SIZE 256u
 #endif
 
 /*******************************************************************************

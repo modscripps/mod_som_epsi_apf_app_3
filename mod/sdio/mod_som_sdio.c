@@ -1757,7 +1757,7 @@ mod_som_status_t mod_som_sdio_start_f(void){
             DEF_NULL,
             MOD_SOM_SDIO_PRINT_TASK_PRIORITY,
             mod_som_sdio_print_task_stk,
-            (MOD_SOM_SDIO_TASK_STK_SIZE / 10u),
+            (MOD_SOM_SDIO_TASK_STK_SIZE / 15u),
             MOD_SOM_SDIO_TASK_STK_SIZE,
             0u,
             0u,
