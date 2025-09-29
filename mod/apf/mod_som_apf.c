@@ -3128,7 +3128,7 @@ mod_som_apf_status_t mod_som_apf_daq_start_f(uint32_t profile_id){
       for(uint32_t tries = 0; tries < 5; tries++){
           status = mod_som_sdio_new_processfilename_f("OBPdata");
           if(status != MOD_SOM_STATUS_OK){
-              mod_som_sdio_disable_hardware_f();
+//              mod_som_sdio_disable_hardware_f();
               sl_sleeptimer_delay_millisecond(delay100ms);
               status = mod_som_sdio_enable_hardware_f();
               if(status != MOD_SOM_STATUS_OK){
