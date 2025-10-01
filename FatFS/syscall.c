@@ -140,17 +140,21 @@ void ff_rel_grant (
 /*------------------------------------------------------------------------*/
 /* If a NULL is returned, the file function fails with FR_NOT_ENOUGH_CORE.
 */
+#define FF_MEMBUF_SIZE  1120
+static uint8_t ff_membuf[FF_MEMBUF_SIZE];
 
 void* ff_memalloc (	/* Returns pointer to the allocated memory block */
 	UINT msize		/* Number of bytes to allocate */
 )
 {
 	//return malloc(msize);	/* Allocate a new memory block with POSIX API */
-  RTOS_ERR err;
-  uint32_t *mem;
-  mem = Mem_SegAlloc("", DEF_NULL, msize, &err);
+//  RTOS_ERR err;
+//  uint32_t *mem;
+//  mem = Mem_SegAlloc("", DEF_NULL, msize, &err);
   // TODO: Incorporate appropriate error handling if no memory can be allocated
-  return mem;
+//  return mem;
+
+  return &ff_membuf;
 }
 
 
@@ -163,6 +167,7 @@ void ff_memfree (
 )
 {
 	//free(mblock);	/* Discard the memory block with POSIX API */
+  Mem_Clr(&ff_membuf, FF_MEMBUF_SIZE);
 }
 
 #endif
