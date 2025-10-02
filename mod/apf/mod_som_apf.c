@@ -742,7 +742,7 @@ mod_som_apf_status_t mod_som_apf_construct_com_prf_f(){
                         mod_som_apf_shell_task_f,
                         DEF_NULL,
                         MOD_SOM_APF_SHELL_TASK_PRIO,
-            &mod_som_apf_shell_task_stk[0],
+            mod_som_apf_shell_task_stk,
             (MOD_SOM_APF_SHELL_TASK_STK_SIZE / 10u),
             MOD_SOM_APF_SHELL_TASK_STK_SIZE,
             0u,
@@ -3128,13 +3128,13 @@ mod_som_apf_status_t mod_som_apf_daq_start_f(uint32_t profile_id){
       for(uint32_t tries = 0; tries < 5; tries++){
           status = mod_som_sdio_new_processfilename_f("OBPdata");
           if(status != MOD_SOM_STATUS_OK){
-              mod_som_sdio_disable_hardware_f();
-              sl_sleeptimer_delay_millisecond(delay100ms);
-              status = mod_som_sdio_enable_hardware_f();
-              if(status != MOD_SOM_STATUS_OK){
-                  sl_sleeptimer_delay_millisecond(delay100ms);
-                  continue;
-              }
+//              mod_som_sdio_disable_hardware_f();
+//              sl_sleeptimer_delay_millisecond(delay100ms);
+//              status = mod_som_sdio_enable_hardware_f();
+//              if(status != MOD_SOM_STATUS_OK){
+//                  sl_sleeptimer_delay_millisecond(delay100ms);
+//                  continue;
+//              }
               sl_sleeptimer_delay_millisecond(delay100ms);
               continue;
           }else{

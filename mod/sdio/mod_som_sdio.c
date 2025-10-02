@@ -27,9 +27,6 @@
 
 
 // ALB Task related variables
-#define  MOD_SOM_SDIO_WRITE_TASK_PRIO             18u
-#define  MOD_SOM_SDIO_WRITE_TASK_STK_SIZE        512u
-
 #define MOD_SOM_SDIO_WRITE_PADDING 1		// number of elements for padding for consumer 2
 
 CPU_STK mod_som_sdio_print_task_stk[MOD_SOM_SDIO_TASK_STK_SIZE];
@@ -1093,18 +1090,18 @@ mod_som_status_t mod_som_sdio_close_file_f(mod_som_sdio_file_ptr_t mod_som_sdio_
 	    FRESULT res;
 	    bool is_writing_flag;
 	    //2025 05 28 check for writing flag
-	    CORE_DECLARE_IRQ_STATE;
-	    CORE_ENTER_ATOMIC();
+//	    CORE_DECLARE_IRQ_STATE;
+//	    CORE_ENTER_ATOMIC();
 	    is_writing_flag = mod_som_sdio_file_ptr->is_writing_flag;
-	    CORE_EXIT_ATOMIC();
+//	    CORE_EXIT_ATOMIC();
 
 	    while(is_writing_flag){
 	        WDOG_Feed();
 	        sl_sleeptimer_delay_millisecond(10);
-	        CORE_DECLARE_IRQ_STATE;
-	        CORE_ENTER_ATOMIC();
+//	        CORE_DECLARE_IRQ_STATE;
+//	        CORE_ENTER_ATOMIC();
 	        is_writing_flag = mod_som_sdio_file_ptr->is_writing_flag;
-	        CORE_EXIT_ATOMIC();
+//	        CORE_EXIT_ATOMIC();
 	    }
 
 	    //ALB Add a delay because sometime the closing process get hangup
