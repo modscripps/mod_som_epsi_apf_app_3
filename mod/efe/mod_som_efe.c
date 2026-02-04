@@ -13,6 +13,7 @@
 #include "mod_som.h"
 #include "mod_som_priv.h"
 #include "em_msc.h"
+#include "mod_som_cfg.h"
 
 
 #ifdef MOD_SOM_CALENDAR_EN
@@ -362,6 +363,13 @@ mod_som_status_t mod_som_efe_init_f(){
 	    printf("%s not initialized\n",MOD_SOM_EFE_HEADER);
 		return status;
 	}
+  //2026 02 04 LW initialize EFE UART port
+  status |= mod_som_efe_init_uart_f(&(mod_som_efe_ptr->config_ptr->communication));
+  if (status!=MOD_SOM_STATUS_OK){
+      //ALB change the printf to a report status function.
+      printf("%s not initialized\n",MOD_SOM_EFE_HEADER);
+    return status;
+  }
 	//ALB initialize EFE timers
 	status |= mod_som_efe_init_mclock_f(mod_som_efe_ptr->config_ptr->mclock,mod_som_efe_ptr->config_ptr->sync);
 	if (status!=MOD_SOM_STATUS_OK){
@@ -1255,6 +1263,62 @@ mod_som_efe_config_ptr_t mod_som_efe_get_config_f(){
 return  mod_som_efe_ptr->config_ptr;
 }
 
+
+// 2026 02 04 LW: UART1 initialization function for adc spoofing
+/***************************************************************************//**
+ * @brief
+ *   Initialize UART1 for adc spoofing communication
+ ******************************************************************************/
+mod_som_status_t mod_som_efe_init_uart_f()
+{
+
+  // Enable 232 transceiver
+  GPIO_PinModeSet(MOD_SOM_MEZZANINE_UART_EN_PORT, \
+                  MOD_SOM_MEZZANINE_UART_EN_PIN, \
+                  gpioModePushPull, 1);    // TEL_EN high
+
+  GPIO_PinModeSet(MOD_SOM_MEZZANINE_UART_VCC_EN_PORT,\
+                  MOD_SOM_MEZZANINE_UART_VCC_EN_PIN,\
+                  gpioModePushPull, 1);    // URT_EN high
+
+
+  // Set up RX/TX pins
+  GPIO_PinModeSet(MOD_SOM_MEZZANINE_COM_TX_PORT, \
+                  MOD_SOM_MEZZANINE_COM_TX_PIN, \
+                  gpioModePushPull, 1);    // U1_TX_M2 output high
+
+  GPIO_PinModeSet(MOD_SOM_MEZZANINE_COM_RX_PORT, \
+                  MOD_SOM_MEZZANINE_COM_RX_PIN, \
+                  gpioModeInputPull, 1);   // U1_RX_M2 input high
+
+
+  // Enable clock to UART
+  CMU_ClockEnable(cmuClock_HFPER, true);
+  CMU_ClockEnable(MOD_SOM_MEZZANINE_COM_CLK, true);
+
+
+  // Configure UART
+  USART_InitAsync_TypeDef initusart = USART_INITASYNC_DEFAULT;
+  initusart.enable = usartDisable;
+  USART_Reset(MOD_SOM_MEZZANINE_COM_USART);
+  USART_InitAsync(MOD_SOM_MEZZANINE_COM_USART, &initusart);
+
+
+  // Route pins
+  MOD_SOM_MEZZANINE_COM_USART->ROUTELOC0 = \
+      (MOD_SOM_MEZZANINE_COM_RX_LOC << _USART_ROUTELOC0_RXLOC_SHIFT) | \
+      (MOD_SOM_MEZZANINE_COM_TX_LOC << _USART_ROUTELOC0_TXLOC_SHIFT);
+
+  MOD_SOM_MEZZANINE_COM_USART->ROUTEPEN = USART_ROUTEPEN_RXPEN | USART_ROUTEPEN_TXPEN;
+
+
+  // Enable UART
+  USART_Enable(MOD_SOM_MEZZANINE_COM_USART, usartEnable);
+
+
+  return mod_som_efe_encode_status_f(MOD_SOM_STATUS_OK);
+
+}
 
 /***************************************************************************//**
  * @brief

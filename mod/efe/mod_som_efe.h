@@ -422,6 +422,14 @@ mod_som_status_t mod_som_efe_init_mclock_f(mod_som_timer_handle_ptr_t config_mcl
 
 /*******************************************************************************
  * @brief
+ *   Initialize UART1 for adc spoofing communication
+ *
+ * @param
+ ******************************************************************************/
+mod_som_status_t mod_som_efe_init_uart_f();
+
+/*******************************************************************************
+ * @brief
  *   Initialize spi port for efe adc
  *
  * @param mod_som_efe_comm_handle_ptr_t

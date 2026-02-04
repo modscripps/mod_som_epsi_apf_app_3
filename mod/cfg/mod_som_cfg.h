@@ -62,7 +62,7 @@
 #endif
 
 
-#if defined(MOD_SOM_MEZZANINE_BOARD)
+//#if defined(MOD_SOM_MEZZANINE_BOARD)
 // MOD SOM High frequency oscillator enable
 #define MOD_SOM_HFXO_EN_PORT                    MOD_SOM_U8_3_GPIO_PORT
 #define MOD_SOM_HFXO_EN_PIN                     MOD_SOM_U8_3_GPIO_PIN
@@ -87,24 +87,24 @@
 
 #define MOD_SOM_MEZZANINE_COM_TX_PORT                gpioPortE
 #define MOD_SOM_MEZZANINE_COM_TX_PIN                 12
-#define MOD_SOM_MEZZANINE_COM_TX_LOC                 _USART_ROUTELOC0_RXLOC_LOC4
+#define MOD_SOM_MEZZANINE_COM_TX_LOC                 _USART_ROUTELOC0_TXLOC_LOC4
 
 
 #define MOD_SOM_MEZZANINE_COM_RTS_PORT                gpioPortC
 #define MOD_SOM_MEZZANINE_COM_RTS_PIN                 5
-#define MOD_SOM_MEZZANINE_COM_RTS_LOC                 _USART_ROUTELOC0_RXLOC_LOC4
+#define MOD_SOM_MEZZANINE_COM_RTS_LOC                 _USART_ROUTELOC1_RTSLOC_LOC4
 
 
 #define MOD_SOM_MEZZANINE_COM_CTS_PORT                gpioPortC
 #define MOD_SOM_MEZZANINE_COM_CTS_PIN                 4
-#define MOD_SOM_MEZZANINE_COM_CTS_LOC                 _USART_ROUTELOC0_RXLOC_LOC4
+#define MOD_SOM_MEZZANINE_COM_CTS_LOC                 _USART_ROUTELOC1_CTSLOC_LOC4
 
 
 #define MOD_SOM_MEZZANINE_COM_BAUDRATE               230400
 
 #define MOD_SOM_MEZZANINE_COM_EN_PORT                MOD_SOM_J10_27_GPIO_PORT
 #define MOD_SOM_MEZZANINE_COM_EN_PIN                 MOD_SOM_J10_27_GPIO_PIN
-#endif
+//#endif
 
 
 #if defined(RETARGET_VCOM)
