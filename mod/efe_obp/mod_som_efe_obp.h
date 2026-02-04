@@ -190,7 +190,7 @@ typedef struct{
   uint32_t   spectrum_cnt;
   uint32_t   avgspec_cnt;
   uint32_t   rates_cnt;
-  uint32_t   record_timestamp;
+  uint64_t   record_timestamp;
 
   uint8_t *  record_ptr;     //ALB pointer to the segments section in the record
 
@@ -278,7 +278,7 @@ typedef struct{
 
   bool dof_flag;
   bool consumed_flag;
-  uint64_t dissrates_cnt;
+  uint32_t dissrates_cnt;
 //  uint64_t avg_timestamp[MOD_SOM_EFE_OBP_CPT_DISSRATE_NB_RATES_PER_RECORD];
   uint64_t avg_timestamp;
 
