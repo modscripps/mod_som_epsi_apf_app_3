@@ -65,7 +65,6 @@ uint32_t  all_bit_mask=0x7080;
 // SN  use LDMA for the main com port
 
 LDMA_TransferCfg_t spitx_init= LDMA_TRANSFER_CFG_PERIPHERAL(ldmaPeripheralSignal_USART0_TXEMPTY);
-//LDMA_TransferCfg_t spitx_init= LDMA_TRANSFER_CFG_PERIPHERAL(ldmaPeripheralSignal_UART1_RXDATAV);
 
 //ALB Place holder for cs_assert. It will be change in config_adc to bring the selected CS low.
 LDMA_Descriptor_t cs_assert   = LDMA_DESCRIPTOR_LINKREL_WRITE(0,0,0);
@@ -85,6 +84,11 @@ LDMA_Descriptor_t timestamp_write = LDMA_DESCRIPTOR_LINKREL_M2M_BYTE(0,0,0,0);
 LDMA_Descriptor_t descriptor_link_read1[MOD_SOM_EFE_MAX_CHANNEL*MOD_SOM_EFE_LDMA_READ_STEP+TRAILING_STEP];//MAG 7AUG2020  Added trailing step to calc to allow for more descriptors after the last channel
 LDMA_Descriptor_t descriptor_link_readconfig[MOD_SOM_EFE_LDMA_READ_CONFIG_STEP];
 LDMA_Descriptor_t descriptor_link_config[MOD_SOM_EFE_LDMA_CONFIG_STEP];
+
+
+#define MOD_SOM_EFE_UART_SPOOF
+LDMA_Descriptor_t descriptor_uart[2];
+LDMA_TransferCfg_t tfrcfg_uart= LDMA_TRANSFER_CFG_PERIPHERAL(ldmaPeripheralSignal_UART1_RXDATAV);
 
 
 // Data consumer
@@ -1479,7 +1483,7 @@ mod_som_status_t mod_som_efe_init_ldma_f(mod_som_efe_ptr_t module_ptr)
 	// ALB after the ADC send their interrupt signal
 	mod_som_efe_define_read_descriptor_f(module_ptr);
 
-//	mod_som_efe_define_uart_descriptor_f(module_ptr);
+	mod_som_efe_define_uart_descriptor_f(module_ptr);
 
 	return mod_som_efe_encode_status_f(MOD_SOM_STATUS_OK);
 }
@@ -1641,15 +1645,28 @@ void mod_som_efe_start_mclock_f(mod_som_efe_ptr_t module_ptr)
 			module_ptr->config_ptr->pin_interrupt.pin,     \
 			module_ptr->config_ptr->pin_interrupt.pin, false, true, false);
 
+
+#if defined(MOD_SOM_EFE_UART_SPOOF)
+
   // 2026 02 06 LW: Bring TEL_EN high here so UART1's 232 xcvr is ready to transmit (avoids auto-shutdown)
-	GPIO_PinModeSet(MOD_SOM_MEZZANINE_UART_EN_PORT, \
+  GPIO_PinModeSet(MOD_SOM_MEZZANINE_UART_EN_PORT, \
                   MOD_SOM_MEZZANINE_UART_EN_PIN, \
                   gpioModePushPull, 1);    // TEL_EN high
 
-	// clear and enable the gpio interrupt.
-	GPIO_IntClear(module_ptr->config_ptr->pin_interrupt_address);
-	GPIO_IntEnable(module_ptr->config_ptr->pin_interrupt_address);
+  sl_sleeptimer_delay_millisecond(1);
 
+
+	LDMA_StartTransfer(mod_som_efe_ptr->ldma.ch,
+              (void*)&tfrcfg_uart,
+              (void*)&descriptor_uart);
+
+
+
+#else
+  // clear and enable the gpio interrupt.
+  GPIO_IntClear(module_ptr->config_ptr->pin_interrupt_address);
+  GPIO_IntEnable(module_ptr->config_ptr->pin_interrupt_address);
+#endif
 
 	// manually bring the first CS to low;
 	// TODO bring the CS of the first channel in sensors list to low
@@ -1789,15 +1806,16 @@ void mod_som_efe_reset_adc_f(mod_som_efe_ptr_t module_ptr)
 void mod_som_efe_define_uart_descriptor_f(mod_som_efe_ptr_t module_ptr)
 {
 
-  descriptor_link_read1[0] = (LDMA_Descriptor_t)LDMA_DESCRIPTOR_SINGLE_P2M_BYTE(0,0,0);
-//  descriptor_link_read1[0].xfer.dstAddr = (uint32_t) (mod_som_efe_ptr->config_ptr->element_map[0]+(MOD_SOM_EFE_TIMESTAMP_LENGTH+3));
-//  descriptor_link_read1[0].xfer.dstAddr = (uint32_t) (mod_som_efe_ptr->config_ptr->element_map[0]);
-  descriptor_link_read1[0].xfer.dstAddr =(uint32_t) (mod_som_efe_ptr->config_ptr->element_map[0]+(MOD_SOM_EFE_TIMESTAMP_LENGTH+3*0));
-  descriptor_link_read1[0].xfer.dstInc=ldmaCtrlDstIncOne;
-  descriptor_link_read1[0].xfer.srcAddr=(uint32_t) (&MOD_SOM_MEZZANINE_COM_USART->RXDATA);
-  descriptor_link_read1[0].xfer.xferCnt= \
-//                          mod_som_sbe41_ptr->config_ptr->sample_data_length-1;
-                            3-1;
+  descriptor_uart[0] = (LDMA_Descriptor_t)LDMA_DESCRIPTOR_LINKREL_WRITE(0xA5, &MOD_SOM_MEZZANINE_COM_USART->TXDATA, 1);
+
+  descriptor_uart[1] = (LDMA_Descriptor_t)LDMA_DESCRIPTOR_SINGLE_P2M_BYTE(0,0,0);
+//  descriptor_uart[1].xfer.dstAddr = (uint32_t) (mod_som_efe_ptr->config_ptr->element_map[0]+(MOD_SOM_EFE_TIMESTAMP_LENGTH+3));
+//  descriptor_uart[1].xfer.dstAddr = (uint32_t) (mod_som_efe_ptr->config_ptr->element_map[0]);
+  descriptor_uart[1].xfer.dstAddr =(uint32_t) (mod_som_efe_ptr->config_ptr->element_map[0]+(MOD_SOM_EFE_TIMESTAMP_LENGTH+3*0));
+  descriptor_uart[1].xfer.dstInc=ldmaCtrlDstIncOne;
+  descriptor_uart[1].xfer.srcAddr=(uint32_t) (&MOD_SOM_MEZZANINE_COM_USART->RXDATA);
+  descriptor_uart[1].xfer.xferCnt= (module_ptr->settings_ptr->number_of_channels * 3) - 1;
+  descriptor_uart[1].xfer.doneIfs = 1;
 
 
 }
@@ -2543,11 +2561,43 @@ void mod_som_efe_ldma_irq_handler_f( void )
 	if (mod_som_efe_ptr->sampling_flag==1)
 	{
 
+#if defined(MOD_SOM_EFE_UART_SPOOF)
+
+	    uint64_t tick;
+	    uint64_t * local_element;
+
+	    tick=sl_sleeptimer_get_tick_count64();
+	    mystatus = sl_sleeptimer_tick64_to_ms(tick,\
+	           &mod_som_efe_ptr->timestamp);
+
+	    //MHA: Now augment timestamp by poweron_offset_ms
+	    mod_som_calendar_settings=mod_som_calendar_get_settings_f(); //get the calendar settings pointer
+	    mod_som_efe_ptr->timestamp += mod_som_calendar_settings.poweron_offset_ms;
+
+	    if(mystatus != SL_STATUS_OK)
+	    {
+	      //ALB TODO handle get timestamps errors
+	    }
+
+	    //ALB copy the timestamp in the elements_buffer
+	    local_element=(uint64_t*)mod_som_efe_ptr->config_ptr->element_map[mod_som_efe_ptr->rec_buff->producer_indx];
+	    memcpy(local_element,(uint64_t*) &mod_som_efe_ptr->timestamp, sizeof(uint64_t));
+
+#endif
+
   	mod_som_efe_ptr->sample_count++;
 
 		mod_som_efe_ptr->rec_buff->producer_indx=  mod_som_efe_ptr->sample_count % \
 		    mod_som_efe_ptr->config_ptr->element_per_buffer;
 
+
+#if defined(MOD_SOM_EFE_UART_SPOOF)
+
+		descriptor_uart[1].xfer.dstAddr = \
+		    mod_som_efe_ptr->config_ptr->element_map[mod_som_efe_ptr->rec_buff->producer_indx] \
+		    + MOD_SOM_EFE_TIMESTAMP_LENGTH;
+
+#endif
 
 		//ALB update data buffer address in   descriptor_link_read1
 		//ALB TODO figure out a way to increment the addresses with LDMA. Am I being stupid right now.
@@ -2584,22 +2634,19 @@ void mod_som_efe_ldma_irq_handler_f( void )
 		    }
 //		    printf("\nsensor 0 %lu",adc_sample);
 		}
-//    descriptor_link_read1[0].xfer.dstAddr = (uint32_t) (mod_som_efe_ptr->config_ptr-> \
-//        element_map[mod_som_efe_ptr->rec_buff->producer_indx] \
-//        +(MOD_SOM_EFE_TIMESTAMP_LENGTH+3));
-//    descriptor_link_read1[0].xfer.dstAddr = (uint32_t) (mod_som_efe_ptr->config_ptr-> \
-//        element_map[mod_som_efe_ptr->rec_buff->producer_indx] \
-//        +(MOD_SOM_EFE_TIMESTAMP_LENGTH+3));
-/*
-    LDMA_StartTransfer(mod_som_efe_ptr->ldma.ch,
-                (void*)&spitx_init,
-                (void*)&descriptor_link_read1);
-*/
-    GPIO_PinOutSet(gpioPortC, 6); // MEZZ 12-pin pin 5 (U1_RTS_M2)
 
+
+		GPIO_PinOutSet(gpioPortC, 6); // MEZZ 12-pin pin 5 (U1_RTS_M2)
+
+#if defined(MOD_SOM_EFE_UART_SPOOF)
+    LDMA_StartTransfer(mod_som_efe_ptr->ldma.ch,
+                (void*)&tfrcfg_uart,
+                (void*)&descriptor_uart);
+#else
     // enable interrupt
-		GPIO_IntClear(mod_som_efe_ptr->config_ptr->pin_interrupt_address);
-		GPIO_IntEnable(mod_som_efe_ptr->config_ptr->pin_interrupt_address);
+    GPIO_IntClear(mod_som_efe_ptr->config_ptr->pin_interrupt_address);
+    GPIO_IntEnable(mod_som_efe_ptr->config_ptr->pin_interrupt_address);
+#endif
 	}
 }
 
