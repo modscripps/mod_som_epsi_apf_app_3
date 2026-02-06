@@ -1276,7 +1276,7 @@ mod_som_status_t mod_som_efe_init_uart_f()
   // Enable 232 transceiver
   GPIO_PinModeSet(MOD_SOM_MEZZANINE_UART_EN_PORT, \
                   MOD_SOM_MEZZANINE_UART_EN_PIN, \
-                  gpioModePushPull, 1);    // TEL_EN high
+                  gpioModePushPull, 0);    // TEL_EN low (bring high right before transmit)
 
   GPIO_PinModeSet(MOD_SOM_MEZZANINE_UART_VCC_EN_PORT,\
                   MOD_SOM_MEZZANINE_UART_VCC_EN_PIN,\
@@ -1641,6 +1641,11 @@ void mod_som_efe_start_mclock_f(mod_som_efe_ptr_t module_ptr)
 			module_ptr->config_ptr->pin_interrupt.pin,     \
 			module_ptr->config_ptr->pin_interrupt.pin, false, true, false);
 
+  // 2026 02 06 LW: Bring TEL_EN high here so UART1's 232 xcvr is ready to transmit (avoids auto-shutdown)
+	GPIO_PinModeSet(MOD_SOM_MEZZANINE_UART_EN_PORT, \
+                  MOD_SOM_MEZZANINE_UART_EN_PIN, \
+                  gpioModePushPull, 1);    // TEL_EN high
+
 	// clear and enable the gpio interrupt.
 	GPIO_IntClear(module_ptr->config_ptr->pin_interrupt_address);
 	GPIO_IntEnable(module_ptr->config_ptr->pin_interrupt_address);
@@ -1895,7 +1900,7 @@ void mod_som_efe_define_read_descriptor_f(mod_som_efe_ptr_t module_ptr)
 		descriptor_link_read1[j] = adc_read;
 		descriptor_link_read1[j].xfer.dstAddr=(uint32_t) (mod_som_efe_ptr->config_ptr->element_map[0]+(MOD_SOM_EFE_TIMESTAMP_LENGTH+3*i));
 		descriptor_link_read1[j].xfer.dstInc=ldmaCtrlDstIncOne;
-		descriptor_link_read1[j].xfer.srcAddr=(uint32_t) (&MOD_SOM_MEZZANINE_COM_USART->RXDATA);
+		descriptor_link_read1[j].xfer.srcAddr=(uint32_t) (&USART0->RXDATA);
 		descriptor_link_read1[j].xfer.linkAddr=LDMA_1_STEP;
 		descriptor_link_read1[j].xfer.xferCnt=(3)-1;
 		descriptor_link_read1[j].xfer.blockSize=ldmaCtrlBlockSizeUnit1;
