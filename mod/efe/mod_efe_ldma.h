@@ -21,7 +21,7 @@
 
 #if defined(MOD_SOM_EFE_REV3)|defined(MOD_SOM_EFE_REV4)
 //define the number of step needed to read the adc data register with LDMA
-#define MOD_SOM_EFE_LDMA_READ_STEP 6 //+ 2//phases per channel for LDMA read in continuous data mode
+#define MOD_SOM_EFE_LDMA_READ_STEP 6 //phases per channel for LDMA read in continuous data mode
 #define TRAILING_STEP (2+2) //TODO MAG &AUG2020 phases per trailing part of LDMA read in continuous data mode. We might add two more to fetch the 64 bit time stamp
 #define MOD_SOM_EFE_LDMA_CONFIG_STEP 9
 #define MOD_SOM_EFE_LDMA_READ_CONFIG_STEP 5
