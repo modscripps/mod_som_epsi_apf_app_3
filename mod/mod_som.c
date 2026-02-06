@@ -670,7 +670,7 @@ void mod_som_main_task_f(void *p_arg)
 
 
         //ALB toggle led to tell us it alive
-        GPIO_PinOutToggle(gpioPortC, 6); // LED
+//        GPIO_PinOutToggle(gpioPortC, 6); // LED
 
         APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
     }

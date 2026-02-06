@@ -14,7 +14,7 @@
 #include "mod_som_priv.h"
 #include "em_msc.h"
 #include "mod_som_cfg.h"
-
+#include "em_ldma.h"
 
 #ifdef MOD_SOM_CALENDAR_EN
 	#include "mod_som_calendar.h"
@@ -65,6 +65,7 @@ uint32_t  all_bit_mask=0x7080;
 // SN  use LDMA for the main com port
 
 LDMA_TransferCfg_t spitx_init= LDMA_TRANSFER_CFG_PERIPHERAL(ldmaPeripheralSignal_USART0_TXEMPTY);
+//LDMA_TransferCfg_t spitx_init= LDMA_TRANSFER_CFG_PERIPHERAL(ldmaPeripheralSignal_UART1_RXDATAV);
 
 //ALB Place holder for cs_assert. It will be change in config_adc to bring the selected CS low.
 LDMA_Descriptor_t cs_assert   = LDMA_DESCRIPTOR_LINKREL_WRITE(0,0,0);
@@ -1291,6 +1292,10 @@ mod_som_status_t mod_som_efe_init_uart_f()
                   MOD_SOM_MEZZANINE_COM_RX_PIN, \
                   gpioModeInputPull, 1);   // U1_RX_M2 input high
 
+  GPIO_PinModeSet(gpioPortC, \
+                  6, \
+                  gpioModePushPull, 1);   // U1_RTS_M2 output high
+
 
   // Enable clock to UART
   CMU_ClockEnable(cmuClock_HFPER, true);
@@ -1300,6 +1305,7 @@ mod_som_status_t mod_som_efe_init_uart_f()
   // Configure UART
   USART_InitAsync_TypeDef initusart = USART_INITASYNC_DEFAULT;
   initusart.enable = usartDisable;
+  initusart.baudrate = 230400;
   USART_Reset(MOD_SOM_MEZZANINE_COM_USART);
   USART_InitAsync(MOD_SOM_MEZZANINE_COM_USART, &initusart);
 
@@ -1472,6 +1478,8 @@ mod_som_status_t mod_som_efe_init_ldma_f(mod_som_efe_ptr_t module_ptr)
 	// ALB The LDMA transfer define by this list is called inside the GPIO interrupt handler
 	// ALB after the ADC send their interrupt signal
 	mod_som_efe_define_read_descriptor_f(module_ptr);
+
+//	mod_som_efe_define_uart_descriptor_f(module_ptr);
 
 	return mod_som_efe_encode_status_f(MOD_SOM_STATUS_OK);
 }
@@ -1768,6 +1776,28 @@ void mod_som_efe_reset_adc_f(mod_som_efe_ptr_t module_ptr)
 }
 
 
+
+/***************************************************************************//**
+ * @brief
+ *   // LDMA A/D spoofing UART transfer descriptor list generator
+ ******************************************************************************/
+void mod_som_efe_define_uart_descriptor_f(mod_som_efe_ptr_t module_ptr)
+{
+
+  descriptor_link_read1[0] = (LDMA_Descriptor_t)LDMA_DESCRIPTOR_SINGLE_P2M_BYTE(0,0,0);
+//  descriptor_link_read1[0].xfer.dstAddr = (uint32_t) (mod_som_efe_ptr->config_ptr->element_map[0]+(MOD_SOM_EFE_TIMESTAMP_LENGTH+3));
+//  descriptor_link_read1[0].xfer.dstAddr = (uint32_t) (mod_som_efe_ptr->config_ptr->element_map[0]);
+  descriptor_link_read1[0].xfer.dstAddr =(uint32_t) (mod_som_efe_ptr->config_ptr->element_map[0]+(MOD_SOM_EFE_TIMESTAMP_LENGTH+3*0));
+  descriptor_link_read1[0].xfer.dstInc=ldmaCtrlDstIncOne;
+  descriptor_link_read1[0].xfer.srcAddr=(uint32_t) (&MOD_SOM_MEZZANINE_COM_USART->RXDATA);
+  descriptor_link_read1[0].xfer.xferCnt= \
+//                          mod_som_sbe41_ptr->config_ptr->sample_data_length-1;
+                            3-1;
+
+
+}
+
+
 /***************************************************************************//**
  * @brief
  *   // LDMA A/D SPI transfer descriptor list generator
@@ -1849,23 +1879,35 @@ void mod_som_efe_define_read_descriptor_f(mod_som_efe_ptr_t module_ptr)
 		descriptor_link_read1[j].xfer.doneIfs=0;
 		descriptor_link_read1[j].xfer.structReq=0;
 
-		j++;// Descriptor index 6: Set all 4 address bits to ones //TODO make this positive logic so we would clear them all here
-		descriptor_link_read1[j] = cs_assert;
-		descriptor_link_read1[j].wri.dstAddr=module_ptr->config_ptr->gpio_a_base_address+bit_set_offset;
-		descriptor_link_read1[j].wri.immVal=all_bit_mask;
-		descriptor_link_read1[j].wri.linkAddr=LDMA_1_STEP;
+    j++;// Descriptor index 6: Set all 4 address bits to ones //TODO make this positive logic so we would clear them all here
+    descriptor_link_read1[j] = cs_assert;
+    descriptor_link_read1[j].wri.dstAddr=module_ptr->config_ptr->gpio_a_base_address+bit_set_offset;
+    descriptor_link_read1[j].wri.immVal=all_bit_mask;
+    descriptor_link_read1[j].wri.linkAddr=LDMA_1_STEP;
+
+//    j++;// !! Change LDMA signal to UART1 RXDATAV
+//    descriptor_link_read1[j] = cs_assert;
+//    descriptor_link_read1[j].wri.dstAddr=(uint32_t) &(LDMA->CH[0].REQSEL);
+//    descriptor_link_read1[j].wri.immVal=ldmaPeripheralSignal_UART1_RXDATAV;
+//    descriptor_link_read1[j].wri.linkAddr=LDMA_1_STEP;
 
 		j++;// Descriptor index : // After TXBL signal (transmit buffer is empty)	one byte at a time read the 3 bytes of rx data from the SPI RXDATA register and write them to the circular buffer
 		descriptor_link_read1[j] = adc_read;
 		descriptor_link_read1[j].xfer.dstAddr=(uint32_t) (mod_som_efe_ptr->config_ptr->element_map[0]+(MOD_SOM_EFE_TIMESTAMP_LENGTH+3*i));
 		descriptor_link_read1[j].xfer.dstInc=ldmaCtrlDstIncOne;
-		descriptor_link_read1[j].xfer.srcAddr=(uint32_t) (&USART0->RXDATA);
+		descriptor_link_read1[j].xfer.srcAddr=(uint32_t) (&MOD_SOM_MEZZANINE_COM_USART->RXDATA);
 		descriptor_link_read1[j].xfer.linkAddr=LDMA_1_STEP;
 		descriptor_link_read1[j].xfer.xferCnt=(3)-1;
 		descriptor_link_read1[j].xfer.blockSize=ldmaCtrlBlockSizeUnit1;
 		descriptor_link_read1[j].xfer.doneIfs=0;
 		if(i==0)//MAG 11AUG2020 store offset to first RXDATA read descriptor so we can use it in the LDMA interrupt routine to index the circular buffer
 			module_ptr->ldma_spi_read_descriptor_offset = j;
+
+//    j++;// !! Change LDMA signal back to USART0 TXEMPTY
+//    descriptor_link_read1[j] = cs_assert;
+//    descriptor_link_read1[j].wri.dstAddr=(uint32_t) &(LDMA->CH[0].REQSEL);
+//    descriptor_link_read1[j].wri.immVal=ldmaPeripheralSignal_USART0_TXEMPTY;
+//    descriptor_link_read1[j].wri.linkAddr=LDMA_1_STEP;
 
 	}
 
@@ -2439,6 +2481,10 @@ void GPIO_ODD_IRQHandler(void)
     local_element=(uint64_t*)mod_som_efe_ptr->config_ptr->element_map[mod_som_efe_ptr->rec_buff->producer_indx];
     memcpy(local_element,(uint64_t*) &mod_som_efe_ptr->timestamp, sizeof(uint64_t));
 
+    // 2026 02 05 LW: Send start char to EFE spoofer
+    USART_Tx(MOD_SOM_MEZZANINE_COM_USART, 0xA5);
+
+    GPIO_PinOutClear(gpioPortC, 6); // MEZZ 12-pin pin 5 (U1_RTS_M2)
 
 		//ALB trigger LDMA transfer. Using channel 0. The channel is hardcoded.
 		//ALB TODO abstract the choice of channel 0.
@@ -2501,7 +2547,6 @@ void mod_som_efe_ldma_irq_handler_f( void )
 		//ALB update data buffer address in   descriptor_link_read1
 		//ALB TODO figure out a way to increment the addresses with LDMA. Am I being stupid right now.
 
-
     // update the address of the next ADC samples in the descriptor list.
 		for (int i=0;i<mod_som_efe_ptr->settings_ptr->number_of_channels;i++)
 		  {
@@ -2534,9 +2579,20 @@ void mod_som_efe_ldma_irq_handler_f( void )
 		    }
 //		    printf("\nsensor 0 %lu",adc_sample);
 		}
+//    descriptor_link_read1[0].xfer.dstAddr = (uint32_t) (mod_som_efe_ptr->config_ptr-> \
+//        element_map[mod_som_efe_ptr->rec_buff->producer_indx] \
+//        +(MOD_SOM_EFE_TIMESTAMP_LENGTH+3));
+//    descriptor_link_read1[0].xfer.dstAddr = (uint32_t) (mod_som_efe_ptr->config_ptr-> \
+//        element_map[mod_som_efe_ptr->rec_buff->producer_indx] \
+//        +(MOD_SOM_EFE_TIMESTAMP_LENGTH+3));
+/*
+    LDMA_StartTransfer(mod_som_efe_ptr->ldma.ch,
+                (void*)&spitx_init,
+                (void*)&descriptor_link_read1);
+*/
+    GPIO_PinOutSet(gpioPortC, 6); // MEZZ 12-pin pin 5 (U1_RTS_M2)
 
-
-		// enable interrupt
+    // enable interrupt
 		GPIO_IntClear(mod_som_efe_ptr->config_ptr->pin_interrupt_address);
 		GPIO_IntEnable(mod_som_efe_ptr->config_ptr->pin_interrupt_address);
 	}
