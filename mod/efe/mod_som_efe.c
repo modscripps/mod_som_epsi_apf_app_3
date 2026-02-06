@@ -1900,7 +1900,7 @@ void mod_som_efe_define_read_descriptor_f(mod_som_efe_ptr_t module_ptr)
 		descriptor_link_read1[j] = adc_read;
 		descriptor_link_read1[j].xfer.dstAddr=(uint32_t) (mod_som_efe_ptr->config_ptr->element_map[0]+(MOD_SOM_EFE_TIMESTAMP_LENGTH+3*i));
 		descriptor_link_read1[j].xfer.dstInc=ldmaCtrlDstIncOne;
-		descriptor_link_read1[j].xfer.srcAddr=(uint32_t) (&MOD_SOM_MEZZANINE_COM_USART->RXDATA);
+		descriptor_link_read1[j].xfer.srcAddr=(uint32_t) (&USART0->RXDATA);
 		descriptor_link_read1[j].xfer.linkAddr=LDMA_1_STEP;
 		descriptor_link_read1[j].xfer.xferCnt=(3)-1;
 		descriptor_link_read1[j].xfer.blockSize=ldmaCtrlBlockSizeUnit1;
