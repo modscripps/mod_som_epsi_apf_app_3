@@ -1298,7 +1298,7 @@ mod_som_status_t mod_som_efe_init_uart_f()
 
   GPIO_PinModeSet(gpioPortC, \
                   6, \
-                  gpioModePushPull, 1);   // U1_RTS_M2 output high
+                  gpioModePushPull, 1);   // LED
 
 
   // Enable clock to UART
@@ -1324,6 +1324,22 @@ mod_som_status_t mod_som_efe_init_uart_f()
 
   // Enable UART
   USART_Enable(MOD_SOM_MEZZANINE_COM_USART, usartEnable);
+
+
+
+  // 2026 02 06 LW: Set up WTIMER2 for delaying UART data requests
+  CMU_Clock_TypeDef spoof_clk = cmuClock_WTIMER2;
+  TIMER_TypeDef* spoof_timer = WTIMER2;
+
+  CMU_ClockEnable(spoof_clk, true);
+
+  TIMER_InitCC_TypeDef init_wtimer0=TIMER_INITCC_DEFAULT;
+  init_wtimer0.mode=timerCCModeCompare;
+  TIMER_TopSet(spoof_timer, TIMER_MaxCount(spoof_timer));
+  TIMER_CompareSet(spoof_timer,0, (CMU_ClockFreqGet(cmuClock_HFPER) * 3)/1000);
+  TIMER_InitCC(spoof_timer,0,&init_wtimer0);
+
+  TIMER_Enable(spoof_timer, true);
 
 
   return mod_som_efe_encode_status_f(MOD_SOM_STATUS_OK);
@@ -2507,7 +2523,7 @@ void GPIO_ODD_IRQHandler(void)
     // 2026 02 05 LW: Send start char to EFE spoofer
     USART_Tx(MOD_SOM_MEZZANINE_COM_USART, 0xA5);
 
-    GPIO_PinOutClear(gpioPortC, 6); // MEZZ 12-pin pin 5 (U1_RTS_M2)
+    GPIO_PinOutClear(gpioPortC, 6); // LED
 
 		//ALB trigger LDMA transfer. Using channel 0. The channel is hardcoded.
 		//ALB TODO abstract the choice of channel 0.
@@ -2636,7 +2652,7 @@ void mod_som_efe_ldma_irq_handler_f( void )
 		}
 
 
-		GPIO_PinOutSet(gpioPortC, 6); // MEZZ 12-pin pin 5 (U1_RTS_M2)
+		GPIO_PinOutSet(gpioPortC, 6); // LED
 
 #if defined(MOD_SOM_EFE_UART_SPOOF)
     LDMA_StartTransfer(mod_som_efe_ptr->ldma.ch,
