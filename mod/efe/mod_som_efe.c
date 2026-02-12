@@ -1839,7 +1839,7 @@ void mod_som_efe_define_uart_descriptor_f(mod_som_efe_ptr_t module_ptr)
 
   descriptor_uart[2] = (LDMA_Descriptor_t)LDMA_DESCRIPTOR_LINKREL_P2M_BYTE((uint32_t) (&MOD_SOM_MEZZANINE_COM_USART->RXDATA), \
                                                                            (uint32_t) (mod_som_efe_ptr->config_ptr->element_map[0]+(MOD_SOM_EFE_TIMESTAMP_LENGTH+3*0)), \
-                                                                           (module_ptr->settings_ptr->number_of_channels * 3) - 1, \
+                                                                           (module_ptr->settings_ptr->number_of_channels * 3), \
                                                                            1);
   descriptor_uart[2].xfer.doneIfs = 0;
 
