@@ -87,8 +87,12 @@ LDMA_Descriptor_t descriptor_link_config[MOD_SOM_EFE_LDMA_CONFIG_STEP];
 
 
 #define MOD_SOM_EFE_UART_SPOOF
-LDMA_Descriptor_t descriptor_uart[2];
-LDMA_TransferCfg_t tfrcfg_uart= LDMA_TRANSFER_CFG_PERIPHERAL(ldmaPeripheralSignal_UART1_RXDATAV);
+LDMA_Descriptor_t descriptor_uart[3];
+//LDMA_TransferCfg_t tfrcfg_uart= LDMA_TRANSFER_CFG_PERIPHERAL(ldmaPeripheralSignal_UART1_RXDATAV);
+//LDMA_TransferCfg_t tfrcfg_uart= LDMA_TRANSFER_CFG_PERIPHERAL(ldmaPeripheralSignal_WTIMER2_UFOF);
+LDMA_TransferCfg_t tfrcfg_uart= LDMA_TRANSFER_CFG_PERIPHERAL(ldmaPeripheralSignal_NONE);
+TIMER_TypeDef* spoof_timer = WTIMER2;
+CMU_Clock_TypeDef spoof_clk = cmuClock_WTIMER2;
 
 
 // Data consumer
@@ -1328,18 +1332,16 @@ mod_som_status_t mod_som_efe_init_uart_f()
 
 
   // 2026 02 06 LW: Set up WTIMER2 for delaying UART data requests
-  CMU_Clock_TypeDef spoof_clk = cmuClock_WTIMER2;
-  TIMER_TypeDef* spoof_timer = WTIMER2;
 
   CMU_ClockEnable(spoof_clk, true);
 
-  TIMER_InitCC_TypeDef init_wtimer0=TIMER_INITCC_DEFAULT;
-  init_wtimer0.mode=timerCCModeCompare;
-  TIMER_TopSet(spoof_timer, TIMER_MaxCount(spoof_timer));
-  TIMER_CompareSet(spoof_timer,0, (CMU_ClockFreqGet(cmuClock_HFPER) * 3)/1000);
-  TIMER_InitCC(spoof_timer,0,&init_wtimer0);
+  TIMER_Init_TypeDef init_spoof_timer=TIMER_INIT_DEFAULT;
+  init_spoof_timer.enable = false;
+  init_spoof_timer.dmaClrAct = true;
+  TIMER_TopSet(spoof_timer, (CMU_ClockFreqGet(cmuClock_HFPER) * 3)/1000);
+  TIMER_Init(spoof_timer,&init_spoof_timer);
 
-  TIMER_Enable(spoof_timer, true);
+//  TIMER_Enable(spoof_timer, true);
 
 
   return mod_som_efe_encode_status_f(MOD_SOM_STATUS_OK);
@@ -1672,7 +1674,9 @@ void mod_som_efe_start_mclock_f(mod_som_efe_ptr_t module_ptr)
   sl_sleeptimer_delay_millisecond(1);
 
 
-	LDMA_StartTransfer(mod_som_efe_ptr->ldma.ch,
+//  TIMER_Enable(spoof_timer, true);
+
+  LDMA_StartTransfer(mod_som_efe_ptr->ldma.ch,
               (void*)&tfrcfg_uart,
               (void*)&descriptor_uart);
 
@@ -1823,15 +1827,19 @@ void mod_som_efe_define_uart_descriptor_f(mod_som_efe_ptr_t module_ptr)
 {
 
   descriptor_uart[0] = (LDMA_Descriptor_t)LDMA_DESCRIPTOR_LINKREL_WRITE(0xA5, &MOD_SOM_MEZZANINE_COM_USART->TXDATA, 1);
+  descriptor_uart[0].wri.structReq = 0;
 
-  descriptor_uart[1] = (LDMA_Descriptor_t)LDMA_DESCRIPTOR_SINGLE_P2M_BYTE(0,0,0);
-//  descriptor_uart[1].xfer.dstAddr = (uint32_t) (mod_som_efe_ptr->config_ptr->element_map[0]+(MOD_SOM_EFE_TIMESTAMP_LENGTH+3));
-//  descriptor_uart[1].xfer.dstAddr = (uint32_t) (mod_som_efe_ptr->config_ptr->element_map[0]);
-  descriptor_uart[1].xfer.dstAddr =(uint32_t) (mod_som_efe_ptr->config_ptr->element_map[0]+(MOD_SOM_EFE_TIMESTAMP_LENGTH+3*0));
-  descriptor_uart[1].xfer.dstInc=ldmaCtrlDstIncOne;
-  descriptor_uart[1].xfer.srcAddr=(uint32_t) (&MOD_SOM_MEZZANINE_COM_USART->RXDATA);
-  descriptor_uart[1].xfer.xferCnt= (module_ptr->settings_ptr->number_of_channels * 3) - 1;
-  descriptor_uart[1].xfer.doneIfs = 1;
+  descriptor_uart[1] = (LDMA_Descriptor_t)LDMA_DESCRIPTOR_LINKREL_WRITE(ldmaPeripheralSignal_UART1_RXDATAV, &(LDMA->CH[0].REQSEL), 1);
+
+
+  descriptor_uart[2] = (LDMA_Descriptor_t)LDMA_DESCRIPTOR_SINGLE_P2M_BYTE(0,0,0);
+//  descriptor_uart[2].xfer.dstAddr = (uint32_t) (mod_som_efe_ptr->config_ptr->element_map[0]+(MOD_SOM_EFE_TIMESTAMP_LENGTH+3));
+//  descriptor_uart[2].xfer.dstAddr = (uint32_t) (mod_som_efe_ptr->config_ptr->element_map[0]);
+  descriptor_uart[2].xfer.dstAddr =(uint32_t) (mod_som_efe_ptr->config_ptr->element_map[0]+(MOD_SOM_EFE_TIMESTAMP_LENGTH+3*0));
+  descriptor_uart[2].xfer.dstInc=ldmaCtrlDstIncOne;
+  descriptor_uart[2].xfer.srcAddr=(uint32_t) (&MOD_SOM_MEZZANINE_COM_USART->RXDATA);
+  descriptor_uart[2].xfer.xferCnt= (module_ptr->settings_ptr->number_of_channels * 3) - 1;
+  descriptor_uart[2].xfer.doneIfs = 1;
 
 
 }
@@ -2609,7 +2617,7 @@ void mod_som_efe_ldma_irq_handler_f( void )
 
 #if defined(MOD_SOM_EFE_UART_SPOOF)
 
-		descriptor_uart[1].xfer.dstAddr = \
+		descriptor_uart[2].xfer.dstAddr = \
 		    mod_som_efe_ptr->config_ptr->element_map[mod_som_efe_ptr->rec_buff->producer_indx] \
 		    + MOD_SOM_EFE_TIMESTAMP_LENGTH;
 
@@ -2654,10 +2662,22 @@ void mod_som_efe_ldma_irq_handler_f( void )
 
 		GPIO_PinOutSet(gpioPortC, 6); // LED
 
+
 #if defined(MOD_SOM_EFE_UART_SPOOF)
+//    CORE_DECLARE_IRQ_STATE;
+//    CORE_ENTER_ATOMIC();
+//
+//    TIMER_Enable(spoof_timer, false);
+//    TIMER_CounterSet(spoof_timer, 0);
+//    TIMER_IntClear(spoof_timer, TIMER_IF_CC0);
+
     LDMA_StartTransfer(mod_som_efe_ptr->ldma.ch,
                 (void*)&tfrcfg_uart,
                 (void*)&descriptor_uart);
+
+//    TIMER_Enable(spoof_timer, true);
+//    CORE_EXIT_ATOMIC();
+
 #else
     // enable interrupt
     GPIO_IntClear(mod_som_efe_ptr->config_ptr->pin_interrupt_address);
