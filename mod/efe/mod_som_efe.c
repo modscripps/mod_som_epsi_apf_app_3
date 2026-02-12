@@ -87,12 +87,11 @@ LDMA_Descriptor_t descriptor_link_config[MOD_SOM_EFE_LDMA_CONFIG_STEP];
 
 
 #define MOD_SOM_EFE_UART_SPOOF
-LDMA_Descriptor_t descriptor_uart[3];
-//LDMA_TransferCfg_t tfrcfg_uart= LDMA_TRANSFER_CFG_PERIPHERAL(ldmaPeripheralSignal_UART1_RXDATAV);
-//LDMA_TransferCfg_t tfrcfg_uart= LDMA_TRANSFER_CFG_PERIPHERAL(ldmaPeripheralSignal_WTIMER2_UFOF);
-LDMA_TransferCfg_t tfrcfg_uart= LDMA_TRANSFER_CFG_PERIPHERAL(ldmaPeripheralSignal_NONE);
+LDMA_Descriptor_t descriptor_uart[4];
+LDMA_TransferCfg_t tfrcfg_uart= LDMA_TRANSFER_CFG_PERIPHERAL(ldmaPeripheralSignal_WTIMER2_UFOF);
 TIMER_TypeDef* spoof_timer = WTIMER2;
 CMU_Clock_TypeDef spoof_clk = cmuClock_WTIMER2;
+static char spoof_char = 0xA5;
 
 
 // Data consumer
@@ -1674,7 +1673,7 @@ void mod_som_efe_start_mclock_f(mod_som_efe_ptr_t module_ptr)
   sl_sleeptimer_delay_millisecond(1);
 
 
-//  TIMER_Enable(spoof_timer, true);
+  TIMER_Enable(spoof_timer, true);
 
   LDMA_StartTransfer(mod_som_efe_ptr->ldma.ch,
               (void*)&tfrcfg_uart,
@@ -1826,21 +1825,25 @@ void mod_som_efe_reset_adc_f(mod_som_efe_ptr_t module_ptr)
 void mod_som_efe_define_uart_descriptor_f(mod_som_efe_ptr_t module_ptr)
 {
 
-  descriptor_uart[0] = (LDMA_Descriptor_t)LDMA_DESCRIPTOR_LINKREL_WRITE(0xA5, &MOD_SOM_MEZZANINE_COM_USART->TXDATA, 1);
-  descriptor_uart[0].wri.structReq = 0;
+  descriptor_uart[0] = (LDMA_Descriptor_t)LDMA_DESCRIPTOR_LINKREL_M2P_BYTE(&spoof_char, \
+                                                                           &MOD_SOM_MEZZANINE_COM_USART->TXDATA, \
+                                                                           1, \
+                                                                           1);
+  descriptor_uart[0].xfer.structReq = 0;
+  descriptor_uart[0].xfer.doneIfs = 0;
 
-  descriptor_uart[1] = (LDMA_Descriptor_t)LDMA_DESCRIPTOR_LINKREL_WRITE(ldmaPeripheralSignal_UART1_RXDATAV, &(LDMA->CH[0].REQSEL), 1);
+  descriptor_uart[1] = (LDMA_Descriptor_t)LDMA_DESCRIPTOR_LINKREL_WRITE(ldmaPeripheralSignal_UART1_RXDATAV, \
+                                                                        &(LDMA->CH[0].REQSEL), \
+                                                                        1);
 
 
-  descriptor_uart[2] = (LDMA_Descriptor_t)LDMA_DESCRIPTOR_SINGLE_P2M_BYTE(0,0,0);
-//  descriptor_uart[2].xfer.dstAddr = (uint32_t) (mod_som_efe_ptr->config_ptr->element_map[0]+(MOD_SOM_EFE_TIMESTAMP_LENGTH+3));
-//  descriptor_uart[2].xfer.dstAddr = (uint32_t) (mod_som_efe_ptr->config_ptr->element_map[0]);
-  descriptor_uart[2].xfer.dstAddr =(uint32_t) (mod_som_efe_ptr->config_ptr->element_map[0]+(MOD_SOM_EFE_TIMESTAMP_LENGTH+3*0));
-  descriptor_uart[2].xfer.dstInc=ldmaCtrlDstIncOne;
-  descriptor_uart[2].xfer.srcAddr=(uint32_t) (&MOD_SOM_MEZZANINE_COM_USART->RXDATA);
-  descriptor_uart[2].xfer.xferCnt= (module_ptr->settings_ptr->number_of_channels * 3) - 1;
-  descriptor_uart[2].xfer.doneIfs = 1;
+  descriptor_uart[2] = (LDMA_Descriptor_t)LDMA_DESCRIPTOR_LINKREL_P2M_BYTE((uint32_t) (&MOD_SOM_MEZZANINE_COM_USART->RXDATA), \
+                                                                           (uint32_t) (mod_som_efe_ptr->config_ptr->element_map[0]+(MOD_SOM_EFE_TIMESTAMP_LENGTH+3*0)), \
+                                                                           (module_ptr->settings_ptr->number_of_channels * 3) - 1, \
+                                                                           1);
+  descriptor_uart[2].xfer.doneIfs = 0;
 
+  descriptor_uart[3] = (LDMA_Descriptor_t)LDMA_DESCRIPTOR_SINGLE_WRITE(ldmaPeripheralSignal_WTIMER2_UFOF, &(LDMA->CH[0].REQSEL));
 
 }
 
