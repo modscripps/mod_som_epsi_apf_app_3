@@ -86,13 +86,14 @@ LDMA_Descriptor_t descriptor_link_readconfig[MOD_SOM_EFE_LDMA_READ_CONFIG_STEP];
 LDMA_Descriptor_t descriptor_link_config[MOD_SOM_EFE_LDMA_CONFIG_STEP];
 
 
-#define MOD_SOM_EFE_UART_SPOOF
+
+#if defined(MOD_SOM_EFE_UART_SPOOF)
 LDMA_Descriptor_t descriptor_uart[4];
 LDMA_TransferCfg_t tfrcfg_uart= LDMA_TRANSFER_CFG_PERIPHERAL(ldmaPeripheralSignal_WTIMER2_UFOF);
 TIMER_TypeDef* spoof_timer = WTIMER2;
 CMU_Clock_TypeDef spoof_clk = cmuClock_WTIMER2;
 static char spoof_char = 0xA5;
-
+#endif
 
 // Data consumer
 static CPU_STK efe_consumer_task_stk[MOD_SOM_EFE_CONSUMER_TASK_STK_SIZE];
@@ -372,13 +373,15 @@ mod_som_status_t mod_som_efe_init_f(){
 		return status;
 	}
   //2026 02 04 LW initialize EFE UART port
+#if defined(MOD_SOM_EFE_UART_SPOOF)
   status |= mod_som_efe_init_uart_f(&(mod_som_efe_ptr->config_ptr->communication));
   if (status!=MOD_SOM_STATUS_OK){
       //ALB change the printf to a report status function.
       printf("%s not initialized\n",MOD_SOM_EFE_HEADER);
     return status;
   }
-	//ALB initialize EFE timers
+#endif
+  //ALB initialize EFE timers
 	status |= mod_som_efe_init_mclock_f(mod_som_efe_ptr->config_ptr->mclock,mod_som_efe_ptr->config_ptr->sync);
 	if (status!=MOD_SOM_STATUS_OK){
       //ALB change the printf to a report status function.
@@ -1277,6 +1280,7 @@ return  mod_som_efe_ptr->config_ptr;
  * @brief
  *   Initialize UART1 for adc spoofing communication
  ******************************************************************************/
+#if defined(MOD_SOM_EFE_UART_SPOOF)
 mod_som_status_t mod_som_efe_init_uart_f()
 {
 
@@ -1298,11 +1302,6 @@ mod_som_status_t mod_som_efe_init_uart_f()
   GPIO_PinModeSet(MOD_SOM_MEZZANINE_COM_RX_PORT, \
                   MOD_SOM_MEZZANINE_COM_RX_PIN, \
                   gpioModeInputPull, 1);   // U1_RX_M2 input high
-
-  GPIO_PinModeSet(gpioPortC, \
-                  6, \
-                  gpioModePushPull, 1);   // LED
-
 
   // Enable clock to UART
   CMU_ClockEnable(cmuClock_HFPER, true);
@@ -1346,6 +1345,7 @@ mod_som_status_t mod_som_efe_init_uart_f()
   return mod_som_efe_encode_status_f(MOD_SOM_STATUS_OK);
 
 }
+#endif
 
 /***************************************************************************//**
  * @brief
@@ -1500,7 +1500,9 @@ mod_som_status_t mod_som_efe_init_ldma_f(mod_som_efe_ptr_t module_ptr)
 	// ALB after the ADC send their interrupt signal
 	mod_som_efe_define_read_descriptor_f(module_ptr);
 
+#if defined(MOD_SOM_EFE_UART_SPOOF)
 	mod_som_efe_define_uart_descriptor_f(module_ptr);
+#endif
 
 	return mod_som_efe_encode_status_f(MOD_SOM_STATUS_OK);
 }
@@ -1822,6 +1824,7 @@ void mod_som_efe_reset_adc_f(mod_som_efe_ptr_t module_ptr)
  * @brief
  *   // LDMA A/D spoofing UART transfer descriptor list generator
  ******************************************************************************/
+#if defined(MOD_SOM_EFE_UART_SPOOF)
 void mod_som_efe_define_uart_descriptor_f(mod_som_efe_ptr_t module_ptr)
 {
 
@@ -1846,7 +1849,7 @@ void mod_som_efe_define_uart_descriptor_f(mod_som_efe_ptr_t module_ptr)
   descriptor_uart[3] = (LDMA_Descriptor_t)LDMA_DESCRIPTOR_SINGLE_WRITE(ldmaPeripheralSignal_WTIMER2_UFOF, &(LDMA->CH[0].REQSEL));
 
 }
-
+#endif
 
 /***************************************************************************//**
  * @brief
@@ -2531,11 +2534,6 @@ void GPIO_ODD_IRQHandler(void)
     local_element=(uint64_t*)mod_som_efe_ptr->config_ptr->element_map[mod_som_efe_ptr->rec_buff->producer_indx];
     memcpy(local_element,(uint64_t*) &mod_som_efe_ptr->timestamp, sizeof(uint64_t));
 
-    // 2026 02 05 LW: Send start char to EFE spoofer
-    USART_Tx(MOD_SOM_MEZZANINE_COM_USART, 0xA5);
-
-    GPIO_PinOutClear(gpioPortC, 6); // LED
-
 		//ALB trigger LDMA transfer. Using channel 0. The channel is hardcoded.
 		//ALB TODO abstract the choice of channel 0.
 		//ALB Note: Interrupt handler enable inside the LDMA interrupt handler
@@ -2663,24 +2661,10 @@ void mod_som_efe_ldma_irq_handler_f( void )
 		}
 
 
-		GPIO_PinOutSet(gpioPortC, 6); // LED
-
-
 #if defined(MOD_SOM_EFE_UART_SPOOF)
-//    CORE_DECLARE_IRQ_STATE;
-//    CORE_ENTER_ATOMIC();
-//
-//    TIMER_Enable(spoof_timer, false);
-//    TIMER_CounterSet(spoof_timer, 0);
-//    TIMER_IntClear(spoof_timer, TIMER_IF_CC0);
-
     LDMA_StartTransfer(mod_som_efe_ptr->ldma.ch,
                 (void*)&tfrcfg_uart,
                 (void*)&descriptor_uart);
-
-//    TIMER_Enable(spoof_timer, true);
-//    CORE_EXIT_ATOMIC();
-
 #else
     // enable interrupt
     GPIO_IntClear(mod_som_efe_ptr->config_ptr->pin_interrupt_address);

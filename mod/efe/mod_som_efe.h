@@ -81,9 +81,13 @@
 #define MOD_SOM_EFE_STATUS_FAIL_TOP_SAMPLING           0x03u
 
 
+// 2026 02 13 LW: Switch for enabling/disabling spoofing EFE over UART
+#define MOD_SOM_EFE_UART_SPOOF
+
 //------------------------------------------------------------------------------
 // EFE global variables
 //------------------------------------------------------------------------------
+
 
 
 //------------------------------------------------------------------------------
@@ -426,7 +430,9 @@ mod_som_status_t mod_som_efe_init_mclock_f(mod_som_timer_handle_ptr_t config_mcl
  *
  * @param
  ******************************************************************************/
+#if defined(MOD_SOM_EFE_UART_SPOOF)
 mod_som_status_t mod_som_efe_init_uart_f();
+#endif
 
 /*******************************************************************************
  * @brief
@@ -486,6 +492,16 @@ void mod_som_efe_reset_adc_f();
  *
  ******************************************************************************/
 void mod_som_efe_read_adc_f();
+/*******************************************************************************
+ * @brief
+ *
+ *
+ * @param
+ *
+ ******************************************************************************/
+#if defined(MOD_SOM_EFE_UART_SPOOF)
+void mod_som_efe_define_uart_descriptor_f(mod_som_efe_ptr_t module_ptr);
+#endif
 /*******************************************************************************
  * @brief
  *
