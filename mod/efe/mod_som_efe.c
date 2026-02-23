@@ -1828,6 +1828,7 @@ void mod_som_efe_reset_adc_f(mod_som_efe_ptr_t module_ptr)
 void mod_som_efe_define_uart_descriptor_f(mod_som_efe_ptr_t module_ptr)
 {
 
+  // Send special character over UART to signal we are ready for data
   descriptor_uart[0] = (LDMA_Descriptor_t)LDMA_DESCRIPTOR_LINKREL_M2P_BYTE(&spoof_char, \
                                                                            &MOD_SOM_MEZZANINE_COM_USART->TXDATA, \
                                                                            1, \
@@ -1835,17 +1836,19 @@ void mod_som_efe_define_uart_descriptor_f(mod_som_efe_ptr_t module_ptr)
   descriptor_uart[0].xfer.structReq = 0;
   descriptor_uart[0].xfer.doneIfs = 0;
 
+  // Set LDMA trigger signal to "valid data in the UART receive buffer"
   descriptor_uart[1] = (LDMA_Descriptor_t)LDMA_DESCRIPTOR_LINKREL_WRITE(ldmaPeripheralSignal_UART1_RXDATAV, \
                                                                         &(LDMA->CH[0].REQSEL), \
                                                                         1);
 
-
+  // Take in 12 bytes from the UART
   descriptor_uart[2] = (LDMA_Descriptor_t)LDMA_DESCRIPTOR_LINKREL_P2M_BYTE((uint32_t) (&MOD_SOM_MEZZANINE_COM_USART->RXDATA), \
                                                                            (uint32_t) (mod_som_efe_ptr->config_ptr->element_map[0]+(MOD_SOM_EFE_TIMESTAMP_LENGTH+3*0)), \
                                                                            (module_ptr->settings_ptr->number_of_channels * 3), \
                                                                            1);
   descriptor_uart[2].xfer.doneIfs = 0;
 
+  // Set LDMA trigger signal back to "timer overflow"
   descriptor_uart[3] = (LDMA_Descriptor_t)LDMA_DESCRIPTOR_SINGLE_WRITE(ldmaPeripheralSignal_WTIMER2_UFOF, &(LDMA->CH[0].REQSEL));
 
 }
