@@ -88,9 +88,15 @@ mod_som_status_t mod_som_settings_init_f(){
 	//ALB right now I am ALWAYS starting from the default settings
 	//mod_som_settings_struct.size=0xFFFFFFFF;
 
-	if(strcmp(mod_som_settings_struct.gitid,
-	          MOD_SOM_SETTINGS_DEFAULT_FIRMWARE_GITID)!=0)
-	  {
+  // 2026 02 26 San make sure gitid doesn't determine the erasure of data
+  // TODO we need a structure check on the settings data
+  // for now there is a Erase settings flag
+
+  if(MOD_SOM_SETTINGS_NEW_SETTINGS_CMD){
+//	if(strcmp(mod_som_settings_struct.gitid,
+//	          MOD_SOM_SETTINGS_DEFAULT_FIRMWARE_GITID)!=0)
+//	  {
+
 		//ALB case where the UserData page is already empty
 		//ALB
 		//ALB We will initialize the module with default settings and then save the the settings in the UserData page

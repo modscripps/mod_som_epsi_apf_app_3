@@ -59,7 +59,6 @@ static SHELL_CMD  mod_som_apf_cmd_tbl[] =
  *   or otherwise
  ******************************************************************************/
 mod_som_status_t mod_som_apf_init_cmd_f(){
-
     RTOS_ERR err;
     Shell_CmdTblAdd("APF CMDs", mod_som_apf_cmd_tbl, &err);
     if(RTOS_ERR_CODE_GET(err) != RTOS_ERR_NONE){

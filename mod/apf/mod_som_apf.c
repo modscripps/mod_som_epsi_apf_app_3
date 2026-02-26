@@ -3194,11 +3194,18 @@ mod_som_apf_status_t mod_som_apf_daq_start_f(uint32_t profile_id){
 
     //ALB get the voltage at the beginning of the profile
       mod_som_voltage_scan_f();
-      while(local_voltage_runtime_ptr->voltage==0){
-          WDOG_Feed();
-      };
+      for(int i=0;i<5 && local_voltage_runtime_ptr->voltage==0;i++){
+          sl_sleeptimer_delay_millisecond(delay100ms);
+      }
+//      while(local_voltage_runtime_ptr->voltage==0){
+//          WDOG_Feed();
+//      };
+      if(local_voltage_runtime_ptr->voltage>0){
       mod_som_apf_ptr->producer_ptr->mod_som_apf_meta_data.voltage=
           local_voltage_runtime_ptr->voltage;
+      }else{
+          mod_som_io_print_f("$WARNING: Voltage is zero");
+      }
       //ALB reset voltage
       local_voltage_runtime_ptr->voltage=0;
 
