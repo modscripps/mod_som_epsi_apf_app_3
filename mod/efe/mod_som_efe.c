@@ -1859,9 +1859,9 @@ void mod_som_efe_define_uart_descriptor_f(mod_som_efe_ptr_t module_ptr)
 
   // Set LDMA trigger signal to "valid data in the UART receive buffer"
   temp_desc = (LDMA_Descriptor_t)LDMA_DESCRIPTOR_LINKREL_M2M_WORD(&rx_signal, \
-                                                                        &(LDMA->CH[0].REQSEL), \
-                                                                        1, \
-                                                                        1);
+                                                                  &(LDMA->CH[0].REQSEL), \
+                                                                  1, \
+                                                                  1);
   temp_desc.wri.structReq = 0; // Wait to do this until we get the WTIMER2 UF/OF signal
   mod_som_efe_add_uart_descriptor(&temp_desc);
 
@@ -1870,29 +1870,32 @@ void mod_som_efe_define_uart_descriptor_f(mod_som_efe_ptr_t module_ptr)
   for(i = 0; i < module_ptr->settings_ptr->number_of_channels; i++)
   {
     // Send channel number over UART to signal we are ready for data
-    descriptor_uart[1+3*i] = (LDMA_Descriptor_t)LDMA_DESCRIPTOR_LINKREL_WRITE((char)i, \
-                                                                             &MOD_SOM_MEZZANINE_COM_USART->TXDATA, \
-                                                                             1);
+    temp_desc = (LDMA_Descriptor_t)LDMA_DESCRIPTOR_LINKREL_WRITE((char)i, \
+                                                                 &MOD_SOM_MEZZANINE_COM_USART->TXDATA, \
+                                                                 1);
+    mod_som_efe_add_uart_descriptor(&temp_desc);
 
     // Give base address of element to write to
-    descriptor_uart[2+3*i] = (LDMA_Descriptor_t)LDMA_DESCRIPTOR_LINKREL_M2M_WORD(&elem_addr, \
-                                                                                 &(LDMA->CH[0].DST), \
-                                                                                 1, \
-                                                                                 1);
+    temp_desc = (LDMA_Descriptor_t)LDMA_DESCRIPTOR_LINKREL_M2M_WORD(&elem_addr, \
+                                                                    &(LDMA->CH[0].DST), \
+                                                                    1, \
+                                                                    1);
+    mod_som_efe_add_uart_descriptor(&temp_desc);
 
     // Take in 3 bytes from the UART
-    descriptor_uart[3+3*i] = (LDMA_Descriptor_t)LDMA_DESCRIPTOR_LINKREL_P2M_BYTE((uint32_t) (&MOD_SOM_MEZZANINE_COM_USART->RXDATA), \
-                                                                             3*i, \
-                                                                             3, \
-                                                                             1);
-    descriptor_uart[3+3*i].xfer.dstAddrMode = ldmaCtrlDstAddrModeRel;
-    descriptor_uart[3+3*i].xfer.doneIfs = 0;
+    temp_desc = (LDMA_Descriptor_t)LDMA_DESCRIPTOR_LINKREL_P2M_BYTE((uint32_t) (&MOD_SOM_MEZZANINE_COM_USART->RXDATA), \
+                                                                    3*i, \
+                                                                    3, \
+                                                                    1);
+    temp_desc.xfer.dstAddrMode = ldmaCtrlDstAddrModeRel;
+    temp_desc.xfer.doneIfs = 0;
+    mod_som_efe_add_uart_descriptor(&temp_desc);
   }
 
   // Set LDMA trigger signal back to "timer overflow"
-  descriptor_uart[1+3*i] = (LDMA_Descriptor_t)LDMA_DESCRIPTOR_SINGLE_WRITE(ldmaPeripheralSignal_WTIMER2_UFOF, \
-                                                                           &(LDMA->CH[0].REQSEL));
-
+  temp_desc = (LDMA_Descriptor_t)LDMA_DESCRIPTOR_SINGLE_WRITE(ldmaPeripheralSignal_WTIMER2_UFOF, \
+                                                              &(LDMA->CH[0].REQSEL));
+  mod_som_efe_add_uart_descriptor(&temp_desc);
 }
 #endif
 
