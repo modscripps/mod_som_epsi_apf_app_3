@@ -206,15 +206,19 @@ mod_som_status_t mod_som_settings_init_f(){
 	        (MOD_SOM_SETTINGS_DEFAULT_NAME_LENGTH % sizeof(uint32_t));
 
 
-	    memcpy(mod_som_settings_struct.firmware,\
-	           (uint8_t*) &userDataPage_ptr[user_page_offset],\
+/*
+    	    memcpy(mod_som_settings_struct.firmware,
+	           (uint8_t*) &userDataPage_ptr[user_page_offset],
 	           MOD_SOM_SETTINGS_DEFAULT_FIRMWARE_LENGTH);
+	           */
 	    user_page_offset+=MOD_SOM_SETTINGS_DEFAULT_FIRMWARE_LENGTH/sizeof(uint32_t)+ \
 	        (MOD_SOM_SETTINGS_DEFAULT_FIRMWARE_LENGTH % sizeof(uint32_t));
 
-      memcpy(mod_som_settings_struct.gitid,\
-             (uint8_t*) &userDataPage_ptr[user_page_offset],\
+	    /*
+      memcpy(mod_som_settings_struct.gitid,
+             (uint8_t*) &userDataPage_ptr[user_page_offset],
              MOD_SOM_SETTINGS_DEFAULT_NAME_LENGTH);
+	    */
       user_page_offset+=MOD_SOM_SETTINGS_DEFAULT_NAME_LENGTH/sizeof(uint32_t)+ \
           (MOD_SOM_SETTINGS_DEFAULT_NAME_LENGTH % sizeof(uint32_t));
 
