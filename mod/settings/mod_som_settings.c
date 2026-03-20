@@ -88,10 +88,18 @@ mod_som_status_t mod_som_settings_init_f(){
 	//ALB right now I am ALWAYS starting from the default settings
 	//mod_som_settings_struct.size=0xFFFFFFFF;
 
-  // 2026 02 26 San make sure gitid doesn't determine the erasure of data
-  // TODO we need a structure check on the settings data
-  // for now there is a Erase settings flag
 
+
+  //2026 03 20 fix GIT ID update and firmwar
+  sprintf(mod_som_settings_struct.firmware,"%s-%s",
+          MOD_SOM_SETTINGS_DEFAULT_FIRMWARE_NAME,__DATE__);
+
+  sprintf(mod_som_settings_struct.gitid,"%s",
+          MOD_SOM_SETTINGS_DEFAULT_FIRMWARE_GITID);
+
+  // 2026 02 26 San make sure gitid doesn't determine the erasure of data
+    // TODO we need a structure check on the settings data
+    // for now there is a Erase settings flag
   if(MOD_SOM_SETTINGS_NEW_SETTINGS_CMD){
 //	if(strcmp(mod_som_settings_struct.gitid,
 //	          MOD_SOM_SETTINGS_DEFAULT_FIRMWARE_GITID)!=0)
@@ -112,12 +120,6 @@ mod_som_status_t mod_som_settings_init_f(){
 //    strncpy(mod_som_settings_struct.firmware,
 //            MOD_SOM_SETTINGS_DEFAULT_FIRMWARE_NAME,
 //            MOD_SOM_SETTINGS_DEFAULT_FIRMWARE_LENGTH);
-
-    sprintf(mod_som_settings_struct.firmware,"%s-%s",
-            MOD_SOM_SETTINGS_DEFAULT_FIRMWARE_NAME,__DATE__);
-
-    sprintf(mod_som_settings_struct.gitid,"%s",
-            MOD_SOM_SETTINGS_DEFAULT_FIRMWARE_GITID);
 
     //    strncpy(mod_som_settings_struct.firmware,
 //            $Projname,
