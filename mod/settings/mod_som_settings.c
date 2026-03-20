@@ -718,16 +718,24 @@ void mod_som_settings_id_f(CPU_INT16U argc,CPU_CHAR *argv[]){
 	else{
 
 		//ALB switch statement easy to handle all user input cases.
-		switch (argc){
-		case 5:
-			strcpy(mod_som_settings_struct.rev,argv[1]);
-			strcpy(mod_som_settings_struct.sn,argv[2]);
-			strcpy(mod_som_settings_struct.firmware,argv[3]);
-      strcpy(mod_som_settings_struct.gitid,argv[4]);
-			break;
-		default:
-			printf("format: settings.som_id REV S/N firmwarename gitid\r\n");
-			break;
+	    switch (argc){
+	      case 3:
+	        strcpy(mod_som_settings_struct.rev,argv[1]);
+	        strcpy(mod_som_settings_struct.sn,argv[2]);
+	        sprintf(mod_som_settings_struct.firmware,"%s-%s",
+	                MOD_SOM_SETTINGS_DEFAULT_FIRMWARE_NAME,__DATE__);
+	        sprintf(mod_som_settings_struct.gitid,"%s",
+	                MOD_SOM_SETTINGS_DEFAULT_FIRMWARE_GITID);
+	        break;
+	      case 5:
+	        strcpy(mod_som_settings_struct.rev,argv[1]);
+	        strcpy(mod_som_settings_struct.sn,argv[2]);
+	        strcpy(mod_som_settings_struct.firmware,argv[3]);
+	        strcpy(mod_som_settings_struct.gitid,argv[4]);
+	        break;
+	      default:
+	        printf("format: settings.som_id REV S/N firmwarename gitid\r\n");
+	        break;
 		}
 	}
 }
