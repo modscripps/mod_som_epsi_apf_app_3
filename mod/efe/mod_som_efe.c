@@ -89,6 +89,7 @@ LDMA_Descriptor_t descriptor_link_config[MOD_SOM_EFE_LDMA_CONFIG_STEP];
 
 #if defined(MOD_SOM_EFE_UART_SPOOF)
 #define MAX_UART_DESC_CNT 5*MOD_SOM_EFE_MAX_CHANNEL + 6
+#define SPOOF_SAMPLE_INTERVAL_MS 6
 LDMA_Descriptor_t descriptor_uart[MAX_UART_DESC_CNT];
 LDMA_TransferCfg_t tfrcfg_uart= LDMA_TRANSFER_CFG_PERIPHERAL(ldmaPeripheralSignal_WTIMER2_UFOF);
 static const LDMA_PeripheralSignal_t rx_signal = ldmaPeripheralSignal_UART1_RXDATAV;
@@ -1341,8 +1342,11 @@ mod_som_status_t mod_som_efe_init_uart_f()
   TIMER_Init_TypeDef init_spoof_timer=TIMER_INIT_DEFAULT;
   init_spoof_timer.enable = false;
   init_spoof_timer.dmaClrAct = true;
-  TIMER_TopSet(spoof_timer, (CMU_ClockFreqGet(cmuClock_HFPER) * 3)/1000);
+  TIMER_TopSet(spoof_timer, (CMU_ClockFreqGet(cmuClock_HFPER) * SPOOF_SAMPLE_INTERVAL_MS)/1000);
   TIMER_Init(spoof_timer,&init_spoof_timer);
+
+  NVIC_EnableIRQ(WTIMER2_IRQn);
+  TIMER_IntEnable(spoof_timer, TIMER_IF_OF);
 
 //  TIMER_Enable(spoof_timer, true);
 
@@ -1862,7 +1866,7 @@ void mod_som_efe_define_uart_descriptor_f(mod_som_efe_ptr_t module_ptr)
                                                                   &(LDMA->CH[0].REQSEL), \
                                                                   1, \
                                                                   1);
-  temp_desc.wri.structReq = 0; // Wait to do this until we get the WTIMER2 UF/OF signal
+//  temp_desc.wri.structReq = 0; // Wait to do this until we get the WTIMER2 UF/OF signal
   mod_som_efe_add_uart_descriptor(&temp_desc);
 
 
@@ -2716,9 +2720,10 @@ void mod_som_efe_ldma_irq_handler_f( void )
 #if defined(MOD_SOM_EFE_UART_SPOOF)
 		LDMA->CHDONE &= ~(1 << mod_som_efe_ptr->ldma.ch);
 
-    LDMA_StartTransfer(mod_som_efe_ptr->ldma.ch,
-                (void*)&tfrcfg_uart,
-                (void*)&descriptor_uart);
+
+//    LDMA_StartTransfer(mod_som_efe_ptr->ldma.ch,
+//                (void*)&tfrcfg_uart,
+//                (void*)&descriptor_uart);
 #else
     // enable interrupt
     GPIO_IntClear(mod_som_efe_ptr->config_ptr->pin_interrupt_address);
@@ -2728,7 +2733,27 @@ void mod_som_efe_ldma_irq_handler_f( void )
 }
 
 
+#if defined(MOD_SOM_EFE_UART_SPOOF)
+void WTIMER2_IRQHandler()
+{
+  // Disable interrupts
+  TIMER_IntDisable(spoof_timer, TIMER_IF_OF);
+  TIMER_IntClear(spoof_timer, TIMER_IF_OF);
+
+  // Cancel LDMA transfer if it's not done yet
+  LDMA_StopTransfer(mod_som_efe_ptr->ldma.ch);
+
+  // Start new LDMA transfer
+  LDMA_StartTransfer(mod_som_efe_ptr->ldma.ch,
+              (void*)&tfrcfg_uart,
+              (void*)&descriptor_uart);
 
 
+  // Reset timer
 
+
+  // Enable interrupts
+  TIMER_IntEnable(spoof_timer, TIMER_IF_OF);
+}
+#endif
 
