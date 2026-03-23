@@ -1870,9 +1870,11 @@ void mod_som_efe_define_uart_descriptor_f(mod_som_efe_ptr_t module_ptr)
   for(i = 0; i < module_ptr->settings_ptr->number_of_channels; i++)
   {
     // Send channel number over UART to signal we are ready for data
-    temp_desc = (LDMA_Descriptor_t)LDMA_DESCRIPTOR_LINKREL_WRITE((char)i, \
+    temp_desc = (LDMA_Descriptor_t)LDMA_DESCRIPTOR_LINKREL_M2M_BYTE(&module_ptr->settings_ptr->sensors[i].name, \
                                                                  &MOD_SOM_MEZZANINE_COM_USART->TXDATA, \
+                                                                 2,
                                                                  1);
+    temp_desc.xfer.dstInc = ldmaCtrlDstIncNone;
     mod_som_efe_add_uart_descriptor(&temp_desc);
 
     // Give base address of element to write to
