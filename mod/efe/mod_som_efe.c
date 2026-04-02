@@ -90,15 +90,13 @@ LDMA_Descriptor_t descriptor_link_config[MOD_SOM_EFE_LDMA_CONFIG_STEP];
 #if defined(MOD_SOM_EFE_UART_SPOOF)
 #define MAX_UART_DESC_CNT 5*MOD_SOM_EFE_MAX_CHANNEL + 6
 #define SPOOF_SAMPLE_INTERVAL_MS 3
-LDMA_Descriptor_t descriptor_uart[MAX_UART_DESC_CNT];
-LDMA_TransferCfg_t tfrcfg_uart= LDMA_TRANSFER_CFG_PERIPHERAL(ldmaPeripheralSignal_UART1_RXDATAV);
-static const LDMA_PeripheralSignal_t rx_signal = ldmaPeripheralSignal_UART1_RXDATAV;
-static const LDMA_PeripheralSignal_t tx_signal = ldmaPeripheralSignal_UART1_RXDATAV;
-static uint32_t elem_addr;
-static uint16_t uart_desc_cnt = 0;
 TIMER_TypeDef* spoof_timer = WTIMER2;
 CMU_Clock_TypeDef spoof_clk = cmuClock_WTIMER2;
-static char spoof_char = 0xA5;
+USART_TypeDef* spoof_uart = MOD_SOM_MEZZANINE_COM_USART;
+LDMA_TransferCfg_t tfrcfg_uart= LDMA_TRANSFER_CFG_PERIPHERAL(ldmaPeripheralSignal_UART1_RXDATAV);
+LDMA_Descriptor_t descriptor_uart[MAX_UART_DESC_CNT];
+static uint32_t elem_addr;
+static uint16_t uart_desc_cnt = 0;
 #endif
 
 // Data consumer
@@ -1318,20 +1316,20 @@ mod_som_status_t mod_som_efe_init_uart_f()
   USART_InitAsync_TypeDef initusart = USART_INITASYNC_DEFAULT;
   initusart.enable = usartDisable;
   initusart.baudrate = 230400;
-  USART_Reset(MOD_SOM_MEZZANINE_COM_USART);
-  USART_InitAsync(MOD_SOM_MEZZANINE_COM_USART, &initusart);
+  USART_Reset(spoof_uart);
+  USART_InitAsync(spoof_uart, &initusart);
 
 
   // Route pins
-  MOD_SOM_MEZZANINE_COM_USART->ROUTELOC0 = \
+  spoof_uart->ROUTELOC0 = \
       (MOD_SOM_MEZZANINE_COM_RX_LOC << _USART_ROUTELOC0_RXLOC_SHIFT) | \
       (MOD_SOM_MEZZANINE_COM_TX_LOC << _USART_ROUTELOC0_TXLOC_SHIFT);
 
-  MOD_SOM_MEZZANINE_COM_USART->ROUTEPEN = USART_ROUTEPEN_RXPEN | USART_ROUTEPEN_TXPEN;
+  spoof_uart->ROUTEPEN = USART_ROUTEPEN_RXPEN | USART_ROUTEPEN_TXPEN;
 
 
   // Enable UART
-  USART_Enable(MOD_SOM_MEZZANINE_COM_USART, usartEnable);
+  USART_Enable(spoof_uart, usartEnable);
 
 
 
@@ -1863,7 +1861,7 @@ void mod_som_efe_define_uart_descriptor_f(mod_som_efe_ptr_t module_ptr)
 
   // Clear the UART's RX and TX buffers before beginning
   temp_desc = (LDMA_Descriptor_t)LDMA_DESCRIPTOR_LINKREL_WRITE(USART_CMD_CLEARRX | USART_CMD_CLEARTX, \
-                                                               &MOD_SOM_MEZZANINE_COM_USART->CMD, \
+                                                               &spoof_uart->CMD, \
                                                                1);
   mod_som_efe_add_uart_descriptor(&temp_desc);
 
@@ -1873,7 +1871,7 @@ void mod_som_efe_define_uart_descriptor_f(mod_som_efe_ptr_t module_ptr)
   {
     // Send channel number over UART to signal we are ready for data
     temp_desc = (LDMA_Descriptor_t)LDMA_DESCRIPTOR_LINKREL_M2M_BYTE(&module_ptr->settings_ptr->sensors[i].name, \
-                                                                 &MOD_SOM_MEZZANINE_COM_USART->TXDATA, \
+                                                                 &spoof_uart->TXDATA, \
                                                                  2,
                                                                  1);
     temp_desc.xfer.dstInc = ldmaCtrlDstIncNone;
@@ -1887,7 +1885,7 @@ void mod_som_efe_define_uart_descriptor_f(mod_som_efe_ptr_t module_ptr)
     mod_som_efe_add_uart_descriptor(&temp_desc);
 
     // Take in 3 bytes from the UART
-    temp_desc = (LDMA_Descriptor_t)LDMA_DESCRIPTOR_LINKREL_P2M_BYTE((uint32_t) (&MOD_SOM_MEZZANINE_COM_USART->RXDATA), \
+    temp_desc = (LDMA_Descriptor_t)LDMA_DESCRIPTOR_LINKREL_P2M_BYTE((uint32_t) (&spoof_uart->RXDATA), \
                                                                     3*i, \
                                                                     3, \
                                                                     1);
