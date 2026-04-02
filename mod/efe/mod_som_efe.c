@@ -89,9 +89,9 @@ LDMA_Descriptor_t descriptor_link_config[MOD_SOM_EFE_LDMA_CONFIG_STEP];
 
 #if defined(MOD_SOM_EFE_UART_SPOOF)
 #define MAX_UART_DESC_CNT 5*MOD_SOM_EFE_MAX_CHANNEL + 6
-#define SPOOF_SAMPLE_INTERVAL_MS 6
+#define SPOOF_SAMPLE_INTERVAL_MS 3
 LDMA_Descriptor_t descriptor_uart[MAX_UART_DESC_CNT];
-LDMA_TransferCfg_t tfrcfg_uart= LDMA_TRANSFER_CFG_PERIPHERAL(ldmaPeripheralSignal_WTIMER2_UFOF);
+LDMA_TransferCfg_t tfrcfg_uart= LDMA_TRANSFER_CFG_PERIPHERAL(ldmaPeripheralSignal_UART1_RXDATAV);
 static const LDMA_PeripheralSignal_t rx_signal = ldmaPeripheralSignal_UART1_RXDATAV;
 static const LDMA_PeripheralSignal_t tx_signal = ldmaPeripheralSignal_UART1_RXDATAV;
 static uint32_t elem_addr;
@@ -1861,12 +1861,10 @@ void mod_som_efe_define_uart_descriptor_f(mod_som_efe_ptr_t module_ptr)
 {
   LDMA_Descriptor_t temp_desc;
 
-  // Set LDMA trigger signal to "valid data in the UART receive buffer"
-  temp_desc = (LDMA_Descriptor_t)LDMA_DESCRIPTOR_LINKREL_M2M_WORD(&rx_signal, \
-                                                                  &(LDMA->CH[0].REQSEL), \
-                                                                  1, \
-                                                                  1);
-//  temp_desc.wri.structReq = 0; // Wait to do this until we get the WTIMER2 UF/OF signal
+  // Clear the UART's RX and TX buffers before beginning
+  temp_desc = (LDMA_Descriptor_t)LDMA_DESCRIPTOR_LINKREL_WRITE(USART_CMD_CLEARRX | USART_CMD_CLEARTX, \
+                                                               &MOD_SOM_MEZZANINE_COM_USART->CMD, \
+                                                               1);
   mod_som_efe_add_uart_descriptor(&temp_desc);
 
 
@@ -1897,11 +1895,6 @@ void mod_som_efe_define_uart_descriptor_f(mod_som_efe_ptr_t module_ptr)
     temp_desc.xfer.doneIfs = 0;
     mod_som_efe_add_uart_descriptor(&temp_desc);
   }
-
-  // Set LDMA trigger signal back to "timer overflow"
-  temp_desc = (LDMA_Descriptor_t)LDMA_DESCRIPTOR_SINGLE_WRITE(ldmaPeripheralSignal_WTIMER2_UFOF, \
-                                                              &(LDMA->CH[0].REQSEL));
-  mod_som_efe_add_uart_descriptor(&temp_desc);
 }
 #endif
 
