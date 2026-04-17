@@ -91,9 +91,25 @@ LDMA_Descriptor_t descriptor_link_config[MOD_SOM_EFE_LDMA_CONFIG_STEP];
 #define MAX_UART_DESC_CNT 5*MOD_SOM_EFE_MAX_CHANNEL + 6
 #define SPOOF_SAMPLE_INTERVAL_MS 3
 TIMER_TypeDef* spoof_timer = WTIMER2;
-CMU_Clock_TypeDef spoof_clk = cmuClock_WTIMER2;
-USART_TypeDef* spoof_uart = MOD_SOM_MEZZANINE_COM_USART;
-LDMA_TransferCfg_t tfrcfg_uart= LDMA_TRANSFER_CFG_PERIPHERAL(ldmaPeripheralSignal_UART1_RXDATAV);
+CMU_Clock_TypeDef spoof_timer_clk = cmuClock_WTIMER2;
+USART_TypeDef* spoof_uart = USART2;
+CMU_Clock_TypeDef spoof_uart_clk = cmuClock_USART2;
+#define SPOOF_UART_TX_PORT gpioPortF
+#define SPOOF_UART_TX_PIN  0
+#define SPOOF_UART_TX_LOC  5
+#define SPOOF_UART_RX_PORT gpioPortF
+#define SPOOF_UART_RX_PIN  1
+#define SPOOF_UART_RX_LOC  SPOOF_UART_TX_LOC
+LDMA_TransferCfg_t tfrcfg_uart= LDMA_TRANSFER_CFG_PERIPHERAL(ldmaPeripheralSignal_USART2_RXDATAV);
+//USART_TypeDef* spoof_uart = USART1;
+//CMU_Clock_TypeDef spoof_uart_clk = cmuClock_USART1;
+//#define SPOOF_UART_TX_PORT gpioPortC
+//#define SPOOF_UART_TX_PIN  1
+//#define SPOOF_UART_TX_LOC  4
+//#define SPOOF_UART_RX_PORT gpioPortC
+//#define SPOOF_UART_RX_PIN  2
+//#define SPOOF_UART_RX_LOC  SPOOF_UART_TX_LOC
+//LDMA_TransferCfg_t tfrcfg_uart= LDMA_TRANSFER_CFG_PERIPHERAL(ldmaPeripheralSignal_USART1_RXDATAV);
 LDMA_Descriptor_t descriptor_uart[MAX_UART_DESC_CNT];
 static uint32_t elem_addr;
 static uint16_t uart_desc_cnt = 0;
@@ -1299,17 +1315,17 @@ mod_som_status_t mod_som_efe_init_uart_f()
 
 
   // Set up RX/TX pins
-  GPIO_PinModeSet(MOD_SOM_MEZZANINE_COM_TX_PORT, \
-                  MOD_SOM_MEZZANINE_COM_TX_PIN, \
+  GPIO_PinModeSet(SPOOF_UART_TX_PORT, \
+                  SPOOF_UART_TX_PIN, \
                   gpioModePushPull, 1);    // U1_TX_M2 output high
 
-  GPIO_PinModeSet(MOD_SOM_MEZZANINE_COM_RX_PORT, \
-                  MOD_SOM_MEZZANINE_COM_RX_PIN, \
+  GPIO_PinModeSet(SPOOF_UART_RX_PORT, \
+                  SPOOF_UART_RX_PIN, \
                   gpioModeInputPull, 1);   // U1_RX_M2 input high
 
   // Enable clock to UART
   CMU_ClockEnable(cmuClock_HFPER, true);
-  CMU_ClockEnable(MOD_SOM_MEZZANINE_COM_CLK, true);
+  CMU_ClockEnable(spoof_uart_clk, true);
 
 
   // Configure UART
@@ -1322,8 +1338,8 @@ mod_som_status_t mod_som_efe_init_uart_f()
 
   // Route pins
   spoof_uart->ROUTELOC0 = \
-      (MOD_SOM_MEZZANINE_COM_RX_LOC << _USART_ROUTELOC0_RXLOC_SHIFT) | \
-      (MOD_SOM_MEZZANINE_COM_TX_LOC << _USART_ROUTELOC0_TXLOC_SHIFT);
+      (SPOOF_UART_RX_LOC << _USART_ROUTELOC0_RXLOC_SHIFT) | \
+      (SPOOF_UART_TX_LOC << _USART_ROUTELOC0_TXLOC_SHIFT);
 
   spoof_uart->ROUTEPEN = USART_ROUTEPEN_RXPEN | USART_ROUTEPEN_TXPEN;
 
@@ -1335,7 +1351,7 @@ mod_som_status_t mod_som_efe_init_uart_f()
 
   // 2026 02 06 LW: Set up WTIMER2 for delaying UART data requests
 
-  CMU_ClockEnable(spoof_clk, true);
+  CMU_ClockEnable(spoof_timer_clk, true);
 
   TIMER_Init_TypeDef init_spoof_timer=TIMER_INIT_DEFAULT;
   init_spoof_timer.enable = false;
@@ -1890,7 +1906,10 @@ void mod_som_efe_define_uart_descriptor_f(mod_som_efe_ptr_t module_ptr)
                                                                     3, \
                                                                     1);
     temp_desc.xfer.dstAddrMode = ldmaCtrlDstAddrModeRel;
-    temp_desc.xfer.doneIfs = 0;
+    if(i < module_ptr->settings_ptr->number_of_channels - 1)
+    {
+      temp_desc.xfer.doneIfs = 0;
+    }
     mod_som_efe_add_uart_descriptor(&temp_desc);
   }
 }
