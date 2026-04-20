@@ -93,7 +93,6 @@ LDMA_Descriptor_t descriptor_link_config[MOD_SOM_EFE_LDMA_CONFIG_STEP];
 #define SPOOF_SAMPLE_INTERVAL_US 1600
 TIMER_TypeDef* spoof_timer = WTIMER2;
 CMU_Clock_TypeDef spoof_timer_clk = cmuClock_WTIMER2;
-//#define SPOOF_UART_USE_DEBUG
 #if defined(SPOOF_UART_USE_DEBUG)
 USART_TypeDef* spoof_uart = USART2;
 CMU_Clock_TypeDef spoof_uart_clk = cmuClock_USART2;
@@ -105,25 +104,26 @@ CMU_Clock_TypeDef spoof_uart_clk = cmuClock_USART2;
 #define SPOOF_UART_RX_LOC  SPOOF_UART_TX_LOC
 LDMA_TransferCfg_t tfrcfg_uart= LDMA_TRANSFER_CFG_PERIPHERAL(ldmaPeripheralSignal_USART2_RXDATAV);
 #else
-USART_TypeDef* spoof_uart = UART1;
-CMU_Clock_TypeDef spoof_uart_clk = cmuClock_UART1;
-#define SPOOF_UART_TX_PORT gpioPortB
-#define SPOOF_UART_TX_PIN  9
-#define SPOOF_UART_TX_LOC  2
-#define SPOOF_UART_RX_PORT gpioPortB
-#define SPOOF_UART_RX_PIN  10
-#define SPOOF_UART_RX_LOC  SPOOF_UART_TX_LOC
-LDMA_TransferCfg_t tfrcfg_uart= LDMA_TRANSFER_CFG_PERIPHERAL(ldmaPeripheralSignal_UART1_RXDATAV);
-#endif
-//USART_TypeDef* spoof_uart = USART1;
-//CMU_Clock_TypeDef spoof_uart_clk = cmuClock_USART1;
-//#define SPOOF_UART_TX_PORT gpioPortC
-//#define SPOOF_UART_TX_PIN  1
+// 2026 04 20 LW: 232-level MEZZ comm is at UART1, using TTL-level USART1 on J9 for testing
+//USART_TypeDef* spoof_uart = UART1;
+//CMU_Clock_TypeDef spoof_uart_clk = cmuClock_UART1;
+//#define SPOOF_UART_TX_PORT gpioPortE
+//#define SPOOF_UART_TX_PIN  12
 //#define SPOOF_UART_TX_LOC  4
-//#define SPOOF_UART_RX_PORT gpioPortC
-//#define SPOOF_UART_RX_PIN  2
+//#define SPOOF_UART_RX_PORT gpioPortE
+//#define SPOOF_UART_RX_PIN  13
 //#define SPOOF_UART_RX_LOC  SPOOF_UART_TX_LOC
-//LDMA_TransferCfg_t tfrcfg_uart= LDMA_TRANSFER_CFG_PERIPHERAL(ldmaPeripheralSignal_USART1_RXDATAV);
+//LDMA_TransferCfg_t tfrcfg_uart= LDMA_TRANSFER_CFG_PERIPHERAL(ldmaPeripheralSignal_UART1_RXDATAV);
+USART_TypeDef* spoof_uart = USART1;
+CMU_Clock_TypeDef spoof_uart_clk = cmuClock_USART1;
+#define SPOOF_UART_TX_PORT gpioPortC
+#define SPOOF_UART_TX_PIN  1
+#define SPOOF_UART_TX_LOC  4
+#define SPOOF_UART_RX_PORT gpioPortC
+#define SPOOF_UART_RX_PIN  2
+#define SPOOF_UART_RX_LOC  SPOOF_UART_TX_LOC
+LDMA_TransferCfg_t tfrcfg_uart= LDMA_TRANSFER_CFG_PERIPHERAL(ldmaPeripheralSignal_USART1_RXDATAV);
+#endif
 LDMA_Descriptor_t descriptor_uart[MAX_UART_DESC_CNT];
 static uint32_t elem_addr;
 static uint16_t uart_desc_cnt = 0;
