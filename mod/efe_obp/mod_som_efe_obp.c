@@ -1324,6 +1324,8 @@ void mod_som_efe_obp_fill_segment_task_f(void  *p_arg){
 //                  mod_som_efe_obp_ptr->fill_segment_ptr->ctd_element_cnt=0;
 
                   mod_som_efe_obp_ptr->fill_segment_ptr->segment_cnt++;
+                  // 2026 04 17 LW: Debug print statement for debugging segment mishaps
+                  mod_som_io_print_f("segment_cnt: %u\r\n", mod_som_efe_obp_ptr->fill_segment_ptr->segment_cnt);
               }
 
 
@@ -1337,6 +1339,8 @@ void mod_som_efe_obp_fill_segment_task_f(void  *p_arg){
                              (uint64_t*) curr_data_ptr,
                              sizeof(uint64_t));
                   mod_som_efe_obp_ptr->fill_segment_ptr->half_segment_cnt++;
+                  // 2026 04 17 LW: Debug print statement for debugging segment mishaps
+                  mod_som_io_print_f("half_segment_cnt: %u\r\n", mod_som_efe_obp_ptr->fill_segment_ptr->half_segment_cnt);
 
                   if(local_sbe41_ptr->collect_data_flag){
                       //ALB sbe41_ptr->consumer_ptr has 2 slots for PTS.
@@ -1514,6 +1518,9 @@ void mod_som_efe_obp_cpt_spectra_task_f(void  *p_arg){
               ((mod_som_efe_obp_ptr->cpt_spectra_ptr->spectrum_cnt+1)%
                   MOD_SOM_EFE_OBP_N_HALF_SEGMENTS_PER_RECORD)
                   * half_seg_copy_size_floats;
+
+          // 2026 04 17 LW: Debug print statement for debugging segment mishaps
+          mod_som_io_print_f("spectrum_cnt: %u\r\n", mod_som_efe_obp_ptr->cpt_spectra_ptr->spectrum_cnt);
 
           // start with shear
           memcpy(&mod_som_efe_obp_ptr->fill_segment_ptr->segment_buffer_ptr[indx],
@@ -2178,6 +2185,10 @@ void mod_som_efe_obp_consumer_task_f(void  *p_arg){
 
                    //ALB cpy the segments in the cnsmr buffer.
                    payload_length=mod_som_efe_obp_copy_producer_segment_f();
+                   // 2026 04 17 LW: Debug print statement for debugging segment mishaps
+                   mod_som_io_print_f("segment copied (consumer segment_cnt): %u\r\n", mod_som_efe_obp_ptr->consumer_ptr->segment_cnt);
+                   mod_som_io_print_f(": %u\r\n", mod_som_efe_obp_ptr->consumer_ptr->segment_cnt);
+
                    //ALB increase counter.
                    mod_som_efe_obp_ptr->consumer_ptr->segment_cnt++;
 

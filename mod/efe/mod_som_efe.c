@@ -88,10 +88,13 @@ LDMA_Descriptor_t descriptor_link_config[MOD_SOM_EFE_LDMA_CONFIG_STEP];
 
 
 #if defined(MOD_SOM_EFE_UART_SPOOF)
+
 #define MAX_UART_DESC_CNT 5*MOD_SOM_EFE_MAX_CHANNEL + 6
-#define SPOOF_SAMPLE_INTERVAL_MS 3
+#define SPOOF_SAMPLE_INTERVAL_US 1600
 TIMER_TypeDef* spoof_timer = WTIMER2;
 CMU_Clock_TypeDef spoof_timer_clk = cmuClock_WTIMER2;
+//#define SPOOF_UART_USE_DEBUG
+#if defined(SPOOF_UART_USE_DEBUG)
 USART_TypeDef* spoof_uart = USART2;
 CMU_Clock_TypeDef spoof_uart_clk = cmuClock_USART2;
 #define SPOOF_UART_TX_PORT gpioPortF
@@ -101,6 +104,17 @@ CMU_Clock_TypeDef spoof_uart_clk = cmuClock_USART2;
 #define SPOOF_UART_RX_PIN  1
 #define SPOOF_UART_RX_LOC  SPOOF_UART_TX_LOC
 LDMA_TransferCfg_t tfrcfg_uart= LDMA_TRANSFER_CFG_PERIPHERAL(ldmaPeripheralSignal_USART2_RXDATAV);
+#else
+USART_TypeDef* spoof_uart = UART1;
+CMU_Clock_TypeDef spoof_uart_clk = cmuClock_UART1;
+#define SPOOF_UART_TX_PORT gpioPortB
+#define SPOOF_UART_TX_PIN  9
+#define SPOOF_UART_TX_LOC  2
+#define SPOOF_UART_RX_PORT gpioPortB
+#define SPOOF_UART_RX_PIN  10
+#define SPOOF_UART_RX_LOC  SPOOF_UART_TX_LOC
+LDMA_TransferCfg_t tfrcfg_uart= LDMA_TRANSFER_CFG_PERIPHERAL(ldmaPeripheralSignal_UART1_RXDATAV);
+#endif
 //USART_TypeDef* spoof_uart = USART1;
 //CMU_Clock_TypeDef spoof_uart_clk = cmuClock_USART1;
 //#define SPOOF_UART_TX_PORT gpioPortC
@@ -113,6 +127,7 @@ LDMA_TransferCfg_t tfrcfg_uart= LDMA_TRANSFER_CFG_PERIPHERAL(ldmaPeripheralSigna
 LDMA_Descriptor_t descriptor_uart[MAX_UART_DESC_CNT];
 static uint32_t elem_addr;
 static uint16_t uart_desc_cnt = 0;
+
 #endif
 
 // Data consumer
@@ -1356,7 +1371,8 @@ mod_som_status_t mod_som_efe_init_uart_f()
   TIMER_Init_TypeDef init_spoof_timer=TIMER_INIT_DEFAULT;
   init_spoof_timer.enable = false;
   init_spoof_timer.dmaClrAct = true;
-  TIMER_TopSet(spoof_timer, (CMU_ClockFreqGet(cmuClock_HFPER) * SPOOF_SAMPLE_INTERVAL_MS)/1000);
+  volatile uint32_t top = (CMU_ClockFreqGet(cmuClock_HFPER) / 1000000) * SPOOF_SAMPLE_INTERVAL_US;
+  TIMER_TopSet(spoof_timer, top);
   TIMER_Init(spoof_timer,&init_spoof_timer);
 
   NVIC_EnableIRQ(WTIMER2_IRQn);
