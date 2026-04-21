@@ -1168,7 +1168,10 @@ void mod_som_efe_obp_fill_segment_task_f(void  *p_arg){
   float    * local_efeobp_efe_shear_ptr;
   float    * local_efeobp_efe_accel_ptr;
 
-  uint8_t efe_element_length=MOD_SOM_EFE_TIMESTAMP_LENGTH+                     \
+  //2026 04 21 SAN fixed bug caught GPT
+  // where if the extra 8 bytes accounted by the timestamp
+  // would write beyond the bound of local_efe_sample
+  uint8_t efe_element_adc_samples_length_bytes=
                     mod_som_efe_obp_ptr->efe_settings_ptr->number_of_channels* \
                             AD7124_SAMPLE_LENGTH;
   uint8_t local_efe_sample[mod_som_efe_obp_ptr->efe_settings_ptr->number_of_channels* \
@@ -1287,7 +1290,7 @@ void mod_som_efe_obp_fill_segment_task_f(void  *p_arg){
               //ALB save each efe_sample inside the efe_block in a local_efe_sample;
               memcpy(local_efe_sample,
                      curr_data_ptr+MOD_SOM_EFE_TIMESTAMP_LENGTH,
-                     efe_element_length);
+                     efe_element_adc_samples_length_bytes);
               //ALB
               //local efe sample contains only the ADC samples.
               //convert the local efe sample from counts to volts
@@ -1476,7 +1479,7 @@ void mod_som_efe_obp_cpt_spectra_task_f(void  *p_arg){
               //ALB Get the CTD data and timestamps at the half segment (see fill_segment_task)
               mod_som_efe_obp_ptr->cpt_spectra_ptr->timestamp=
                   (uint64_t) *(mod_som_efe_obp_ptr->fill_segment_ptr->timestamp_segment_ptr+
-                      ((mod_som_efe_obp_ptr->fill_segment_ptr->half_segment_cnt-1)%
+                      ((mod_som_efe_obp_ptr->cpt_spectra_ptr->spectrum_cnt)%
                           MOD_SOM_EFE_OBP_N_HALF_SEGMENTS_PER_RECORD));
 
               mod_som_efe_obp_ptr->cpt_spectra_ptr->ctd_pressure=
@@ -1595,8 +1598,8 @@ void mod_som_efe_obp_cpt_spectra_task_f(void  *p_arg){
           mod_som_efe_obp_ptr->cpt_spectra_ptr->dof %=
           mod_som_efe_obp_ptr->settings_ptr->degrees_of_freedom;
 
-          segment_avail = mod_som_efe_obp_ptr->fill_segment_ptr->segment_cnt -
-              mod_som_efe_obp_ptr->cpt_spectra_ptr->spectrum_cnt; //elements available have been produced
+          segment_avail = mod_som_efe_obp_ptr->fill_segment_ptr->half_segment_cnt-1 -
+                        mod_som_efe_obp_ptr->cpt_spectra_ptr->spectrum_cnt; //elements available have been produced
 
           spectra_offset= (mod_som_efe_obp_ptr->cpt_spectra_ptr->spectrum_cnt %
                           MOD_SOM_EFE_OBP_CPT_SPECTRA_NB_SPECTRA_PER_RECORD)*
