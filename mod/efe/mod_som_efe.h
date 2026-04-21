@@ -85,7 +85,7 @@
 #define MOD_SOM_EFE_UART_SPOOF
 
 // 2026 04 20 LW: Switch for using debug header or MEZZ comm UART
-#define SPOOF_UART_USE_DEBUG
+//#define SPOOF_UART_USE_DEBUG
 
 
 //------------------------------------------------------------------------------
