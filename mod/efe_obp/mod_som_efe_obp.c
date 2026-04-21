@@ -1785,6 +1785,10 @@ void mod_som_efe_obp_cpt_dissrate_task_f(void  *p_arg){
                                                       local_epsi_fom_ptr       ,
                                                       local_chi_fom_ptr);
 
+               // 2026 04 21 LW DEBUG printing epsi & chi figure-of-merit to try to see segment bug in realtime
+               mod_som_io_print_f("EPSI_FOM: %.3f  CHI_FOM: %.3f\r\n", *local_epsi_fom_ptr, *local_chi_fom_ptr);
+
+
 
               //ALB increment the counters
               mod_som_efe_obp_ptr->sample_count++;

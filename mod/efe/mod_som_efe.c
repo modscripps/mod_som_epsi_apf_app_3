@@ -15,6 +15,7 @@
 #include "em_msc.h"
 #include "mod_som_cfg.h"
 #include "em_ldma.h"
+#include "math.h"
 
 #ifdef MOD_SOM_CALENDAR_EN
 	#include "mod_som_calendar.h"
@@ -86,13 +87,13 @@ LDMA_Descriptor_t descriptor_link_readconfig[MOD_SOM_EFE_LDMA_READ_CONFIG_STEP];
 LDMA_Descriptor_t descriptor_link_config[MOD_SOM_EFE_LDMA_CONFIG_STEP];
 
 
+#ifdef MOD_SOM_EFE_SIM_DATA
+#define MAX_DATA_SIM_DESC_CNT 5*MOD_SOM_EFE_MAX_CHANNEL + 6
+#define DATA_SIM_SAMPLE_INTERVAL_US 1600
+TIMER_TypeDef* data_sim_timer = WTIMER2;
+CMU_Clock_TypeDef data_sim_timer_clk = cmuClock_WTIMER2;
 
-#if defined(MOD_SOM_EFE_UART_SPOOF)
-
-#define MAX_UART_DESC_CNT 5*MOD_SOM_EFE_MAX_CHANNEL + 6
-#define SPOOF_SAMPLE_INTERVAL_US 1600
-TIMER_TypeDef* spoof_timer = WTIMER2;
-CMU_Clock_TypeDef spoof_timer_clk = cmuClock_WTIMER2;
+#ifdef MOD_SOM_EFE_UART_SPOOF
 #if defined(SPOOF_UART_USE_DEBUG)
 USART_TypeDef* spoof_uart = USART2;
 CMU_Clock_TypeDef spoof_uart_clk = cmuClock_USART2;
@@ -102,18 +103,8 @@ CMU_Clock_TypeDef spoof_uart_clk = cmuClock_USART2;
 #define SPOOF_UART_RX_PORT gpioPortF
 #define SPOOF_UART_RX_PIN  1
 #define SPOOF_UART_RX_LOC  SPOOF_UART_TX_LOC
-LDMA_TransferCfg_t tfrcfg_uart= LDMA_TRANSFER_CFG_PERIPHERAL(ldmaPeripheralSignal_USART2_RXDATAV);
-#else
-// 2026 04 20 LW: 232-level MEZZ comm is at UART1, using TTL-level USART1 on J9 for testing
-//USART_TypeDef* spoof_uart = UART1;
-//CMU_Clock_TypeDef spoof_uart_clk = cmuClock_UART1;
-//#define SPOOF_UART_TX_PORT gpioPortE
-//#define SPOOF_UART_TX_PIN  12
-//#define SPOOF_UART_TX_LOC  4
-//#define SPOOF_UART_RX_PORT gpioPortE
-//#define SPOOF_UART_RX_PIN  13
-//#define SPOOF_UART_RX_LOC  SPOOF_UART_TX_LOC
-//LDMA_TransferCfg_t tfrcfg_uart= LDMA_TRANSFER_CFG_PERIPHERAL(ldmaPeripheralSignal_UART1_RXDATAV);
+LDMA_TransferCfg_t tfrcfg_data_sim= LDMA_TRANSFER_CFG_PERIPHERAL(ldmaPeripheralSignal_USART2_RXDATAV);
+#else //#if defined(SPOOF_UART_USE_DEBUG)
 USART_TypeDef* spoof_uart = USART1;
 CMU_Clock_TypeDef spoof_uart_clk = cmuClock_USART1;
 #define SPOOF_UART_TX_PORT gpioPortC
@@ -122,12 +113,40 @@ CMU_Clock_TypeDef spoof_uart_clk = cmuClock_USART1;
 #define SPOOF_UART_RX_PORT gpioPortC
 #define SPOOF_UART_RX_PIN  2
 #define SPOOF_UART_RX_LOC  SPOOF_UART_TX_LOC
-LDMA_TransferCfg_t tfrcfg_uart= LDMA_TRANSFER_CFG_PERIPHERAL(ldmaPeripheralSignal_USART1_RXDATAV);
-#endif
-LDMA_Descriptor_t descriptor_uart[MAX_UART_DESC_CNT];
-static uint32_t elem_addr;
-static uint16_t uart_desc_cnt = 0;
+LDMA_TransferCfg_t tfrcfg_data_sim= LDMA_TRANSFER_CFG_PERIPHERAL(ldmaPeripheralSignal_USART1_RXDATAV);
+#endif //#if defined(SPOOF_UART_USE_DEBUG)
 
+//LDMA_TransferCfg_t tfrcfg_data_sim= LDMA_TRANSFER_CFG_PERIPHERAL(ldmaPeripheralSignal_USART1_RXDATAV);
+
+#else //#ifdef MOD_SOM_EFE_UART_SPOOF
+
+#define MOD_APF_EFE_SPOOF_SIMPLE_TRI_MAX 2.4
+#define MOD_APF_EFE_SPOOF_SIMPLE_TRI_MIN 0.1
+#define MOD_APF_EFE_SPOOF_SIMPLE_TRI_RAT 0.00005
+static char prev_c = 0xFF;
+//static const char ch_id[7][3] = {"t1", "t2", "s1", "s2", "a1", "a2", "a3"};
+static const float fls[] = {0.6, 0.7, -0.3, -0.4, -1.6, -1.7, -1.8};
+static volatile uint64_t cur_tk = 0;
+static volatile uint64_t cur_ns = 0;
+static uint32_t st_frq = 0;
+static const float pi = 3.14159265359;
+static float tri_float = MOD_APF_EFE_SPOOF_SIMPLE_TRI_MAX;
+static bool going_up = false;
+static uint8_t led_hit_cnt = 0;
+
+LDMA_TransferCfg_t tfrcfg_data_sim= LDMA_TRANSFER_CFG_MEMORY();
+
+uint32_t mod_apf_efe_spoof_float_to_counts(uint8_t ch, float fl);
+float mod_apf_efe_spoof_generate_sine_float(float freq, float dc, float amp);
+float mod_apf_efe_spoof_generate_simple_triangle_float();
+
+uint8_t mod_apf_efe_sim_data[7][3];
+
+#endif //#ifdef MOD_SOM_EFE_UART_SPOOF
+LDMA_Descriptor_t descriptor_data_sim[MAX_DATA_SIM_DESC_CNT];
+
+static uint32_t elem_addr;
+static uint16_t data_sim_desc_cnt = 0;
 #endif
 
 // Data consumer
@@ -408,13 +427,16 @@ mod_som_status_t mod_som_efe_init_f(){
 		return status;
 	}
   //2026 02 04 LW initialize EFE UART port
-#if defined(MOD_SOM_EFE_UART_SPOOF)
-  status |= mod_som_efe_init_uart_f(&(mod_som_efe_ptr->config_ptr->communication));
+#ifdef MOD_SOM_EFE_SIM_DATA
+//#ifdef MOD_SOM_EFE_UART_SPOOF
+  status |= mod_som_efe_sim_data_init_f(&(mod_som_efe_ptr->config_ptr->communication));
   if (status!=MOD_SOM_STATUS_OK){
       //ALB change the printf to a report status function.
       printf("%s not initialized\n",MOD_SOM_EFE_HEADER);
     return status;
   }
+//#else
+//#endif
 #endif
   //ALB initialize EFE timers
 	status |= mod_som_efe_init_mclock_f(mod_som_efe_ptr->config_ptr->mclock,mod_som_efe_ptr->config_ptr->sync);
@@ -1315,9 +1337,15 @@ return  mod_som_efe_ptr->config_ptr;
  * @brief
  *   Initialize UART1 for adc spoofing communication
  ******************************************************************************/
-#if defined(MOD_SOM_EFE_UART_SPOOF)
-mod_som_status_t mod_som_efe_init_uart_f()
+#ifdef MOD_SOM_EFE_SIM_DATA
+
+//for wtimer and uart
+mod_som_status_t mod_som_efe_sim_data_init_f()
 {
+  CMU_ClockEnable(cmuClock_HFPER, true);
+  ///*
+#ifdef MOD_SOM_EFE_UART_SPOOF
+
 
   // Enable 232 transceiver
   GPIO_PinModeSet(MOD_SOM_MEZZANINE_UART_EN_PORT, \
@@ -1339,7 +1367,7 @@ mod_som_status_t mod_som_efe_init_uart_f()
                   gpioModeInputPull, 1);   // U1_RX_M2 input high
 
   // Enable clock to UART
-  CMU_ClockEnable(cmuClock_HFPER, true);
+
   CMU_ClockEnable(spoof_uart_clk, true);
 
 
@@ -1361,22 +1389,31 @@ mod_som_status_t mod_som_efe_init_uart_f()
 
   // Enable UART
   USART_Enable(spoof_uart, usartEnable);
+#else
+  for(int i = 0; i<7; i++)
+    {
+      for(int j = 0; j<3; j++)
+        {
+          mod_apf_efe_sim_data[i][j] = 0;
+        }
+    }
 
-
+#endif
+  // */
 
   // 2026 02 06 LW: Set up WTIMER2 for delaying UART data requests
 
-  CMU_ClockEnable(spoof_timer_clk, true);
+  CMU_ClockEnable(data_sim_timer_clk, true);
 
   TIMER_Init_TypeDef init_spoof_timer=TIMER_INIT_DEFAULT;
   init_spoof_timer.enable = false;
   init_spoof_timer.dmaClrAct = true;
-  volatile uint32_t top = (CMU_ClockFreqGet(cmuClock_HFPER) / 1000000) * SPOOF_SAMPLE_INTERVAL_US;
-  TIMER_TopSet(spoof_timer, top);
-  TIMER_Init(spoof_timer,&init_spoof_timer);
+  volatile uint32_t top = (CMU_ClockFreqGet(cmuClock_HFPER) / 1000000) * DATA_SIM_SAMPLE_INTERVAL_US;
+  TIMER_TopSet(data_sim_timer, top);
+  TIMER_Init(data_sim_timer,&init_spoof_timer);
 
   NVIC_EnableIRQ(WTIMER2_IRQn);
-  TIMER_IntEnable(spoof_timer, TIMER_IF_OF);
+  TIMER_IntEnable(data_sim_timer, TIMER_IF_OF);
 
 //  TIMER_Enable(spoof_timer, true);
 
@@ -1539,8 +1576,8 @@ mod_som_status_t mod_som_efe_init_ldma_f(mod_som_efe_ptr_t module_ptr)
 	// ALB after the ADC send their interrupt signal
 	mod_som_efe_define_read_descriptor_f(module_ptr);
 
-#if defined(MOD_SOM_EFE_UART_SPOOF)
-	mod_som_efe_define_uart_descriptor_f(module_ptr);
+#ifdef MOD_SOM_EFE_SIM_DATA
+	mod_som_efe_define_data_sim_descriptor_f(module_ptr);
 #endif
 
 	return mod_som_efe_encode_status_f(MOD_SOM_STATUS_OK);
@@ -1703,8 +1740,8 @@ void mod_som_efe_start_mclock_f(mod_som_efe_ptr_t module_ptr)
 			module_ptr->config_ptr->pin_interrupt.pin,     \
 			module_ptr->config_ptr->pin_interrupt.pin, false, true, false);
 
-
-#if defined(MOD_SOM_EFE_UART_SPOOF)
+#ifdef MOD_SOM_EFE_SIM_DATA
+#ifdef MOD_SOM_EFE_UART_SPOOF
 
   // 2026 02 06 LW: Bring TEL_EN high here so UART1's 232 xcvr is ready to transmit (avoids auto-shutdown)
   GPIO_PinModeSet(MOD_SOM_MEZZANINE_UART_EN_PORT, \
@@ -1712,9 +1749,9 @@ void mod_som_efe_start_mclock_f(mod_som_efe_ptr_t module_ptr)
                   gpioModePushPull, 1);    // TEL_EN high
 
   sl_sleeptimer_delay_millisecond(1);
+#endif
 
-
-  TIMER_Enable(spoof_timer, true);
+  TIMER_Enable(data_sim_timer, true);
 
   // 2026 03 09 LW: Enable LDMA debugging for the EFE LDMA channel
   LDMA->DBGHALT |= mod_som_efe_ptr->ldma.ch;
@@ -1723,8 +1760,8 @@ void mod_som_efe_start_mclock_f(mod_som_efe_ptr_t module_ptr)
               + MOD_SOM_EFE_TIMESTAMP_LENGTH;
 
   LDMA_StartTransfer(mod_som_efe_ptr->ldma.ch,
-              (void*)&tfrcfg_uart,
-              (void*)&descriptor_uart);
+              (void*)&tfrcfg_data_sim ,
+              (void*)&descriptor_data_sim);
 
 
 
@@ -1864,30 +1901,32 @@ void mod_som_efe_reset_adc_f(mod_som_efe_ptr_t module_ptr)
 }
 
 
-
-#if defined(MOD_SOM_EFE_UART_SPOOF)
-void mod_som_efe_add_uart_descriptor(LDMA_Descriptor_t *desc)
+#ifdef MOD_SOM_EFE_SIM_DATA
+//#ifdef MOD_SOM_EFE_UART_SPOOF
+void mod_som_efe_add_data_sim_descriptor(LDMA_Descriptor_t *desc)
 {
-  if(uart_desc_cnt >= MAX_UART_DESC_CNT)
+  if(data_sim_desc_cnt >= MAX_DATA_SIM_DESC_CNT)
   {
-    printf("EFE UART SPOOFING LDMA DESCRIPTOR ARRAY OVERFLOW! Halting for debug.");
+    printf("EFE DATA SIM LDMA DESCRIPTOR ARRAY OVERFLOW! Halting for debug.");
     EFM_ASSERT(false);
   }
 
-  memcpy(&descriptor_uart[uart_desc_cnt], desc, sizeof(LDMA_Descriptor_t));
+  memcpy(&descriptor_data_sim[data_sim_desc_cnt], desc, sizeof(LDMA_Descriptor_t));
 
-  uart_desc_cnt++;
+  data_sim_desc_cnt++;
 }
-
+//#else
 
 #endif
+
 
 /***************************************************************************//**
  * @brief
  *   // LDMA A/D spoofing UART transfer descriptor list generator
  ******************************************************************************/
-#if defined(MOD_SOM_EFE_UART_SPOOF)
-void mod_som_efe_define_uart_descriptor_f(mod_som_efe_ptr_t module_ptr)
+#ifdef MOD_SOM_EFE_SIM_DATA
+#ifdef MOD_SOM_EFE_UART_SPOOF
+void mod_som_efe_define_data_sim_descriptor_f(mod_som_efe_ptr_t module_ptr)
 {
   LDMA_Descriptor_t temp_desc;
 
@@ -1895,7 +1934,7 @@ void mod_som_efe_define_uart_descriptor_f(mod_som_efe_ptr_t module_ptr)
   temp_desc = (LDMA_Descriptor_t)LDMA_DESCRIPTOR_LINKREL_WRITE(USART_CMD_CLEARRX | USART_CMD_CLEARTX, \
                                                                &spoof_uart->CMD, \
                                                                1);
-  mod_som_efe_add_uart_descriptor(&temp_desc);
+  mod_som_efe_add_data_sim_descriptor(&temp_desc);
 
 
   uint8_t i;
@@ -1907,14 +1946,14 @@ void mod_som_efe_define_uart_descriptor_f(mod_som_efe_ptr_t module_ptr)
                                                                  2,
                                                                  1);
     temp_desc.xfer.dstInc = ldmaCtrlDstIncNone;
-    mod_som_efe_add_uart_descriptor(&temp_desc);
+    mod_som_efe_add_data_sim_descriptor(&temp_desc);
 
     // Give base address of element to write to
     temp_desc = (LDMA_Descriptor_t)LDMA_DESCRIPTOR_LINKREL_M2M_WORD(&elem_addr, \
                                                                     &(LDMA->CH[0].DST), \
                                                                     1, \
                                                                     1);
-    mod_som_efe_add_uart_descriptor(&temp_desc);
+    mod_som_efe_add_data_sim_descriptor(&temp_desc);
 
     // Take in 3 bytes from the UART
     temp_desc = (LDMA_Descriptor_t)LDMA_DESCRIPTOR_LINKREL_P2M_BYTE((uint32_t) (&spoof_uart->RXDATA), \
@@ -1926,9 +1965,38 @@ void mod_som_efe_define_uart_descriptor_f(mod_som_efe_ptr_t module_ptr)
     {
       temp_desc.xfer.doneIfs = 0;
     }
-    mod_som_efe_add_uart_descriptor(&temp_desc);
+    mod_som_efe_add_data_sim_descriptor(&temp_desc);
   }
 }
+#else
+void mod_som_efe_define_data_sim_descriptor_f(mod_som_efe_ptr_t module_ptr)
+{
+  LDMA_Descriptor_t temp_desc;
+
+  uint8_t i;
+  for(i = 0; i < module_ptr->settings_ptr->number_of_channels; i++)
+  {
+    // Give base address of element to write to
+    temp_desc = (LDMA_Descriptor_t)LDMA_DESCRIPTOR_LINKREL_M2M_WORD(&elem_addr, \
+                                                                    &(LDMA->CH[0].DST), \
+                                                                    1, \
+                                                                    1);
+    mod_som_efe_add_data_sim_descriptor(&temp_desc);
+
+    // Give base address of element to write to
+    temp_desc = (LDMA_Descriptor_t)LDMA_DESCRIPTOR_LINKREL_M2M_BYTE(&(mod_apf_efe_sim_data[i][0]), \
+                                                                    3*i, \
+                                                                    3, \
+                                                                    1);
+    temp_desc.xfer.dstAddrMode = ldmaCtrlDstAddrModeRel;
+    if(i >= module_ptr->settings_ptr->number_of_channels - 1)
+    {
+      temp_desc.xfer.doneIfs = 1;
+    }
+    mod_som_efe_add_data_sim_descriptor(&temp_desc);
+  }
+}
+#endif
 #endif
 
 /***************************************************************************//**
@@ -2666,7 +2734,8 @@ void mod_som_efe_ldma_irq_handler_f( void )
 	if (mod_som_efe_ptr->sampling_flag==1)
 	{
 
-#if defined(MOD_SOM_EFE_UART_SPOOF)
+#ifdef MOD_SOM_EFE_SIM_DATA
+//#ifdef MOD_SOM_EFE_UART_SPOOF
 
 	    uint64_t tick;
 	    uint64_t * local_element;
@@ -2696,11 +2765,8 @@ void mod_som_efe_ldma_irq_handler_f( void )
 		    mod_som_efe_ptr->config_ptr->element_per_buffer;
 
 
-#if defined(MOD_SOM_EFE_UART_SPOOF)
-
-//		descriptor_uart[2].xfer.dstAddr = \
-//		    mod_som_efe_ptr->config_ptr->element_map[mod_som_efe_ptr->rec_buff->producer_indx] \
-//		    + MOD_SOM_EFE_TIMESTAMP_LENGTH;
+#ifdef MOD_SOM_EFE_SIM_DATA
+		//#ifdef MOD_SOM_EFE_UART_SPOOF
 	  elem_addr = (mod_som_efe_ptr->config_ptr->element_map[mod_som_efe_ptr->rec_buff->producer_indx]) \
 	              + MOD_SOM_EFE_TIMESTAMP_LENGTH;
 
@@ -2743,13 +2809,9 @@ void mod_som_efe_ldma_irq_handler_f( void )
 		}
 
 
-#if defined(MOD_SOM_EFE_UART_SPOOF)
+#ifdef MOD_SOM_EFE_SIM_DATA
+		//#ifdef MOD_SOM_EFE_UART_SPOOF
 		LDMA->CHDONE &= ~(1 << mod_som_efe_ptr->ldma.ch);
-
-
-//    LDMA_StartTransfer(mod_som_efe_ptr->ldma.ch,
-//                (void*)&tfrcfg_uart,
-//                (void*)&descriptor_uart);
 #else
     // enable interrupt
     GPIO_IntClear(mod_som_efe_ptr->config_ptr->pin_interrupt_address);
@@ -2759,27 +2821,120 @@ void mod_som_efe_ldma_irq_handler_f( void )
 }
 
 
-#if defined(MOD_SOM_EFE_UART_SPOOF)
+#ifdef MOD_SOM_EFE_SIM_DATA
 void WTIMER2_IRQHandler()
 {
   // Disable interrupts
-  TIMER_IntDisable(spoof_timer, TIMER_IF_OF);
-  TIMER_IntClear(spoof_timer, TIMER_IF_OF);
+  TIMER_IntDisable(data_sim_timer, TIMER_IF_OF);
+  TIMER_IntClear(data_sim_timer, TIMER_IF_OF);
+
+#ifndef MOD_SOM_EFE_UART_SPOOF
+  float sin_fl = mod_apf_efe_spoof_generate_simple_triangle_float();
+
+  uint32_t ct = 0;
+  uint8_t *ct_bytes = (uint8_t*)&ct;
+  for(int i = 0; i<7; i++)
+    {
+      ct = __REV(mod_apf_efe_spoof_float_to_counts(i, sin_fl));
+      for(int j = 0; j<3; j++)
+        {
+          mod_apf_efe_sim_data[i][j] = ct_bytes[j + 1];;
+        }
+    }
+#endif
 
   // Cancel LDMA transfer if it's not done yet
   LDMA_StopTransfer(mod_som_efe_ptr->ldma.ch);
 
   // Start new LDMA transfer
   LDMA_StartTransfer(mod_som_efe_ptr->ldma.ch,
-              (void*)&tfrcfg_uart,
-              (void*)&descriptor_uart);
+              (void*)&tfrcfg_data_sim ,
+              (void*)&descriptor_data_sim);
 
 
   // Reset timer
 
 
   // Enable interrupts
-  TIMER_IntEnable(spoof_timer, TIMER_IF_OF);
+  TIMER_IntEnable(data_sim_timer, TIMER_IF_OF);
 }
+#ifndef MOD_SOM_EFE_UART_SPOOF
+uint32_t mod_apf_efe_spoof_float_to_counts(uint8_t ch, float fl)
+{
+  uint32_t ct = 0xFFFFFFFF;
+
+  switch(ch)
+  {
+    // T1
+    case 3:
+    case 0:
+    ct = (fl / 2.5) * (1 << 24);
+    break;
+
+    // S1
+    case 4:
+    case 1:
+    ct = ((fl / 2.5) + 1.0) * (1 << 23);
+    break;
+
+    // A3
+    case 5:
+    case 6:
+    case 2:
+    ct = (((fl * 0.4) + 0.9) / 2.5) * (1 << 24);
+    break;
+  }
+
+
+  return ct;
+}
+
+float mod_apf_efe_spoof_generate_sine_float(float freq, float dc, float amp)
+{
+  float fl = 0.0;
+
+  cur_tk = sl_sleeptimer_get_tick_count64();
+  volatile float temp = ((float)cur_tk * 2 * pi) / (float)st_frq;
+
+  fl = (amp * sin(freq * temp)) + dc;
+
+
+
+  return fl;
+}
+
+float mod_apf_efe_spoof_generate_triangle_float(float freq, float dc, float amp)
+{
+  float fl = 0.0;
+
+  cur_tk = sl_sleeptimer_get_tick_count64();
+
+  volatile float temp = ((float)cur_tk) / (float)st_frq;
+
+
+
+  return fl;
+}
+
+float mod_apf_efe_spoof_generate_simple_triangle_float()
+{
+  float fl = tri_float;
+
+  tri_float = tri_float + (MOD_APF_EFE_SPOOF_SIMPLE_TRI_RAT * (float)(going_up ? 1 : -1));
+
+  if(tri_float >= MOD_APF_EFE_SPOOF_SIMPLE_TRI_MAX)
+  {
+    tri_float = MOD_APF_EFE_SPOOF_SIMPLE_TRI_MAX;
+    going_up = false;
+  }
+  else if(tri_float <= MOD_APF_EFE_SPOOF_SIMPLE_TRI_MIN)
+  {
+    tri_float = MOD_APF_EFE_SPOOF_SIMPLE_TRI_MIN;
+    going_up = true;
+  }
+
+  return fl;
+}
+#endif
 #endif
 

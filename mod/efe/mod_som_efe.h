@@ -82,7 +82,8 @@
 
 
 // 2026 02 13 LW: Switch for enabling/disabling spoofing EFE over UART
-#define MOD_SOM_EFE_UART_SPOOF
+#define MOD_SOM_EFE_SIM_DATA
+//#define MOD_SOM_EFE_UART_SPOOF
 
 // 2026 04 20 LW: Switch for using debug header or MEZZ comm UART
 //#define SPOOF_UART_USE_DEBUG
@@ -434,8 +435,8 @@ mod_som_status_t mod_som_efe_init_mclock_f(mod_som_timer_handle_ptr_t config_mcl
  *
  * @param
  ******************************************************************************/
-#if defined(MOD_SOM_EFE_UART_SPOOF)
-mod_som_status_t mod_som_efe_init_uart_f();
+#ifdef MOD_SOM_EFE_SIM_DATA
+mod_som_status_t mod_som_efe_sim_data_init_f();
 #endif
 
 /*******************************************************************************
@@ -503,8 +504,11 @@ void mod_som_efe_read_adc_f();
  * @param
  *
  ******************************************************************************/
-#if defined(MOD_SOM_EFE_UART_SPOOF)
-void mod_som_efe_define_uart_descriptor_f(mod_som_efe_ptr_t module_ptr);
+#ifdef MOD_SOM_EFE_SIM_DATA
+//#ifdef MOD_SOM_EFE_UART_SPOOF
+void mod_som_efe_define_data_sim_descriptor_f(mod_som_efe_ptr_t module_ptr);
+//#else
+//#endif
 #endif
 /*******************************************************************************
  * @brief
