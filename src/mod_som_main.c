@@ -18,7 +18,7 @@
 
 /*MAG Please identify and tag with a comment the position in the code for the "producers" and "consumers"
  *MAG for all the sources i.e. EFE LDMA channel done isr,
- *MAG SBE49 USART receive isr, SDIO write,  USART stream  etc.*/
+ *MAG SBE41 USART receive isr, SDIO write,  USART stream  etc.*/
 
 //TOTO
 //------------------------------------------------------------------------------
@@ -59,12 +59,7 @@
 #if defined(MOD_SOM_EFE_OBP_EN)
 #include "mod_som_efe_obp.h"
 #endif
-//ALB SBE49 module
-#if defined(MOD_SOM_SBE49_EN)
-// ALB I had to make a copy of  system_efm32gg11b.h in external_copied folder
-// ALB and comment void GPIO_ODD_IRQHandler
-#include "mod_som_sbe49.h"
-#endif
+//ALB SBE41 module
 #if defined(MOD_SOM_SBE41_EN)
 // ALB I had to make a copy of  system_efm32gg11b.h in external_copied folder
 // ALB and comment void GPIO_ODD_IRQHandler
@@ -76,23 +71,11 @@
 #if defined(MOD_SOM_SDIO_EN)
 #include "mod_som_sdio.h"
 #endif
+
 #if defined(MOD_SOM_APF_EN)
 #include "mod_som_apf.h"
 #endif
 
-
-#if defined(MOD_SOM_ACTUATOR_EN)
-#include "mod_som_actuator.h"
-#endif
-#if defined(MOD_SOM_ALTIMETER_EN)
-#include "mod_som_altimeter.h"
-#endif
-#if defined(MOD_SOM_VEC_NAV_EN)
-#include "mod_som_vec_nav.h"
-#endif
-#if defined(MOD_SOM_AGGREGATOR_EN)
-#include "mod_som_aggregator.h"
-#endif
 #if defined(MOD_SOM_VOLTAGE_EN)
 #include "mod_som_voltage.h"
 #endif
@@ -139,9 +122,6 @@ void mod_som_modules_init_f()
 #if defined(MOD_SOM_SDIO_EN)
     mod_som_sdio_init_f();
 #endif
-#if defined(MOD_SOM_SBE49_EN)
-    mod_som_sbe49_init_f();
-#endif
 #if defined(MOD_SOM_SBE41_EN)
     mod_som_sbe41_init_f();
 #endif
@@ -153,18 +133,6 @@ void mod_som_modules_init_f()
 #endif
 #if defined(MOD_SOM_APF_EN)
     mod_som_apf_init_f();
-#endif
-#if defined(MOD_SOM_ACTUATOR_EN)
-    mod_som_actuator_init_f();
-#endif
-#if defined(MOD_SOM_ALTIMETER_EN)
-    mod_som_altimeter_init_f();
-#endif
-#if defined(MOD_SOM_VEC_NAV_EN)
-    mod_som_vecnav_init_f();
-#endif
-#if defined(MOD_SOM_AGGREGATOR_EN)
-    mod_som_aggregator_init_f();
 #endif
 #if defined(MOD_SOM_SETTINGS_EN)
     mod_som_settings_save_settings_f();

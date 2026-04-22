@@ -86,7 +86,7 @@ typedef struct{
 
 /*******************************************************************************
  * @brief
- *   Run-time structure for MOD SOM ALTIMETER
+ *   Run-time structure for MOD SOM VOLTAGE
  *   the altimeter runs a timer in a task.
  *   the repetition time
  *

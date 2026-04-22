@@ -141,9 +141,6 @@ mod_som_status_t mod_som_settings_init_f(){
 #if defined(MOD_SOM_EFE_EN)
 		mod_som_settings_struct.mod_som_efe_settings.initialize_flag=false;
 #endif
-#if defined(MOD_SOM_SBE49_EN)
-		mod_som_settings_struct.mod_som_sbe49_settings.initialize_flag=false;
-#endif
 #if defined(MOD_SOM_SBE41_EN)
     mod_som_settings_struct.mod_som_sbe41_settings.initialize_flag=false;
 #endif
@@ -160,15 +157,6 @@ mod_som_status_t mod_som_settings_init_f(){
 
 #if defined(MOD_SOM_VOLTAGE_EN)
     mod_som_settings_struct.mod_som_voltage_settings.initialize_flag=false;
-#endif
-#if defined(MOD_SOM_ACTUATOR_EN)
-    mod_som_settings_struct.mod_som_actuator_settings.initialize_flag=false;
-#endif
-#if defined(MOD_SOM_ALTIMETER_EN)
-    mod_som_settings_struct.mod_som_altimeter_settings.initialize_flag=false;
-#endif
-#if defined(MOD_SOM_VEC_NAV_EN)
-    mod_som_settings_struct.mod_som_vec_nav_settings.initialize_flag=false;
 #endif
 
 
@@ -259,19 +247,6 @@ mod_som_status_t mod_som_settings_init_f(){
 	    user_page_offset+=mod_som_settings_struct.mod_som_efe_settings.size/sizeof(uint32_t)+ \
 	        (mod_som_settings_struct.mod_som_efe_settings.size % sizeof(uint32_t))-1; //ALB -1 because is the word length in uint32_t
 #endif
-#if defined(MOD_SOM_SBE49_EN)
-	    memcpy(&mod_som_settings_struct.mod_som_sbe49_settings.size,\
-	           (uint32_t*) &userDataPage_ptr[user_page_offset],\
-	           sizeof(uint32_t));
-	    user_page_offset++;
-
-	    memcpy((uint8_t *) &mod_som_settings_struct.mod_som_sbe49_settings.data_header_text,\
-	           (uint8_t*) &userDataPage_ptr[user_page_offset],\
-	           mod_som_settings_struct.mod_som_sbe49_settings.size-4);
-
-	    user_page_offset+=mod_som_settings_struct.mod_som_sbe49_settings.size/sizeof(uint32_t)+ \
-	        (mod_som_settings_struct.mod_som_sbe49_settings.size % sizeof(uint32_t))-1;
-#endif
 #if defined(MOD_SOM_SBE41_EN)
 
 	    memcpy(&mod_som_settings_struct.mod_som_sbe41_settings.size,\
@@ -349,48 +324,6 @@ mod_som_status_t mod_som_settings_init_f(){
 	        (mod_som_settings_struct.mod_som_voltage_settings.size % sizeof(uint32_t))-1;
 #endif
 
-#if defined(MOD_SOM_ACTUATOR_EN)
-
-	    memcpy(&mod_som_settings_struct.mod_som_actuator_settings.size,\
-	           (uint32_t*) &userDataPage_ptr[user_page_offset],\
-	           sizeof(uint32_t));
-	    user_page_offset++;
-
-	    memcpy((uint8_t *) &mod_som_settings_struct.mod_som_actuator_settings.header,\
-	           (uint8_t*) &userDataPage_ptr[user_page_offset],\
-	           mod_som_settings_struct.mod_som_actuator_settings.size-4);
-
-	    user_page_offset+=mod_som_settings_struct.mod_som_actuator_settings.size/sizeof(uint32_t)+ \
-	        (mod_som_settings_struct.mod_som_actuator_settings.size % sizeof(uint32_t))-1;
-
-#endif
-#if defined(MOD_SOM_ALTIMETER_EN)
-	    memcpy(&mod_som_settings_struct.mod_som_altimeter_settings.size,\
-	           (uint32_t*) &userDataPage_ptr[user_page_offset],\
-	           sizeof(uint32_t));
-	    user_page_offset++;
-
-	    memcpy((uint8_t *) &mod_som_settings_struct.mod_som_altimeter_settings.header,\
-	           (uint8_t*) &userDataPage_ptr[user_page_offset],\
-	           mod_som_settings_struct.mod_som_altimeter_settings.size-4);
-
-	    user_page_offset+=mod_som_settings_struct.mod_som_altimeter_settings.size/sizeof(uint32_t)+ \
-	        (mod_som_settings_struct.mod_som_altimeter_settings.size % sizeof(uint32_t))-1;
-#endif
-#if defined(MOD_SOM_VEC_NAV_EN)
-      memcpy(&mod_som_settings_struct.mod_som_vec_nav_settings.size,\
-             (uint32_t*) &userDataPage_ptr[user_page_offset],\
-             sizeof(uint32_t));
-      user_page_offset++;
-
-      memcpy((uint8_t *) &mod_som_settings_struct.mod_som_vec_nav_settings.data_header_text,\
-             (uint8_t*) &userDataPage_ptr[user_page_offset],\
-             mod_som_settings_struct.mod_som_vec_nav_settings.size-4);
-
-      user_page_offset+=mod_som_settings_struct.mod_som_vec_nav_settings.size/sizeof(uint32_t)+ \
-          (mod_som_settings_struct.mod_som_vec_nav_settings.size % sizeof(uint32_t))-1;
-#endif
-
 
 
 //ALB We read the UserData page, parse it and use the data to initialize the modules.
@@ -451,9 +384,6 @@ mod_som_status_t mod_som_settings_save_settings_f(){
 #if defined(MOD_SOM_SDIO_EN)
 		mod_som_settings_struct.mod_som_sdio_settings=mod_som_sdio_get_settings_f();
 #endif
-#if defined(MOD_SOM_SBE49_EN)
-		mod_som_settings_struct.mod_som_sbe49_settings=mod_som_sbe49_get_settings_f();
-#endif
 #if defined(MOD_SOM_SBE41_EN)
 		mod_som_settings_struct.mod_som_sbe41_settings=mod_som_sbe41_get_settings_f();
 #endif
@@ -465,15 +395,6 @@ mod_som_status_t mod_som_settings_save_settings_f(){
 #endif
 #if defined(MOD_SOM_VOLTAGE_EN)
     mod_som_settings_struct.mod_som_voltage_settings=mod_som_voltage_get_settings_f();
-#endif
-#if defined(MOD_SOM_ACTUATOR_EN)
-    mod_som_settings_struct.mod_som_actuator_settings=mod_som_actuator_get_settings_f();
-#endif
-#if defined(MOD_SOM_ALTIMETER_EN)
-    mod_som_settings_struct.mod_som_altimeter_settings=mod_som_altimeter_get_settings_f();
-#endif
-#if defined(MOD_SOM_VEC_NAV_EN)
-    mod_som_settings_struct.mod_som_vec_nav_settings=mod_som_vecnav_get_settings_f();
 #endif
 
 		mod_som_settings_struct.initialized_flag=true;

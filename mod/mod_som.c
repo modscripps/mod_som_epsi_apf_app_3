@@ -40,15 +40,10 @@
 #ifdef  MOD_SOM_EFE_EN
 #include "mod_som_efe.h"
 #endif
-#ifdef  MOD_SOM_SBE49_EN
-#include "mod_som_sbe49_priv.h"
-#endif
 #ifdef  MOD_SOM_SBE41_EN
 #include "mod_som_sbe41_priv.h"
 #endif
-#ifdef  MOD_SOM_VEC_NAV_EN
-#include "mod_som_vec_nav_priv.h"
-#endif
+
 
 
 #include <string.h>
@@ -1641,9 +1636,6 @@ void LDMA_IRQHandler(void){
   }
   if(pending & ch2_bit_position){
       LDMA_IntClear(ch2_bit_position);
-#ifdef MOD_SOM_VECNAV_EN
-      mod_som_vecnav_ldma_irq_handler_f();
-#endif
   }
   if(pending & ch3_bit_position){
       LDMA_IntClear(ch3_bit_position);

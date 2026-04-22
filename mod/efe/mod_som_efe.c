@@ -23,9 +23,6 @@
 #ifdef MOD_SOM_SETTINGS_EN
 	#include <mod_som_settings.h>
 #endif
-#ifdef MOD_SOM_AGGREGATOR_EN
-  #include <mod_som_aggregator.h>
-#endif
 
 
 
