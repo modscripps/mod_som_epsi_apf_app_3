@@ -659,7 +659,8 @@ mod_som_status_t mod_som_efe_obp_construct_fill_segment_ptr_f(){
 //  mod_som_efe_obp_ptr->fill_segment_ptr->timestamp_segment=0;
 //  mod_som_efe_obp_ptr->fill_segment_ptr->segment_skipped=0;
   mod_som_efe_obp_ptr->fill_segment_ptr->ctd_element_cnt=0;
-  mod_som_efe_obp_ptr->fill_segment_ptr->efe_element_cnt=0;
+  mod_som_efe_obp_ptr->fill_segment_ptr->consumed_efe_element_cnt=0;
+  mod_som_efe_obp_ptr->fill_segment_ptr->seg_buff_efe_element_cnt = 0;
   mod_som_efe_obp_ptr->fill_segment_ptr->efe_element_skipped=0;
   mod_som_efe_obp_ptr->fill_segment_ptr->segment_cnt=0;
   mod_som_efe_obp_ptr->fill_segment_ptr->half_segment_cnt=0;
@@ -1003,7 +1004,8 @@ mod_som_status_t mod_som_efe_obp_start_fill_segment_task_f(){
   //ALB fill_segment task is starts running.
   mod_som_efe_obp_ptr->fill_segment_ptr->segment_skipped=0;
   mod_som_efe_obp_ptr->fill_segment_ptr->ctd_element_cnt=0;
-  mod_som_efe_obp_ptr->fill_segment_ptr->efe_element_cnt=0;
+  mod_som_efe_obp_ptr->fill_segment_ptr->consumed_efe_element_cnt=0;
+  mod_som_efe_obp_ptr->fill_segment_ptr->seg_buff_efe_element_cnt = 0;
   mod_som_efe_obp_ptr->fill_segment_ptr->efe_element_skipped=0;
   mod_som_efe_obp_ptr->fill_segment_ptr->segment_cnt=0;
   mod_som_efe_obp_ptr->fill_segment_ptr->half_segment_cnt=0;
@@ -1225,21 +1227,23 @@ void mod_som_efe_obp_fill_segment_task_f(void  *p_arg){
 
       if (mod_som_efe_obp_ptr->fill_segment_ptr->started_flg){
           elmnts_avail = local_mod_som_efe_ptr->sample_count -
-              mod_som_efe_obp_ptr->fill_segment_ptr->efe_element_cnt;  //calculate number of elements available have been produced
+              mod_som_efe_obp_ptr->fill_segment_ptr->consumed_efe_element_cnt;  //calculate number of elements available have been produced
 
           //ALB User stopped efe. I need to reset the obp producers count
           if(elmnts_avail<0){
-              mod_som_efe_obp_ptr->fill_segment_ptr->efe_element_cnt = 0;
+              mod_som_efe_obp_ptr->fill_segment_ptr->consumed_efe_element_cnt = 0;
+              mod_som_efe_obp_ptr->fill_segment_ptr->seg_buff_efe_element_cnt = 0;
               mod_som_efe_obp_ptr->fill_segment_ptr->segment_cnt     = 0;
               mod_som_efe_obp_ptr->cpt_spectra_ptr->spectrum_cnt     = 0;
               mod_som_efe_obp_ptr->cpt_dissrate_ptr->dissrates_cnt   = 0;
+              mod_som_efe_obp_ptr->fill_segment_ptr->half_segment_cnt = 0;
           }
           // LOOP without delay until caught up to latest produced element
           local_fill_segment_ctd_direction=local_sbe41_ptr->consumer_ptr->direction;
 
           // 2026 04 22 LW: DEBUG - Seeing if segment error still occurs when we record continuously, regardless of going up/going down
-//          while ((elmnts_avail > 0) & (local_fill_segment_ctd_direction==up))
-            while (elmnts_avail > 0)
+          while ((elmnts_avail > 0) & (local_fill_segment_ctd_direction==up))
+//            while (elmnts_avail > 0)
             {
               // When have circular buffer overflow: have produced data bigger than consumer data: 1 circular buffer (n_elmnts)
               // calculate new consumer count to skip ahead to the tail of the circular buffer (with optional padding),
@@ -1253,22 +1257,22 @@ void mod_som_efe_obp_fill_segment_task_f(void  *p_arg){
                       padding;
                   // calculate the number of skipped elements
                   mod_som_efe_obp_ptr->fill_segment_ptr->efe_element_skipped = reset_segment_cnt -
-                      mod_som_efe_obp_ptr->fill_segment_ptr->efe_element_cnt;
+                      mod_som_efe_obp_ptr->fill_segment_ptr->consumed_efe_element_cnt;
 
                   mod_som_io_print_f("\nefe obp fill seg task: CB overflow: sample count = %lu,"
                       "cnsmr_cnt = %lu,skipped %lu elements \r\n ", \
                       (uint32_t)local_mod_som_efe_ptr->sample_count, \
-                      (uint32_t)mod_som_efe_obp_ptr->fill_segment_ptr->efe_element_cnt, \
+                      (uint32_t)mod_som_efe_obp_ptr->fill_segment_ptr->consumed_efe_element_cnt, \
                       (uint32_t)mod_som_efe_obp_ptr->fill_segment_ptr->efe_element_skipped);
 
-                  mod_som_efe_obp_ptr->fill_segment_ptr->efe_element_cnt = reset_segment_cnt;
+                  mod_som_efe_obp_ptr->fill_segment_ptr->consumed_efe_element_cnt = reset_segment_cnt;
               }
 
               // calculate the offset for current pointer
-              data_elmnts_offset = mod_som_efe_obp_ptr->fill_segment_ptr->efe_element_cnt %
+              data_elmnts_offset = mod_som_efe_obp_ptr->fill_segment_ptr->consumed_efe_element_cnt %
                                    local_mod_som_efe_ptr->config_ptr->element_per_buffer;
 
-              fill_segment_offset     = mod_som_efe_obp_ptr->fill_segment_ptr->efe_element_cnt %
+              fill_segment_offset     = mod_som_efe_obp_ptr->fill_segment_ptr->seg_buff_efe_element_cnt %
                   (MOD_SOM_EFE_OBP_FILL_SEGMENT_NB_SEGMENT_PER_RECORD*
                   mod_som_efe_obp_ptr->settings_ptr->nfft);
 
@@ -1303,14 +1307,15 @@ void mod_som_efe_obp_fill_segment_task_f(void  *p_arg){
                                          local_efeobp_efe_accel_ptr);
 
 
-              mod_som_efe_obp_ptr->fill_segment_ptr->efe_element_cnt++;  // increment cnsmr count
+              mod_som_efe_obp_ptr->fill_segment_ptr->consumed_efe_element_cnt++;  // increment cnsmr count
+              mod_som_efe_obp_ptr->fill_segment_ptr->seg_buff_efe_element_cnt++;  // increment buffered element count
               elmnts_avail = local_mod_som_efe_ptr->sample_count -
-                      mod_som_efe_obp_ptr->fill_segment_ptr->efe_element_cnt; //elements available have been produced
+                      mod_som_efe_obp_ptr->fill_segment_ptr->consumed_efe_element_cnt; //elements available have been produced
 
               //ALB a segment is full. Store last PTS value
-              if(((mod_som_efe_obp_ptr->fill_segment_ptr->efe_element_cnt %
+              if(((mod_som_efe_obp_ptr->fill_segment_ptr->seg_buff_efe_element_cnt %
                   (mod_som_efe_obp_ptr->settings_ptr->nfft)) ==0) &
-                  (mod_som_efe_obp_ptr->fill_segment_ptr->efe_element_cnt>0)){
+                  (mod_som_efe_obp_ptr->fill_segment_ptr->seg_buff_efe_element_cnt>0)){
 
                   mod_som_efe_obp_ptr->fill_segment_ptr->ctd_pressure=
                       local_fill_segment_ctd_pressure;
@@ -1329,13 +1334,11 @@ void mod_som_efe_obp_fill_segment_task_f(void  *p_arg){
 //                  mod_som_efe_obp_ptr->fill_segment_ptr->ctd_element_cnt=0;
 
                   mod_som_efe_obp_ptr->fill_segment_ptr->segment_cnt++;
-                  // 2026 04 17 LW: Debug print statement for debugging segment mishaps
-                  mod_som_io_print_f("segment_cnt: %u\r\n", mod_som_efe_obp_ptr->fill_segment_ptr->segment_cnt);
               }
 
 
               //ALB get the timestamp, PTS at half of the segment
-              if(((mod_som_efe_obp_ptr->fill_segment_ptr->efe_element_cnt %
+              if(((mod_som_efe_obp_ptr->fill_segment_ptr->seg_buff_efe_element_cnt %
                   (mod_som_efe_obp_ptr->settings_ptr->nfft/2)) ==0)){
 
                   memcpy(mod_som_efe_obp_ptr->fill_segment_ptr->timestamp_segment_ptr+
@@ -1344,8 +1347,6 @@ void mod_som_efe_obp_fill_segment_task_f(void  *p_arg){
                              (uint64_t*) curr_data_ptr,
                              sizeof(uint64_t));
                   mod_som_efe_obp_ptr->fill_segment_ptr->half_segment_cnt++;
-                  // 2026 04 17 LW: Debug print statement for debugging segment mishaps
-                  mod_som_io_print_f("half_segment_cnt: %u\r\n", mod_som_efe_obp_ptr->fill_segment_ptr->half_segment_cnt);
 
                   if(local_sbe41_ptr->collect_data_flag){
                       //ALB sbe41_ptr->consumer_ptr has 2 slots for PTS.
@@ -1512,9 +1513,6 @@ void mod_som_efe_obp_cpt_spectra_task_f(void  *p_arg){
           //ALB I do it it in 2 times to write 2 half segments in order
           //ALB to handle the weird case of the end of the timeseries
           //ALB halfseg4 and halfseg1.
-
-          // 2026 04 17 LW: Debug print statement for debugging segment mishaps
-          mod_som_io_print_f("spectrum_cnt: %u\r\n", mod_som_efe_obp_ptr->cpt_spectra_ptr->spectrum_cnt);
 
           // start with shear
           memcpy(&mod_som_efe_obp_ptr->fill_segment_ptr->segment_buffer_ptr[indx],
@@ -1807,11 +1805,6 @@ void mod_som_efe_obp_cpt_dissrate_task_f(void  *p_arg){
                                                       local_fcutoff_temp_ptr   ,
                                                       local_epsi_fom_ptr       ,
                                                       local_chi_fom_ptr);
-
-               // 2026 04 21 LW DEBUG printing epsi & chi figure-of-merit to try to see segment bug in realtime
-               mod_som_io_print_f("EPSI_FOM: %.3f  CHI_FOM: %.3f\r\n", *local_epsi_fom_ptr, *local_chi_fom_ptr);
-
-
 
               //ALB increment the counters
               mod_som_efe_obp_ptr->sample_count++;
@@ -2215,9 +2208,6 @@ void mod_som_efe_obp_consumer_task_f(void  *p_arg){
 
                    //ALB cpy the segments in the cnsmr buffer.
                    payload_length=mod_som_efe_obp_copy_producer_segment_f();
-                   // 2026 04 17 LW: Debug print statement for debugging segment mishaps
-                   mod_som_io_print_f("segment copied (consumer segment_cnt): %u\r\n", mod_som_efe_obp_ptr->consumer_ptr->segment_cnt);
-                   mod_som_io_print_f(": %u\r\n", mod_som_efe_obp_ptr->consumer_ptr->segment_cnt);
 
                    //ALB increase counter.
                    mod_som_efe_obp_ptr->consumer_ptr->segment_cnt++;
