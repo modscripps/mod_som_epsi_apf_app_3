@@ -310,7 +310,7 @@ mod_som_efe_data_consumer_t, *mod_som_efe_data_consumer_ptr_t;
 typedef struct{
     uint32_t initialized_flag;
     uint32_t error_flag;
-    uint32_t sample_count;
+    volatile uint32_t sample_count;
     uint64_t timestamp;
     mod_som_efe_settings_ptr_t settings_ptr;      //
     mod_som_efe_config_ptr_t config_ptr;    //

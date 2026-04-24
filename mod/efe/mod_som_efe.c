@@ -140,7 +140,7 @@ uint32_t mod_apf_efe_spoof_float_to_counts(uint8_t ch, float fl);
 float mod_apf_efe_spoof_generate_sine_float(float freq, float dc, float amp);
 float mod_apf_efe_spoof_generate_simple_triangle_float();
 
-uint8_t mod_apf_efe_sim_data[7][3];
+uint8_t mod_apf_efe_sim_data[7][4];
 
 #endif //#ifdef MOD_SOM_EFE_UART_SPOOF
 LDMA_Descriptor_t descriptor_data_sim[MAX_DATA_SIM_DESC_CNT];
@@ -2870,15 +2870,16 @@ void WTIMER2_IRQHandler()
 #ifndef MOD_SOM_EFE_UART_SPOOF
   float sin_fl = mod_apf_efe_spoof_generate_simple_triangle_float();
 
-  uint32_t ct = 0;
-  uint8_t *ct_bytes = (uint8_t*)&ct;
+  uint32_t * ct;// = &mod_apf_efe_sim_data[i][0];
+//  uint8_t *ct_bytes = (uint8_t*)&ct;
   for(int i = 0; i<7; i++)
     {
-      ct = __REV(mod_apf_efe_spoof_float_to_counts(i, sin_fl));
-      for(int j = 0; j<3; j++)
-        {
-          mod_apf_efe_sim_data[i][j] = ct_bytes[j + 1];;
-        }
+      ct = (uint32_t*)&mod_apf_efe_sim_data[i][0];
+      *ct = __REV(mod_apf_efe_spoof_float_to_counts(i, sin_fl));
+//      for(int j = 0; j<3; j++)
+//        {
+//          mod_apf_efe_sim_data[i][j] = ct_bytes[j + 1];;
+//        }
     }
 #endif
 

@@ -1252,7 +1252,7 @@ void mod_som_efe_obp_fill_segment_task_f(void  *p_arg){
           local_fill_segment_ctd_direction=local_sbe41_ptr->consumer_ptr->direction;
 
           // 2026 04 22 LW: DEBUG - Seeing if segment error still occurs when we record continuously, regardless of going up/going down
-          while ((elmnts_avail > 0) & (local_fill_segment_ctd_direction==up))
+          while ((elmnts_avail > 0) && (local_fill_segment_ctd_direction==up))
 //            while (elmnts_avail > 0)
             {
               // When have circular buffer overflow: have produced data bigger than consumer data: 1 circular buffer (n_elmnts)
@@ -1267,7 +1267,7 @@ void mod_som_efe_obp_fill_segment_task_f(void  *p_arg){
                   GPIO_PinOutClear(MOD_SOM_EFE_OBP_SEG_CB_GPIO_PORT, MOD_SOM_EFE_OBP_SEG_CB_GPIO_PIN);
 #endif
                   reset_segment_cnt = local_mod_som_efe_ptr->sample_count -
-                      local_mod_som_efe_ptr->config_ptr->element_per_buffer +
+//                      local_mod_som_efe_ptr->config_ptr->element_per_buffer +
                       padding;
                   // calculate the number of skipped elements
                   mod_som_efe_obp_ptr->fill_segment_ptr->efe_element_skipped = reset_segment_cnt -
