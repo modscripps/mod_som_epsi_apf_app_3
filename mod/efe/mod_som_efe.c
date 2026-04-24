@@ -2754,6 +2754,10 @@ void mod_som_efe_ldma_irq_handler_f( void )
 
 #endif
 
+#if (MOD_SOM_DEBUG_SYSTEMVIEW == DEF_ENABLED)
+	    SEGGER_SYSVIEW_Print("LDMA_IRQ\n");
+#endif
+
 
 #ifdef MOD_SOM_EFE_SIM_DATA
 //#ifdef MOD_SOM_EFE_UART_SPOOF
