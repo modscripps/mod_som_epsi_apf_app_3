@@ -1417,6 +1417,10 @@ mod_som_status_t mod_som_efe_sim_data_init_f()
 
 //  TIMER_Enable(spoof_timer, true);
 
+#if defined(MOD_SOM_EFE_IRQ_DEBUG_GPIO_ENABLE)
+  GPIO_PinModeSet(MOD_SOM_EFE_IRQ_WTIMER2_GPIO_PORT, MOD_SOM_EFE_IRQ_WTIMER2_GPIO_PIN, gpioModePushPull, 1);
+#endif
+
 
   return mod_som_efe_encode_status_f(MOD_SOM_STATUS_OK);
 
@@ -1578,6 +1582,11 @@ mod_som_status_t mod_som_efe_init_ldma_f(mod_som_efe_ptr_t module_ptr)
 
 #ifdef MOD_SOM_EFE_SIM_DATA
 	mod_som_efe_define_data_sim_descriptor_f(module_ptr);
+#endif
+
+
+#if defined(MOD_SOM_EFE_IRQ_DEBUG_GPIO_ENABLE)
+	GPIO_PinModeSet(MOD_SOM_EFE_IRQ_LDMA_GPIO_PORT, MOD_SOM_EFE_IRQ_LDMA_GPIO_PIN, gpioModePushPull, 1);
 #endif
 
 	return mod_som_efe_encode_status_f(MOD_SOM_STATUS_OK);
@@ -2729,10 +2738,22 @@ void mod_som_efe_ldma_irq_handler_f( void )
 	//ALB TODO
   uint32_t descriptor_index;
 
-	/* Check which LDMA channel is done*/
+  /* Check which LDMA channel is done*/
 	//ALB TODO document the LDMA->IF. Channel 0 is bit position 1.
 	if (mod_som_efe_ptr->sampling_flag==1)
 	{
+
+
+#if defined(MOD_SOM_EFE_IRQ_DEBUG_GPIO_ENABLE)
+
+#if defined(MOD_SOM_EFE_IRQ_DEBUG_GPIO_TOGGLE_MODE)
+	    GPIO_PinOutToggle(MOD_SOM_EFE_IRQ_LDMA_GPIO_PORT, MOD_SOM_EFE_IRQ_LDMA_GPIO_PIN);
+#else
+	    GPIO_PinOutClear(MOD_SOM_EFE_IRQ_LDMA_GPIO_PORT, MOD_SOM_EFE_IRQ_LDMA_GPIO_PIN);
+#endif
+
+#endif
+
 
 #ifdef MOD_SOM_EFE_SIM_DATA
 //#ifdef MOD_SOM_EFE_UART_SPOOF
@@ -2809,6 +2830,12 @@ void mod_som_efe_ldma_irq_handler_f( void )
 		}
 
 
+#if defined(MOD_SOM_EFE_IRQ_DEBUG_GPIO_ENABLE) && !defined(MOD_SOM_EFE_IRQ_DEBUG_GPIO_TOGGLE_MODE)
+  GPIO_PinOutSet(MOD_SOM_EFE_IRQ_LDMA_GPIO_PORT, MOD_SOM_EFE_IRQ_LDMA_GPIO_PIN);
+#endif
+
+
+
 #ifdef MOD_SOM_EFE_SIM_DATA
 		//#ifdef MOD_SOM_EFE_UART_SPOOF
 		LDMA->CHDONE &= ~(1 << mod_som_efe_ptr->ldma.ch);
@@ -2827,6 +2854,18 @@ void WTIMER2_IRQHandler()
   // Disable interrupts
   TIMER_IntDisable(data_sim_timer, TIMER_IF_OF);
   TIMER_IntClear(data_sim_timer, TIMER_IF_OF);
+
+
+#if defined(MOD_SOM_EFE_IRQ_DEBUG_GPIO_ENABLE)
+
+#if defined(MOD_SOM_EFE_IRQ_DEBUG_GPIO_TOGGLE_MODE)
+  GPIO_PinOutToggle(MOD_SOM_EFE_IRQ_WTIMER2_GPIO_PORT, MOD_SOM_EFE_IRQ_WTIMER2_GPIO_PIN);
+#else
+  GPIO_PinOutClear(MOD_SOM_EFE_IRQ_WTIMER2_GPIO_PORT, MOD_SOM_EFE_IRQ_WTIMER2_GPIO_PIN);
+#endif
+
+#endif
+
 
 #ifndef MOD_SOM_EFE_UART_SPOOF
   float sin_fl = mod_apf_efe_spoof_generate_simple_triangle_float();
@@ -2853,6 +2892,12 @@ void WTIMER2_IRQHandler()
 
 
   // Reset timer
+
+
+#if defined(MOD_SOM_EFE_IRQ_DEBUG_GPIO_ENABLE) && !defined(MOD_SOM_EFE_IRQ_DEBUG_GPIO_TOGGLE_MODE)
+  GPIO_PinOutSet(MOD_SOM_EFE_IRQ_WTIMER2_GPIO_PORT, MOD_SOM_EFE_IRQ_WTIMER2_GPIO_PIN);
+#endif
+
 
 
   // Enable interrupts

@@ -88,6 +88,18 @@
 // 2026 04 20 LW: Switch for using debug header or MEZZ comm UART
 //#define SPOOF_UART_USE_DEBUG
 
+// 2026 04 23 LW: Switches for debugging WTIMER2/LDMA IRQ handlers with GPIO flags
+#define MOD_SOM_EFE_IRQ_DEBUG_GPIO_ENABLE
+//#define MOD_SOM_EFE_IRQ_DEBUG_GPIO_TOGGLE_MODE  // Enable to toggle on IRQ entry; Disable to pull low on entry, high on exit
+
+// WTIMER2 Debug GPIO: Use PA9 (SOM Mezz header J9 pin 15)
+#define MOD_SOM_EFE_IRQ_WTIMER2_GPIO_PORT gpioPortA
+#define MOD_SOM_EFE_IRQ_WTIMER2_GPIO_PIN  9
+
+// LDMA Debug GPIO: Use PA10 (SOM Mezz header J9 pin 17)
+#define MOD_SOM_EFE_IRQ_LDMA_GPIO_PORT    gpioPortA
+#define MOD_SOM_EFE_IRQ_LDMA_GPIO_PIN     10
+
 
 //------------------------------------------------------------------------------
 // EFE global variables
