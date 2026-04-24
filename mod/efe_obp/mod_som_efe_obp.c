@@ -1213,6 +1213,16 @@ void mod_som_efe_obp_fill_segment_task_f(void  *p_arg){
       local_sbe41_ptr->consumer_ptr->dPdt;
 
   local_fill_segment_ctd_direction=local_sbe41_ptr->consumer_ptr->direction;
+
+
+
+#if defined(MOD_SOM_EFE_OBP_SEG_CB_DEBUG_GPIO_ENABLE)
+  GPIO_PinModeSet(MOD_SOM_EFE_OBP_SEG_CB_GPIO_PORT, MOD_SOM_EFE_OBP_SEG_CB_GPIO_PIN, gpioModePushPull, 1);
+#endif
+
+
+
+
   mod_som_efe_obp_ptr->fill_segment_ptr->started_flg=true;
   while (mod_som_efe_obp_ptr->fill_segment_ptr->started_flg) {
 
@@ -1252,6 +1262,10 @@ void mod_som_efe_obp_fill_segment_task_f(void  *p_arg){
               if (elmnts_avail>local_mod_som_efe_ptr->config_ptr->element_per_buffer){ // checking over flow. TODO check adding padding is correct.
                   // reset the consumer count less one buffer than producer count plus padding
                   //ALB I think I want to change this line from the cb example. The "-" only works if you overflowed once.
+
+#if defined(MOD_SOM_EFE_OBP_SEG_CB_DEBUG_GPIO_ENABLE)
+                  GPIO_PinOutClear(MOD_SOM_EFE_OBP_SEG_CB_GPIO_PORT, MOD_SOM_EFE_OBP_SEG_CB_GPIO_PIN);
+#endif
                   reset_segment_cnt = local_mod_som_efe_ptr->sample_count -
                       local_mod_som_efe_ptr->config_ptr->element_per_buffer +
                       padding;
@@ -1266,7 +1280,11 @@ void mod_som_efe_obp_fill_segment_task_f(void  *p_arg){
                       (uint32_t)mod_som_efe_obp_ptr->fill_segment_ptr->efe_element_skipped);
 
                   mod_som_efe_obp_ptr->fill_segment_ptr->consumed_efe_element_cnt = reset_segment_cnt;
-              }
+
+#if defined(MOD_SOM_EFE_OBP_SEG_CB_DEBUG_GPIO_ENABLE)
+                  GPIO_PinOutSet(MOD_SOM_EFE_OBP_SEG_CB_GPIO_PORT, MOD_SOM_EFE_OBP_SEG_CB_GPIO_PIN);
+#endif
+             }
 
               // calculate the offset for current pointer
               data_elmnts_offset = mod_som_efe_obp_ptr->fill_segment_ptr->consumed_efe_element_cnt %

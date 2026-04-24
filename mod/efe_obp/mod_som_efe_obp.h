@@ -117,6 +117,16 @@
 #define MOD_SOM_EFE_OBP_ACCELL_OFFSET 0.9 //1.8 fullrange/2
 #define MOD_SOM_EFE_OBP_ACCELL_FACTOR 0.4 //400 mV/g
 
+
+
+// 2026 04 24 LW: Switch for debugging fill_segment_task CB overflows with GPIO flags
+#define MOD_SOM_EFE_OBP_SEG_CB_DEBUG_GPIO_ENABLE
+
+// Fill Seg CB Debug GPIO: Use PB0 (SOM Mezz header J9 pin 5)
+#define MOD_SOM_EFE_OBP_SEG_CB_GPIO_PORT gpioPortB
+#define MOD_SOM_EFE_OBP_SEG_CB_GPIO_PIN  0
+
+
 //------------------------------------------------------------------------------
 // TYPEDEFS
 //------------------------------------------------------------------------------
