@@ -89,7 +89,7 @@ LDMA_Descriptor_t descriptor_link_config[MOD_SOM_EFE_LDMA_CONFIG_STEP];
 
 #ifdef MOD_SOM_EFE_SIM_DATA
 #define MAX_DATA_SIM_DESC_CNT 5*MOD_SOM_EFE_MAX_CHANNEL + 6
-#define DATA_SIM_SAMPLE_INTERVAL_US 1600
+#define DATA_SIM_SAMPLE_INTERVAL_US 6250
 TIMER_TypeDef* data_sim_timer = WTIMER2;
 CMU_Clock_TypeDef data_sim_timer_clk = cmuClock_WTIMER2;
 
