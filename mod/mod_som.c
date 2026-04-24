@@ -50,6 +50,7 @@
 #include "mod_som_vec_nav_priv.h"
 #endif
 
+#include <kernel/include/os_trace.h>
 
 #include <string.h>
 #include <stdarg.h>
@@ -235,6 +236,12 @@ mod_som_status_t mod_som_main_init_f(void){
     RETARGET_SerialFlush();
 
     OSInit(&err); // Initialize the Kernel
+
+
+#if (OS_CFG_TRACE_EN == DEF_ENABLED)
+    OS_TRACE_INIT();
+#endif
+
 
     // Check error code
     APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
