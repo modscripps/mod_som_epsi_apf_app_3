@@ -1273,6 +1273,9 @@ void mod_som_efe_obp_fill_segment_task_f(void  *p_arg){
                   mod_som_efe_obp_ptr->fill_segment_ptr->efe_element_skipped = reset_segment_cnt -
                       mod_som_efe_obp_ptr->fill_segment_ptr->consumed_efe_element_cnt;
 
+#if (MOD_SOM_DEBUG_SYSTEMVIEW == DEF_ENABLED)
+      SEGGER_SYSVIEW_Warn("EFE_CB_OF: %u\n", (uint32_t)mod_som_efe_obp_ptr->fill_segment_ptr->efe_element_skipped);
+#endif
                   mod_som_io_print_f("\nefe obp fill seg task: CB overflow: sample count = %lu,"
                       "cnsmr_cnt = %lu,skipped %lu elements \r\n ", \
                       (uint32_t)local_mod_som_efe_ptr->sample_count, \
