@@ -97,21 +97,21 @@ CMU_Clock_TypeDef data_sim_timer_clk = cmuClock_WTIMER2;
 #if defined(SPOOF_UART_USE_DEBUG)
 USART_TypeDef* spoof_uart = USART2;
 CMU_Clock_TypeDef spoof_uart_clk = cmuClock_USART2;
-#define SPOOF_UART_TX_PORT gpioPortF
-#define SPOOF_UART_TX_PIN  0
+#define SPOOF_UART_TX_PORT MOD_SOM_J8_4_PORT
+#define SPOOF_UART_TX_PIN  MOD_SOM_J8_4_PIN
 #define SPOOF_UART_TX_LOC  5
-#define SPOOF_UART_RX_PORT gpioPortF
-#define SPOOF_UART_RX_PIN  1
+#define SPOOF_UART_RX_PORT MOD_SOM_J8_2_PORT
+#define SPOOF_UART_RX_PIN  MOD_SOM_J8_2_PIN
 #define SPOOF_UART_RX_LOC  SPOOF_UART_TX_LOC
 LDMA_TransferCfg_t tfrcfg_data_sim= LDMA_TRANSFER_CFG_PERIPHERAL(ldmaPeripheralSignal_USART2_RXDATAV);
 #else //#if defined(SPOOF_UART_USE_DEBUG)
 USART_TypeDef* spoof_uart = USART1;
 CMU_Clock_TypeDef spoof_uart_clk = cmuClock_USART1;
-#define SPOOF_UART_TX_PORT gpioPortC
-#define SPOOF_UART_TX_PIN  1
+#define SPOOF_UART_TX_PORT MOD_SOM_J9_36_PORT
+#define SPOOF_UART_TX_PIN  MOD_SOM_J9_36_PIN
 #define SPOOF_UART_TX_LOC  4
-#define SPOOF_UART_RX_PORT gpioPortC
-#define SPOOF_UART_RX_PIN  2
+#define SPOOF_UART_RX_PORT MOD_SOM_J9_40_PORT
+#define SPOOF_UART_RX_PIN  MOD_SOM_J9_40_PIN
 #define SPOOF_UART_RX_LOC  SPOOF_UART_TX_LOC
 LDMA_TransferCfg_t tfrcfg_data_sim= LDMA_TRANSFER_CFG_PERIPHERAL(ldmaPeripheralSignal_USART1_RXDATAV);
 #endif //#if defined(SPOOF_UART_USE_DEBUG)
