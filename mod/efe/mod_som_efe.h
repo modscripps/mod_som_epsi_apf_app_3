@@ -83,10 +83,12 @@
 
 // 2026 02 13 LW: Switch for enabling/disabling spoofing EFE over UART
 #define MOD_SOM_EFE_SIM_DATA
-//#define MOD_SOM_EFE_UART_SPOOF
+#define MOD_SOM_EFE_UART_SPOOF
 
 // 2026 04 20 LW: Switch for using debug header or MEZZ comm UART
 //#define SPOOF_UART_USE_DEBUG
+#define MOD_SOM_EFE_UART_SPOOF_USE_USART3 // only effective if SPOOF_UART_USE_DEBUG is not defined
+
 
 // 2026 04 23 LW: Switches for debugging WTIMER2/LDMA IRQ handlers with GPIO flags
 #define MOD_SOM_EFE_IRQ_DEBUG_GPIO_ENABLE
