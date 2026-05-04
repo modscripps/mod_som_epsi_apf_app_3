@@ -1251,8 +1251,8 @@ void mod_som_efe_obp_fill_segment_task_f(void  *p_arg){
           // LOOP without delay until caught up to latest produced element
           local_fill_segment_ctd_direction=local_sbe41_ptr->consumer_ptr->direction;
 
-          // 2026 04 22 LW: DEBUG - Seeing if segment error still occurs when we record continuously, regardless of going up/going down
-          while ((elmnts_avail > 0) && (local_fill_segment_ctd_direction==up))
+          // 2026 05 04 LW: Removed local_fill_segment_ctd_direction==up check so we always record regardless of CTD direction
+          while ((elmnts_avail > 0) )//&& (local_fill_segment_ctd_direction==up))
 //            while (elmnts_avail > 0)
             {
               // When have circular buffer overflow: have produced data bigger than consumer data: 1 circular buffer (n_elmnts)
