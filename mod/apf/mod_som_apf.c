@@ -2996,10 +2996,18 @@ mod_som_apf_status_t mod_som_apf_daq_start_f(uint32_t profile_id){
     }
     mod_som_settings_save_settings_f();
 
+    //2026 05 04 SAN move efe sampling here to allow for spoofer to work
+    status = mod_som_efe_sampling_f();
+    if(status){
+            mod_som_sdio_disable_hardware_f();
+            return MOD_SOM_APF_STATUS_NO_DATA;
+    }
+
   //ALB start collecting CTD.
   status = mod_som_sbe41_connect_f();
   status = mod_som_sbe41_start_collect_data_f();
   if(status){
+          mod_som_efe_stop_sampling_f();
       mod_som_sdio_disable_hardware_f();
       return MOD_SOM_APF_STATUS_NO_CTD_DATA;
   }
@@ -3031,10 +3039,11 @@ mod_som_apf_status_t mod_som_apf_daq_start_f(uint32_t profile_id){
 
   //SAN 2023 02 20 correct for something funny status not working properly
   if(status){
+          mod_som_efe_stop_sampling_f();
+          mod_som_sbe41_stop_collect_data_f();
+          mod_som_sbe41_disconnect_f();
+          sl_sleeptimer_delay_millisecond(delay100ms);
       mod_som_sdio_disable_hardware_f();
-      sl_sleeptimer_delay_millisecond(delay100ms);
-      mod_som_sbe41_stop_collect_data_f();
-      mod_som_sbe41_disconnect_f();
     return status;
   }
 
@@ -3206,8 +3215,8 @@ mod_som_apf_status_t mod_som_apf_daq_start_f(uint32_t profile_id){
 //      GPIO_PinModeSet(MOD_SOM_MAIN_COM_EN_PORT, MOD_SOM_MAIN_COM_EN_PIN,
 //                      gpioModePushPull, 0);
 
-
-      status|=mod_som_efe_sampling_f();
+       //2026 05 04 moving EPSI EFE daq to top
+//      status|=mod_som_efe_sampling_f();
 
       sl_sleeptimer_delay_millisecond(5000);
       //2025 06 12 add another timeout condition for the SBE41
