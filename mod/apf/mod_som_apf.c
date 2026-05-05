@@ -2121,8 +2121,8 @@ uint32_t mod_som_apf_send_line_f(LEUART_TypeDef *leuart_ptr,char * buf, uint32_t
     //ALB store the dissrate and foco values in local params.
     float local_epsilon        = log10(*curr_epsilon_ptr);
     float local_chi            = log10(*curr_chi_ptr);
-    float local_epsi_fom       = *curr_fom_epsi_ptr;
-    float local_chi_fom        = *curr_fom_chi_ptr;
+    float local_epsi_fom       = *curr_fom_epsi_ptr+10; //ALB +10 because fom is can be <1 but define as a uint8
+    float local_chi_fom        = *curr_fom_chi_ptr+10;//ALB +10 because fom is can be <1 but define as a uint8
 
 
 
