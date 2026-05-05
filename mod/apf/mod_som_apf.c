@@ -63,6 +63,12 @@ sl_status_t mystatus;
 #define MOD_SOM_APF_SD_FORMAT_CMMD_LIMIT 255
 #define TIME_MIN 1575205199
 
+static const float fomlevels[16] = {
+    0.50f, 0.65f, 0.78f, 0.88f,
+    0.94f, 0.98f, 1.00f, 1.02f,
+    1.06f, 1.12f, 1.20f, 1.30f,
+    1.45f, 1.60f, 1.80f, 2.00f
+};
 
 /*******************************************************************************
  * PROTOTYPES
@@ -2121,8 +2127,8 @@ uint32_t mod_som_apf_send_line_f(LEUART_TypeDef *leuart_ptr,char * buf, uint32_t
     //ALB store the dissrate and foco values in local params.
     float local_epsilon        = log10(*curr_epsilon_ptr);
     float local_chi            = log10(*curr_chi_ptr);
-    float local_epsi_fom       = *curr_fom_epsi_ptr+10; //ALB +10 because fom is can be <1 but define as a uint8
-    float local_chi_fom        = *curr_fom_chi_ptr+10;//ALB +10 because fom is can be <1 but define as a uint8
+    float local_epsi_fom       = *curr_fom_epsi_ptr; //ALB +10 because fom is can be <1 but define as a uint8
+    float local_chi_fom        = *curr_fom_chi_ptr;//ALB +10 because fom is can be <1 but define as a uint8
 
 
 
