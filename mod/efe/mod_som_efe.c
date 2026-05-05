@@ -1852,6 +1852,14 @@ void mod_som_efe_stop_mclock_f(mod_som_efe_ptr_t module_ptr)
 				module_ptr->settings_ptr->sensors[i].csLoc.gpioPin, gpioModePushPull, 1);  // CS high
 	}
 #endif
+
+
+// 2026 05 04 LW: Disable the spoofing timer to stop requesting EFE data
+#ifdef MOD_SOM_EFE_SIM_DATA
+
+	TIMER_Enable(data_sim_timer, false);
+
+#endif
 }
 
 
