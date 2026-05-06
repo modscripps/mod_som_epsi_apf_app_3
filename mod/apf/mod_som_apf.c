@@ -63,12 +63,6 @@ sl_status_t mystatus;
 #define MOD_SOM_APF_SD_FORMAT_CMMD_LIMIT 255
 #define TIME_MIN 1575205199
 
-static const float fomlevels[16] = {
-    0.50f, 0.65f, 0.78f, 0.88f,
-    0.94f, 0.98f, 1.00f, 1.02f,
-    1.06f, 1.12f, 1.20f, 1.30f,
-    1.45f, 1.60f, 1.80f, 2.00f
-};
 
 /*******************************************************************************
  * PROTOTYPES
