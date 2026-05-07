@@ -126,10 +126,12 @@ static float fom_batchelor_f(float *temp_spec,float epsilon, float chi, float kv
  ******************************************************************************/
 void mod_som_epsiobp_init_f(mod_som_efe_obp_config_ptr_t config_ptr_in, mod_som_efe_obp_settings_ptr_t settings_ptr_in, mod_som_efe_obp_calibration_ptr_t cals_ptr_in)
 {
-  uint32_t nttf_float_size_bytes = sizeof(float)*settings->nfft;
+
   config = config_ptr_in;
   settings = settings_ptr_in;
   cals_ptr = cals_ptr_in;
+
+  uint32_t nttf_float_size_bytes = sizeof(float)*settings->nfft;
 
 //  // read in calibration inputs
 //  num_shear = config.num_shear;
