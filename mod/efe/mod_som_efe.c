@@ -97,23 +97,35 @@ CMU_Clock_TypeDef data_sim_timer_clk = cmuClock_WTIMER2;
 #if defined(SPOOF_UART_USE_DEBUG)
 USART_TypeDef* spoof_uart = USART2;
 CMU_Clock_TypeDef spoof_uart_clk = cmuClock_USART2;
-#define SPOOF_UART_TX_PORT gpioPortF
-#define SPOOF_UART_TX_PIN  0
+#define SPOOF_UART_TX_PORT MOD_SOM_J8_4_PORT
+#define SPOOF_UART_TX_PIN  MOD_SOM_J8_4_PIN
 #define SPOOF_UART_TX_LOC  5
-#define SPOOF_UART_RX_PORT gpioPortF
-#define SPOOF_UART_RX_PIN  1
+#define SPOOF_UART_RX_PORT MOD_SOM_J8_2_PORT
+#define SPOOF_UART_RX_PIN  MOD_SOM_J8_2_PIN
 #define SPOOF_UART_RX_LOC  SPOOF_UART_TX_LOC
 LDMA_TransferCfg_t tfrcfg_data_sim= LDMA_TRANSFER_CFG_PERIPHERAL(ldmaPeripheralSignal_USART2_RXDATAV);
 #else //#if defined(SPOOF_UART_USE_DEBUG)
+#ifdef MOD_SOM_EFE_UART_USE_USART3
+USART_TypeDef* spoof_uart = USART3;
+CMU_Clock_TypeDef spoof_uart_clk = cmuClock_USART3;
+#define SPOOF_UART_TX_PORT MOD_SOM_J9_26_US3_TX_L1_PORT
+#define SPOOF_UART_TX_PIN  MOD_SOM_J9_26_US3_TX_L1_PIN
+#define SPOOF_UART_TX_LOC  1
+#define SPOOF_UART_RX_PORT MOD_SOM_J9_27_US3_RX_L1_PORT
+#define SPOOF_UART_RX_PIN  MOD_SOM_J9_27_US3_RX_L1_PIN
+#define SPOOF_UART_RX_LOC  SPOOF_UART_TX_LOC
+LDMA_TransferCfg_t tfrcfg_data_sim= LDMA_TRANSFER_CFG_PERIPHERAL(ldmaPeripheralSignal_USART3_RXDATAV);
+#else //#ifdef MOD_SOM_EFE_UART_USE_USART3
 USART_TypeDef* spoof_uart = USART1;
 CMU_Clock_TypeDef spoof_uart_clk = cmuClock_USART1;
-#define SPOOF_UART_TX_PORT gpioPortC
-#define SPOOF_UART_TX_PIN  1
+#define SPOOF_UART_TX_PORT MOD_SOM_J9_36_PORT
+#define SPOOF_UART_TX_PIN  MOD_SOM_J9_36_PIN
 #define SPOOF_UART_TX_LOC  4
-#define SPOOF_UART_RX_PORT gpioPortC
-#define SPOOF_UART_RX_PIN  2
+#define SPOOF_UART_RX_PORT MOD_SOM_J9_40_PORT
+#define SPOOF_UART_RX_PIN  MOD_SOM_J9_40_PIN
 #define SPOOF_UART_RX_LOC  SPOOF_UART_TX_LOC
 LDMA_TransferCfg_t tfrcfg_data_sim= LDMA_TRANSFER_CFG_PERIPHERAL(ldmaPeripheralSignal_USART1_RXDATAV);
+#endif //#ifdef MOD_SOM_EFE_UART_USE_USART3
 #endif //#if defined(SPOOF_UART_USE_DEBUG)
 
 //LDMA_TransferCfg_t tfrcfg_data_sim= LDMA_TRANSFER_CFG_PERIPHERAL(ldmaPeripheralSignal_USART1_RXDATAV);
@@ -123,16 +135,18 @@ LDMA_TransferCfg_t tfrcfg_data_sim= LDMA_TRANSFER_CFG_PERIPHERAL(ldmaPeripheralS
 #define MOD_APF_EFE_SPOOF_SIMPLE_TRI_MAX 2.4
 #define MOD_APF_EFE_SPOOF_SIMPLE_TRI_MIN 0.1
 #define MOD_APF_EFE_SPOOF_SIMPLE_TRI_RAT 0.00005
+#ifdef MOD_SOM_EFE_UART_SPOOF
 static char prev_c = 0xFF;
 //static const char ch_id[7][3] = {"t1", "t2", "s1", "s2", "a1", "a2", "a3"};
 static const float fls[] = {0.6, 0.7, -0.3, -0.4, -1.6, -1.7, -1.8};
+#endif
 static volatile uint64_t cur_tk = 0;
-static volatile uint64_t cur_ns = 0;
+//static volatile uint64_t cur_ns = 0;
 static uint32_t st_frq = 0;
 static const float pi = 3.14159265359;
 static float tri_float = MOD_APF_EFE_SPOOF_SIMPLE_TRI_MAX;
 static bool going_up = false;
-static uint8_t led_hit_cnt = 0;
+//static uint8_t led_hit_cnt = 0;
 
 LDMA_TransferCfg_t tfrcfg_data_sim= LDMA_TRANSFER_CFG_MEMORY();
 
@@ -1838,6 +1852,14 @@ void mod_som_efe_stop_mclock_f(mod_som_efe_ptr_t module_ptr)
 				module_ptr->settings_ptr->sensors[i].csLoc.gpioPin, gpioModePushPull, 1);  // CS high
 	}
 #endif
+
+
+// 2026 05 04 LW: Disable the spoofing timer to stop requesting EFE data
+#ifdef MOD_SOM_EFE_SIM_DATA
+
+	TIMER_Enable(data_sim_timer, false);
+
+#endif
 }
 
 
@@ -2959,7 +2981,7 @@ float mod_apf_efe_spoof_generate_triangle_float(float freq, float dc, float amp)
 
   cur_tk = sl_sleeptimer_get_tick_count64();
 
-  volatile float temp = ((float)cur_tk) / (float)st_frq;
+//  volatile float temp = ((float)cur_tk) / (float)st_frq;
 
 
 
