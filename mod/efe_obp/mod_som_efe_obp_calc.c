@@ -978,7 +978,8 @@ void power_spectrum_f(float *data, float *spectrum, uint32_t size, float samplin
   // store the correct value for power at the nyquist frequency
   nyquist_power = fft_ptr->fft_data[1];
   // compute the square magnitude of the complex fft values
-  arm_cmplx_mag_squared_f32(fft_ptr->fft_data, fft_ptr->epsi_spectrum_buffer, size);
+  //2026 05 06 SAN fix the FFT point count to half of size
+  arm_cmplx_mag_squared_f32(fft_ptr->fft_data, fft_ptr->epsi_spectrum_buffer, size/2);
   // plug the power at the nyquist frequency into the spectrum vector in the correct location
   spectrum[end] = pow(nyquist_power, 2) / vals->normalization;
   ///////////////////////////////////////////////////////////////////////////////////
@@ -1026,6 +1027,8 @@ void power_spectrum_f(float *data, float *spectrum, uint32_t size, float samplin
  ******************************************************************************/
 void hamming_window_f(uint16_t size, float sampling_frequency, float *window, float* normal)
 {
+    //2026 05 06 SAN fix initialize normal before use
+    *normal = 0.0f;
   for (uint16_t j = 0; j < size; j++) {
     window[j] = 0.54 - 0.46*cos(2*M_PI*j/(size - 1));
     *normal += pow(window[j], 2);

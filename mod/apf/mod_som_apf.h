@@ -99,8 +99,8 @@
 #define MOD_SOM_APF_PRODUCER_DELAY                  10      // delay for fill segment task
 #define MOD_SOM_APF_PRODUCER_MIN_DISSRATE           1e-12   // min epsilon, chi or Fourier coef
 #define MOD_SOM_APF_PRODUCER_MAX_DISSRATE           1e-3    // min epsilon, chi or Fourier coef
-#define MOD_SOM_APF_PRODUCER_MIN_FOM                0       // mininum figure of merit
-#define MOD_SOM_APF_PRODUCER_MAX_FOM                10      // maininum figure of merit
+#define MOD_SOM_APF_PRODUCER_MIN_FOM                0.5     //mininum figure of merit
+#define MOD_SOM_APF_PRODUCER_MAX_FOM                2       //  mininum figure of merit
 #define MOD_SOM_APF_PRODUCER_DISSRATE_RES           3       // mod dissrate resolution 3 bytes
 #define MOD_SOM_APF_PRODUCER_DISSRATE_RANGE         0xFFF   // mod dissrate range 12 bits
 #define MOD_SOM_APF_PRODUCER_FOM_RES                1       // mod fom resolution 1 bytes

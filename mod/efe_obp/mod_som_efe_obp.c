@@ -38,7 +38,6 @@ mod_som_calendar_settings_t mod_som_calendar_settings;
 #define MOD_SOM_EFE_OBP_DEFAULT_SIZE_LARGEST_BLOCK 128U
 #define MOD_SOM_EFE_OBP_MSG_QUEUE_COUNT 64U
 #define MOD_SOM_EFE_OBP_DATA_WRITE_TIMEOUT 10U
-#define MOD_SOM_EFE_OBP_N_HALF_SEGMENTS_PER_RECORD 2*MOD_SOM_EFE_OBP_FILL_SEGMENT_NB_SEGMENT_PER_RECORD
 
 //PRIVATE FUNCTIONS
 /*******************************************************************************
@@ -625,7 +624,7 @@ mod_som_status_t mod_som_efe_obp_construct_fill_segment_ptr_f(){
   APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
   mod_som_efe_obp_ptr->fill_segment_ptr->timestamp_segment_ptr = (uint64_t *)Mem_SegAlloc(
         "MOD SOM EFE OBP timestamp seg ptr",DEF_NULL,
-        MOD_SOM_EFE_OBP_N_HALF_SEGMENTS_PER_RECORD*
+        (2*MOD_SOM_EFE_OBP_FILL_SEGMENT_NB_SEGMENT_PER_RECORD)*
         sizeof(uint64_t),
         &err);
   APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
@@ -660,7 +659,8 @@ mod_som_status_t mod_som_efe_obp_construct_fill_segment_ptr_f(){
 //  mod_som_efe_obp_ptr->fill_segment_ptr->timestamp_segment=0;
 //  mod_som_efe_obp_ptr->fill_segment_ptr->segment_skipped=0;
   mod_som_efe_obp_ptr->fill_segment_ptr->ctd_element_cnt=0;
-  mod_som_efe_obp_ptr->fill_segment_ptr->efe_element_cnt=0;
+  mod_som_efe_obp_ptr->fill_segment_ptr->consumed_efe_element_cnt=0;
+  mod_som_efe_obp_ptr->fill_segment_ptr->seg_buff_efe_element_cnt = 0;
   mod_som_efe_obp_ptr->fill_segment_ptr->efe_element_skipped=0;
   mod_som_efe_obp_ptr->fill_segment_ptr->segment_cnt=0;
   mod_som_efe_obp_ptr->fill_segment_ptr->half_segment_cnt=0;
@@ -1004,7 +1004,8 @@ mod_som_status_t mod_som_efe_obp_start_fill_segment_task_f(){
   //ALB fill_segment task is starts running.
   mod_som_efe_obp_ptr->fill_segment_ptr->segment_skipped=0;
   mod_som_efe_obp_ptr->fill_segment_ptr->ctd_element_cnt=0;
-  mod_som_efe_obp_ptr->fill_segment_ptr->efe_element_cnt=0;
+  mod_som_efe_obp_ptr->fill_segment_ptr->consumed_efe_element_cnt=0;
+  mod_som_efe_obp_ptr->fill_segment_ptr->seg_buff_efe_element_cnt = 0;
   mod_som_efe_obp_ptr->fill_segment_ptr->efe_element_skipped=0;
   mod_som_efe_obp_ptr->fill_segment_ptr->segment_cnt=0;
   mod_som_efe_obp_ptr->fill_segment_ptr->half_segment_cnt=0;
@@ -1212,6 +1213,16 @@ void mod_som_efe_obp_fill_segment_task_f(void  *p_arg){
       local_sbe41_ptr->consumer_ptr->dPdt;
 
   local_fill_segment_ctd_direction=local_sbe41_ptr->consumer_ptr->direction;
+
+
+
+#if defined(MOD_SOM_EFE_OBP_SEG_CB_DEBUG_GPIO_ENABLE)
+  GPIO_PinModeSet(MOD_SOM_EFE_OBP_SEG_CB_GPIO_PORT, MOD_SOM_EFE_OBP_SEG_CB_GPIO_PIN, gpioModePushPull, 1);
+#endif
+
+
+
+
   mod_som_efe_obp_ptr->fill_segment_ptr->started_flg=true;
   while (mod_som_efe_obp_ptr->fill_segment_ptr->started_flg) {
 
@@ -1226,18 +1237,23 @@ void mod_som_efe_obp_fill_segment_task_f(void  *p_arg){
 
       if (mod_som_efe_obp_ptr->fill_segment_ptr->started_flg){
           elmnts_avail = local_mod_som_efe_ptr->sample_count -
-              mod_som_efe_obp_ptr->fill_segment_ptr->efe_element_cnt;  //calculate number of elements available have been produced
+              mod_som_efe_obp_ptr->fill_segment_ptr->consumed_efe_element_cnt;  //calculate number of elements available have been produced
 
           //ALB User stopped efe. I need to reset the obp producers count
           if(elmnts_avail<0){
-              mod_som_efe_obp_ptr->fill_segment_ptr->efe_element_cnt = 0;
+              mod_som_efe_obp_ptr->fill_segment_ptr->consumed_efe_element_cnt = 0;
+              mod_som_efe_obp_ptr->fill_segment_ptr->seg_buff_efe_element_cnt = 0;
               mod_som_efe_obp_ptr->fill_segment_ptr->segment_cnt     = 0;
               mod_som_efe_obp_ptr->cpt_spectra_ptr->spectrum_cnt     = 0;
               mod_som_efe_obp_ptr->cpt_dissrate_ptr->dissrates_cnt   = 0;
+              mod_som_efe_obp_ptr->fill_segment_ptr->half_segment_cnt = 0;
           }
           // LOOP without delay until caught up to latest produced element
           local_fill_segment_ctd_direction=local_sbe41_ptr->consumer_ptr->direction;
-          while ((elmnts_avail > 0) & (local_fill_segment_ctd_direction==up))
+
+          // 2026 05 04 LW: Removed local_fill_segment_ctd_direction==up check so we always record regardless of CTD direction
+          while ((elmnts_avail > 0) )//&& (local_fill_segment_ctd_direction==up))
+//            while (elmnts_avail > 0)
             {
               // When have circular buffer overflow: have produced data bigger than consumer data: 1 circular buffer (n_elmnts)
               // calculate new consumer count to skip ahead to the tail of the circular buffer (with optional padding),
@@ -1246,27 +1262,35 @@ void mod_som_efe_obp_fill_segment_task_f(void  *p_arg){
               if (elmnts_avail>local_mod_som_efe_ptr->config_ptr->element_per_buffer){ // checking over flow. TODO check adding padding is correct.
                   // reset the consumer count less one buffer than producer count plus padding
                   //ALB I think I want to change this line from the cb example. The "-" only works if you overflowed once.
+
+#if defined(MOD_SOM_EFE_OBP_SEG_CB_DEBUG_GPIO_ENABLE)
+                  GPIO_PinOutClear(MOD_SOM_EFE_OBP_SEG_CB_GPIO_PORT, MOD_SOM_EFE_OBP_SEG_CB_GPIO_PIN);
+#endif
                   reset_segment_cnt = local_mod_som_efe_ptr->sample_count -
-                      local_mod_som_efe_ptr->config_ptr->element_per_buffer +
+//                      local_mod_som_efe_ptr->config_ptr->element_per_buffer +
                       padding;
                   // calculate the number of skipped elements
                   mod_som_efe_obp_ptr->fill_segment_ptr->efe_element_skipped = reset_segment_cnt -
-                      mod_som_efe_obp_ptr->fill_segment_ptr->efe_element_cnt;
+                      mod_som_efe_obp_ptr->fill_segment_ptr->consumed_efe_element_cnt;
 
                   mod_som_io_print_f("\nefe obp fill seg task: CB overflow: sample count = %lu,"
                       "cnsmr_cnt = %lu,skipped %lu elements \r\n ", \
                       (uint32_t)local_mod_som_efe_ptr->sample_count, \
-                      (uint32_t)mod_som_efe_obp_ptr->fill_segment_ptr->efe_element_cnt, \
+                      (uint32_t)mod_som_efe_obp_ptr->fill_segment_ptr->consumed_efe_element_cnt, \
                       (uint32_t)mod_som_efe_obp_ptr->fill_segment_ptr->efe_element_skipped);
 
-                  mod_som_efe_obp_ptr->fill_segment_ptr->efe_element_cnt = reset_segment_cnt;
-              }
+                  mod_som_efe_obp_ptr->fill_segment_ptr->consumed_efe_element_cnt = reset_segment_cnt;
+
+#if defined(MOD_SOM_EFE_OBP_SEG_CB_DEBUG_GPIO_ENABLE)
+                  GPIO_PinOutSet(MOD_SOM_EFE_OBP_SEG_CB_GPIO_PORT, MOD_SOM_EFE_OBP_SEG_CB_GPIO_PIN);
+#endif
+             }
 
               // calculate the offset for current pointer
-              data_elmnts_offset = mod_som_efe_obp_ptr->fill_segment_ptr->efe_element_cnt %
+              data_elmnts_offset = mod_som_efe_obp_ptr->fill_segment_ptr->consumed_efe_element_cnt %
                                    local_mod_som_efe_ptr->config_ptr->element_per_buffer;
 
-              fill_segment_offset     = mod_som_efe_obp_ptr->fill_segment_ptr->efe_element_cnt %
+              fill_segment_offset     = mod_som_efe_obp_ptr->fill_segment_ptr->seg_buff_efe_element_cnt %
                   (MOD_SOM_EFE_OBP_FILL_SEGMENT_NB_SEGMENT_PER_RECORD*
                   mod_som_efe_obp_ptr->settings_ptr->nfft);
 
@@ -1301,14 +1325,15 @@ void mod_som_efe_obp_fill_segment_task_f(void  *p_arg){
                                          local_efeobp_efe_accel_ptr);
 
 
-              mod_som_efe_obp_ptr->fill_segment_ptr->efe_element_cnt++;  // increment cnsmr count
+              mod_som_efe_obp_ptr->fill_segment_ptr->consumed_efe_element_cnt++;  // increment cnsmr count
+              mod_som_efe_obp_ptr->fill_segment_ptr->seg_buff_efe_element_cnt++;  // increment buffered element count
               elmnts_avail = local_mod_som_efe_ptr->sample_count -
-                      mod_som_efe_obp_ptr->fill_segment_ptr->efe_element_cnt; //elements available have been produced
+                      mod_som_efe_obp_ptr->fill_segment_ptr->consumed_efe_element_cnt; //elements available have been produced
 
               //ALB a segment is full. Store last PTS value
-              if(((mod_som_efe_obp_ptr->fill_segment_ptr->efe_element_cnt %
+              if(((mod_som_efe_obp_ptr->fill_segment_ptr->seg_buff_efe_element_cnt %
                   (mod_som_efe_obp_ptr->settings_ptr->nfft)) ==0) &
-                  (mod_som_efe_obp_ptr->fill_segment_ptr->efe_element_cnt>0)){
+                  (mod_som_efe_obp_ptr->fill_segment_ptr->seg_buff_efe_element_cnt>0)){
 
                   mod_som_efe_obp_ptr->fill_segment_ptr->ctd_pressure=
                       local_fill_segment_ctd_pressure;
@@ -1327,23 +1352,19 @@ void mod_som_efe_obp_fill_segment_task_f(void  *p_arg){
 //                  mod_som_efe_obp_ptr->fill_segment_ptr->ctd_element_cnt=0;
 
                   mod_som_efe_obp_ptr->fill_segment_ptr->segment_cnt++;
-                  // 2026 04 17 LW: Debug print statement for debugging segment mishaps
-                  mod_som_io_print_f("segment_cnt: %u\r\n", mod_som_efe_obp_ptr->fill_segment_ptr->segment_cnt);
               }
 
 
               //ALB get the timestamp, PTS at half of the segment
-              if(((mod_som_efe_obp_ptr->fill_segment_ptr->efe_element_cnt %
+              if(((mod_som_efe_obp_ptr->fill_segment_ptr->seg_buff_efe_element_cnt %
                   (mod_som_efe_obp_ptr->settings_ptr->nfft/2)) ==0)){
 
                   memcpy(mod_som_efe_obp_ptr->fill_segment_ptr->timestamp_segment_ptr+
                          (mod_som_efe_obp_ptr->fill_segment_ptr->half_segment_cnt%
-                             MOD_SOM_EFE_OBP_N_HALF_SEGMENTS_PER_RECORD),
+                             (2*MOD_SOM_EFE_OBP_FILL_SEGMENT_NB_SEGMENT_PER_RECORD)),
                              (uint64_t*) curr_data_ptr,
                              sizeof(uint64_t));
                   mod_som_efe_obp_ptr->fill_segment_ptr->half_segment_cnt++;
-                  // 2026 04 17 LW: Debug print statement for debugging segment mishaps
-                  mod_som_io_print_f("half_segment_cnt: %u\r\n", mod_som_efe_obp_ptr->fill_segment_ptr->half_segment_cnt);
 
                   if(local_sbe41_ptr->collect_data_flag){
                       //ALB sbe41_ptr->consumer_ptr has 2 slots for PTS.
@@ -1423,8 +1444,7 @@ void mod_som_efe_obp_cpt_spectra_task_f(void  *p_arg){
   RTOS_ERR  err;
   int error_cnt = 0;
   uint64_t tick;
-  const uint32_t half_seg_copy_size_bytes = mod_som_efe_obp_ptr->settings_ptr->nfft/2*sizeof(float);
-  const uint32_t half_seg_copy_size_floats = mod_som_efe_obp_ptr->settings_ptr->nfft/2;
+
   (void)p_arg; // Deliberately unused argument
 
 
@@ -1456,11 +1476,11 @@ void mod_som_efe_obp_cpt_spectra_task_f(void  *p_arg){
               // calculate the number of data we skipped, report number of elements skipped.
               // Reset the consumers cnt equal with producer data plus padding
 
-              if (segment_avail>MOD_SOM_EFE_OBP_N_HALF_SEGMENTS_PER_RECORD-1){ // checking over flow. TODO check adding padding is correct.
+              if (segment_avail>(2*MOD_SOM_EFE_OBP_FILL_SEGMENT_NB_SEGMENT_PER_RECORD)-1){ // checking over flow. TODO check adding padding is correct.
                   // reset the consumer count less one buffer than producer count plus padding
                   //ALB I think I want to change this line from the cb example. The "-" only works if you overflowed once.
                   reset_spectra_cnt = mod_som_efe_obp_ptr->fill_segment_ptr->half_segment_cnt -
-                                    (MOD_SOM_EFE_OBP_N_HALF_SEGMENTS_PER_RECORD) +
+                                    (2*MOD_SOM_EFE_OBP_FILL_SEGMENT_NB_SEGMENT_PER_RECORD) +
                                     padding;
                   // calculate the number of skipped elements
                   mod_som_efe_obp_ptr->fill_segment_ptr->segment_skipped = reset_spectra_cnt -
@@ -1479,8 +1499,8 @@ void mod_som_efe_obp_cpt_spectra_task_f(void  *p_arg){
               //ALB Get the CTD data and timestamps at the half segment (see fill_segment_task)
               mod_som_efe_obp_ptr->cpt_spectra_ptr->timestamp=
                   (uint64_t) *(mod_som_efe_obp_ptr->fill_segment_ptr->timestamp_segment_ptr+
-                      ((mod_som_efe_obp_ptr->cpt_spectra_ptr->spectrum_cnt)%
-                          MOD_SOM_EFE_OBP_N_HALF_SEGMENTS_PER_RECORD));
+                      ((mod_som_efe_obp_ptr->fill_segment_ptr->half_segment_cnt-1)%
+                  (2*MOD_SOM_EFE_OBP_FILL_SEGMENT_NB_SEGMENT_PER_RECORD)));
 
               mod_som_efe_obp_ptr->cpt_spectra_ptr->ctd_pressure=
                   mod_som_efe_obp_ptr->fill_segment_ptr->ctd_pressure;
@@ -1512,61 +1532,66 @@ void mod_som_efe_obp_cpt_spectra_task_f(void  *p_arg){
           //ALB to handle the weird case of the end of the timeseries
           //ALB halfseg4 and halfseg1.
 
-          uint32_t half_seg_data_offset_1 =
-              (mod_som_efe_obp_ptr->cpt_spectra_ptr->spectrum_cnt%
-                  MOD_SOM_EFE_OBP_N_HALF_SEGMENTS_PER_RECORD)
-                  * half_seg_copy_size_floats;
-
-          uint32_t half_seg_data_offset_2 =
-              ((mod_som_efe_obp_ptr->cpt_spectra_ptr->spectrum_cnt+1)%
-                  MOD_SOM_EFE_OBP_N_HALF_SEGMENTS_PER_RECORD)
-                  * half_seg_copy_size_floats;
-
-          // 2026 04 17 LW: Debug print statement for debugging segment mishaps
-          mod_som_io_print_f("spectrum_cnt: %u\r\n", mod_som_efe_obp_ptr->cpt_spectra_ptr->spectrum_cnt);
-
           // start with shear
           memcpy(&mod_som_efe_obp_ptr->fill_segment_ptr->segment_buffer_ptr[indx],
-                 mod_som_efe_obp_ptr->fill_segment_ptr->seg_shear_volt_ptr + half_seg_data_offset_1,
-                 half_seg_copy_size_bytes);
+                 &mod_som_efe_obp_ptr->fill_segment_ptr->seg_shear_volt_ptr[
+                  (mod_som_efe_obp_ptr->cpt_spectra_ptr->spectrum_cnt%
+                   (2*MOD_SOM_EFE_OBP_FILL_SEGMENT_NB_SEGMENT_PER_RECORD))
+                 * mod_som_efe_obp_ptr->settings_ptr->nfft/2],
+                   mod_som_efe_obp_ptr->settings_ptr->nfft/2*sizeof(float));
 
-          indx+=half_seg_copy_size_floats;
+            indx+=mod_som_efe_obp_ptr->settings_ptr->nfft/2;
 
-          memcpy(&mod_som_efe_obp_ptr->fill_segment_ptr->segment_buffer_ptr[indx],
-                 mod_som_efe_obp_ptr->fill_segment_ptr->seg_shear_volt_ptr + half_seg_data_offset_2,
-                 half_seg_copy_size_bytes);
-          // call shear spectrum function
-          mod_som_efe_obp_shear_spectrum_f(mod_som_efe_obp_ptr->fill_segment_ptr->segment_buffer_ptr, spectra_offset, mod_som_efe_obp_ptr);
-          // move on to temperature
+            memcpy(&mod_som_efe_obp_ptr->fill_segment_ptr->segment_buffer_ptr[indx],
+                   &mod_som_efe_obp_ptr->fill_segment_ptr->seg_shear_volt_ptr[
+                  ((mod_som_efe_obp_ptr->cpt_spectra_ptr->spectrum_cnt+1)%
+                   (2*MOD_SOM_EFE_OBP_FILL_SEGMENT_NB_SEGMENT_PER_RECORD))
+                 * mod_som_efe_obp_ptr->settings_ptr->nfft/2],
+                   mod_som_efe_obp_ptr->settings_ptr->nfft/2*sizeof(float));
+            // call shear spectrum function
+            mod_som_efe_obp_shear_spectrum_f(mod_som_efe_obp_ptr->fill_segment_ptr->segment_buffer_ptr, spectra_offset, mod_som_efe_obp_ptr);
+            // move on to temperature
 
 
-          indx = 0;
-          memcpy(&mod_som_efe_obp_ptr->fill_segment_ptr->segment_buffer_ptr[indx],
-                 mod_som_efe_obp_ptr->fill_segment_ptr->seg_temp_volt_ptr + half_seg_data_offset_1,
-                 half_seg_copy_size_bytes);
+            indx = 0;
+            memcpy(&mod_som_efe_obp_ptr->fill_segment_ptr->segment_buffer_ptr[indx],
+                   &mod_som_efe_obp_ptr->fill_segment_ptr->seg_temp_volt_ptr[
+                  (mod_som_efe_obp_ptr->cpt_spectra_ptr->spectrum_cnt%
+                   (2*MOD_SOM_EFE_OBP_FILL_SEGMENT_NB_SEGMENT_PER_RECORD))
+                 * mod_som_efe_obp_ptr->settings_ptr->nfft/2],
+                   mod_som_efe_obp_ptr->settings_ptr->nfft/2*sizeof(float));
 
-          indx+=half_seg_copy_size_floats;
+            indx+=mod_som_efe_obp_ptr->settings_ptr->nfft/2;
 
-          memcpy(&mod_som_efe_obp_ptr->fill_segment_ptr->segment_buffer_ptr[indx],
-                 mod_som_efe_obp_ptr->fill_segment_ptr->seg_temp_volt_ptr + half_seg_data_offset_2,
-                 half_seg_copy_size_bytes);
-          // call temperature spectrum function
-          mod_som_efe_obp_temp_spectrum_f(mod_som_efe_obp_ptr->fill_segment_ptr->segment_buffer_ptr, spectra_offset, mod_som_efe_obp_ptr);
-          // last do acceleration
+            memcpy(&mod_som_efe_obp_ptr->fill_segment_ptr->segment_buffer_ptr[indx],
+                   &mod_som_efe_obp_ptr->fill_segment_ptr->seg_temp_volt_ptr[
+                  ((mod_som_efe_obp_ptr->cpt_spectra_ptr->spectrum_cnt+1)%
+                   (2*MOD_SOM_EFE_OBP_FILL_SEGMENT_NB_SEGMENT_PER_RECORD))
+                 * mod_som_efe_obp_ptr->settings_ptr->nfft/2],
+                   mod_som_efe_obp_ptr->settings_ptr->nfft/2*sizeof(float));
+            // call temperature spectrum function
+            mod_som_efe_obp_temp_spectrum_f(mod_som_efe_obp_ptr->fill_segment_ptr->segment_buffer_ptr, spectra_offset, mod_som_efe_obp_ptr);
+            // last do acceleration
 
-          indx = 0;
-          memcpy(&mod_som_efe_obp_ptr->fill_segment_ptr->segment_buffer_ptr[indx],
-                 mod_som_efe_obp_ptr->fill_segment_ptr->seg_accel_volt_ptr + half_seg_data_offset_1,
-                 half_seg_copy_size_bytes);
+            indx = 0;
+            memcpy(&mod_som_efe_obp_ptr->fill_segment_ptr->segment_buffer_ptr[indx],
+                     &mod_som_efe_obp_ptr->fill_segment_ptr->seg_accel_volt_ptr[
+                     (mod_som_efe_obp_ptr->cpt_spectra_ptr->spectrum_cnt%
+                     (2*MOD_SOM_EFE_OBP_FILL_SEGMENT_NB_SEGMENT_PER_RECORD))
+                    * mod_som_efe_obp_ptr->settings_ptr->nfft/2],
+                      mod_som_efe_obp_ptr->settings_ptr->nfft/2*sizeof(float));
 
-          indx+=half_seg_copy_size_floats;
+            indx+=mod_som_efe_obp_ptr->settings_ptr->nfft/2;
 
-          memcpy(&mod_som_efe_obp_ptr->fill_segment_ptr->segment_buffer_ptr[indx],
-                 mod_som_efe_obp_ptr->fill_segment_ptr->seg_accel_volt_ptr + half_seg_data_offset_2,
-                 half_seg_copy_size_bytes);
+            memcpy(&mod_som_efe_obp_ptr->fill_segment_ptr->segment_buffer_ptr[indx],
+                   &mod_som_efe_obp_ptr->fill_segment_ptr->seg_accel_volt_ptr[
+                   ((mod_som_efe_obp_ptr->cpt_spectra_ptr->spectrum_cnt+1)%
+                   (2*MOD_SOM_EFE_OBP_FILL_SEGMENT_NB_SEGMENT_PER_RECORD))
+                  * mod_som_efe_obp_ptr->settings_ptr->nfft/2],
+                    mod_som_efe_obp_ptr->settings_ptr->nfft/2*sizeof(float));
 
-          // call accel spectrum function
-          mod_som_efe_obp_accel_spectrum_f(mod_som_efe_obp_ptr->fill_segment_ptr->segment_buffer_ptr, spectra_offset, mod_som_efe_obp_ptr);
+            // call accel spectrum function
+            mod_som_efe_obp_accel_spectrum_f(mod_som_efe_obp_ptr->fill_segment_ptr->segment_buffer_ptr, spectra_offset, mod_som_efe_obp_ptr);
 //
 //
 //            //ALB update the current spectra timestamp (middle segment timestamp )
@@ -1631,13 +1656,13 @@ void mod_som_efe_obp_cpt_spectra_task_f(void  *p_arg){
 
               memcpy(mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_spec_shear_ptr,
                      mod_som_efe_obp_ptr->cpt_spectra_ptr->spec_shear_ptr,
-                     half_seg_copy_size_bytes);
+                      mod_som_efe_obp_ptr->settings_ptr->nfft/2*sizeof(float));
               memcpy(mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_spec_temp_ptr,
                      mod_som_efe_obp_ptr->cpt_spectra_ptr->spec_temp_ptr,
-                     half_seg_copy_size_bytes);
+                      mod_som_efe_obp_ptr->settings_ptr->nfft/2*sizeof(float));
               memcpy(mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_spec_accel_ptr,
                      mod_som_efe_obp_ptr->cpt_spectra_ptr->spec_accel_ptr,
-                     half_seg_copy_size_bytes);
+                      mod_som_efe_obp_ptr->settings_ptr->nfft/2*sizeof(float));
 
               mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_ctd_dpdt=
                   mod_som_efe_obp_ptr->cpt_spectra_ptr->avg_ctd_dpdt;
@@ -1755,17 +1780,31 @@ void mod_som_efe_obp_cpt_dissrate_task_f(void  *p_arg){
 //          if (mod_som_efe_obp_ptr->cpt_dissrate_ptr->dof_flag)
             {
 
-              uint32_t data_offset = (mod_som_efe_obp_ptr->cpt_dissrate_ptr->dissrates_cnt%
-                  MOD_SOM_EFE_OBP_CPT_DISSRATE_NB_RATES_PER_RECORD);
               //ALB update pointers
-              local_epsilon_ptr = mod_som_efe_obp_ptr->cpt_dissrate_ptr->epsilon + data_offset;
-              local_chi_ptr     = mod_som_efe_obp_ptr->cpt_dissrate_ptr->chi + data_offset;
-              local_nu_ptr      = mod_som_efe_obp_ptr->cpt_dissrate_ptr->nu + data_offset;
-              local_kappa_ptr   = mod_som_efe_obp_ptr->cpt_dissrate_ptr->kappa + data_offset;
-              local_kcutoff_shear_ptr   = mod_som_efe_obp_ptr->cpt_dissrate_ptr->kcutoff_shear + data_offset;
-              local_fcutoff_temp_ptr   = mod_som_efe_obp_ptr->cpt_dissrate_ptr->fcutoff_temp + data_offset;
-              local_epsi_fom_ptr     = mod_som_efe_obp_ptr->cpt_dissrate_ptr->epsi_fom + data_offset;
-              local_chi_fom_ptr     = mod_som_efe_obp_ptr->cpt_dissrate_ptr->chi_fom + data_offset;
+              local_epsilon_ptr = mod_som_efe_obp_ptr->cpt_dissrate_ptr->epsilon +
+                             (mod_som_efe_obp_ptr->cpt_dissrate_ptr->dissrates_cnt%
+                              MOD_SOM_EFE_OBP_CPT_DISSRATE_NB_RATES_PER_RECORD);
+              local_chi_ptr     = mod_som_efe_obp_ptr->cpt_dissrate_ptr->chi +
+                             (mod_som_efe_obp_ptr->cpt_dissrate_ptr->dissrates_cnt%
+                              MOD_SOM_EFE_OBP_CPT_DISSRATE_NB_RATES_PER_RECORD);
+              local_nu_ptr      = mod_som_efe_obp_ptr->cpt_dissrate_ptr->nu +
+                             (mod_som_efe_obp_ptr->cpt_dissrate_ptr->dissrates_cnt%
+                              MOD_SOM_EFE_OBP_CPT_DISSRATE_NB_RATES_PER_RECORD);
+              local_kappa_ptr   = mod_som_efe_obp_ptr->cpt_dissrate_ptr->kappa +
+                             (mod_som_efe_obp_ptr->cpt_dissrate_ptr->dissrates_cnt%
+                              MOD_SOM_EFE_OBP_CPT_DISSRATE_NB_RATES_PER_RECORD);
+              local_kcutoff_shear_ptr   = mod_som_efe_obp_ptr->cpt_dissrate_ptr->kcutoff_shear +
+                             (mod_som_efe_obp_ptr->cpt_dissrate_ptr->dissrates_cnt%
+                              MOD_SOM_EFE_OBP_CPT_DISSRATE_NB_RATES_PER_RECORD);
+              local_fcutoff_temp_ptr   = mod_som_efe_obp_ptr->cpt_dissrate_ptr->fcutoff_temp +
+                             (mod_som_efe_obp_ptr->cpt_dissrate_ptr->dissrates_cnt%
+                              MOD_SOM_EFE_OBP_CPT_DISSRATE_NB_RATES_PER_RECORD);
+              local_epsi_fom_ptr     = mod_som_efe_obp_ptr->cpt_dissrate_ptr->epsi_fom +
+                             (mod_som_efe_obp_ptr->cpt_dissrate_ptr->dissrates_cnt%
+                              MOD_SOM_EFE_OBP_CPT_DISSRATE_NB_RATES_PER_RECORD);
+              local_chi_fom_ptr     = mod_som_efe_obp_ptr->cpt_dissrate_ptr->chi_fom +
+                             (mod_som_efe_obp_ptr->cpt_dissrate_ptr->dissrates_cnt%
+                              MOD_SOM_EFE_OBP_CPT_DISSRATE_NB_RATES_PER_RECORD);
 
 
 //              //ALB reset  dof_flag so we know when the avg spec is converted;
@@ -1784,11 +1823,6 @@ void mod_som_efe_obp_cpt_dissrate_task_f(void  *p_arg){
                                                       local_fcutoff_temp_ptr   ,
                                                       local_epsi_fom_ptr       ,
                                                       local_chi_fom_ptr);
-
-               // 2026 04 21 LW DEBUG printing epsi & chi figure-of-merit to try to see segment bug in realtime
-               mod_som_io_print_f("EPSI_FOM: %.3f  CHI_FOM: %.3f\r\n", *local_epsi_fom_ptr, *local_chi_fom_ptr);
-
-
 
               //ALB increment the counters
               mod_som_efe_obp_ptr->sample_count++;
@@ -2168,10 +2202,10 @@ void mod_som_efe_obp_consumer_task_f(void  *p_arg){
                mod_som_efe_obp_ptr->consumer_ptr->segment_cnt;
 
                if(segment_avail>0){
-                   if (segment_avail>MOD_SOM_EFE_OBP_N_HALF_SEGMENTS_PER_RECORD){
+                   if (segment_avail>(2*MOD_SOM_EFE_OBP_FILL_SEGMENT_NB_SEGMENT_PER_RECORD)){
                        reset_segment_cnt =
                            mod_som_efe_obp_ptr->fill_segment_ptr->half_segment_cnt -
-                           MOD_SOM_EFE_OBP_N_HALF_SEGMENTS_PER_RECORD ;
+                           (2*MOD_SOM_EFE_OBP_FILL_SEGMENT_NB_SEGMENT_PER_RECORD) ;
                        // calculate the number of skipped elements
                        mod_som_efe_obp_ptr->consumer_ptr->elmnts_skipped =
                            reset_segment_cnt -
@@ -2192,9 +2226,6 @@ void mod_som_efe_obp_consumer_task_f(void  *p_arg){
 
                    //ALB cpy the segments in the cnsmr buffer.
                    payload_length=mod_som_efe_obp_copy_producer_segment_f();
-                   // 2026 04 17 LW: Debug print statement for debugging segment mishaps
-                   mod_som_io_print_f("segment copied (consumer segment_cnt): %u\r\n", mod_som_efe_obp_ptr->consumer_ptr->segment_cnt);
-                   mod_som_io_print_f(": %u\r\n", mod_som_efe_obp_ptr->consumer_ptr->segment_cnt);
 
                    //ALB increase counter.
                    mod_som_efe_obp_ptr->consumer_ptr->segment_cnt++;
@@ -2544,22 +2575,11 @@ uint32_t mod_som_efe_obp_copy_producer_segment_f()
   {
   uint32_t indx = mod_som_efe_obp_ptr->config_ptr->header_length;
     //copy the prdcr segment inside cnsmr segment.
-  const uint32_t half_seg_data_offset_1 =
-      (mod_som_efe_obp_ptr->consumer_ptr->segment_cnt%
-          MOD_SOM_EFE_OBP_N_HALF_SEGMENTS_PER_RECORD)
-          * mod_som_efe_obp_ptr->settings_ptr->nfft/2;
-
-  const uint32_t half_seg_data_offset_2 =
-      ((mod_som_efe_obp_ptr->consumer_ptr->segment_cnt+1)%
-          MOD_SOM_EFE_OBP_N_HALF_SEGMENTS_PER_RECORD)
-          * mod_som_efe_obp_ptr->settings_ptr->nfft/2;
-
-  const uint32_t half_seg_copy_size_bytes = mod_som_efe_obp_ptr->settings_ptr->nfft/2*sizeof(float);
 
       memcpy( &mod_som_efe_obp_ptr->consumer_ptr->record_ptr[indx],
               mod_som_efe_obp_ptr->fill_segment_ptr->timestamp_segment_ptr+
               ((mod_som_efe_obp_ptr->consumer_ptr->segment_cnt)%
-                  MOD_SOM_EFE_OBP_N_HALF_SEGMENTS_PER_RECORD),
+                  (2*MOD_SOM_EFE_OBP_FILL_SEGMENT_NB_SEGMENT_PER_RECORD)),
                   sizeof(uint64_t));
 
       indx+=sizeof(uint64_t);
@@ -2569,43 +2589,61 @@ uint32_t mod_som_efe_obp_copy_producer_segment_f()
       //ALB to handle the weird case of the end of the timeseries
       //ALB halfseg4 and halfseg1.
       memcpy(&mod_som_efe_obp_ptr->consumer_ptr->record_ptr[indx],
-             mod_som_efe_obp_ptr->fill_segment_ptr->seg_temp_volt_ptr + half_seg_data_offset_1,
-             half_seg_copy_size_bytes);
+             &mod_som_efe_obp_ptr->fill_segment_ptr->seg_temp_volt_ptr[
+            (mod_som_efe_obp_ptr->consumer_ptr->segment_cnt%
+             (2*MOD_SOM_EFE_OBP_FILL_SEGMENT_NB_SEGMENT_PER_RECORD))
+           * mod_som_efe_obp_ptr->settings_ptr->nfft/2],
+             mod_som_efe_obp_ptr->settings_ptr->nfft/2*sizeof(float));
 
-      indx+=half_seg_copy_size_bytes;
-
-      memcpy(&mod_som_efe_obp_ptr->consumer_ptr->record_ptr[indx],
-             mod_som_efe_obp_ptr->fill_segment_ptr->seg_temp_volt_ptr + half_seg_data_offset_2,
-             half_seg_copy_size_bytes);
-
-      indx+=half_seg_copy_size_bytes;
-
+      indx+=mod_som_efe_obp_ptr->settings_ptr->nfft/2*sizeof(float);
 
       memcpy(&mod_som_efe_obp_ptr->consumer_ptr->record_ptr[indx],
-             mod_som_efe_obp_ptr->fill_segment_ptr->seg_shear_volt_ptr + half_seg_data_offset_1,
-             half_seg_copy_size_bytes);
+             &mod_som_efe_obp_ptr->fill_segment_ptr->seg_temp_volt_ptr[
+            ((mod_som_efe_obp_ptr->consumer_ptr->segment_cnt+1)%
+             (2*MOD_SOM_EFE_OBP_FILL_SEGMENT_NB_SEGMENT_PER_RECORD))
+           * mod_som_efe_obp_ptr->settings_ptr->nfft/2],
+             mod_som_efe_obp_ptr->settings_ptr->nfft/2*sizeof(float));
 
-      indx+=half_seg_copy_size_bytes;
+      indx+=mod_som_efe_obp_ptr->settings_ptr->nfft/2*sizeof(float);
 
-      memcpy(&mod_som_efe_obp_ptr->consumer_ptr->record_ptr[indx],
-             mod_som_efe_obp_ptr->fill_segment_ptr->seg_shear_volt_ptr + half_seg_data_offset_2,
-             half_seg_copy_size_bytes);
-
-      indx+=half_seg_copy_size_bytes;
 
       memcpy(&mod_som_efe_obp_ptr->consumer_ptr->record_ptr[indx],
-             mod_som_efe_obp_ptr->fill_segment_ptr->seg_accel_volt_ptr + half_seg_data_offset_1,
-             half_seg_copy_size_bytes);
+             &mod_som_efe_obp_ptr->fill_segment_ptr->seg_shear_volt_ptr[
+            (mod_som_efe_obp_ptr->consumer_ptr->segment_cnt%
+             (2*MOD_SOM_EFE_OBP_FILL_SEGMENT_NB_SEGMENT_PER_RECORD))
+           * mod_som_efe_obp_ptr->settings_ptr->nfft/2],
+             mod_som_efe_obp_ptr->settings_ptr->nfft/2*sizeof(float));
 
-      indx+=half_seg_copy_size_bytes;
+      indx+=mod_som_efe_obp_ptr->settings_ptr->nfft/2*sizeof(float);
 
       memcpy(&mod_som_efe_obp_ptr->consumer_ptr->record_ptr[indx],
-             mod_som_efe_obp_ptr->fill_segment_ptr->seg_accel_volt_ptr + half_seg_data_offset_2,
-             half_seg_copy_size_bytes);
+             &mod_som_efe_obp_ptr->fill_segment_ptr->seg_shear_volt_ptr[
+            ((mod_som_efe_obp_ptr->consumer_ptr->segment_cnt+1)%
+             (2*MOD_SOM_EFE_OBP_FILL_SEGMENT_NB_SEGMENT_PER_RECORD))
+           * mod_som_efe_obp_ptr->settings_ptr->nfft/2],
+             mod_som_efe_obp_ptr->settings_ptr->nfft/2*sizeof(float));
+
+      indx+=mod_som_efe_obp_ptr->settings_ptr->nfft/2*sizeof(float);
+
+      memcpy(&mod_som_efe_obp_ptr->consumer_ptr->record_ptr[indx],
+             &mod_som_efe_obp_ptr->fill_segment_ptr->seg_accel_volt_ptr[
+             (mod_som_efe_obp_ptr->consumer_ptr->segment_cnt%
+             (2*MOD_SOM_EFE_OBP_FILL_SEGMENT_NB_SEGMENT_PER_RECORD))
+            * mod_som_efe_obp_ptr->settings_ptr->nfft/2],
+              mod_som_efe_obp_ptr->settings_ptr->nfft/2*sizeof(float));
+
+      indx+=mod_som_efe_obp_ptr->settings_ptr->nfft/2*sizeof(float);
+
+      memcpy(&mod_som_efe_obp_ptr->consumer_ptr->record_ptr[indx],
+             &mod_som_efe_obp_ptr->fill_segment_ptr->seg_accel_volt_ptr[
+             ((mod_som_efe_obp_ptr->consumer_ptr->segment_cnt+1)%
+             (2*MOD_SOM_EFE_OBP_FILL_SEGMENT_NB_SEGMENT_PER_RECORD))
+            * mod_som_efe_obp_ptr->settings_ptr->nfft/2],
+              mod_som_efe_obp_ptr->settings_ptr->nfft/2*sizeof(float));
 
 
       //ALB return the length of the payload
-      indx+=half_seg_copy_size_bytes;
+      indx+=mod_som_efe_obp_ptr->settings_ptr->nfft/2*sizeof(float);
       indx-=mod_som_efe_obp_ptr->config_ptr->header_length;
      return indx;
   }
@@ -2623,11 +2661,6 @@ uint32_t mod_som_efe_obp_copy_producer_segment_f()
   uint32_t mod_som_efe_obp_copy_producer_spectra_f()
   {
     uint32_t indx=mod_som_efe_obp_ptr->config_ptr->header_length;
-    const uint32_t half_seg_copy_size_bytes = mod_som_efe_obp_ptr->settings_ptr->nfft/2*sizeof(float);
-    const uint32_t data_src_offset =
-        (mod_som_efe_obp_ptr->consumer_ptr->spectrum_cnt%
-            MOD_SOM_EFE_OBP_CPT_SPECTRA_NB_SPECTRA_PER_RECORD)
-            * mod_som_efe_obp_ptr->settings_ptr->nfft/2;
     //copy the prdcr spectra inside cnsmr spectra buffer.
 
 
@@ -2637,32 +2670,41 @@ uint32_t mod_som_efe_obp_copy_producer_segment_f()
 
     indx+=sizeof(uint64_t);
 
-    //      switch(mod_som_efe_obp_ptr->consumer_ptr->channel){
-    //    case temp:
+//      switch(mod_som_efe_obp_ptr->consumer_ptr->channel){
+//    case temp:
 
     memcpy(&mod_som_efe_obp_ptr->consumer_ptr->record_ptr[indx],
-           mod_som_efe_obp_ptr->cpt_spectra_ptr->spec_temp_ptr + data_src_offset,
-           half_seg_copy_size_bytes);
-    //    break;
-    //    case shear:
-    indx+=half_seg_copy_size_bytes;
+           &mod_som_efe_obp_ptr->cpt_spectra_ptr->spec_temp_ptr[
+                      (mod_som_efe_obp_ptr->consumer_ptr->spectrum_cnt%
+                       MOD_SOM_EFE_OBP_CPT_SPECTRA_NB_SPECTRA_PER_RECORD)
+                       * mod_som_efe_obp_ptr->settings_ptr->nfft/2],
+           mod_som_efe_obp_ptr->settings_ptr->nfft/2*sizeof(float));
+//    break;
+//    case shear:
+    indx+=mod_som_efe_obp_ptr->settings_ptr->nfft/2*sizeof(float);
 
-    memcpy(&mod_som_efe_obp_ptr->consumer_ptr->record_ptr[indx],
-           mod_som_efe_obp_ptr->cpt_spectra_ptr->spec_shear_ptr + data_src_offset,
-           half_seg_copy_size_bytes);
-    //      break;
-    //    case accel:
-    indx+=half_seg_copy_size_bytes;
-    memcpy(&mod_som_efe_obp_ptr->consumer_ptr->record_ptr[indx],
-           mod_som_efe_obp_ptr->cpt_spectra_ptr->spec_accel_ptr + data_src_offset,
-           half_seg_copy_size_bytes);
-    //      break;
-    //      }
+      memcpy(&mod_som_efe_obp_ptr->consumer_ptr->record_ptr[indx],
+             &mod_som_efe_obp_ptr->cpt_spectra_ptr->spec_shear_ptr[
+                        (mod_som_efe_obp_ptr->consumer_ptr->spectrum_cnt%
+                         MOD_SOM_EFE_OBP_CPT_SPECTRA_NB_SPECTRA_PER_RECORD)
+                         * mod_som_efe_obp_ptr->settings_ptr->nfft/2],
+             mod_som_efe_obp_ptr->settings_ptr->nfft/2*sizeof(float));
+//      break;
+//    case accel:
+      indx+=mod_som_efe_obp_ptr->settings_ptr->nfft/2*sizeof(float);
+      memcpy(&mod_som_efe_obp_ptr->consumer_ptr->record_ptr[indx],
+             &mod_som_efe_obp_ptr->cpt_spectra_ptr->spec_accel_ptr[
+                        (mod_som_efe_obp_ptr->consumer_ptr->spectrum_cnt%
+                         MOD_SOM_EFE_OBP_CPT_SPECTRA_NB_SPECTRA_PER_RECORD)
+                         * mod_som_efe_obp_ptr->settings_ptr->nfft/2],
+             mod_som_efe_obp_ptr->settings_ptr->nfft/2*sizeof(float));
+//      break;
+//      }
 
     //ALB return the length of the payload
-    indx+=half_seg_copy_size_bytes;
+    indx+=mod_som_efe_obp_ptr->settings_ptr->nfft/2*sizeof(float);
     indx-=mod_som_efe_obp_ptr->config_ptr->header_length;
-    return indx;
+     return indx;
   }
 
 
@@ -2679,11 +2721,7 @@ uint32_t mod_som_efe_obp_copy_producer_segment_f()
   uint32_t mod_som_efe_obp_copy_producer_avgspectra_f()
   {
     uint32_t indx=mod_som_efe_obp_ptr->config_ptr->header_length;
-    const uint32_t half_seg_copy_size_bytes = mod_som_efe_obp_ptr->settings_ptr->nfft/2*sizeof(float);
-    const uint32_t data_src_offset =
-        (mod_som_efe_obp_ptr->consumer_ptr->avgspec_cnt%
-            MOD_SOM_EFE_OBP_CPT_SPECTRA_NB_SPECTRA_PER_RECORD)
-            * mod_som_efe_obp_ptr->settings_ptr->nfft/2;
+
 
     //copy the prdcr spectra inside cnsmr spectra buffer.
     memcpy(&mod_som_efe_obp_ptr->consumer_ptr->record_ptr[indx],
@@ -2693,25 +2731,34 @@ uint32_t mod_som_efe_obp_copy_producer_segment_f()
     indx+=sizeof(uint64_t);
 
     memcpy(&mod_som_efe_obp_ptr->consumer_ptr->record_ptr[indx],
-           mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_spec_temp_ptr + data_src_offset,
-           half_seg_copy_size_bytes);
+           &mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_spec_temp_ptr[
+                      (mod_som_efe_obp_ptr->consumer_ptr->avgspec_cnt%
+                       MOD_SOM_EFE_OBP_CPT_SPECTRA_NB_SPECTRA_PER_RECORD)
+                       * mod_som_efe_obp_ptr->settings_ptr->nfft/2],
+           mod_som_efe_obp_ptr->settings_ptr->nfft/2*sizeof(float));
 
-    indx+=half_seg_copy_size_bytes;
-
-    memcpy(&mod_som_efe_obp_ptr->consumer_ptr->record_ptr[indx],
-           mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_spec_shear_ptr + data_src_offset,
-           half_seg_copy_size_bytes);
-
-    indx+=half_seg_copy_size_bytes;
+    indx+=mod_som_efe_obp_ptr->settings_ptr->nfft/2*sizeof(float);
 
     memcpy(&mod_som_efe_obp_ptr->consumer_ptr->record_ptr[indx],
-           mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_spec_accel_ptr + data_src_offset,
-           half_seg_copy_size_bytes);
+           &mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_spec_shear_ptr[
+                      (mod_som_efe_obp_ptr->consumer_ptr->avgspec_cnt%
+                       MOD_SOM_EFE_OBP_CPT_SPECTRA_NB_SPECTRA_PER_RECORD)
+                       * mod_som_efe_obp_ptr->settings_ptr->nfft/2],
+           mod_som_efe_obp_ptr->settings_ptr->nfft/2*sizeof(float));
 
-    indx+=half_seg_copy_size_bytes;
+    indx+=mod_som_efe_obp_ptr->settings_ptr->nfft/2*sizeof(float);
+
+    memcpy(&mod_som_efe_obp_ptr->consumer_ptr->record_ptr[indx],
+           &mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_spec_accel_ptr[
+                      (mod_som_efe_obp_ptr->consumer_ptr->avgspec_cnt%
+                       MOD_SOM_EFE_OBP_CPT_SPECTRA_NB_SPECTRA_PER_RECORD)
+                       * mod_som_efe_obp_ptr->settings_ptr->nfft/2],
+           mod_som_efe_obp_ptr->settings_ptr->nfft/2*sizeof(float));
+
+    indx+=mod_som_efe_obp_ptr->settings_ptr->nfft/2*sizeof(float);
     indx-=mod_som_efe_obp_ptr->config_ptr->header_length;
     //ALB return the length of the payload
-    return indx;
+     return indx;
   }
 
   /*******************************************************************************
@@ -2728,9 +2775,6 @@ uint32_t mod_som_efe_obp_copy_producer_segment_f()
   {
     uint32_t indx=mod_som_efe_obp_ptr->config_ptr->header_length;
 
-    const uint32_t data_src_offset =
-        (mod_som_efe_obp_ptr->consumer_ptr->rates_cnt%
-        MOD_SOM_EFE_OBP_CPT_DISSRATE_NB_RATES_PER_RECORD);
 
     //copy the prdcr spectra inside cnsmr spectra buffer.
 //    memcpy((void *) &mod_som_efe_obp_ptr->consumer_ptr->record_ptr[indx],
@@ -2763,30 +2807,48 @@ uint32_t mod_som_efe_obp_copy_producer_segment_f()
     indx+=sizeof(float);
 
     memcpy(&mod_som_efe_obp_ptr->consumer_ptr->record_ptr[indx],
-           mod_som_efe_obp_ptr->cpt_dissrate_ptr->chi + data_src_offset,sizeof(float));
+           &mod_som_efe_obp_ptr->cpt_dissrate_ptr->chi[
+                      (mod_som_efe_obp_ptr->consumer_ptr->rates_cnt%
+                          MOD_SOM_EFE_OBP_CPT_DISSRATE_NB_RATES_PER_RECORD)
+                       ],sizeof(float));
     indx+=sizeof(float);
 
     memcpy(&mod_som_efe_obp_ptr->consumer_ptr->record_ptr[indx],
-           mod_som_efe_obp_ptr->cpt_dissrate_ptr->chi_fom + data_src_offset,sizeof(float));
-    indx+=sizeof(float);
-
-
-    memcpy(&mod_som_efe_obp_ptr->consumer_ptr->record_ptr[indx],
-           mod_som_efe_obp_ptr->cpt_dissrate_ptr->epsilon + data_src_offset,sizeof(float));
-
-    indx+=sizeof(float);
-
-    memcpy(&mod_som_efe_obp_ptr->consumer_ptr->record_ptr[indx],
-           mod_som_efe_obp_ptr->cpt_dissrate_ptr->epsi_fom + data_src_offset,sizeof(float));
+           &mod_som_efe_obp_ptr->cpt_dissrate_ptr->chi_fom[
+                      (mod_som_efe_obp_ptr->consumer_ptr->rates_cnt%
+                          MOD_SOM_EFE_OBP_CPT_DISSRATE_NB_RATES_PER_RECORD)
+                       ],sizeof(float));
     indx+=sizeof(float);
 
 
     memcpy(&mod_som_efe_obp_ptr->consumer_ptr->record_ptr[indx],
-           mod_som_efe_obp_ptr->cpt_dissrate_ptr->nu + data_src_offset,sizeof(float));
+           &mod_som_efe_obp_ptr->cpt_dissrate_ptr->epsilon[
+                      (mod_som_efe_obp_ptr->consumer_ptr->rates_cnt%
+                          MOD_SOM_EFE_OBP_CPT_DISSRATE_NB_RATES_PER_RECORD)
+                       ],sizeof(float));
+
+    indx+=sizeof(float);
+
+    memcpy(&mod_som_efe_obp_ptr->consumer_ptr->record_ptr[indx],
+           &mod_som_efe_obp_ptr->cpt_dissrate_ptr->epsi_fom[
+                      (mod_som_efe_obp_ptr->consumer_ptr->rates_cnt%
+                          MOD_SOM_EFE_OBP_CPT_DISSRATE_NB_RATES_PER_RECORD)
+                       ],sizeof(float));
+    indx+=sizeof(float);
+
+
+    memcpy(&mod_som_efe_obp_ptr->consumer_ptr->record_ptr[indx],
+           &mod_som_efe_obp_ptr->cpt_dissrate_ptr->nu[
+                      (mod_som_efe_obp_ptr->consumer_ptr->rates_cnt%
+                          MOD_SOM_EFE_OBP_CPT_DISSRATE_NB_RATES_PER_RECORD)
+                       ],sizeof(float));
 
     indx+=sizeof(float);
     memcpy(&mod_som_efe_obp_ptr->consumer_ptr->record_ptr[indx],
-           mod_som_efe_obp_ptr->cpt_dissrate_ptr->kappa + data_src_offset,sizeof(float));
+           &mod_som_efe_obp_ptr->cpt_dissrate_ptr->kappa[
+                      (mod_som_efe_obp_ptr->consumer_ptr->rates_cnt%
+                          MOD_SOM_EFE_OBP_CPT_DISSRATE_NB_RATES_PER_RECORD)
+                       ],sizeof(float));
 
     indx+=sizeof(float);
     indx-=mod_som_efe_obp_ptr->config_ptr->header_length;

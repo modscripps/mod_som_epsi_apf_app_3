@@ -155,4 +155,10 @@
 #define MOD_SOM_SETTINGS_EN
 #define MOD_SOM_VOLTAGE_EN
 
+
+
+//#define MOD_SOM_DEBUG_WDOG
+
+
+
 #endif /* MOD_MOD_CFG_MOD_BSP_CFG_H_ */
