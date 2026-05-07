@@ -2126,7 +2126,7 @@ void WDOG0_IRQHandler(void)
 #ifdef MOD_SOM_DEBUG_WDOG
   printf("WDOG0 TIMEOUT, ENTERING DEBUG LOOP\r\n");
   while(1){
-
+      __NOP();
   }
   //ALB do something?
     /* Clear flag for interrupt */
