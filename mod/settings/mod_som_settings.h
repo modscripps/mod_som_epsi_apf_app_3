@@ -100,7 +100,6 @@ mod_som_apf_settings_t mod_som_apf_settings;
 #if defined(MOD_SOM_EFE_OBP_EN)
 mod_som_efe_obp_settings_t mod_som_efe_obp_settings;
 #endif
-
 #if defined(MOD_SOM_VOLTAGE_EN)
 mod_som_voltage_settings_t mod_som_voltage_settings;
 #endif

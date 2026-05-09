@@ -16,10 +16,6 @@
  * exclusively with the user.
  ******************************************************************************/
 
-/*MAG Please identify and tag with a comment the position in the code for the "producers" and "consumers"
- *MAG for all the sources i.e. EFE LDMA channel done isr,
- *MAG SBE41 USART receive isr, SDIO write,  USART stream  etc.*/
-
 //TOTO
 //------------------------------------------------------------------------------
 // INCLUDES
@@ -67,7 +63,6 @@
 #include <sbe41/mod_som_sbe41_bsp.h>
 #endif
 
-
 #if defined(MOD_SOM_SDIO_EN)
 #include "mod_som_sdio.h"
 #endif
@@ -75,7 +70,6 @@
 #if defined(MOD_SOM_APF_EN)
 #include "mod_som_apf.h"
 #endif
-
 #if defined(MOD_SOM_VOLTAGE_EN)
 #include "mod_som_voltage.h"
 #endif
