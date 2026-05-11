@@ -1233,7 +1233,7 @@ void mod_som_efe_obp_fill_segment_task_f(void  *p_arg){
           }
           // LOOP without delay until caught up to latest produced element
           local_fill_segment_ctd_direction=local_sbe41_ptr->consumer_ptr->direction;
-          while ((elmnts_avail > 0) & (local_fill_segment_ctd_direction==down))
+          while ((elmnts_avail > 0) & (local_fill_segment_ctd_direction==up))
             {
               // When have circular buffer overflow: have produced data bigger than consumer data: 1 circular buffer (n_elmnts)
               // calculate new consumer count to skip ahead to the tail of the circular buffer (with optional padding),
