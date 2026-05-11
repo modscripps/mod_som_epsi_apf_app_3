@@ -131,7 +131,7 @@ void mod_som_epsiobp_init_f(mod_som_efe_obp_config_ptr_t config_ptr_in, mod_som_
   settings = settings_ptr_in;
   cals_ptr = cals_ptr_in;
 
-  uint32_t nttf_float_size_bytes = sizeof(float)*settings->nfft;
+  uint32_t nfft_float_size_bytes = sizeof(float)*settings->nfft;
 
 //  // read in calibration inputs
 //  num_shear = config.num_shear;
@@ -173,7 +173,7 @@ void mod_som_epsiobp_init_f(mod_som_efe_obp_config_ptr_t config_ptr_in, mod_som_
   vals->freq =
       (float *)Mem_SegAlloc(
           "MOD SOM EFE OBP vals freq.",DEF_NULL,
-          nttf_float_size_bytes/2,
+          nfft_float_size_bytes/2,
           &err);
 
   // Check error code
@@ -181,14 +181,14 @@ void mod_som_epsiobp_init_f(mod_som_efe_obp_config_ptr_t config_ptr_in, mod_som_
   vals->kvec =
       (float *)Mem_SegAlloc(
           "MOD SOM EFE OBP vals kvec.",DEF_NULL,
-          nttf_float_size_bytes/2,
+          nfft_float_size_bytes/2,
           &err);
   // Check error code
   APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
   vals->fp07_noise =
       (float *)Mem_SegAlloc(
           "MOD SOM EFE OBP vals fp07_noise.",DEF_NULL,
-          nttf_float_size_bytes/2,
+          nfft_float_size_bytes/2,
           &err);
   // Check error code
   APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
@@ -202,14 +202,14 @@ void mod_som_epsiobp_init_f(mod_som_efe_obp_config_ptr_t config_ptr_in, mod_som_
   vals->hamming_window =
       (float *)Mem_SegAlloc(
           "MOD SOM EFE OBP vals hamming_window.",DEF_NULL,
-          nttf_float_size_bytes,
+          nfft_float_size_bytes,
           &err);
   // Check error code
   APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
   spectrum_buffer =
       (float *)Mem_SegAlloc(
           "MOD SOM EFE OBP spectrum_buffer.",DEF_NULL,
-          nttf_float_size_bytes/2,
+          nfft_float_size_bytes/2,
           &err);
   // Check error code
   APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
@@ -227,42 +227,42 @@ void mod_som_epsiobp_init_f(mod_som_efe_obp_config_ptr_t config_ptr_in, mod_som_
   filters_ptr->ca_shear =
       (float *)Mem_SegAlloc(
           "MOD SOM EFE OBP filt ca.",DEF_NULL,
-          nttf_float_size_bytes/2,
+          nfft_float_size_bytes/2,
           &err);
   APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
 
   filters_ptr->adc_tf =
       (float *)Mem_SegAlloc(
           "MOD SOM EFE OBP filt adc tf.",DEF_NULL,
-          nttf_float_size_bytes/2,
+          nfft_float_size_bytes/2,
           &err);
   APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
 
   filters_ptr->fp07_filter =
       (float *)Mem_SegAlloc(
           "MOD SOM EFE OBP filt fpo7.",DEF_NULL,
-          nttf_float_size_bytes/2,
+          nfft_float_size_bytes/2,
           &err);
   APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
 
   filters_ptr->magsq =
       (float *)Mem_SegAlloc(
           "MOD SOM EFE OBP filt magsq.",DEF_NULL,
-          nttf_float_size_bytes/2,
+          nfft_float_size_bytes/2,
           &err);
   APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
 
   filters_ptr->oakey_shear =
       (float *)Mem_SegAlloc(
           "MOD SOM EFE OBP filt oakey.",DEF_NULL,
-          nttf_float_size_bytes/2,
+          nfft_float_size_bytes/2,
           &err);
   APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
 
   filters_ptr->shear_filter =
       (float *)Mem_SegAlloc(
           "MOD SOM EFE OBP filt shear.",DEF_NULL,
-          nttf_float_size_bytes/2,
+          nfft_float_size_bytes/2,
           &err);
   APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
 
@@ -276,21 +276,21 @@ void mod_som_epsiobp_init_f(mod_som_efe_obp_config_ptr_t config_ptr_in, mod_som_
   theospec_ptr->batchelor_spec =
       (float *)Mem_SegAlloc(
           "MOD SOM EFE OBP theo batch.",DEF_NULL,
-          nttf_float_size_bytes/2,
+          nfft_float_size_bytes/2,
           &err);
   APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
 
   theospec_ptr->panchev_spec =
       (float *)Mem_SegAlloc(
           "MOD SOM EFE OBP theo panch.",DEF_NULL,
-          nttf_float_size_bytes/2,
+          nfft_float_size_bytes/2,
           &err);
   APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
 
   theospec_ptr->kn =
       (float *)Mem_SegAlloc(
           "MOD SOM EFE OBP theo kn.",DEF_NULL,
-          nttf_float_size_bytes/2,
+          nfft_float_size_bytes/2,
           &err);
   APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
 
@@ -304,49 +304,49 @@ void mod_som_epsiobp_init_f(mod_som_efe_obp_config_ptr_t config_ptr_in, mod_som_
   fft_ptr->detrended_data =
       (float *)Mem_SegAlloc(
           "MOD SOM EFE OBP fft detre.",DEF_NULL,
-          nttf_float_size_bytes,
+          nfft_float_size_bytes,
           &err);
   APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
   fft_ptr->fft_data =
       (float *)Mem_SegAlloc(
           "MOD SOM EFE OBP fft data.",DEF_NULL,
-          nttf_float_size_bytes,
+          nfft_float_size_bytes,
           &err);
   APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
   fft_ptr->windowed_data =
       (float *)Mem_SegAlloc(
           "MOD SOM EFE OBP fft windata.",DEF_NULL,
-          nttf_float_size_bytes,
+          nfft_float_size_bytes,
           &err);
   APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
   fft_ptr->averaged_data =
       (float *)Mem_SegAlloc(
           "MOD SOM EFE OBP fft avgdata.",DEF_NULL,
-          nttf_float_size_bytes,
+          nfft_float_size_bytes,
           &err);
   APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
   fft_ptr->fp07_smoothed =
       (float *)Mem_SegAlloc(
           "MOD SOM EFE OBP fft fpo7sm.",DEF_NULL,
-          nttf_float_size_bytes,
+          nfft_float_size_bytes,
           &err);
   APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
   fft_ptr->x =
       (float *)Mem_SegAlloc(
           "MOD SOM EFE OBP fft x.",DEF_NULL,
-          nttf_float_size_bytes,
+          nfft_float_size_bytes,
           &err);
   APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
   fft_ptr->y =
       (float *)Mem_SegAlloc(
           "MOD SOM EFE OBP fft y.",DEF_NULL,
-          nttf_float_size_bytes,
+          nfft_float_size_bytes,
           &err);
   APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
   fft_ptr->epsi_spectrum_buffer =
       (float *)Mem_SegAlloc(
           "MOD SOM EFE OBP fft spec.",DEF_NULL,
-          nttf_float_size_bytes/2,
+          nfft_float_size_bytes/2,
           &err);
   APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
 

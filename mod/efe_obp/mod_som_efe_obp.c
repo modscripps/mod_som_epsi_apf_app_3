@@ -1337,7 +1337,7 @@ void mod_som_efe_obp_fill_segment_task_f(void  *p_arg){
 
               //ALB a segment is full. Store last PTS value
               if(((mod_som_efe_obp_ptr->fill_segment_ptr->seg_buff_efe_element_cnt %
-                  (mod_som_efe_obp_ptr->settings_ptr->nfft)) ==0) &
+                  (mod_som_efe_obp_ptr->settings_ptr->nfft)) ==0) &&
                   (mod_som_efe_obp_ptr->fill_segment_ptr->seg_buff_efe_element_cnt>0)){
 
                   mod_som_efe_obp_ptr->fill_segment_ptr->ctd_pressure=
