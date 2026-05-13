@@ -61,13 +61,17 @@
 #define MOD_SOM_SETTINGS_DEFAULT_CTL_REV_NAME   "rev3"
 #define MOD_SOM_SETTINGS_DEFAULT_CTL_SN         "001"
 #define MOD_SOM_SETTINGS_DEFAULT_FIRMWARE_NAME  PROJECTNAME
-#define MOD_SOM_SETTINGS_DEFAULT_FIRMWARE_GITID "b7e70f7" //using previous commit id
+#define MOD_SOM_SETTINGS_DEFAULT_FIRMWARE_GITID "055c396" //using previous commit id
 
 #define MOD_SOM_SETTINGS_DEFAULT_STR_LENGTH       8
 #define MOD_SOM_SETTINGS_DEFAULT_NAME_LENGTH      24
 #define MOD_SOM_SETTINGS_DEFAULT_FIRMWARE_LENGTH  40
 #define MOD_SOM_SETTINGS_HEADER_CHECKSUM_LENGTH   3
 #define MOD_SOM_SETTINGS_PAYLOAD_CHECKSUM_LENGTH  5
+
+//2026 02 26 if this set to none zero then new settings will take affect
+#define MOD_SOM_SETTINGS_NEW_SETTINGS_CMD 0U
+
 //------------------------------------------------------------------------------
 // TYPEDEFS
 //------------------------------------------------------------------------------
