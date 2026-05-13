@@ -565,6 +565,8 @@ void mod_som_efe_obp_calc_epsilon_f(float *local_epsilon, float *nu,
   T = mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_ctd_temperature;
   S = mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_ctd_salinity;
 
+
+
   // calculate wavenumber vector
 //  for (uint16_t i = 0; i < settings->nfft/2; i++) {
 //    //Make the k vector from the freq vector with the appropriate fall speed
@@ -582,6 +584,15 @@ void mod_som_efe_obp_calc_epsilon_f(float *local_epsilon, float *nu,
 
   float kvis = seawater_kinematic_viscosity_f(S, T, P);
   *nu = kvis;
+
+  //2026 05 13 SAN condition to refuse to calculate epsilon since w is bad
+  if (w<0.005f || w>10.0f){
+          *local_epsilon = 0.0f;
+          *fom_ptr = 0.0f;
+          *kcutoff = 0.0f;
+          return;
+  }
+
   static const float kvec_min_1 = 2, kvec_max_1 = 10;
   static float eps_1, log10_eps;
 
@@ -752,6 +763,8 @@ void mod_som_efe_obp_calc_chi_f(float *local_epsilon, float *local_chi,
     float chi;
 
 
+
+
 //    //ALB get cut off
 //    *(vals->fp07_cutoff) = mod_som_epsiobp_fp07_cutoff_f(
 //        mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_spec_temp_ptr,
@@ -771,6 +784,14 @@ void mod_som_efe_obp_calc_chi_f(float *local_epsilon, float *local_chi,
 
     //  compute chi
     *kappa_t = seawater_thermal_diffusivity_f(S, T, P);
+
+    //2026 05 13 SAN condition to refuse to calculate chi since w is bad
+    if (w<0.005f || w>10.0f){
+            *local_chi = 0.0f;
+            *fcutoff = 0.0f;
+            *fom = 0.0f;
+            return;
+    }
 
     dk = (float) config->f_samp/ (float) settings->nfft/w;
     chi = 6*(*kappa_t)*dk*chi_sum;
