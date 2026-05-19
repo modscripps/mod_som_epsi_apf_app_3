@@ -2577,8 +2577,6 @@ mod_som_status_t mod_som_efe_sampling_f()
 
   //MHA: need to enable the EFE MEZZ board for FCTD
   //    /* EFE Enable: configure the LEUART pins and EFE MEZZ EN (send power to the EFE MEZZ)*/
-//    GPIO_PinModeSet(mod_som_efe_ptr->config_ptr->port.en_port, mod_som_sbe49_ptr->config_ptr->port.en_pin,
-//                    gpioModePushPull, 1);
 #ifdef MOD_SOM_FCTD_EN
   GPIO_PinModeSet(MOD_SOM_EFE_MEZZ_EN_PORT, MOD_SOM_EFE_MEZZ_EN_PIN,
                     gpioModePushPull, 1);

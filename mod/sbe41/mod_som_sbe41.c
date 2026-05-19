@@ -620,7 +620,7 @@ mod_som_status_t mod_som_sbe41_construct_consumer_ptr_f(){
                           mod_som_sbe41_ptr->settings_ptr->elements_per_record;
 
 
-  //ALB set sbe49_header length:
+  //ALB set sbe41_header length:
   //ALB 1 sync char          +
   //ALB 4 TAB char           +
   //ALB 16 char hextimestamp +
