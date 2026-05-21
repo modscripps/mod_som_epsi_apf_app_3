@@ -162,7 +162,8 @@
 #define MOD_SOM_APF_META_TIMEOUT                  10800UL
 
 #define MOD_SOM_APF_FORMAT_3_NFFT_DIAG            10
-#define MOD_SOM_APF_FORMAT_3_NFFT_FREQ_INDCS      {14,84,154,223,293,363,432,502,572,641}
+//2026 05 20 SAN updated indices to Arnaud's request
+#define MOD_SOM_APF_FORMAT_3_NFFT_FREQ_INDCS      {3, 4, 5, 7, 9, 13, 18, 24, 33, 45}//{14,84,154,223,293,363,432,502,572,641}
 
 
 #define MIN(X, Y) (((X) < (Y)) ? (X) : (Y))
