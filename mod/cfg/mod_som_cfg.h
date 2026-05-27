@@ -86,4 +86,7 @@
 
 
 
+
+#define MOD_SOM_DEBUG_SYSTEMVIEW                DEF_ENABLED
+
 #endif /* MOD_MOD_CFG_MOD_BSP_CFG_H_ */

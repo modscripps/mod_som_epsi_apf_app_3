@@ -70,7 +70,7 @@
 
 // data consumer
 #define MOD_SOM_EFE_CONSUMER_TASK_PRIO             18u
-#define MOD_SOM_EFE_CONSUMER_TASK_STK_SIZE       4096u
+#define MOD_SOM_EFE_CONSUMER_TASK_STK_SIZE       1024u
 #define MOD_SOM_EFE_CONSUMER_DELAY                   2      // delay for consumer 2 (ex: 4000 = 1 time / 4 secs).
 #define MOD_SOM_EFE_CONSUMER_PADDING                 5      // number of elements for padding for data consumer.
 
