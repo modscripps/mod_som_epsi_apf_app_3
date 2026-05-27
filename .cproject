@@ -39,6 +39,9 @@
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/${ProjName}/kernel/include}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/${ProjName}/service_inc}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/${ProjName}/service}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/${ProjName}/power_manager/src}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/${ProjName}/power_manager/inc}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/${ProjName}/power_manager/config}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/${ProjName}/mod/DSP/Includes}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/${ProjName}/mod}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/${ProjName}/mod/cfg}&quot;"/>
@@ -47,7 +50,6 @@
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/${ProjName}/FatFS_inc}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${StudioSdkPath}/platform/service/sleeptimer/config&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${StudioSdkPath}/platform/service/sleeptimer/inc&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${StudioSdkPath}/platform/service/sleeptimer/src&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/${ProjName}/mod/io}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/${ProjName}/mod/calendar}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/${ProjName}/mod/efe}&quot;"/>

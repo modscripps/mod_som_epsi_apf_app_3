@@ -45,6 +45,8 @@
 #endif
 
 
+#include "sl_power_manager.h"
+
 #include <string.h>
 #include <stdarg.h>
 
@@ -190,6 +192,9 @@ mod_som_status_t mod_som_main_init_f(void){
 
     //init sleep timer (by silicon labs), we use it for delays,etc.
     sl_sleeptimer_init();
+
+    // 2026 05 27 LW: Initialize the Power Manager
+    sl_power_manager_init();
 
     //ALB init watchdog
     CMU_ClockEnable(cmuClock_CORELE, true);
