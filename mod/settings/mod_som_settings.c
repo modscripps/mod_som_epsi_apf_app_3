@@ -88,9 +88,23 @@ mod_som_status_t mod_som_settings_init_f(){
 	//ALB right now I am ALWAYS starting from the default settings
 	//mod_som_settings_struct.size=0xFFFFFFFF;
 
-	if(strcmp(mod_som_settings_struct.gitid,
-	          MOD_SOM_SETTINGS_DEFAULT_FIRMWARE_GITID)!=0)
-	  {
+
+
+  //2026 03 20 fix GIT ID update and firmwar
+  sprintf(mod_som_settings_struct.firmware,"%s-%s",
+          MOD_SOM_SETTINGS_DEFAULT_FIRMWARE_NAME,__DATE__);
+
+  sprintf(mod_som_settings_struct.gitid,"%s",
+          MOD_SOM_SETTINGS_DEFAULT_FIRMWARE_GITID);
+
+  // 2026 02 26 San make sure gitid doesn't determine the erasure of data
+    // TODO we need a structure check on the settings data
+    // for now there is a Erase settings flag
+  if(MOD_SOM_SETTINGS_NEW_SETTINGS_CMD){
+//	if(strcmp(mod_som_settings_struct.gitid,
+//	          MOD_SOM_SETTINGS_DEFAULT_FIRMWARE_GITID)!=0)
+//	  {
+
 		//ALB case where the UserData page is already empty
 		//ALB
 		//ALB We will initialize the module with default settings and then save the the settings in the UserData page
@@ -106,12 +120,6 @@ mod_som_status_t mod_som_settings_init_f(){
 //    strncpy(mod_som_settings_struct.firmware,
 //            MOD_SOM_SETTINGS_DEFAULT_FIRMWARE_NAME,
 //            MOD_SOM_SETTINGS_DEFAULT_FIRMWARE_LENGTH);
-
-    sprintf(mod_som_settings_struct.firmware,"%s-%s",
-            MOD_SOM_SETTINGS_DEFAULT_FIRMWARE_NAME,__DATE__);
-
-    sprintf(mod_som_settings_struct.gitid,"%s",
-            MOD_SOM_SETTINGS_DEFAULT_FIRMWARE_GITID);
 
     //    strncpy(mod_som_settings_struct.firmware,
 //            $Projname,
@@ -141,9 +149,6 @@ mod_som_status_t mod_som_settings_init_f(){
 #if defined(MOD_SOM_EFE_EN)
 		mod_som_settings_struct.mod_som_efe_settings.initialize_flag=false;
 #endif
-#if defined(MOD_SOM_SBE49_EN)
-		mod_som_settings_struct.mod_som_sbe49_settings.initialize_flag=false;
-#endif
 #if defined(MOD_SOM_SBE41_EN)
     mod_som_settings_struct.mod_som_sbe41_settings.initialize_flag=false;
 #endif
@@ -160,15 +165,6 @@ mod_som_status_t mod_som_settings_init_f(){
 
 #if defined(MOD_SOM_VOLTAGE_EN)
     mod_som_settings_struct.mod_som_voltage_settings.initialize_flag=false;
-#endif
-#if defined(MOD_SOM_ACTUATOR_EN)
-    mod_som_settings_struct.mod_som_actuator_settings.initialize_flag=false;
-#endif
-#if defined(MOD_SOM_ALTIMETER_EN)
-    mod_som_settings_struct.mod_som_altimeter_settings.initialize_flag=false;
-#endif
-#if defined(MOD_SOM_VEC_NAV_EN)
-    mod_som_settings_struct.mod_som_vec_nav_settings.initialize_flag=false;
 #endif
 
 
@@ -198,15 +194,19 @@ mod_som_status_t mod_som_settings_init_f(){
 	        (MOD_SOM_SETTINGS_DEFAULT_NAME_LENGTH % sizeof(uint32_t));
 
 
-	    memcpy(mod_som_settings_struct.firmware,\
-	           (uint8_t*) &userDataPage_ptr[user_page_offset],\
+/*
+    	    memcpy(mod_som_settings_struct.firmware,
+	           (uint8_t*) &userDataPage_ptr[user_page_offset],
 	           MOD_SOM_SETTINGS_DEFAULT_FIRMWARE_LENGTH);
+	           */
 	    user_page_offset+=MOD_SOM_SETTINGS_DEFAULT_FIRMWARE_LENGTH/sizeof(uint32_t)+ \
 	        (MOD_SOM_SETTINGS_DEFAULT_FIRMWARE_LENGTH % sizeof(uint32_t));
 
-      memcpy(mod_som_settings_struct.gitid,\
-             (uint8_t*) &userDataPage_ptr[user_page_offset],\
+	    /*
+      memcpy(mod_som_settings_struct.gitid,
+             (uint8_t*) &userDataPage_ptr[user_page_offset],
              MOD_SOM_SETTINGS_DEFAULT_NAME_LENGTH);
+	    */
       user_page_offset+=MOD_SOM_SETTINGS_DEFAULT_NAME_LENGTH/sizeof(uint32_t)+ \
           (MOD_SOM_SETTINGS_DEFAULT_NAME_LENGTH % sizeof(uint32_t));
 
@@ -258,19 +258,6 @@ mod_som_status_t mod_som_settings_init_f(){
 
 	    user_page_offset+=mod_som_settings_struct.mod_som_efe_settings.size/sizeof(uint32_t)+ \
 	        (mod_som_settings_struct.mod_som_efe_settings.size % sizeof(uint32_t))-1; //ALB -1 because is the word length in uint32_t
-#endif
-#if defined(MOD_SOM_SBE49_EN)
-	    memcpy(&mod_som_settings_struct.mod_som_sbe49_settings.size,\
-	           (uint32_t*) &userDataPage_ptr[user_page_offset],\
-	           sizeof(uint32_t));
-	    user_page_offset++;
-
-	    memcpy((uint8_t *) &mod_som_settings_struct.mod_som_sbe49_settings.data_header_text,\
-	           (uint8_t*) &userDataPage_ptr[user_page_offset],\
-	           mod_som_settings_struct.mod_som_sbe49_settings.size-4);
-
-	    user_page_offset+=mod_som_settings_struct.mod_som_sbe49_settings.size/sizeof(uint32_t)+ \
-	        (mod_som_settings_struct.mod_som_sbe49_settings.size % sizeof(uint32_t))-1;
 #endif
 #if defined(MOD_SOM_SBE41_EN)
 
@@ -349,48 +336,6 @@ mod_som_status_t mod_som_settings_init_f(){
 	        (mod_som_settings_struct.mod_som_voltage_settings.size % sizeof(uint32_t))-1;
 #endif
 
-#if defined(MOD_SOM_ACTUATOR_EN)
-
-	    memcpy(&mod_som_settings_struct.mod_som_actuator_settings.size,\
-	           (uint32_t*) &userDataPage_ptr[user_page_offset],\
-	           sizeof(uint32_t));
-	    user_page_offset++;
-
-	    memcpy((uint8_t *) &mod_som_settings_struct.mod_som_actuator_settings.header,\
-	           (uint8_t*) &userDataPage_ptr[user_page_offset],\
-	           mod_som_settings_struct.mod_som_actuator_settings.size-4);
-
-	    user_page_offset+=mod_som_settings_struct.mod_som_actuator_settings.size/sizeof(uint32_t)+ \
-	        (mod_som_settings_struct.mod_som_actuator_settings.size % sizeof(uint32_t))-1;
-
-#endif
-#if defined(MOD_SOM_ALTIMETER_EN)
-	    memcpy(&mod_som_settings_struct.mod_som_altimeter_settings.size,\
-	           (uint32_t*) &userDataPage_ptr[user_page_offset],\
-	           sizeof(uint32_t));
-	    user_page_offset++;
-
-	    memcpy((uint8_t *) &mod_som_settings_struct.mod_som_altimeter_settings.header,\
-	           (uint8_t*) &userDataPage_ptr[user_page_offset],\
-	           mod_som_settings_struct.mod_som_altimeter_settings.size-4);
-
-	    user_page_offset+=mod_som_settings_struct.mod_som_altimeter_settings.size/sizeof(uint32_t)+ \
-	        (mod_som_settings_struct.mod_som_altimeter_settings.size % sizeof(uint32_t))-1;
-#endif
-#if defined(MOD_SOM_VEC_NAV_EN)
-      memcpy(&mod_som_settings_struct.mod_som_vec_nav_settings.size,\
-             (uint32_t*) &userDataPage_ptr[user_page_offset],\
-             sizeof(uint32_t));
-      user_page_offset++;
-
-      memcpy((uint8_t *) &mod_som_settings_struct.mod_som_vec_nav_settings.data_header_text,\
-             (uint8_t*) &userDataPage_ptr[user_page_offset],\
-             mod_som_settings_struct.mod_som_vec_nav_settings.size-4);
-
-      user_page_offset+=mod_som_settings_struct.mod_som_vec_nav_settings.size/sizeof(uint32_t)+ \
-          (mod_som_settings_struct.mod_som_vec_nav_settings.size % sizeof(uint32_t))-1;
-#endif
-
 
 
 //ALB We read the UserData page, parse it and use the data to initialize the modules.
@@ -451,9 +396,6 @@ mod_som_status_t mod_som_settings_save_settings_f(){
 #if defined(MOD_SOM_SDIO_EN)
 		mod_som_settings_struct.mod_som_sdio_settings=mod_som_sdio_get_settings_f();
 #endif
-#if defined(MOD_SOM_SBE49_EN)
-		mod_som_settings_struct.mod_som_sbe49_settings=mod_som_sbe49_get_settings_f();
-#endif
 #if defined(MOD_SOM_SBE41_EN)
 		mod_som_settings_struct.mod_som_sbe41_settings=mod_som_sbe41_get_settings_f();
 #endif
@@ -465,15 +407,6 @@ mod_som_status_t mod_som_settings_save_settings_f(){
 #endif
 #if defined(MOD_SOM_VOLTAGE_EN)
     mod_som_settings_struct.mod_som_voltage_settings=mod_som_voltage_get_settings_f();
-#endif
-#if defined(MOD_SOM_ACTUATOR_EN)
-    mod_som_settings_struct.mod_som_actuator_settings=mod_som_actuator_get_settings_f();
-#endif
-#if defined(MOD_SOM_ALTIMETER_EN)
-    mod_som_settings_struct.mod_som_altimeter_settings=mod_som_altimeter_get_settings_f();
-#endif
-#if defined(MOD_SOM_VEC_NAV_EN)
-    mod_som_settings_struct.mod_som_vec_nav_settings=mod_som_vecnav_get_settings_f();
 #endif
 
 		mod_som_settings_struct.initialized_flag=true;
@@ -706,16 +639,24 @@ void mod_som_settings_id_f(CPU_INT16U argc,CPU_CHAR *argv[]){
 	else{
 
 		//ALB switch statement easy to handle all user input cases.
-		switch (argc){
-		case 5:
-			strcpy(mod_som_settings_struct.rev,argv[1]);
-			strcpy(mod_som_settings_struct.sn,argv[2]);
-			strcpy(mod_som_settings_struct.firmware,argv[3]);
-      strcpy(mod_som_settings_struct.gitid,argv[4]);
-			break;
-		default:
-			printf("format: settings.som_id REV S/N firmwarename gitid\r\n");
-			break;
+	    switch (argc){
+	      case 3:
+	        strcpy(mod_som_settings_struct.rev,argv[1]);
+	        strcpy(mod_som_settings_struct.sn,argv[2]);
+	        sprintf(mod_som_settings_struct.firmware,"%s-%s",
+	                MOD_SOM_SETTINGS_DEFAULT_FIRMWARE_NAME,__DATE__);
+	        sprintf(mod_som_settings_struct.gitid,"%s",
+	                MOD_SOM_SETTINGS_DEFAULT_FIRMWARE_GITID);
+	        break;
+	      case 5:
+	        strcpy(mod_som_settings_struct.rev,argv[1]);
+	        strcpy(mod_som_settings_struct.sn,argv[2]);
+	        strcpy(mod_som_settings_struct.firmware,argv[3]);
+	        strcpy(mod_som_settings_struct.gitid,argv[4]);
+	        break;
+	      default:
+	        printf("format: settings.som_id REV S/N firmwarename gitid\r\n");
+	        break;
 		}
 	}
 }

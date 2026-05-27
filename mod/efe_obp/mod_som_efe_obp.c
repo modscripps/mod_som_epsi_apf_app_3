@@ -1194,7 +1194,7 @@ void mod_som_efe_obp_fill_segment_task_f(void  *p_arg){
   float local_fill_segment_ctd_pressure=0;
   float local_fill_segment_ctd_salinity=0;
   float local_fill_segment_ctd_dpdt=0;
-  float local_fill_segment_ctd_direction=none;
+//  float local_fill_segment_ctd_direction=none;
 
   //local_sbe41_ptr
   //ALB get runtime sbe41 for futur use.
@@ -1212,7 +1212,7 @@ void mod_som_efe_obp_fill_segment_task_f(void  *p_arg){
   local_fill_segment_ctd_dpdt=
       local_sbe41_ptr->consumer_ptr->dPdt;
 
-  local_fill_segment_ctd_direction=local_sbe41_ptr->consumer_ptr->direction;
+//  local_fill_segment_ctd_direction=local_sbe41_ptr->consumer_ptr->direction;
 
 
 
@@ -1247,9 +1247,14 @@ void mod_som_efe_obp_fill_segment_task_f(void  *p_arg){
               mod_som_efe_obp_ptr->cpt_spectra_ptr->spectrum_cnt     = 0;
               mod_som_efe_obp_ptr->cpt_dissrate_ptr->dissrates_cnt   = 0;
               mod_som_efe_obp_ptr->fill_segment_ptr->half_segment_cnt = 0;
+              mod_som_efe_obp_ptr->cpt_spectra_ptr->avg_spectrum_cnt = 0;
+              mod_som_efe_obp_ptr->consumer_ptr->segment_cnt         = 0;
+              mod_som_efe_obp_ptr->consumer_ptr->spectrum_cnt        = 0;
+              mod_som_efe_obp_ptr->consumer_ptr->avgspec_cnt         = 0;
+              mod_som_efe_obp_ptr->consumer_ptr->rates_cnt           = 0;
           }
           // LOOP without delay until caught up to latest produced element
-          local_fill_segment_ctd_direction=local_sbe41_ptr->consumer_ptr->direction;
+//          local_fill_segment_ctd_direction=local_sbe41_ptr->consumer_ptr->direction;
 
           // 2026 05 04 LW: Removed local_fill_segment_ctd_direction==up check so we always record regardless of CTD direction
           while ((elmnts_avail > 0) )//&& (local_fill_segment_ctd_direction==up))
@@ -1335,7 +1340,7 @@ void mod_som_efe_obp_fill_segment_task_f(void  *p_arg){
 
               //ALB a segment is full. Store last PTS value
               if(((mod_som_efe_obp_ptr->fill_segment_ptr->seg_buff_efe_element_cnt %
-                  (mod_som_efe_obp_ptr->settings_ptr->nfft)) ==0) &
+                  (mod_som_efe_obp_ptr->settings_ptr->nfft)) ==0) &&
                   (mod_som_efe_obp_ptr->fill_segment_ptr->seg_buff_efe_element_cnt>0)){
 
                   mod_som_efe_obp_ptr->fill_segment_ptr->ctd_pressure=
@@ -1384,8 +1389,8 @@ void mod_som_efe_obp_fill_segment_task_f(void  *p_arg){
                       local_fill_segment_ctd_dpdt=
                           local_sbe41_ptr->consumer_ptr->dPdt;
 
-                      local_fill_segment_ctd_direction=
-                          local_sbe41_ptr->consumer_ptr->direction;
+//                      local_fill_segment_ctd_direction=
+//                          local_sbe41_ptr->consumer_ptr->direction;
 
 
                       mod_som_efe_obp_ptr->fill_segment_ptr->ctd_element_cnt++;

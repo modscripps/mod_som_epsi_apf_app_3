@@ -23,9 +23,6 @@
 #ifdef MOD_SOM_SETTINGS_EN
 	#include <mod_som_settings.h>
 #endif
-#ifdef MOD_SOM_AGGREGATOR_EN
-  #include <mod_som_aggregator.h>
-#endif
 
 
 
@@ -1360,17 +1357,6 @@ mod_som_status_t mod_som_efe_sim_data_init_f()
   ///*
 #ifdef MOD_SOM_EFE_UART_SPOOF
 
-
-  // Enable 232 transceiver
-  GPIO_PinModeSet(MOD_SOM_MEZZANINE_UART_EN_PORT, \
-                  MOD_SOM_MEZZANINE_UART_EN_PIN, \
-                  gpioModePushPull, 0);    // TEL_EN low (bring high right before transmit)
-
-  GPIO_PinModeSet(MOD_SOM_MEZZANINE_UART_VCC_EN_PORT,\
-                  MOD_SOM_MEZZANINE_UART_VCC_EN_PIN,\
-                  gpioModePushPull, 1);    // URT_EN high
-
-
   // Set up RX/TX pins
   GPIO_PinModeSet(SPOOF_UART_TX_PORT, \
                   SPOOF_UART_TX_PIN, \
@@ -1765,12 +1751,6 @@ void mod_som_efe_start_mclock_f(mod_som_efe_ptr_t module_ptr)
 
 #ifdef MOD_SOM_EFE_SIM_DATA
 #ifdef MOD_SOM_EFE_UART_SPOOF
-
-  // 2026 02 06 LW: Bring TEL_EN high here so UART1's 232 xcvr is ready to transmit (avoids auto-shutdown)
-  GPIO_PinModeSet(MOD_SOM_MEZZANINE_UART_EN_PORT, \
-                  MOD_SOM_MEZZANINE_UART_EN_PIN, \
-                  gpioModePushPull, 1);    // TEL_EN high
-
   sl_sleeptimer_delay_millisecond(1);
 #endif
 
@@ -2580,8 +2560,6 @@ mod_som_status_t mod_som_efe_sampling_f()
 
   //MHA: need to enable the EFE MEZZ board for FCTD
   //    /* EFE Enable: configure the LEUART pins and EFE MEZZ EN (send power to the EFE MEZZ)*/
-//    GPIO_PinModeSet(mod_som_efe_ptr->config_ptr->port.en_port, mod_som_sbe49_ptr->config_ptr->port.en_pin,
-//                    gpioModePushPull, 1);
 #ifdef MOD_SOM_FCTD_EN
   GPIO_PinModeSet(MOD_SOM_EFE_MEZZ_EN_PORT, MOD_SOM_EFE_MEZZ_EN_PIN,
                     gpioModePushPull, 1);

@@ -126,9 +126,12 @@ static float fom_batchelor_f(float *temp_spec,float epsilon, float chi, float kv
  ******************************************************************************/
 void mod_som_epsiobp_init_f(mod_som_efe_obp_config_ptr_t config_ptr_in, mod_som_efe_obp_settings_ptr_t settings_ptr_in, mod_som_efe_obp_calibration_ptr_t cals_ptr_in)
 {
+
   config = config_ptr_in;
   settings = settings_ptr_in;
   cals_ptr = cals_ptr_in;
+
+  uint32_t nfft_float_size_bytes = sizeof(float)*settings->nfft;
 
 //  // read in calibration inputs
 //  num_shear = config.num_shear;
@@ -170,7 +173,7 @@ void mod_som_epsiobp_init_f(mod_som_efe_obp_config_ptr_t config_ptr_in, mod_som_
   vals->freq =
       (float *)Mem_SegAlloc(
           "MOD SOM EFE OBP vals freq.",DEF_NULL,
-          sizeof(float)*settings->nfft/2,
+          nfft_float_size_bytes/2,
           &err);
 
   // Check error code
@@ -178,14 +181,14 @@ void mod_som_epsiobp_init_f(mod_som_efe_obp_config_ptr_t config_ptr_in, mod_som_
   vals->kvec =
       (float *)Mem_SegAlloc(
           "MOD SOM EFE OBP vals kvec.",DEF_NULL,
-          sizeof(float)*settings->nfft/2,
+          nfft_float_size_bytes/2,
           &err);
   // Check error code
   APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
   vals->fp07_noise =
       (float *)Mem_SegAlloc(
           "MOD SOM EFE OBP vals fp07_noise.",DEF_NULL,
-          sizeof(float)*settings->nfft/2,
+          nfft_float_size_bytes/2,
           &err);
   // Check error code
   APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
@@ -199,14 +202,14 @@ void mod_som_epsiobp_init_f(mod_som_efe_obp_config_ptr_t config_ptr_in, mod_som_
   vals->hamming_window =
       (float *)Mem_SegAlloc(
           "MOD SOM EFE OBP vals hamming_window.",DEF_NULL,
-          sizeof(float)*settings->nfft,
+          nfft_float_size_bytes,
           &err);
   // Check error code
   APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
   spectrum_buffer =
       (float *)Mem_SegAlloc(
           "MOD SOM EFE OBP spectrum_buffer.",DEF_NULL,
-          sizeof(float)*settings->nfft/2,
+          nfft_float_size_bytes/2,
           &err);
   // Check error code
   APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
@@ -224,42 +227,42 @@ void mod_som_epsiobp_init_f(mod_som_efe_obp_config_ptr_t config_ptr_in, mod_som_
   filters_ptr->ca_shear =
       (float *)Mem_SegAlloc(
           "MOD SOM EFE OBP filt ca.",DEF_NULL,
-          sizeof(float)*settings->nfft/2,
+          nfft_float_size_bytes/2,
           &err);
   APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
 
   filters_ptr->adc_tf =
       (float *)Mem_SegAlloc(
           "MOD SOM EFE OBP filt adc tf.",DEF_NULL,
-          sizeof(float)*settings->nfft/2,
+          nfft_float_size_bytes/2,
           &err);
   APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
 
   filters_ptr->fp07_filter =
       (float *)Mem_SegAlloc(
           "MOD SOM EFE OBP filt fpo7.",DEF_NULL,
-          sizeof(float)*settings->nfft/2,
+          nfft_float_size_bytes/2,
           &err);
   APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
 
   filters_ptr->magsq =
       (float *)Mem_SegAlloc(
           "MOD SOM EFE OBP filt magsq.",DEF_NULL,
-          sizeof(float)*settings->nfft/2,
+          nfft_float_size_bytes/2,
           &err);
   APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
 
   filters_ptr->oakey_shear =
       (float *)Mem_SegAlloc(
           "MOD SOM EFE OBP filt oakey.",DEF_NULL,
-          sizeof(float)*settings->nfft/2,
+          nfft_float_size_bytes/2,
           &err);
   APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
 
   filters_ptr->shear_filter =
       (float *)Mem_SegAlloc(
           "MOD SOM EFE OBP filt shear.",DEF_NULL,
-          sizeof(float)*settings->nfft/2,
+          nfft_float_size_bytes/2,
           &err);
   APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
 
@@ -273,21 +276,21 @@ void mod_som_epsiobp_init_f(mod_som_efe_obp_config_ptr_t config_ptr_in, mod_som_
   theospec_ptr->batchelor_spec =
       (float *)Mem_SegAlloc(
           "MOD SOM EFE OBP theo batch.",DEF_NULL,
-          sizeof(float)*settings->nfft/2,
+          nfft_float_size_bytes/2,
           &err);
   APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
 
   theospec_ptr->panchev_spec =
       (float *)Mem_SegAlloc(
           "MOD SOM EFE OBP theo panch.",DEF_NULL,
-          sizeof(float)*settings->nfft/2,
+          nfft_float_size_bytes/2,
           &err);
   APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
 
   theospec_ptr->kn =
       (float *)Mem_SegAlloc(
           "MOD SOM EFE OBP theo kn.",DEF_NULL,
-          sizeof(float)*settings->nfft/2,
+          nfft_float_size_bytes/2,
           &err);
   APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
 
@@ -301,49 +304,49 @@ void mod_som_epsiobp_init_f(mod_som_efe_obp_config_ptr_t config_ptr_in, mod_som_
   fft_ptr->detrended_data =
       (float *)Mem_SegAlloc(
           "MOD SOM EFE OBP fft detre.",DEF_NULL,
-          sizeof(float)*settings->nfft,
+          nfft_float_size_bytes,
           &err);
   APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
   fft_ptr->fft_data =
       (float *)Mem_SegAlloc(
           "MOD SOM EFE OBP fft data.",DEF_NULL,
-          sizeof(float)*settings->nfft,
+          nfft_float_size_bytes,
           &err);
   APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
   fft_ptr->windowed_data =
       (float *)Mem_SegAlloc(
           "MOD SOM EFE OBP fft windata.",DEF_NULL,
-          sizeof(float)*settings->nfft,
+          nfft_float_size_bytes,
           &err);
   APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
   fft_ptr->averaged_data =
       (float *)Mem_SegAlloc(
           "MOD SOM EFE OBP fft avgdata.",DEF_NULL,
-          sizeof(float)*settings->nfft,
+          nfft_float_size_bytes,
           &err);
   APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
   fft_ptr->fp07_smoothed =
       (float *)Mem_SegAlloc(
           "MOD SOM EFE OBP fft fpo7sm.",DEF_NULL,
-          sizeof(float)*settings->nfft,
+          nfft_float_size_bytes,
           &err);
   APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
   fft_ptr->x =
       (float *)Mem_SegAlloc(
           "MOD SOM EFE OBP fft x.",DEF_NULL,
-          sizeof(float)*settings->nfft,
+          nfft_float_size_bytes,
           &err);
   APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
   fft_ptr->y =
       (float *)Mem_SegAlloc(
           "MOD SOM EFE OBP fft y.",DEF_NULL,
-          sizeof(float)*settings->nfft,
+          nfft_float_size_bytes,
           &err);
   APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
   fft_ptr->epsi_spectrum_buffer =
       (float *)Mem_SegAlloc(
           "MOD SOM EFE OBP fft spec.",DEF_NULL,
-          sizeof(float)*settings->nfft,
+          nfft_float_size_bytes/2,
           &err);
   APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
 
@@ -388,6 +391,7 @@ void mod_som_epsiobp_init_f(mod_som_efe_obp_config_ptr_t config_ptr_in, mod_som_
   //initialize master counter
   master_counter = 0;
 }
+
 
 /*******************************************************************************
  * @brief
@@ -561,6 +565,8 @@ void mod_som_efe_obp_calc_epsilon_f(float *local_epsilon, float *nu,
   T = mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_ctd_temperature;
   S = mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_ctd_salinity;
 
+
+
   // calculate wavenumber vector
 //  for (uint16_t i = 0; i < settings->nfft/2; i++) {
 //    //Make the k vector from the freq vector with the appropriate fall speed
@@ -578,6 +584,15 @@ void mod_som_efe_obp_calc_epsilon_f(float *local_epsilon, float *nu,
 
   float kvis = seawater_kinematic_viscosity_f(S, T, P);
   *nu = kvis;
+
+  //2026 05 13 SAN condition to refuse to calculate epsilon since w is bad
+  if (w<0.005f || w>10.0f){
+          *local_epsilon = 0.0f;
+          *fom_ptr = 0.0f;
+          *kcutoff = 0.0f;
+          return;
+  }
+
   static const float kvec_min_1 = 2, kvec_max_1 = 10;
   static float eps_1, log10_eps;
 
@@ -748,6 +763,8 @@ void mod_som_efe_obp_calc_chi_f(float *local_epsilon, float *local_chi,
     float chi;
 
 
+
+
 //    //ALB get cut off
 //    *(vals->fp07_cutoff) = mod_som_epsiobp_fp07_cutoff_f(
 //        mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_spec_temp_ptr,
@@ -767,6 +784,14 @@ void mod_som_efe_obp_calc_chi_f(float *local_epsilon, float *local_chi,
 
     //  compute chi
     *kappa_t = seawater_thermal_diffusivity_f(S, T, P);
+
+    //2026 05 13 SAN condition to refuse to calculate chi since w is bad
+    if (w<0.005f || w>10.0f){
+            *local_chi = 0.0f;
+            *fcutoff = 0.0f;
+            *fom = 0.0f;
+            return;
+    }
 
     dk = (float) config->f_samp/ (float) settings->nfft/w;
     chi = 6*(*kappa_t)*dk*chi_sum;
