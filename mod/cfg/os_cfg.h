@@ -198,13 +198,13 @@
 *********************************************************************************************************
 */
 
-#define  OS_CFG_STAT_TASK_EN                                DEF_ENABLED
+#define  OS_CFG_STAT_TASK_EN                                DEF_DISABLED
 
 #define  OS_CFG_STAT_TASK_STK_CHK_EN                        DEF_ENABLED
 
 #define  OS_CFG_TASK_IDLE_EN                                DEF_ENABLED
 
-#define  OS_CFG_TASK_PROFILE_EN                             DEF_ENABLED
+#define  OS_CFG_TASK_PROFILE_EN                             DEF_DISABLED
 
 #define  OS_CFG_TASK_Q_EN                                   DEF_ENABLED
 
