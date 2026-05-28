@@ -1936,18 +1936,12 @@ mod_som_apf_status_t mod_som_apf_shell_get_line_f(char *buf, uint32_t * bytes_re
         error_cnt = 0;
         while(status>0){
             WDOG_Feed();
-            if((!mod_som_apf_ptr->daq) && (mod_som_apf_ptr->sleep_flag)){
-                OSTimeDly(
-                    ((OS_TICK     )MOD_SOM_CFG_LOOP_TICK_DELAY)*100,
-                    (OS_OPT      )OS_OPT_TIME_DLY,
-                    &err);
-            }else{
-            OSTimeDly(
-                    (OS_TICK     )MOD_SOM_CFG_LOOP_TICK_DELAY,
-                    (OS_OPT      )OS_OPT_TIME_DLY,
-                    &err);
-            }
-            if(RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE){
+            // 2026 05 28 LW: Wait for commands from APF (LEUART0 RX IRQ posts the task semaphore)
+            OSTaskSemPend(0, //MOD_SOM_CFG_LOOP_TICK_DELAY*1000,
+                          OS_OPT_PEND_BLOCKING,
+                          DEF_NULL,
+                          &err);
+            if(RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE || RTOS_ERR_CODE_GET(err) == RTOS_ERR_TIMEOUT){
                 error_cnt = 0;
             }
             else{
@@ -5491,6 +5485,7 @@ void LEUART0_IRQHandler(){
   OSIntEnter();
 
   LEUART_TypeDef  *leuart_ptr;
+  RTOS_ERR err;
 //  uint8_t indx    =0;
 
   uint32_t interrupt_sig;
@@ -5527,6 +5522,10 @@ void LEUART0_IRQHandler(){
 
 
   }
+
+  OSTaskSemPost(&mod_som_apf_shell_task_tcb,
+                OS_OPT_POST_NO_SCHED,
+                &err);
 
   OSIntExit();
 }
