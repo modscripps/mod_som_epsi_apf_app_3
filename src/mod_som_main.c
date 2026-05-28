@@ -247,14 +247,14 @@ mod_som_status_t mod_som_main_sleep_f()
       //
       //ALB      DC/DC burst mode  PF10 low
       RETARGET_SerialFlush(); // Wait for UART TX buffer to be empty
-      CMU_ClockSelectSet(cmuClock_HF, cmuSelect_HFRCO);
-      CMU_HFRCOBandSet(cmuHFRCOFreq_13M0Hz);
-      RETARGET_SerialInit(); // Re-enable VCOM
+//      CMU_ClockSelectSet(cmuClock_HF, cmuSelect_HFRCO);
+//      CMU_HFRCOBandSet(cmuHFRCOFreq_13M0Hz);
+//      RETARGET_SerialInit(); // Re-enable VCOM
       GPIO_PinModeSet(gpioPortF, 10, gpioModePushPull, 0);
-      CMU_OscillatorEnable(cmuOsc_HFXO, false, false);
-      GPIO_PinModeSet(MOD_SOM_HFXO_EN_PORT,
-                      MOD_SOM_HFXO_EN_PIN,
-                      gpioModePushPull, 0);
+//      CMU_OscillatorEnable(cmuOsc_HFXO, false, false);
+//      GPIO_PinModeSet(MOD_SOM_HFXO_EN_PORT,
+//                      MOD_SOM_HFXO_EN_PIN,
+//                      gpioModePushPull, 0);
 
       //2025 08 22 trying to mitigate clock errors for LEUART0
       CMU_ClockEnable(cmuClock_GPIO, true);
