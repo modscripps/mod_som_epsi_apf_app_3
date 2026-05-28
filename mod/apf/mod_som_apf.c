@@ -5488,6 +5488,8 @@ mod_som_apf_status_t mod_som_apf_upload_f(){
  ******************************************************************************/
 void LEUART0_IRQHandler(){
 
+  OSIntEnter();
+
   LEUART_TypeDef  *leuart_ptr;
 //  uint8_t indx    =0;
 
@@ -5525,6 +5527,8 @@ void LEUART0_IRQHandler(){
 
 
   }
+
+  OSIntExit();
 }
 
 
