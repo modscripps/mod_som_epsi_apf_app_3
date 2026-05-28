@@ -38,6 +38,8 @@
 #include "sl_sleeptimer.h"
 #include "sli_sleeptimer.h"
 
+#include "sl_power_manager.h"
+
 #include <stdbool.h>
 
 /*******************************************************************************
@@ -324,6 +326,9 @@ void sli_power_manager_restore_states(void)
  ******************************************************************************/
 void sli_power_manager_apply_em(sl_power_manager_em_t em)
 {
+
+  SEGGER_SYSVIEW_PrintfHost("EM%d", (int)em);
+
   // Perform required actions according to energy mode
   switch (em) {
     case SL_POWER_MANAGER_EM1:

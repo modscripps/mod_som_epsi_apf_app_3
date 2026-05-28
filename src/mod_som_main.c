@@ -36,6 +36,7 @@
 #include "diskio.h"
 #endif
 
+#include "sl_power_manager.h"
 
 /*****************************************
  * START Include module header files here
@@ -299,6 +300,10 @@ mod_som_status_t mod_som_main_sleep_f()
 //      CMU_ClockDivSet(cmuClock_LEUART0, cmuClkDiv_1); // Don't prescale LEUART clock
 //      LEUART_Init_TypeDef init = LEUART_INIT_DEFAULT;
 //      LEUART_Init(LEUART0, &init);
+
+
+
+//      sl_power_manager_remove_em_requirement(SL_POWER_MANAGER_EM1);
       EMU_EnterEM2(false);
       mod_som_sleep_flag=true;
 
@@ -320,6 +325,9 @@ mod_som_status_t mod_som_main_wake_up_f()
   int delay =1000;
 
   if (mod_som_sleep_flag==true){
+
+//      sl_power_manager_add_em_requirement(SL_POWER_MANAGER_EM1);
+
       mod_som_io_print_f("Waking up modules\r\n");
 
       /* Freeze registers to avoid stalling for LF synchronization. */

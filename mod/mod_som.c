@@ -196,6 +196,7 @@ mod_som_status_t mod_som_main_init_f(void){
 
     // 2026 05 27 LW: Initialize the Power Manager
     sl_power_manager_init();
+    sl_power_manager_add_em_requirement(SL_POWER_MANAGER_EM1);
 
     //ALB init watchdog
     CMU_ClockEnable(cmuClock_CORELE, true);
