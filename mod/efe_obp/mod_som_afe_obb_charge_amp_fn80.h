@@ -1,8 +1,9 @@
-#ifndef CHARGE_AMP_FN80_H
-#define CHARGE_AMP_FN80_H
+#ifndef MOD_SOM_EFE_OBP_CHARGE_AMP_FN80_H
+#define MOD_SOM_EFE_OBP_CHARGE_AMP_FN80_H
 
 #define CHARGE_AMP_FN80_LEN 1024
 
+/*
 static const double f[CHARGE_AMP_FN80_LEN] = {
     0.078125,
     0.15625,
@@ -1029,8 +1030,9 @@ static const double f[CHARGE_AMP_FN80_LEN] = {
     79.921875,
     80
 };
-
-static const double epsi_ca[CHARGE_AMP_FN80_LEN] = {
+//*/
+//charge amp filter coefficients
+const float mod_som_efe_obp_epsi_cal_val[CHARGE_AMP_FN80_LEN] = {
     0.0985496414,
     0.1942891096,
     0.2847929015,
@@ -2057,4 +2059,4 @@ static const double epsi_ca[CHARGE_AMP_FN80_LEN] = {
     0.8959073456
 };
 
-#endif /* CHARGE_AMP_FN80_H */
+#endif /* MOD_SOM_EFE_OBP_CHARGE_AMP_FN80_H */

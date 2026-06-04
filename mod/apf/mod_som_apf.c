@@ -1349,7 +1349,10 @@ void mod_som_apf_producer_task_f(void  *p_arg){
             }  // end of while (dissrate_avail > 0)
           // ALB done with segment storing.
           mod_som_apf_ptr->producer_ptr->dissrate_skipped = 0;
-      } //end if started
+      }
+      else{
+              mod_som_apf_daq_stop_f();//end if dacq is full
+      }
 
       // Delay Start Task execution for
       OSTimeDly( MOD_SOM_APF_PRODUCER_DELAY,             //   consumer delay is #define at the beginning OS Ticks
@@ -3284,8 +3287,8 @@ mod_som_apf_status_t mod_som_apf_daq_stop_f(){
       return status;
   }
 
-  mod_som_sbe41_ptr_t local_sbe41_runtime_ptr =
-        mod_som_sbe41_get_runtime_ptr_f();
+//  mod_som_sbe41_ptr_t local_sbe41_runtime_ptr =
+//        mod_som_sbe41_get_runtime_ptr_f();
 #ifdef MOD_SOM_DEBUG
   mod_som_io_print_f(
       "SBE sample count:%ld\r\n"
