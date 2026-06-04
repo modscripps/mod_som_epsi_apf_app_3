@@ -51,13 +51,9 @@
  * @{
  ******************************************************************************/
 
-#if defined(RETARGET_USART)
-#include "em_usart.h"
-#endif
 
-#if defined(RETARGET_LEUART)
-#include "em_leuart.h"
-#endif
+#include "em_usart.h"
+
 
 /* Receive buffer */
 #ifndef RXBUFSIZE
@@ -75,11 +71,7 @@ static bool             initialized = false;    /**< Initialize UART/LEUART */
  *****************************************************************************/
 static void disableRxInterrupt()
 {
-#if defined(RETARGET_USART)
   USART_IntDisable(RETARGET_UART, USART_IF_RXDATAV);
-#else
-  LEUART_IntDisable(RETARGET_UART, LEUART_IF_RXDATAV);
-#endif
 }
 
 /**************************************************************************//**
@@ -87,11 +79,7 @@ static void disableRxInterrupt()
  *****************************************************************************/
 static void enableRxInterrupt()
 {
-#if defined(RETARGET_USART)
   USART_IntEnable(RETARGET_UART, USART_IF_RXDATAV);
-#else
-  LEUART_IntEnable(RETARGET_UART, LEUART_IF_RXDATAV);
-#endif
 }
 
 /**************************************************************************//**
@@ -99,11 +87,7 @@ static void enableRxInterrupt()
  *****************************************************************************/
 void RETARGET_IRQ_NAME(void)
 {
-#if defined(RETARGET_USART)
   if (RETARGET_UART->STATUS & USART_STATUS_RXDATAV) {
-#else
-  if (RETARGET_UART->IF & LEUART_IF_RXDATAV) {
-#endif
 
     if (rxCount < RXBUFSIZE) {
       /* There is room for data in the RX buffer so we store the data. */
@@ -151,7 +135,6 @@ void RETARGET_SerialInit(void)
   GPIO_PinModeSet(RETARGET_TXPORT, RETARGET_TXPIN, gpioModePushPull, 1);
   GPIO_PinModeSet(RETARGET_RXPORT, RETARGET_RXPIN, gpioModeInputPull, 1);
 
-#if defined(RETARGET_USART)
   USART_TypeDef           *usart = RETARGET_UART;
   USART_InitAsync_TypeDef init   = USART_INITASYNC_DEFAULT;
 
@@ -164,9 +147,6 @@ void RETARGET_SerialInit(void)
   init.enable = usartDisable;
 #if defined(MOD_SOM_BOARD)
   init.baudrate =MOD_SOM_MAIN_COM_BAUDRATE;
-#endif
-#if defined(MOD_SOM_MEZZANINE_BOARD)
-  init.baudrate =MOD_SOM_MEZZANINE_COM_BAUDRATE;
 #endif
 
   USART_InitAsync(usart, &init);
@@ -206,63 +186,6 @@ void RETARGET_SerialInit(void)
 
   /* Finally enable it */
   USART_Enable(usart, usartEnable);
-
-#else
-  LEUART_TypeDef      *leuart = RETARGET_UART;
-  LEUART_Init_TypeDef init    = LEUART_INIT_DEFAULT;
-
-  /* Enable DK LEUART/RS232 switch */
-  RETARGET_PERIPHERAL_ENABLE();
-
-  /* Enable CORE LE clock in order to access LE modules */
-  CMU_ClockEnable(cmuClock_CORELE, true);
-
-#if defined(RETARGET_VCOM)
-  /* Select HFXO/2 for LEUARTs (and wait for it to stabilize) */
-#if defined(_CMU_LFCLKSEL_LFB_HFCORECLKLEDIV2)
-  CMU_ClockSelectSet(cmuClock_LFB, cmuSelect_CORELEDIV2);
-#else
-  CMU_ClockSelectSet(cmuClock_LFB, cmuSelect_HFCLKLE);
-#endif
-#else
-  /* Select LFXO for LEUARTs (and wait for it to stabilize) */
-  CMU_ClockSelectSet(cmuClock_LFB, cmuSelect_LFXO);
-#endif
-
-  CMU_ClockEnable(RETARGET_CLK, true);
-
-  /* Do not prescale clock */
-  CMU_ClockDivSet(RETARGET_CLK, cmuClkDiv_1);
-
-  /* Configure LEUART */
-  init.enable = leuartDisable;
-#if defined(RETARGET_VCOM)
-  init.baudrate = 115200;
-#endif
-  LEUART_Init(leuart, &init);
-  /* Enable pins at default location */
-  #if defined(LEUART_ROUTEPEN_RXPEN)
-  leuart->ROUTEPEN = USART_ROUTEPEN_RXPEN | USART_ROUTEPEN_TXPEN;
-  leuart->ROUTELOC0 = (leuart->ROUTELOC0
-                       & ~(_LEUART_ROUTELOC0_TXLOC_MASK
-                           | _LEUART_ROUTELOC0_RXLOC_MASK) )
-                      | (RETARGET_TX_LOCATION << _LEUART_ROUTELOC0_TXLOC_SHIFT)
-                      | (RETARGET_RX_LOCATION << _LEUART_ROUTELOC0_RXLOC_SHIFT);
-  #else
-  leuart->ROUTE = LEUART_ROUTE_RXPEN | LEUART_ROUTE_TXPEN | RETARGET_LOCATION;
-  #endif
-
-  /* Clear previous RX interrupts */
-  LEUART_IntClear(RETARGET_UART, LEUART_IF_RXDATAV);
-  NVIC_ClearPendingIRQ(RETARGET_IRQn);
-
-  /* Enable RX interrupts */
-  LEUART_IntEnable(RETARGET_UART, LEUART_IF_RXDATAV);
-  NVIC_EnableIRQ(RETARGET_IRQn);
-
-  /* Finally enable it */
-  LEUART_Enable(leuart, leuartEnable);
-#endif
 
 #if !defined(__CROSSWORKS_ARM) && defined(__GNUC__)
   setvbuf(stdout, NULL, _IONBF, 0);   /*Set unbuffered mode for stdout (newlib)*/
@@ -342,8 +265,7 @@ int RETARGET_WriteChar(char c)
  *****************************************************************************/
 bool RETARGET_SerialEnableFlowControl(void)
 {
-#if defined(RETARGET_USART)               \
-  && defined(_USART_ROUTEPEN_CTSPEN_MASK) \
+#if defined(_USART_ROUTEPEN_CTSPEN_MASK) \
   && defined(RETARGET_CTSPORT)            \
   && defined(RETARGET_RTSPORT)
   GPIO_PinModeSet(RETARGET_CTSPORT, RETARGET_CTSPIN, gpioModeInputPull, 0);
@@ -363,22 +285,12 @@ bool RETARGET_SerialEnableFlowControl(void)
  *****************************************************************************/
 void RETARGET_SerialFlush(void)
 {
-#if defined(RETARGET_USART)
+
 
 #if defined(USART_STATUS_TXIDLE)
 #define _GENERIC_UART_STATUS_IDLE     USART_STATUS_TXIDLE
 #else
 #define _GENERIC_UART_STATUS_IDLE     USART_STATUS_TXC
-#endif
-
-#else
-
-#if defined(LEUART_STATUS_TXIDLE)
-#define _GENERIC_UART_STATUS_IDLE     LEUART_STATUS_TXIDLE
-#else
-#define _GENERIC_UART_STATUS_IDLE     LEUART_STATUS_TXC
-#endif
-
 #endif
 
   while (!(RETARGET_UART->STATUS & _GENERIC_UART_STATUS_IDLE)) ;

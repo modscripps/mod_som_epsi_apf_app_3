@@ -30,6 +30,9 @@
 //MHA
 #include <mod_som_calendar.h> //MHA add calendar .h so we have access to the calendar settings pointer for the poweron_offset.
 
+//2026 06 03 adding a custom charge amp filter coefficients
+#include "mod_som_afe_obb_charge_amp_fn80.h"
+
 //MHA calendar
 mod_som_calendar_settings_t mod_som_calendar_settings;
 
@@ -419,11 +422,14 @@ mod_som_status_t mod_som_efe_obp_construct_calibration_ptr_f(){
   // TODO I do not know how to check if everything is fine here.
 
   // ALB Allocate memory for the spectra
-  calib_ptr->cafilter_coeff = (float *)Mem_SegAlloc(
-        "MOD SOM EFE OBP CA coef ptr",DEF_NULL,
-        sizeof(float)*mod_som_efe_obp_ptr->settings_ptr->nfft/2,
-        &err);
-  APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
+  //2026 06 03 changed to a constant filter array
+  calib_ptr->cafilter_coeff = mod_som_efe_obp_epsi_cal_val;
+          //
+//          (float *)Mem_SegAlloc(
+//        "MOD SOM EFE OBP CA coef ptr",DEF_NULL,
+//        sizeof(float)*mod_som_efe_obp_ptr->settings_ptr->nfft/2,
+//        &err);
+//  APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
 
   // ALB Allocate memory for the spectra
   calib_ptr->cafilter_freq = (float *)Mem_SegAlloc(
@@ -448,7 +454,7 @@ mod_som_status_t mod_som_efe_obp_construct_calibration_ptr_f(){
   calib_ptr->acc_offset=MOD_SOM_EFE_OBP_ACCELL_OFFSET;
   calib_ptr->acc_factor=MOD_SOM_EFE_OBP_ACCELL_FACTOR;
 
-
+/*  //2026 06 03 used a constant charge amp coefficient definition provided by ALB
   //ALB adding MHA code here.
   //TODO Make it not hard coded.
   for (int c=0;c<mod_som_efe_obp_ptr->settings_ptr->nfft/2;c++) {
@@ -486,7 +492,7 @@ mod_som_status_t mod_som_efe_obp_construct_calibration_ptr_f(){
     break;
     //default:
   }
-
+//*/
 
   return mod_som_efe_obp_encode_status_f(MOD_SOM_STATUS_OK);
 }

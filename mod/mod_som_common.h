@@ -6,7 +6,7 @@
  *
  * @description
  * This program uses the Micrium shell utility to initializes communication port
- * for SBE 49 and has the capability to stream SBE49 data
+ * for SBE 41 and has the capability to stream SBE41 data
  *
  * This work is intended to support research, teaching, and private study.
  * Use of this work beyond that allowed by "fair use" or any license applied to

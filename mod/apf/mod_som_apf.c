@@ -1349,7 +1349,10 @@ void mod_som_apf_producer_task_f(void  *p_arg){
             }  // end of while (dissrate_avail > 0)
           // ALB done with segment storing.
           mod_som_apf_ptr->producer_ptr->dissrate_skipped = 0;
-      } //end if started
+      }
+      else{
+              mod_som_apf_daq_stop_f();//end if dacq is full
+      }
 
       // Delay Start Task execution for
       OSTimeDly( MOD_SOM_APF_PRODUCER_DELAY,             //   consumer delay is #define at the beginning OS Ticks
@@ -2409,6 +2412,12 @@ uint32_t mod_som_apf_send_line_f(LEUART_TypeDef *leuart_ptr,char * buf, uint32_t
   //ALB decimate fourier coef (foco),
   for (int i=0;i<mod_som_apf_ptr->producer_ptr->nfft_diag;i++)
     {
+
+      //ALB i+i-1 = every other foco
+      local_shear_avg_fft   = log10(*(curr_shear_avg_spectra_ptr+2*i-1));
+      local_temp_avg_fft    = log10(*(curr_temp_avg_spectra_ptr+2*i-1));
+      local_accel_avg_fft   = log10(*(curr_accel_avg_spectra_ptr+2*i-1));
+
       //ALB first make sure it is above the min/max values
       local_shear_avg_fft = MAX(local_shear_avg_fft,min_foco);
       local_shear_avg_fft = MIN(local_shear_avg_fft,max_foco);
@@ -2451,10 +2460,7 @@ uint32_t mod_som_apf_send_line_f(LEUART_TypeDef *leuart_ptr,char * buf, uint32_t
              MOD_SOM_APF_PRODUCER_FOCO_RES);
       dacq_ptr+=MOD_SOM_APF_PRODUCER_FOCO_RES;
 
-      //ALB i+i-1 = every other foco
-      local_shear_avg_fft   = log10(*(curr_shear_avg_spectra_ptr+2*i-1));
-      local_temp_avg_fft    = log10(*(curr_temp_avg_spectra_ptr+2*i-1));
-      local_accel_avg_fft   = log10(*(curr_accel_avg_spectra_ptr+2*i-1));
+
 
   }
   dacq_size2=dacq_ptr-mod_som_apf_ptr->producer_ptr->dacq_ptr;
@@ -2623,6 +2629,10 @@ uint32_t mod_som_apf_send_line_f(LEUART_TypeDef *leuart_ptr,char * buf, uint32_t
     //ALB decimate fourier coef (foco),
     for (int i=0;i<MOD_SOM_APF_FORMAT_3_NFFT_DIAG;i++)
       {
+        //ALB i+i-1 = every other foco
+        local_shear_avg_fft   = log10(*(curr_shear_avg_spectra_ptr+indices[i]));
+        local_temp_avg_fft    = log10(*(curr_temp_avg_spectra_ptr+indices[i]));
+
         //ALB first make sure it is above the min/max values
         local_shear_avg_fft = MAX(local_shear_avg_fft,min_foco);
         local_shear_avg_fft = MIN(local_shear_avg_fft,max_foco);
@@ -2650,9 +2660,7 @@ uint32_t mod_som_apf_send_line_f(LEUART_TypeDef *leuart_ptr,char * buf, uint32_t
                &mod_temp_foco,
                MOD_SOM_APF_PRODUCER_FOCO_RES);
         dacq_ptr+=MOD_SOM_APF_PRODUCER_FOCO_RES;
-        //ALB i+i-1 = every other foco
-        local_shear_avg_fft   = log10(*(curr_shear_avg_spectra_ptr+indices[i]));
-        local_temp_avg_fft    = log10(*(curr_temp_avg_spectra_ptr+indices[i]));
+
       }
 
     dacq_size1=dacq_ptr-mod_som_apf_ptr->producer_ptr->dacq_ptr;
@@ -3279,8 +3287,8 @@ mod_som_apf_status_t mod_som_apf_daq_stop_f(){
       return status;
   }
 
-  mod_som_sbe41_ptr_t local_sbe41_runtime_ptr =
-        mod_som_sbe41_get_runtime_ptr_f();
+//  mod_som_sbe41_ptr_t local_sbe41_runtime_ptr =
+//        mod_som_sbe41_get_runtime_ptr_f();
 #ifdef MOD_SOM_DEBUG
   mod_som_io_print_f(
       "SBE sample count:%ld\r\n"
