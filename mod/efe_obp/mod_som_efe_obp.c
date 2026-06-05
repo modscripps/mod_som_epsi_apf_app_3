@@ -2862,6 +2862,21 @@ uint32_t mod_som_efe_obp_copy_producer_segment_f()
                        ],sizeof(float));
 
     indx+=sizeof(float);
+    //2026 06 04 SAN adding to give shear and temp frequency cutoff
+    memcpy(&mod_som_efe_obp_ptr->consumer_ptr->record_ptr[indx],
+           &mod_som_efe_obp_ptr->cpt_dissrate_ptr->kcutoff_shear[
+                          (mod_som_efe_obp_ptr->consumer_ptr->rates_cnt%
+                              MOD_SOM_EFE_OBP_CPT_DISSRATE_NB_RATES_PER_RECORD)
+                           ],sizeof(float));
+
+    indx+=sizeof(float);
+    memcpy(&mod_som_efe_obp_ptr->consumer_ptr->record_ptr[indx],
+           &mod_som_efe_obp_ptr->cpt_dissrate_ptr->fcutoff_temp[
+                          (mod_som_efe_obp_ptr->consumer_ptr->rates_cnt%
+                              MOD_SOM_EFE_OBP_CPT_DISSRATE_NB_RATES_PER_RECORD)
+                           ],sizeof(float));
+
+    indx+=sizeof(float);
     indx-=mod_som_efe_obp_ptr->config_ptr->header_length;
     //ALB return the length of the payload
      return indx;
