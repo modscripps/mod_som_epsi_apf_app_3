@@ -712,7 +712,8 @@ void mod_som_efe_obp_calc_epsilon_f(float *local_epsilon, float *nu,
     static float correction;
     static const float c[] = {-3.12067617e-05, -1.31492870e-03, -2.29864661e-02, -2.18323426e-01, -1.23597906, -4.29137352, -8.91987933, -9.58856889, -2.41486526};
     float log10_eps_3 = log10(eps_3);
-    if (log10_eps_3 <= -6) {
+    // 2026 06 04 SAN update to match current MATLAB code from ALB (change from -6 to -5)
+    if (log10_eps_3 <= -5) {
       correction = 0;
     } else if (log10_eps_3 <= -1) {
       correction = c[0]*pow(log10_eps_3, 8.0) + c[1]*pow(log10_eps_3, 7.0) + c[2]*pow(log10_eps_3, 6.0) + c[3]*pow(log10_eps_3, 5.0) + c[4]*pow(log10_eps_3, 4.0) + c[5]*pow(log10_eps_3, 3.0) + c[6]*pow(log10_eps_3, 2.0) + c[7]*log10_eps_3 + c[8];
@@ -882,7 +883,7 @@ void mod_som_epsiobp_shear_filters_f(float *shear_filter, float fall_rate)
 float oakey_filter_f(float f, float fall_rate)
 {
   static const float lambda_c = 0.02;
-  return 1/(1 + pow((lambda_c*f/fall_rate), 2.0));
+  return 1.0/(1.0 + pow((lambda_c*f/fall_rate), 2.0));
 }
 
 /*******************************************************************************
