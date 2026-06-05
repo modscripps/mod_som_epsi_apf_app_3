@@ -109,8 +109,9 @@ static float seawater_thermal_diffusivity_f(float salinity, float temperature, f
 static float seawater_kinematic_viscosity_f(float salinity, float temperature, float pressure);
 float fom_panchev_f(float *shear_spec, float epsilon, float kvis,uint16_t kvec_indices, uint16_t kvec_size, float *panchev_spec);
 static float fom_batchelor_f(float *temp_spec,float epsilon, float chi, float kvis, float kappa, uint16_t cutoff, float *batchelor_spec);
-// end
 
+static float trapz_f(const float *data, uint16_t size, float dk);
+// end
 /*------------------------------ Module Code ----------------------------a---*/
 // public functions
 
@@ -624,12 +625,15 @@ void mod_som_efe_obp_calc_epsilon_f(float *local_epsilon, float *nu,
   local_avg_spec_shear_ptr=
       &mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_spec_shear_ptr[kvec_indices_1[0]];
 
-  spectrum_integral = 0;
-  //Compute the integral of the spectrum from 2-10 cpm
-  for (uint16_t i = 0; i < kvec_1_size; i++) {
-//    spectrum_integral += (local_avg_spec_shear_ptr[i]*w*pow((2*M_PI*vals->kvec[kvec_indices_1[0]+i]), 2.0))*dk;
-    spectrum_integral += local_avg_spec_shear_ptr[i]*dk;
-  }
+  //2026 06 05 SAN replace rectangular integral with trapezoidal integral
+//  spectrum_integral = 0;
+//  //Compute the integral of the spectrum from 2-10 cpm
+//  for (uint16_t i = 0; i < kvec_1_size; i++) {
+////    spectrum_integral += (local_avg_spec_shear_ptr[i]*w*pow((2*M_PI*vals->kvec[kvec_indices_1[0]+i]), 2.0))*dk;
+//    spectrum_integral += local_avg_spec_shear_ptr[i]*dk;
+//  }
+
+  spectrum_integral = trapz_f(local_avg_spec_shear_ptr, kvec_1_size, dk);
   log10_spectrum_integral = log10(spectrum_integral);
 
 
@@ -667,14 +671,17 @@ void mod_som_efe_obp_calc_epsilon_f(float *local_epsilon, float *nu,
   local_avg_spec_shear_ptr=
       &mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_spec_shear_ptr[kvec_indices_2[0]];
 
-  spectrum_integral = 0;
-  for (uint16_t i = 0; i < kvec_2_size; i++) {
-//    spectrum_kvec_2[i] = (mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_spec_shear_ptr[kvec_indices_2[0] + i]);
-//    spectrum_integral += (local_avg_spec_shear_ptr[i]*w*pow((2*M_PI*vals->kvec[kvec_indices_2[0]+i]), 2.0))*dk;
-    spectrum_integral += local_avg_spec_shear_ptr[i]*dk;
-//
-//    spectrum_integral += spectrum_kvec_2[i]*dk;
-  }
+
+  //2026 06 05 SAN replace rectangular integral with trapezoidal integral
+//  spectrum_integral = 0;
+//  for (uint16_t i = 0; i < kvec_2_size; i++) {
+////    spectrum_kvec_2[i] = (mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_spec_shear_ptr[kvec_indices_2[0] + i]);
+////    spectrum_integral += (local_avg_spec_shear_ptr[i]*w*pow((2*M_PI*vals->kvec[kvec_indices_2[0]+i]), 2.0))*dk;
+//    spectrum_integral += local_avg_spec_shear_ptr[i]*dk;
+////
+////    spectrum_integral += spectrum_kvec_2[i]*dk;
+//  }
+  spectrum_integral = trapz_f(local_avg_spec_shear_ptr, kvec_1_size, dk);
   //Compute eps from this and divide by 0.9 to account for the excess over 90%
   eps_2 = 7.5*kvis*spectrum_integral/0.9;
 
@@ -697,14 +704,16 @@ void mod_som_efe_obp_calc_epsilon_f(float *local_epsilon, float *nu,
   //Compute the integral of the spectrum over this range
   local_avg_spec_shear_ptr=
       &mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_spec_shear_ptr[kvec_indices_3[0]];
+  //2026 06 05 SAN replace rectangular integral with trapezoidal integral
   //Compute the integral of the spectrum
-  spectrum_integral = 0;
-  for (uint16_t i = 0; i < kvec_3_size; i++) {
-//    spectrum_kvec_3[i] = (mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_spec_shear_ptr[kvec_indices_3[0] + i]);
-//    spectrum_integral += (local_avg_spec_shear_ptr[i]*w*pow((2*M_PI*vals->kvec[kvec_indices_3[0]+i]), 2.0))*dk;
-    spectrum_integral += local_avg_spec_shear_ptr[i]*dk;
-//    spectrum_integral += spectrum_kvec_3[i]*dk;
-  } //Compute eps from this and divide by 0.9 to account for the excess over 90%
+//  spectrum_integral = 0;
+//  for (uint16_t i = 0; i < kvec_3_size; i++) {
+////    spectrum_kvec_3[i] = (mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_spec_shear_ptr[kvec_indices_3[0] + i]);
+////    spectrum_integral += (local_avg_spec_shear_ptr[i]*w*pow((2*M_PI*vals->kvec[kvec_indices_3[0]+i]), 2.0))*dk;
+//    spectrum_integral += local_avg_spec_shear_ptr[i]*dk;
+////    spectrum_integral += spectrum_kvec_3[i]*dk;
+//  } //Compute eps from this and divide by 0.9 to account for the excess over 90%
+  spectrum_integral = trapz_f(local_avg_spec_shear_ptr, kvec_1_size, dk);
   eps_3 = 7.5*kvis*spectrum_integral;
   if (eps_3 < 1e-10 || kvec_3_size < 4) {
     eps_3 = 1e-10;
@@ -1523,6 +1532,32 @@ float fom_batchelor_f(float *temp_spec, float epsilon, float chi, float kvis, fl
   // return integral value
   return fom;
 
+}
+
+/*******************************************************************************
+ * @brief
+ *      trapezoidal integration of a uniformly-spaced sequence
+ * @param data
+ *            input - pointer to vector P[O..size-1]
+ * @param size
+ *            input - number of points
+ * @param dk
+ *            input - uniform spacing between points
+ * @return
+ *            dk * (P[0]/2 + P[1] + P[2] + ….. + P[size-2] + P[size-1]/2)
+ *            returns 0 if size ‹ 2 (no interval to integrate)
+******************************************************************************/
+static float trapz_f(const float *data, uint16_t size, float dk)
+{
+    if (size < 2) {
+            return 0.0f;
+    }
+    float sum = 0.5f * (data[0] + data[size - 1]);
+    for (int i = 1; i < size - 1; i++) {
+            sum += data[i];
+    }
+
+    return sum * dk;
 }
 /*----------------------------- Test Harness -------------------------------*/
 
