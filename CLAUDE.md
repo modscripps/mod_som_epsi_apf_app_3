@@ -34,7 +34,7 @@ Modules are enabled/disabled by feature flags in `mod/cfg/mod_som_cfg.h`. The ma
 |--------|------|------|
 | **Core** | `mod/mod_som.c` | Board init, memory pools, task creation, watchdog |
 | **APF** | `mod/apf/` | APEX float protocol: CRC-checked command/response packets over LEUART0 , Merges Spectral data + CTD data streams with metadata for SD card and APF output|
-| **EFE** | `mod/efe/` | 7-channel AD7124 ADC acquisition via LDMA; 625Hz sampling |
+| **EFE** | `mod/efe/` | 7-channel AD7124 ADC acquisition via LDMA; 625Hz sampling - with current project we are only using 3 channels |
 | **SBE41** | `mod/sbe41/` | CTD (conductivity-temperature-depth) over USART4; |
 | **EFE OBP** | `mod/efe_obp/` | On-board processing for spectral analysis of EFE data using CMSIS DSP |
 | **SDIO** | `mod/sdio/` | FatFS on SD card; HBLib SDIO driver |
@@ -52,7 +52,7 @@ Top-level folders outside `mod/` (`kernel/`, `service/`, `emlib/`, `CMSIS/`, `Dr
 ```
 EFE ADC (LDMA ISR) ──────────────────────┐
                                           ▼
-SBE41 USART4 (ISR) ──────────────→  Aggregator (producer) task → SD card (FatFS)/OBP module
+SBE41 USART4 (ISR) ──────────────→  producer/consumer tasks → SD card (FatFS)/OBP module
                                           │
                                           └──→ OBP module → SD card → APEX float (LEUART0)
 ```
@@ -66,7 +66,7 @@ Defined in `mod/cfg/mod_som_bsp.h` (89 KB board support file — all pin assignm
 - **USART5** @ 230400 baud — main console, usually off when interacting with the APEX float 
 - **LEUART0** @ 9600 baud —  APEX platform link
 - **USART2** — debug header
-- **USART1** — mezzanine board (J9 header); used for spoofing/simulator input
+- **USART1** — mezzanine board (J9 header); used for spoofing/simulator input (this can be used instead of EFE ADC), some times data simulation can be done without this USART
 - **USART4** @ 9600 baud — SBE41 - CTD data acquisition
 - **SPI/SDIO** — SD card
 
@@ -124,7 +124,7 @@ Tasks accumulate errors in a counter (max `MOD_SOM_MAX_ERROR_CNT` = 5) before tr
 #### Variable with units
 - Bytes Example:
   - `data_length_byte` - a defined variable describing the length of data chunk measured in bytes
-  - `data_leghth_word` - a defined variable describing the length of data chunk measured in words (sets of 4 bytes)
+  - `data_length_word` - a defined variable describing the length of data chunk measured in words (sets of 4 bytes)
 - Time units:
   - `sampling_period_us` - a defined variable describing the sampling period of an instrument measured in micro seconds
   - `averaging_period_ms` - a defined variable describing the averaging period of a set of data
