@@ -682,8 +682,9 @@ void mod_som_efe_obp_calc_epsilon_f(float *local_epsilon, float *nu,
 ////    spectrum_integral += spectrum_kvec_2[i]*dk;
 //  }
   spectrum_integral = trapz_f(local_avg_spec_shear_ptr, kvec_1_size, dk);
+  //2026 06 05 SAN removing 0.9 correction
   //Compute eps from this and divide by 0.9 to account for the excess over 90%
-  eps_2 = 7.5*kvis*spectrum_integral/0.9;
+  eps_2 = 7.5*kvis*spectrum_integral;
 
 
   // THIRD STAGE
@@ -712,7 +713,6 @@ void mod_som_efe_obp_calc_epsilon_f(float *local_epsilon, float *nu,
 ////    spectrum_integral += (local_avg_spec_shear_ptr[i]*w*pow((2*M_PI*vals->kvec[kvec_indices_3[0]+i]), 2.0))*dk;
 //    spectrum_integral += local_avg_spec_shear_ptr[i]*dk;
 ////    spectrum_integral += spectrum_kvec_3[i]*dk;
-//  } //Compute eps from this and divide by 0.9 to account for the excess over 90%
   spectrum_integral = trapz_f(local_avg_spec_shear_ptr, kvec_1_size, dk);
   eps_3 = 7.5*kvis*spectrum_integral;
   if (eps_3 < 1e-10 || kvec_3_size < 4) {
