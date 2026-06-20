@@ -1422,21 +1422,35 @@ float fom_panchev_f(float *shear_spec, float epsilon, float kvis,uint16_t kvec_i
   float integral = 0;
   float average  = 0;
 
-  //ALB Figure of Merit business
-  float sig_c1 =  5.0/4.0;
-  float sig_c2 = -7.0/9.0;
-  float sig_lnS = sig_c1 * pow((float)settings->degrees_of_freedom,sig_c2);
-  float sum1=0;
-  float fom=0;
+//  //ALB Figure of Merit business
+//  float sig_c1 =  5.0/4.0;
+//  float sig_c2 = -7.0/9.0;
+//  float sig_lnS = sig_c1 * pow((float)settings->degrees_of_freedom,sig_c2);
+//  float sum1=0;
+//  float fom=0;
 
+  //2026 06 19 SAN match MATLAB mod_efe_scan_epsilon FOM definition:
+  //  residuals in log10, mean-absolute-deviation (MATLAB mad), sig_lnS uses
+  //  sqrt and (dof-1), plus the Tm small-sample correction. Ns = 2*length(k)
+  //  with length(k) = nfft/2+1, i.e. Ns = nfft+2.
+  float dof     = (float) settings->degrees_of_freedom;
+  float sig_lnS = sqrt((5.0/4.0) * pow(dof - 1.0, -7.0/9.0));
+  float Ns      = (float) settings->nfft + 2.0;
+  float Tm      = 0.8 + sqrt(1.56/Ns);
+  float sum1    = 0.0;
+  float mad     = 0.0;
+  float fom     = 0.0;
 
   eta = pow(pow(kvis, 3)/epsilon, 1.0/4.0);
   conv = 1/(eta*2.0*M_PI);
 
   // compute spectrum
+  // compute residual spectrum: log10(observed / panchev model)
   for (uint16_t i = 0; i < kvec_size; i++) {
       theospec_ptr->kn[i] = vals->kvec[kvec_indices+i]/conv;
 
+      //2026 06 19 SAN reset the zeta integral for each wavenumber bin
+      sum = 0.0f;
       for (uint16_t j = 0; j < (sizeof(zeta)/sizeof(zeta[0])); j++) {
           z = zeta[j];
           sum = sum + delta*(1 + pow(z, 2))*
@@ -1446,24 +1460,46 @@ float fom_panchev_f(float *shear_spec, float epsilon, float kvis,uint16_t kvec_i
                        (sc32*ac32*pow((theospec_ptr->kn[i]/z), 2)));
       }
       phi = 0.5*pow(theospec_ptr->kn[i], -5.0/3.0)*sum;
-      panchev_spec[i] =log(shear_spec[i]/( scale*pow((theospec_ptr->kn[i]/eta), 2.0)*phi));
+      //2026 06 19 SAN update to log10 to match with MATLAB
+      panchev_spec[i] =log10(shear_spec[i]/(scale*pow((theospec_ptr->kn[i]/eta), 2.0)*phi));
       integral = integral + panchev_spec[i];
   }
 
   average = integral / (float) kvec_size;
-  /*  Compute  variance*/
+  // //  Compute  variance (removed)
+  //  Compute mean absolute deviation (MATLAB mad, default = mean abs dev) */
   for (uint16_t i = 0; i < kvec_size; i++) {
-      {
-        sum1 = sum1 + pow((panchev_spec[i] - average), 2);
-      }
+//      {
+//        sum1 = sum1 + pow((panchev_spec[i] - average), 2);
+//      }
+          sum1 = sum1 + fabs(panchev_spec[i] - average);
   }
-  fom = sum1 / (float)(kvec_size-1);
-  fom = fom /sig_lnS;
+  mad = sum1 / (float) kvec_size;
+  fom = mad / sig_lnS / Tm;
 
   // return integral value
+  // return figure of merit
   return fom;
 }
+//2026 06 20 SAN helpers for median-absolute-deviation FOM (MATLAB mad(x,1))
+static int cmp_float_asc_f(const void *pa, const void *pb)
+{
+    float a = *(const float*)pa, b = *(const float*)pb;
+    if (a < b) return -1;
+    if (a > b) return  1;
+    return 0;
+}
 
+static float median_f(float *arr, uint16_t n)
+{
+//sorts arr IN PLACE and returns the median (MATLAB median convention)
+    if (n == 0) return 0.0f;
+    qsort(arr, n, sizeof(float), cmp_float_asc_f);
+    if (n & 1) {
+            return arr[n/2];
+    }
+    return 0.5f*(arr[n/2 - 1] + arr[n/2]);
+}
 /*******************************************************************************
  * @brief
  *   function to calculate the batchelor spectrum for the current wavenumber vector
@@ -1485,52 +1521,105 @@ float fom_panchev_f(float *shear_spec, float epsilon, float kvis,uint16_t kvec_i
  ******************************************************************************/
 float fom_batchelor_f(float *temp_spec, float epsilon, float chi, float kvis, float kappa, uint16_t cutoff, float *batchelor_spec)
 {
+    //2026 06 20 some changes to match matlab calculation of FOM for chi
   // initialize constants and variables
 //  float eta = pow(pow(kvis, 3)/epsilon, 1.0/4.0);
-  static const float q = 3.7;
+//  static const float q = 3.7;
+  const float q = 3.7;
+  const float kmin = 3.0;   //2026 06 20 SAN MATLAB compute_fom lower bound kmin=3 cpm
   float kb = pow((epsilon/kvis/pow(kappa, 2.0)), 1.0/4.0);
-  float a, uppera, g_b;
-//  float dk = vals->kvec[1] - vals->kvec[0];
-  float integral = 0;
-  float average  =0;
+//  float a, uppera, g_b;
+// //  float dk = vals->kvec[1] - vals->kvec[0];
+//  float integral = 0;
+//  float average  =0;
+  float a, uppera, g_b, model;
 
-  //ALB Figure of Merit buisness
-  float sig_c1 =  5.0/4.0;
-  float sig_c2 = -7.0/9.0;
-  float sig_lnS = sig_c1 * pow((float)settings->degrees_of_freedom,sig_c2);
+//  //ALB Figure of Merit buisness
+//  float sig_c1 =  5.0/4.0;
+//  float sig_c2 = -7.0/9.0;
+//  float sig_lnS = sig_c1 * pow((float)settings->degrees_of_freedom,sig_c2);
+  //2026 06 20 SAN match MATLAB mod_efe_scan_chi/compute_fom FOM definition:
+  //  natural-log residuals, MEDIAN-absolute-deviation (MATLAB mad(x,1)),
+  //  correction with Ns = number of wavenumber bins in [kmin, kc].
+  //  NOTE: the batchelor model is linear in chi, so the MATLAB adjust_chi
+  //  rescale only shifts the log-residuals by a constant; median-abs-dev is
+  //  shift invariant, so the rescale (and the exact chi value) do not change
+  //  the FOM and are omitted here.
+  float dof     = (float) settings->degrees_of_freedom;
+  float sig_lnS = sqrt((5.0/4.0)*pow(dof, -7.0/9.0));
+  float fom     = 0;
+  uint16_t n    = 0;
 
-  float sum1;
-  float fom;
-  uint16_t fom_cutoff=cutoff;
+//  float sum1;
+//  float fom;
+//  uint16_t fom_cutoff=cutoff;
+//
+//  // calculate spectrum
+//  for (uint16_t i = 0; i < cutoff; i++) {
+//      a = sqrt(2*q)*2*M_PI*vals->kvec[i]/kb;
+//      uppera = erf(a/sqrt(2.0))*sqrt(M_PI/2);
+//      g_b = 2*M_PI*a*(exp(-pow(a, 2.0)/2) - a*uppera);
+// //      batchelor_spec[i] = sqrt(q/2)*(chi/kb/kappa)*g_b;
+//      batchelor_spec[i] =log(temp_spec[i]/(sqrt(q/2)*(chi/kb/kappa)*g_b));
+//      if (isnan(batchelor_spec[i])){
+//          //ALB end of the inegration
+//          fom_cutoff=i;
+//          break;
+//      }
+// //      integral = integral + batchelor_spec[i]*dk;
+//      integral = integral + batchelor_spec[i];
+//  }
+//
+//  average = integral / (float) fom_cutoff;
 
-  // calculate spectrum
-  for (uint16_t i = 0; i < cutoff; i++) {
-      a = sqrt(2*q)*2*M_PI*vals->kvec[i]/kb;
-      uppera = erf(a/sqrt(2.0))*sqrt(M_PI/2);
-      g_b = 2*M_PI*a*(exp(-pow(a, 2.0)/2) - a*uppera);
-//      batchelor_spec[i] = sqrt(q/2)*(chi/kb/kappa)*g_b;
-      batchelor_spec[i] =log(temp_spec[i]/(sqrt(q/2)*(chi/kb/kappa)*g_b));
-      if (isnan(batchelor_spec[i])){
-          //ALB end of the inegration
-          fom_cutoff=i;
-          break;
-      }
-//      integral = integral + batchelor_spec[i]*dk;
-      integral = integral + batchelor_spec[i];
+  // build natural-log residual spectrum over the band kmin <= k <= kc(cutoff)
+  for (uint16_t i = 0; i <= cutoff; i++) {
+          if (vals->kvec[i] < kmin) {
+                  continue;
+          }            // skip below kmin
+          a      = sqrt(2*q)*2*M_PI*vals->kvec[i]/kb;
+          uppera = erfc(a/sqrt(2.0))*sqrt(M_PI/2);         // MATLAB batchelor uses erfc
+          g_b    = 2*M_PI*a*(exp(-pow(a, 2.0)/2) - a*uppera);
+          model  = sqrt(q/2)*(chi/kb/kappa)*g_b;
+          if (model <= 0.0f) {
+                  break;
+          }
+          batchelor_spec[n] = log(temp_spec[i]/model);     // natural-log residual
+          if (isnan(batchelor_spec[n]) || isinf(batchelor_spec[n])) {
+                  break;
+          }
+          n++;
   }
 
-  average = integral / (float) fom_cutoff;
-  /*  Compute  variance*/
-  for (uint16_t i = 0; i < fom_cutoff; i++) {
-      {
-        sum1 = sum1 + pow((batchelor_spec[i] - average), 2);
-      }
-      fom = sum1 / (float)(fom_cutoff-1);
-      fom = fom /sig_lnS;
+  if (n < 2) {
+          return 0.0f;
   }
+
+  float Ns = (float) n; // MATLAB Ns = length(kin)
+  float Tm = 0.8 + sqrt(1.56/Ns);
+  // mad(resid,1) = median( |resid - median(resid)| )   (note: median_f sorts in place)
+  float median_r = median_f(batchelor_spec, n);
+  for (uint16_t i = 0; i < n; i++) {
+          batchelor_spec[i] = fabs(batchelor_spec[i] - median_r);
+  }
+  float mad_spec = median_f(batchelor_spec, n);
+  fom = mad_spec / sig_lnS / Tm;
+
+  // return figure of merit
+  return fom;
+
+
+//  //  Compute  variance
+//  for (uint16_t i = 0; i < fom_cutoff; i++) {
+//      {
+//        sum1 = sum1 + pow((batchelor_spec[i] - average), 2);
+//      }
+//      fom = sum1 / (float)(fom_cutoff-1);
+//      fom = fom /sig_lnS;
+//  }
 
   // return integral value
-  return fom;
+//  return fom;
 
 }
 

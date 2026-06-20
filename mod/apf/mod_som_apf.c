@@ -2153,10 +2153,10 @@ uint32_t mod_som_apf_send_line_f(LEUART_TypeDef *leuart_ptr,char * buf, uint32_t
     local_epsilon = MIN(local_epsilon,max_dissrate);
     local_chi     = MIN(local_chi,max_dissrate);
 
-    //ALB min out the local fom to 0
+    //ALB min out the local fom to min_fom (MOD_SOM_APF_PRODUCER_MIN_FOM)
     local_epsi_fom     = MAX(local_epsi_fom,min_fom);
     local_chi_fom      = MAX(local_chi_fom,min_fom);
-    //ALB max out the local fom to 10
+    //ALB max out the local fom to max_fom (MOD_SOM_APF_PRODUCER_MAX_FOM)
     local_epsi_fom     = MIN(local_epsi_fom,max_fom);
     local_chi_fom      = MIN(local_chi_fom,max_fom);
 
@@ -2314,10 +2314,10 @@ uint32_t mod_som_apf_send_line_f(LEUART_TypeDef *leuart_ptr,char * buf, uint32_t
   local_epsilon = MIN(local_epsilon,max_dissrate);
   local_chi     = MIN(local_chi,max_dissrate);
 
-  //ALB min out the local fom to 0
+  //ALB min out the local fom to min_fom (MOD_SOM_APF_PRODUCER_MIN_FOM)
   local_epsi_fom     = MAX(local_epsi_fom,min_fom);
   local_chi_fom      = MAX(local_chi_fom,min_fom);
-  //ALB max out the local fom to 10
+  //ALB max out the local fom to max_fom (MOD_SOM_APF_PRODUCER_MAX_FOM)
   local_epsi_fom     = MIN(local_epsi_fom,max_fom);
   local_chi_fom      = MIN(local_chi_fom,max_fom);
 
@@ -2565,10 +2565,10 @@ uint32_t mod_som_apf_send_line_f(LEUART_TypeDef *leuart_ptr,char * buf, uint32_t
     local_epsilon = MIN(local_epsilon,max_dissrate);
     local_chi     = MIN(local_chi,max_dissrate);
 
-    //ALB min out the local fom to 0
+    //ALB min out the local fom to min_fom (MOD_SOM_APF_PRODUCER_MIN_FOM)
     local_epsi_fom     = MAX(local_epsi_fom,min_fom);
     local_chi_fom      = MAX(local_chi_fom,min_fom);
-    //ALB max out the local fom to 10
+    //ALB max out the local fom to max_fom (MOD_SOM_APF_PRODUCER_MAX_FOM)
     local_epsi_fom     = MIN(local_epsi_fom,max_fom);
     local_chi_fom      = MIN(local_chi_fom,max_fom);
 

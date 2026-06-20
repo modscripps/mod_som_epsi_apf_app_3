@@ -16,6 +16,7 @@
 #include <mod_som_common.h>
 #include "em_cmu.h"
 
+//#define MOD_SOM_DEBUG_WDOG
 //#define MOD_SOM_DEBUG
 #define MOD_SOM_BOARD // this definition is to make sure you are using the som board
 
