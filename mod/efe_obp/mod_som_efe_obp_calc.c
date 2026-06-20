@@ -715,8 +715,9 @@ void mod_som_efe_obp_calc_epsilon_f(float *local_epsilon, float *nu,
 ////    spectrum_integral += spectrum_kvec_3[i]*dk;
   spectrum_integral = trapz_f(local_avg_spec_shear_ptr, kvec_3_size, dk);
   eps_3 = 7.5*kvis*spectrum_integral;
-  if (eps_3 < 1e-10 || kvec_3_size < 4) {
-    eps_3 = 1e-10;
+  //2026 06 20 SAN fix to match with matlab
+  if (eps_3 < 1e-11 || kvec_3_size < 4) {
+    eps_3 = 1e-11;
   } else {
     static float correction;
     static const float c[] = {-3.12067617e-05, -1.31492870e-03, -2.29864661e-02, -2.18323426e-01, -1.23597906, -4.29137352, -8.91987933, -9.58856889, -2.41486526};
@@ -726,7 +727,9 @@ void mod_som_efe_obp_calc_epsilon_f(float *local_epsilon, float *nu,
       correction = 0;
     } else if (log10_eps_3 <= -1) {
       correction = c[0]*pow(log10_eps_3, 8.0) + c[1]*pow(log10_eps_3, 7.0) + c[2]*pow(log10_eps_3, 6.0) + c[3]*pow(log10_eps_3, 5.0) + c[4]*pow(log10_eps_3, 4.0) + c[5]*pow(log10_eps_3, 3.0) + c[6]*pow(log10_eps_3, 2.0) + c[7]*log10_eps_3 + c[8];
-      if (log10_eps_3 < -2) {correction = correction + 0.05*(correction + 6.0)*(1.3e-6 - kvis)/(0.3e-6);}
+//      if (log10_eps_3 < -2) {correction = correction + 0.05*(correction + 6.0)*(1.3e-6 - kvis)/(0.3e-6);}
+      // 2026 06 20 SAN (matches MATLAB epsilon2_correct.m:24  -> 0.05*(ler+6)*... )
+      if (log10_eps_3 < -2) {correction = correction + 0.05*(log10_eps_3 + 6.0)*(1.3e-6 - kvis)/(0.3e-6);}
     } else {
       correction = 1.5058;
     }
@@ -785,10 +788,20 @@ void mod_som_efe_obp_calc_chi_f(float *local_epsilon, float *local_chi,
 
     chi_sum = 0;
 
-    for (uint16_t i = 0; i < *(vals->fp07_cutoff); i++) {
+//    for (uint16_t i = 0; i < *(vals->fp07_cutoff); i++) {
+//
+//        // multiply by fall rate and (2*pi*k)^2 to get spectrum vs wavenumber
+////        chi_sum += local_avg_spec_temp_ptr[i]*w*pow((2*M_PI*vals->kvec[i]), 2.0);
+//        chi_sum += local_avg_spec_temp_ptr[i];
+//    }
 
-        // multiply by fall rate and (2*pi*k)^2 to get spectrum vs wavenumber
-//        chi_sum += local_avg_spec_temp_ptr[i]*w*pow((2*M_PI*vals->kvec[i]), 2.0);
+    //2026 06 20 update to match MATLAB
+    // (band k >= 3 cpm, inclusive of cutoff, matching MATLAB & the chi FOM band)
+    chi_sum = 0;
+    //2026 06 20 SAN match MATLAB mod_efe_scan_chi: integrate kmin(=3) <= k <= kc
+    const float chi_kmin = 3.0;
+    for (uint16_t i = 0; i <= *(vals->fp07_cutoff); i++) {
+        if (vals->kvec[i] < chi_kmin) {continue;}   // skip below kmin
         chi_sum += local_avg_spec_temp_ptr[i];
     }
 
