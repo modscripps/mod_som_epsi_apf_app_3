@@ -93,6 +93,7 @@ static void mod_som_epsiobp_fp07_filters_f(float *fp07_filter, float fall_rate);
 static void mod_som_epsiobp_fp07_noise_f();
 uint16_t mod_som_epsiobp_fp07_cutoff_f(float *fp07_spectrum, uint16_t size);
 // MATH AND VECTOR FUNCTIONS
+static float median_f(float *arr, uint16_t n);
 //static void mod_som_epsiobp_pwelch_f(float *data, float *spectrum, uint16_t size, uint16_t sampling_frequency);
 static void power_spectrum_f(float *data, float *spectrum, uint32_t size, float sampling_frequency);
 //static void average_spectra_f(uint16_t size, uint8_t num_blocks, float *spectra_in, float *spectrum_out);
@@ -956,27 +957,42 @@ void mod_som_epsiobp_fp07_noise_f()
 uint16_t mod_som_epsiobp_fp07_cutoff_f(float *fp07_spectrum, uint16_t size)
 {
   // define variables and arrays
-  float signal_noise_ratio = 3;
+  float signal_noise_ratio = 3;  //S2N ratio minimum
   uint16_t window = 15; //this is arbitrary, determined in processing before this
   float threshold;
   uint16_t cutoff = size;
-  float adjust_noise=0;
+//  float adjust_noise=0;
 //  float fp07_smoothed[size];
-  // smooth data
+  // smooth data (moving mean, window 15) -> MATLAB smoothdata(spec,'movmean',15)
   smooth_movingmean_f(fp07_spectrum, fft_ptr->fp07_smoothed, size, window);
+  //2026 06 21 SAN match MATLAB FPO7_cutoff: adjust factor = MEDIAN of
+  //  smoothed/noise over the high-frequency band f > 0.7*f_end
+  //  (was the MEAN over the last 10 bins).
+  float hf_limit = 0.7f * vals->freq[size - 1];
+  uint16_t n_hf = 0;
   for (uint16_t i = size-10; i < size; i++) {
-      adjust_noise+=fft_ptr->fp07_smoothed[i]/vals->fp07_noise[i];
+      //      adjust_noise+=fft_ptr->fp07_smoothed[i]/vals->fp07_noise[i];
+      if (vals->freq[i] > hf_limit) {
+              // theospec_ptr->batchelor_spec used as scratch (FOM hasn't run yet)
+              theospec_ptr->batchelor_spec[n_hf++] =
+                      fft_ptr->fp07_smoothed[i] / vals->fp07_noise[i];
+      }
   }
-  adjust_noise=adjust_noise/10;
+  float adjust_noise = (n_hf > 0) ? median_f(theospec_ptr->batchelor_spec, n_hf) : 1.0f;
+//  adjust_noise=adjust_noise/10;
 
   // loop to find cutoff, starting at the 5th FOCO
-  for (uint16_t i = 5; i < size; i++) {
-    threshold = signal_noise_ratio*vals->fp07_noise[i]*adjust_noise;
-    if (fft_ptr->fp07_smoothed[i] < threshold) {
-      cutoff = i;
-      break;
-    }
+  // find cutoff: first bin (from index 2) where smoothed/adjust < SNR*noise
+  //   i.e. smoothed < SNR*noise*adjust   (MATLAB medspec(3:end))
+  for (uint16_t i = 2; i < size; i++) {
+          threshold = signal_noise_ratio * vals->fp07_noise[i] * adjust_noise;
+          if (fft_ptr->fp07_smoothed[i] < threshold) {
+                  cutoff = i;
+                  break;
+          }
   }
+  // MATLAB: fc_index = fc_index - 1 (step back one bin)
+  if (cutoff > 0) {cutoff = cutoff - 1;}
   return cutoff;
 }
 
@@ -1504,7 +1520,16 @@ static int cmp_float_asc_f(const void *pa, const void *pb)
     if (a > b) return  1;
     return 0;
 }
-
+/*******************************************************************************
+ * @brief
+ *   function to calculate the median of an array with n elements
+ * @param arr
+ *   input - array of n elements
+ * @param n
+ *   input - number of elements
+ * @return
+ *   returns median value from the array
+ ******************************************************************************/
 static float median_f(float *arr, uint16_t n)
 {
 //sorts arr IN PLACE and returns the median (MATLAB median convention)
