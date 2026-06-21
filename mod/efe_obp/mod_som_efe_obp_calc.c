@@ -80,6 +80,7 @@ static const float g = 9.807; // m/s^2
 
 // USER INPUTS
 
+static const float kvec_min_1 = 2, kvec_max_1 = 10;
 
 static uint8_t spectrum_counter; // counter for number of spectra up to dof
 static uint16_t master_counter; //counter of how many values we have processed.
@@ -594,7 +595,7 @@ void mod_som_efe_obp_calc_epsilon_f(float *local_epsilon, float *nu,
           return;
   }
 
-  static const float kvec_min_1 = 2, kvec_max_1 = 10;
+
   static float eps_1, log10_eps;
 
   float kvec_limits_1[] = {kvec_min_1, kvec_max_1};
@@ -795,18 +796,7 @@ void mod_som_efe_obp_calc_chi_f(float *local_epsilon, float *local_chi,
 //        chi_sum += local_avg_spec_temp_ptr[i];
 //    }
 
-    //2026 06 20 update to match MATLAB
-    // (band k >= 3 cpm, inclusive of cutoff, matching MATLAB & the chi FOM band)
-    chi_sum = 0;
-    //2026 06 20 SAN match MATLAB mod_efe_scan_chi: integrate kmin(=3) <= k <= kc
-    const float chi_kmin = 3.0;
-    for (uint16_t i = 0; i <= *(vals->fp07_cutoff); i++) {
-        if (vals->kvec[i] < chi_kmin) {continue;}   // skip below kmin
-        chi_sum += local_avg_spec_temp_ptr[i];
-    }
 
-    //  compute chi
-    *kappa_t = seawater_thermal_diffusivity_f(S, T, P);
 
     //2026 05 13 SAN condition to refuse to calculate chi since w is bad
     if (w<0.005f || w>10.0f){
@@ -815,6 +805,18 @@ void mod_som_efe_obp_calc_chi_f(float *local_epsilon, float *local_chi,
             *fom = 0.0f;
             return;
     }
+
+    //2026 06 20 update to match MATLAB
+    // (band k >= 3 cpm, inclusive of cutoff, matching MATLAB & the chi FOM band)
+    chi_sum = 0;
+    //2026 06 20 SAN match MATLAB mod_efe_scan_chi: integrate kmin(=3) <= k <= kc
+    for (uint16_t i = 0; i <= *(vals->fp07_cutoff); i++) {
+            if (vals->kvec[i] < kvec_min_1) {continue;}   // skip below kmin
+            chi_sum += local_avg_spec_temp_ptr[i];
+    }
+
+    //  compute chi
+    *kappa_t = seawater_thermal_diffusivity_f(S, T, P);
 
     dk = (float) config->f_samp/ (float) settings->nfft/w;
     chi = 6*(*kappa_t)*dk*chi_sum;
@@ -1539,7 +1541,6 @@ float fom_batchelor_f(float *temp_spec, float epsilon, float chi, float kvis, fl
 //  float eta = pow(pow(kvis, 3)/epsilon, 1.0/4.0);
 //  static const float q = 3.7;
   const float q = 3.7;
-  const float kmin = 3.0;   //2026 06 20 SAN MATLAB compute_fom lower bound kmin=3 cpm
   float kb = pow((epsilon/kvis/pow(kappa, 2.0)), 1.0/4.0);
 //  float a, uppera, g_b;
 // //  float dk = vals->kvec[1] - vals->kvec[0];
@@ -1587,7 +1588,7 @@ float fom_batchelor_f(float *temp_spec, float epsilon, float chi, float kvis, fl
 
   // build natural-log residual spectrum over the band kmin <= k <= kc(cutoff)
   for (uint16_t i = 0; i <= cutoff; i++) {
-          if (vals->kvec[i] < kmin) {
+          if (vals->kvec[i] < kvec_min_1) {
                   continue;
           }            // skip below kmin
           a      = sqrt(2*q)*2*M_PI*vals->kvec[i]/kb;
