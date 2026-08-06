@@ -1,5 +1,5 @@
 /*******************************************************************************
- * @file mod_som_sbe49.h
+ * @file mod_som_sbe41.h
  * @brief MOD SOM SBE41 API/header
  * @date Feb 6, 2020
  * @author San Nguyen (stn004@ucsd.edu) - Multiscale Ocean Dynamics - SIO - UCSD

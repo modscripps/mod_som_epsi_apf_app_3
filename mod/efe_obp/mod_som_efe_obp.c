@@ -30,6 +30,9 @@
 //MHA
 #include <mod_som_calendar.h> //MHA add calendar .h so we have access to the calendar settings pointer for the poweron_offset.
 
+//2026 06 03 adding a custom charge amp filter coefficients
+#include "mod_som_afe_obb_charge_amp_fn80.h"
+
 //MHA calendar
 mod_som_calendar_settings_t mod_som_calendar_settings;
 
@@ -419,11 +422,14 @@ mod_som_status_t mod_som_efe_obp_construct_calibration_ptr_f(){
   // TODO I do not know how to check if everything is fine here.
 
   // ALB Allocate memory for the spectra
-  calib_ptr->cafilter_coeff = (float *)Mem_SegAlloc(
-        "MOD SOM EFE OBP CA coef ptr",DEF_NULL,
-        sizeof(float)*mod_som_efe_obp_ptr->settings_ptr->nfft/2,
-        &err);
-  APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
+  //2026 06 03 changed to a constant filter array
+  calib_ptr->cafilter_coeff = mod_som_efe_obp_epsi_cal_val;
+          //
+//          (float *)Mem_SegAlloc(
+//        "MOD SOM EFE OBP CA coef ptr",DEF_NULL,
+//        sizeof(float)*mod_som_efe_obp_ptr->settings_ptr->nfft/2,
+//        &err);
+//  APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
 
   // ALB Allocate memory for the spectra
   calib_ptr->cafilter_freq = (float *)Mem_SegAlloc(
@@ -448,7 +454,7 @@ mod_som_status_t mod_som_efe_obp_construct_calibration_ptr_f(){
   calib_ptr->acc_offset=MOD_SOM_EFE_OBP_ACCELL_OFFSET;
   calib_ptr->acc_factor=MOD_SOM_EFE_OBP_ACCELL_FACTOR;
 
-
+/*  //2026 06 03 used a constant charge amp coefficient definition provided by ALB
   //ALB adding MHA code here.
   //TODO Make it not hard coded.
   for (int c=0;c<mod_som_efe_obp_ptr->settings_ptr->nfft/2;c++) {
@@ -486,7 +492,7 @@ mod_som_status_t mod_som_efe_obp_construct_calibration_ptr_f(){
     break;
     //default:
   }
-
+//*/
 
   return mod_som_efe_obp_encode_status_f(MOD_SOM_STATUS_OK);
 }
@@ -659,7 +665,8 @@ mod_som_status_t mod_som_efe_obp_construct_fill_segment_ptr_f(){
 //  mod_som_efe_obp_ptr->fill_segment_ptr->timestamp_segment=0;
 //  mod_som_efe_obp_ptr->fill_segment_ptr->segment_skipped=0;
   mod_som_efe_obp_ptr->fill_segment_ptr->ctd_element_cnt=0;
-  mod_som_efe_obp_ptr->fill_segment_ptr->efe_element_cnt=0;
+  mod_som_efe_obp_ptr->fill_segment_ptr->consumed_efe_element_cnt=0;
+  mod_som_efe_obp_ptr->fill_segment_ptr->seg_buff_efe_element_cnt = 0;
   mod_som_efe_obp_ptr->fill_segment_ptr->efe_element_skipped=0;
   mod_som_efe_obp_ptr->fill_segment_ptr->segment_cnt=0;
   mod_som_efe_obp_ptr->fill_segment_ptr->half_segment_cnt=0;
@@ -1003,7 +1010,8 @@ mod_som_status_t mod_som_efe_obp_start_fill_segment_task_f(){
   //ALB fill_segment task is starts running.
   mod_som_efe_obp_ptr->fill_segment_ptr->segment_skipped=0;
   mod_som_efe_obp_ptr->fill_segment_ptr->ctd_element_cnt=0;
-  mod_som_efe_obp_ptr->fill_segment_ptr->efe_element_cnt=0;
+  mod_som_efe_obp_ptr->fill_segment_ptr->consumed_efe_element_cnt=0;
+  mod_som_efe_obp_ptr->fill_segment_ptr->seg_buff_efe_element_cnt = 0;
   mod_som_efe_obp_ptr->fill_segment_ptr->efe_element_skipped=0;
   mod_som_efe_obp_ptr->fill_segment_ptr->segment_cnt=0;
   mod_som_efe_obp_ptr->fill_segment_ptr->half_segment_cnt=0;
@@ -1167,7 +1175,10 @@ void mod_som_efe_obp_fill_segment_task_f(void  *p_arg){
   float    * local_efeobp_efe_shear_ptr;
   float    * local_efeobp_efe_accel_ptr;
 
-  uint8_t efe_element_length=MOD_SOM_EFE_TIMESTAMP_LENGTH+                     \
+  //2026 04 21 SAN fixed bug caught GPT
+  // where if the extra 8 bytes accounted by the timestamp
+  // would write beyond the bound of local_efe_sample
+  uint8_t efe_element_adc_samples_length_bytes=
                     mod_som_efe_obp_ptr->efe_settings_ptr->number_of_channels* \
                             AD7124_SAMPLE_LENGTH;
   uint8_t local_efe_sample[mod_som_efe_obp_ptr->efe_settings_ptr->number_of_channels* \
@@ -1189,7 +1200,7 @@ void mod_som_efe_obp_fill_segment_task_f(void  *p_arg){
   float local_fill_segment_ctd_pressure=0;
   float local_fill_segment_ctd_salinity=0;
   float local_fill_segment_ctd_dpdt=0;
-  float local_fill_segment_ctd_direction=none;
+//  float local_fill_segment_ctd_direction=none;
 
   //local_sbe41_ptr
   //ALB get runtime sbe41 for futur use.
@@ -1207,7 +1218,17 @@ void mod_som_efe_obp_fill_segment_task_f(void  *p_arg){
   local_fill_segment_ctd_dpdt=
       local_sbe41_ptr->consumer_ptr->dPdt;
 
-  local_fill_segment_ctd_direction=local_sbe41_ptr->consumer_ptr->direction;
+//  local_fill_segment_ctd_direction=local_sbe41_ptr->consumer_ptr->direction;
+
+
+
+#if defined(MOD_SOM_EFE_OBP_SEG_CB_DEBUG_GPIO_ENABLE)
+  GPIO_PinModeSet(MOD_SOM_EFE_OBP_SEG_CB_GPIO_PORT, MOD_SOM_EFE_OBP_SEG_CB_GPIO_PIN, gpioModePushPull, 1);
+#endif
+
+
+
+
   mod_som_efe_obp_ptr->fill_segment_ptr->started_flg=true;
   while (mod_som_efe_obp_ptr->fill_segment_ptr->started_flg) {
 
@@ -1222,18 +1243,28 @@ void mod_som_efe_obp_fill_segment_task_f(void  *p_arg){
 
       if (mod_som_efe_obp_ptr->fill_segment_ptr->started_flg){
           elmnts_avail = local_mod_som_efe_ptr->sample_count -
-              mod_som_efe_obp_ptr->fill_segment_ptr->efe_element_cnt;  //calculate number of elements available have been produced
+              mod_som_efe_obp_ptr->fill_segment_ptr->consumed_efe_element_cnt;  //calculate number of elements available have been produced
 
           //ALB User stopped efe. I need to reset the obp producers count
           if(elmnts_avail<0){
-              mod_som_efe_obp_ptr->fill_segment_ptr->efe_element_cnt = 0;
+              mod_som_efe_obp_ptr->fill_segment_ptr->consumed_efe_element_cnt = 0;
+              mod_som_efe_obp_ptr->fill_segment_ptr->seg_buff_efe_element_cnt = 0;
               mod_som_efe_obp_ptr->fill_segment_ptr->segment_cnt     = 0;
               mod_som_efe_obp_ptr->cpt_spectra_ptr->spectrum_cnt     = 0;
               mod_som_efe_obp_ptr->cpt_dissrate_ptr->dissrates_cnt   = 0;
+              mod_som_efe_obp_ptr->fill_segment_ptr->half_segment_cnt = 0;
+              mod_som_efe_obp_ptr->cpt_spectra_ptr->avg_spectrum_cnt = 0;
+              mod_som_efe_obp_ptr->consumer_ptr->segment_cnt         = 0;
+              mod_som_efe_obp_ptr->consumer_ptr->spectrum_cnt        = 0;
+              mod_som_efe_obp_ptr->consumer_ptr->avgspec_cnt         = 0;
+              mod_som_efe_obp_ptr->consumer_ptr->rates_cnt           = 0;
           }
           // LOOP without delay until caught up to latest produced element
-          local_fill_segment_ctd_direction=local_sbe41_ptr->consumer_ptr->direction;
-          while ((elmnts_avail > 0) & (local_fill_segment_ctd_direction==up))
+//          local_fill_segment_ctd_direction=local_sbe41_ptr->consumer_ptr->direction;
+
+          // 2026 05 04 LW: Removed local_fill_segment_ctd_direction==up check so we always record regardless of CTD direction
+          while ((elmnts_avail > 0) )//&& (local_fill_segment_ctd_direction==up))
+//            while (elmnts_avail > 0)
             {
               // When have circular buffer overflow: have produced data bigger than consumer data: 1 circular buffer (n_elmnts)
               // calculate new consumer count to skip ahead to the tail of the circular buffer (with optional padding),
@@ -1242,27 +1273,35 @@ void mod_som_efe_obp_fill_segment_task_f(void  *p_arg){
               if (elmnts_avail>local_mod_som_efe_ptr->config_ptr->element_per_buffer){ // checking over flow. TODO check adding padding is correct.
                   // reset the consumer count less one buffer than producer count plus padding
                   //ALB I think I want to change this line from the cb example. The "-" only works if you overflowed once.
+
+#if defined(MOD_SOM_EFE_OBP_SEG_CB_DEBUG_GPIO_ENABLE)
+                  GPIO_PinOutClear(MOD_SOM_EFE_OBP_SEG_CB_GPIO_PORT, MOD_SOM_EFE_OBP_SEG_CB_GPIO_PIN);
+#endif
                   reset_segment_cnt = local_mod_som_efe_ptr->sample_count -
-                      local_mod_som_efe_ptr->config_ptr->element_per_buffer +
+//                      local_mod_som_efe_ptr->config_ptr->element_per_buffer +
                       padding;
                   // calculate the number of skipped elements
                   mod_som_efe_obp_ptr->fill_segment_ptr->efe_element_skipped = reset_segment_cnt -
-                      mod_som_efe_obp_ptr->fill_segment_ptr->efe_element_cnt;
+                      mod_som_efe_obp_ptr->fill_segment_ptr->consumed_efe_element_cnt;
 
                   mod_som_io_print_f("\nefe obp fill seg task: CB overflow: sample count = %lu,"
                       "cnsmr_cnt = %lu,skipped %lu elements \r\n ", \
                       (uint32_t)local_mod_som_efe_ptr->sample_count, \
-                      (uint32_t)mod_som_efe_obp_ptr->fill_segment_ptr->efe_element_cnt, \
+                      (uint32_t)mod_som_efe_obp_ptr->fill_segment_ptr->consumed_efe_element_cnt, \
                       (uint32_t)mod_som_efe_obp_ptr->fill_segment_ptr->efe_element_skipped);
 
-                  mod_som_efe_obp_ptr->fill_segment_ptr->efe_element_cnt = reset_segment_cnt;
-              }
+                  mod_som_efe_obp_ptr->fill_segment_ptr->consumed_efe_element_cnt = reset_segment_cnt;
+
+#if defined(MOD_SOM_EFE_OBP_SEG_CB_DEBUG_GPIO_ENABLE)
+                  GPIO_PinOutSet(MOD_SOM_EFE_OBP_SEG_CB_GPIO_PORT, MOD_SOM_EFE_OBP_SEG_CB_GPIO_PIN);
+#endif
+             }
 
               // calculate the offset for current pointer
-              data_elmnts_offset = mod_som_efe_obp_ptr->fill_segment_ptr->efe_element_cnt %
+              data_elmnts_offset = mod_som_efe_obp_ptr->fill_segment_ptr->consumed_efe_element_cnt %
                                    local_mod_som_efe_ptr->config_ptr->element_per_buffer;
 
-              fill_segment_offset     = mod_som_efe_obp_ptr->fill_segment_ptr->efe_element_cnt %
+              fill_segment_offset     = mod_som_efe_obp_ptr->fill_segment_ptr->seg_buff_efe_element_cnt %
                   (MOD_SOM_EFE_OBP_FILL_SEGMENT_NB_SEGMENT_PER_RECORD*
                   mod_som_efe_obp_ptr->settings_ptr->nfft);
 
@@ -1286,7 +1325,7 @@ void mod_som_efe_obp_fill_segment_task_f(void  *p_arg){
               //ALB save each efe_sample inside the efe_block in a local_efe_sample;
               memcpy(local_efe_sample,
                      curr_data_ptr+MOD_SOM_EFE_TIMESTAMP_LENGTH,
-                     efe_element_length);
+                     efe_element_adc_samples_length_bytes);
               //ALB
               //local efe sample contains only the ADC samples.
               //convert the local efe sample from counts to volts
@@ -1297,14 +1336,15 @@ void mod_som_efe_obp_fill_segment_task_f(void  *p_arg){
                                          local_efeobp_efe_accel_ptr);
 
 
-              mod_som_efe_obp_ptr->fill_segment_ptr->efe_element_cnt++;  // increment cnsmr count
+              mod_som_efe_obp_ptr->fill_segment_ptr->consumed_efe_element_cnt++;  // increment cnsmr count
+              mod_som_efe_obp_ptr->fill_segment_ptr->seg_buff_efe_element_cnt++;  // increment buffered element count
               elmnts_avail = local_mod_som_efe_ptr->sample_count -
-                      mod_som_efe_obp_ptr->fill_segment_ptr->efe_element_cnt; //elements available have been produced
+                      mod_som_efe_obp_ptr->fill_segment_ptr->consumed_efe_element_cnt; //elements available have been produced
 
               //ALB a segment is full. Store last PTS value
-              if(((mod_som_efe_obp_ptr->fill_segment_ptr->efe_element_cnt %
-                  (mod_som_efe_obp_ptr->settings_ptr->nfft)) ==0) &
-                  (mod_som_efe_obp_ptr->fill_segment_ptr->efe_element_cnt>0)){
+              if(((mod_som_efe_obp_ptr->fill_segment_ptr->seg_buff_efe_element_cnt %
+                  (mod_som_efe_obp_ptr->settings_ptr->nfft)) ==0) &&
+                  (mod_som_efe_obp_ptr->fill_segment_ptr->seg_buff_efe_element_cnt>0)){
 
                   mod_som_efe_obp_ptr->fill_segment_ptr->ctd_pressure=
                       local_fill_segment_ctd_pressure;
@@ -1327,7 +1367,7 @@ void mod_som_efe_obp_fill_segment_task_f(void  *p_arg){
 
 
               //ALB get the timestamp, PTS at half of the segment
-              if(((mod_som_efe_obp_ptr->fill_segment_ptr->efe_element_cnt %
+              if(((mod_som_efe_obp_ptr->fill_segment_ptr->seg_buff_efe_element_cnt %
                   (mod_som_efe_obp_ptr->settings_ptr->nfft/2)) ==0)){
 
                   memcpy(mod_som_efe_obp_ptr->fill_segment_ptr->timestamp_segment_ptr+
@@ -1352,8 +1392,8 @@ void mod_som_efe_obp_fill_segment_task_f(void  *p_arg){
                       local_fill_segment_ctd_dpdt=
                           local_sbe41_ptr->consumer_ptr->dPdt;
 
-                      local_fill_segment_ctd_direction=
-                          local_sbe41_ptr->consumer_ptr->direction;
+//                      local_fill_segment_ctd_direction=
+//                          local_sbe41_ptr->consumer_ptr->direction;
 
 
                       mod_som_efe_obp_ptr->fill_segment_ptr->ctd_element_cnt++;
@@ -1594,8 +1634,8 @@ void mod_som_efe_obp_cpt_spectra_task_f(void  *p_arg){
           mod_som_efe_obp_ptr->cpt_spectra_ptr->dof %=
           mod_som_efe_obp_ptr->settings_ptr->degrees_of_freedom;
 
-          segment_avail = mod_som_efe_obp_ptr->fill_segment_ptr->segment_cnt -
-              mod_som_efe_obp_ptr->cpt_spectra_ptr->spectrum_cnt; //elements available have been produced
+          segment_avail = mod_som_efe_obp_ptr->fill_segment_ptr->half_segment_cnt-1 -
+                        mod_som_efe_obp_ptr->cpt_spectra_ptr->spectrum_cnt; //elements available have been produced
 
           spectra_offset= (mod_som_efe_obp_ptr->cpt_spectra_ptr->spectrum_cnt %
                           MOD_SOM_EFE_OBP_CPT_SPECTRA_NB_SPECTRA_PER_RECORD)*
@@ -1794,7 +1834,6 @@ void mod_som_efe_obp_cpt_dissrate_task_f(void  *p_arg){
                                                       local_fcutoff_temp_ptr   ,
                                                       local_epsi_fom_ptr       ,
                                                       local_chi_fom_ptr);
-
 
               //ALB increment the counters
               mod_som_efe_obp_ptr->sample_count++;
@@ -2198,6 +2237,7 @@ void mod_som_efe_obp_consumer_task_f(void  *p_arg){
 
                    //ALB cpy the segments in the cnsmr buffer.
                    payload_length=mod_som_efe_obp_copy_producer_segment_f();
+
                    //ALB increase counter.
                    mod_som_efe_obp_ptr->consumer_ptr->segment_cnt++;
 
@@ -2820,6 +2860,21 @@ uint32_t mod_som_efe_obp_copy_producer_segment_f()
                       (mod_som_efe_obp_ptr->consumer_ptr->rates_cnt%
                           MOD_SOM_EFE_OBP_CPT_DISSRATE_NB_RATES_PER_RECORD)
                        ],sizeof(float));
+
+    indx+=sizeof(float);
+    //2026 06 04 SAN adding to give shear and temp frequency cutoff
+    memcpy(&mod_som_efe_obp_ptr->consumer_ptr->record_ptr[indx],
+           &mod_som_efe_obp_ptr->cpt_dissrate_ptr->kcutoff_shear[
+                          (mod_som_efe_obp_ptr->consumer_ptr->rates_cnt%
+                              MOD_SOM_EFE_OBP_CPT_DISSRATE_NB_RATES_PER_RECORD)
+                           ],sizeof(float));
+
+    indx+=sizeof(float);
+    memcpy(&mod_som_efe_obp_ptr->consumer_ptr->record_ptr[indx],
+           &mod_som_efe_obp_ptr->cpt_dissrate_ptr->fcutoff_temp[
+                          (mod_som_efe_obp_ptr->consumer_ptr->rates_cnt%
+                              MOD_SOM_EFE_OBP_CPT_DISSRATE_NB_RATES_PER_RECORD)
+                           ],sizeof(float));
 
     indx+=sizeof(float);
     indx-=mod_som_efe_obp_ptr->config_ptr->header_length;

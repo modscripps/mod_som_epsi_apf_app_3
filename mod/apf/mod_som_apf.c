@@ -1349,7 +1349,10 @@ void mod_som_apf_producer_task_f(void  *p_arg){
             }  // end of while (dissrate_avail > 0)
           // ALB done with segment storing.
           mod_som_apf_ptr->producer_ptr->dissrate_skipped = 0;
-      } //end if started
+      }
+      else{
+              mod_som_apf_daq_stop_f();//end if dacq is full
+      }
 
       // Delay Start Task execution for
       OSTimeDly( MOD_SOM_APF_PRODUCER_DELAY,             //   consumer delay is #define at the beginning OS Ticks
@@ -2121,8 +2124,8 @@ uint32_t mod_som_apf_send_line_f(LEUART_TypeDef *leuart_ptr,char * buf, uint32_t
     //ALB store the dissrate and foco values in local params.
     float local_epsilon        = log10(*curr_epsilon_ptr);
     float local_chi            = log10(*curr_chi_ptr);
-    float local_epsi_fom       = *curr_fom_epsi_ptr;
-    float local_chi_fom        = *curr_fom_chi_ptr;
+    float local_epsi_fom       = *curr_fom_epsi_ptr; //ALB +10 because fom is can be <1 but define as a uint8
+    float local_chi_fom        = *curr_fom_chi_ptr;//ALB +10 because fom is can be <1 but define as a uint8
 
 
 
@@ -2150,10 +2153,10 @@ uint32_t mod_som_apf_send_line_f(LEUART_TypeDef *leuart_ptr,char * buf, uint32_t
     local_epsilon = MIN(local_epsilon,max_dissrate);
     local_chi     = MIN(local_chi,max_dissrate);
 
-    //ALB min out the local fom to 0
+    //ALB min out the local fom to min_fom (MOD_SOM_APF_PRODUCER_MIN_FOM)
     local_epsi_fom     = MAX(local_epsi_fom,min_fom);
     local_chi_fom      = MAX(local_chi_fom,min_fom);
-    //ALB max out the local fom to 10
+    //ALB max out the local fom to max_fom (MOD_SOM_APF_PRODUCER_MAX_FOM)
     local_epsi_fom     = MIN(local_epsi_fom,max_fom);
     local_chi_fom      = MIN(local_chi_fom,max_fom);
 
@@ -2311,10 +2314,10 @@ uint32_t mod_som_apf_send_line_f(LEUART_TypeDef *leuart_ptr,char * buf, uint32_t
   local_epsilon = MIN(local_epsilon,max_dissrate);
   local_chi     = MIN(local_chi,max_dissrate);
 
-  //ALB min out the local fom to 0
+  //ALB min out the local fom to min_fom (MOD_SOM_APF_PRODUCER_MIN_FOM)
   local_epsi_fom     = MAX(local_epsi_fom,min_fom);
   local_chi_fom      = MAX(local_chi_fom,min_fom);
-  //ALB max out the local fom to 10
+  //ALB max out the local fom to max_fom (MOD_SOM_APF_PRODUCER_MAX_FOM)
   local_epsi_fom     = MIN(local_epsi_fom,max_fom);
   local_chi_fom      = MIN(local_chi_fom,max_fom);
 
@@ -2409,6 +2412,12 @@ uint32_t mod_som_apf_send_line_f(LEUART_TypeDef *leuart_ptr,char * buf, uint32_t
   //ALB decimate fourier coef (foco),
   for (int i=0;i<mod_som_apf_ptr->producer_ptr->nfft_diag;i++)
     {
+
+      //ALB i+i-1 = every other foco
+      local_shear_avg_fft   = log10(*(curr_shear_avg_spectra_ptr+2*i-1));
+      local_temp_avg_fft    = log10(*(curr_temp_avg_spectra_ptr+2*i-1));
+      local_accel_avg_fft   = log10(*(curr_accel_avg_spectra_ptr+2*i-1));
+
       //ALB first make sure it is above the min/max values
       local_shear_avg_fft = MAX(local_shear_avg_fft,min_foco);
       local_shear_avg_fft = MIN(local_shear_avg_fft,max_foco);
@@ -2451,10 +2460,7 @@ uint32_t mod_som_apf_send_line_f(LEUART_TypeDef *leuart_ptr,char * buf, uint32_t
              MOD_SOM_APF_PRODUCER_FOCO_RES);
       dacq_ptr+=MOD_SOM_APF_PRODUCER_FOCO_RES;
 
-      //ALB i+i-1 = every other foco
-      local_shear_avg_fft   = log10(*(curr_shear_avg_spectra_ptr+2*i-1));
-      local_temp_avg_fft    = log10(*(curr_temp_avg_spectra_ptr+2*i-1));
-      local_accel_avg_fft   = log10(*(curr_accel_avg_spectra_ptr+2*i-1));
+
 
   }
   dacq_size2=dacq_ptr-mod_som_apf_ptr->producer_ptr->dacq_ptr;
@@ -2559,10 +2565,10 @@ uint32_t mod_som_apf_send_line_f(LEUART_TypeDef *leuart_ptr,char * buf, uint32_t
     local_epsilon = MIN(local_epsilon,max_dissrate);
     local_chi     = MIN(local_chi,max_dissrate);
 
-    //ALB min out the local fom to 0
+    //ALB min out the local fom to min_fom (MOD_SOM_APF_PRODUCER_MIN_FOM)
     local_epsi_fom     = MAX(local_epsi_fom,min_fom);
     local_chi_fom      = MAX(local_chi_fom,min_fom);
-    //ALB max out the local fom to 10
+    //ALB max out the local fom to max_fom (MOD_SOM_APF_PRODUCER_MAX_FOM)
     local_epsi_fom     = MIN(local_epsi_fom,max_fom);
     local_chi_fom      = MIN(local_chi_fom,max_fom);
 
@@ -2623,6 +2629,10 @@ uint32_t mod_som_apf_send_line_f(LEUART_TypeDef *leuart_ptr,char * buf, uint32_t
     //ALB decimate fourier coef (foco),
     for (int i=0;i<MOD_SOM_APF_FORMAT_3_NFFT_DIAG;i++)
       {
+        //ALB i+i-1 = every other foco
+        local_shear_avg_fft   = log10(*(curr_shear_avg_spectra_ptr+indices[i]));
+        local_temp_avg_fft    = log10(*(curr_temp_avg_spectra_ptr+indices[i]));
+
         //ALB first make sure it is above the min/max values
         local_shear_avg_fft = MAX(local_shear_avg_fft,min_foco);
         local_shear_avg_fft = MIN(local_shear_avg_fft,max_foco);
@@ -2650,9 +2660,7 @@ uint32_t mod_som_apf_send_line_f(LEUART_TypeDef *leuart_ptr,char * buf, uint32_t
                &mod_temp_foco,
                MOD_SOM_APF_PRODUCER_FOCO_RES);
         dacq_ptr+=MOD_SOM_APF_PRODUCER_FOCO_RES;
-        //ALB i+i-1 = every other foco
-        local_shear_avg_fft   = log10(*(curr_shear_avg_spectra_ptr+indices[i]));
-        local_temp_avg_fft    = log10(*(curr_temp_avg_spectra_ptr+indices[i]));
+
       }
 
     dacq_size1=dacq_ptr-mod_som_apf_ptr->producer_ptr->dacq_ptr;
@@ -2996,10 +3004,17 @@ mod_som_apf_status_t mod_som_apf_daq_start_f(uint32_t profile_id){
     }
     mod_som_settings_save_settings_f();
 
+    //2026 05 04 SAN move efe sampling here to allow for spoofer to work
+    status = mod_som_efe_sampling_f();
+    if(status){
+            mod_som_sdio_disable_hardware_f();
+            return MOD_SOM_APF_STATUS_NO_DATA;
+    }
   //ALB start collecting CTD.
   status = mod_som_sbe41_connect_f();
   status = mod_som_sbe41_start_collect_data_f();
   if(status){
+          mod_som_efe_stop_sampling_f();
       mod_som_sdio_disable_hardware_f();
       return MOD_SOM_APF_STATUS_NO_CTD_DATA;
   }
@@ -3031,10 +3046,11 @@ mod_som_apf_status_t mod_som_apf_daq_start_f(uint32_t profile_id){
 
   //SAN 2023 02 20 correct for something funny status not working properly
   if(status){
-      mod_som_sdio_disable_hardware_f();
-      sl_sleeptimer_delay_millisecond(delay100ms);
+      mod_som_efe_stop_sampling_f();
       mod_som_sbe41_stop_collect_data_f();
       mod_som_sbe41_disconnect_f();
+      sl_sleeptimer_delay_millisecond(delay100ms);
+      mod_som_sdio_disable_hardware_f();
     return status;
   }
 
@@ -3271,8 +3287,8 @@ mod_som_apf_status_t mod_som_apf_daq_stop_f(){
       return status;
   }
 
-  mod_som_sbe41_ptr_t local_sbe41_runtime_ptr =
-        mod_som_sbe41_get_runtime_ptr_f();
+//  mod_som_sbe41_ptr_t local_sbe41_runtime_ptr =
+//        mod_som_sbe41_get_runtime_ptr_f();
 #ifdef MOD_SOM_DEBUG
   mod_som_io_print_f(
       "SBE sample count:%ld\r\n"

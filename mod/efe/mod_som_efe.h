@@ -81,9 +81,32 @@
 #define MOD_SOM_EFE_STATUS_FAIL_TOP_SAMPLING           0x03u
 
 
+// 2026 02 13 LW: Switch for enabling/disabling spoofing EFE over UART
+//#define MOD_SOM_EFE_SIM_DATA
+#define MOD_SOM_EFE_UART_SPOOF
+
+// 2026 04 20 LW: Switch for using debug header or MEZZ comm UART
+//#define SPOOF_UART_USE_DEBUG
+#define MOD_SOM_EFE_UART_SPOOF_USE_USART3 // only effective if SPOOF_UART_USE_DEBUG is not defined
+
+
+// 2026 04 23 LW: Switches for debugging WTIMER2/LDMA IRQ handlers with GPIO flags
+#define MOD_SOM_EFE_IRQ_DEBUG_GPIO_ENABLE
+//#define MOD_SOM_EFE_IRQ_DEBUG_GPIO_TOGGLE_MODE  // Enable to toggle on IRQ entry; Disable to pull low on entry, high on exit
+
+// WTIMER2 Debug GPIO: Use PA9 (SOM Mezz header J9 pin 15)
+#define MOD_SOM_EFE_IRQ_WTIMER2_GPIO_PORT gpioPortA
+#define MOD_SOM_EFE_IRQ_WTIMER2_GPIO_PIN  9
+
+// LDMA Debug GPIO: Use PA10 (SOM Mezz header J9 pin 17)
+#define MOD_SOM_EFE_IRQ_LDMA_GPIO_PORT    gpioPortA
+#define MOD_SOM_EFE_IRQ_LDMA_GPIO_PIN     10
+
+
 //------------------------------------------------------------------------------
 // EFE global variables
 //------------------------------------------------------------------------------
+
 
 
 //------------------------------------------------------------------------------
@@ -289,7 +312,7 @@ mod_som_efe_data_consumer_t, *mod_som_efe_data_consumer_ptr_t;
 typedef struct{
     uint32_t initialized_flag;
     uint32_t error_flag;
-    uint32_t sample_count;
+    volatile uint32_t sample_count;
     uint64_t timestamp;
     mod_som_efe_settings_ptr_t settings_ptr;      //
     mod_som_efe_config_ptr_t config_ptr;    //
@@ -422,6 +445,16 @@ mod_som_status_t mod_som_efe_init_mclock_f(mod_som_timer_handle_ptr_t config_mcl
 
 /*******************************************************************************
  * @brief
+ *   Initialize UART1 for adc spoofing communication
+ *
+ * @param
+ ******************************************************************************/
+#ifdef MOD_SOM_EFE_SIM_DATA
+mod_som_status_t mod_som_efe_sim_data_init_f();
+#endif
+
+/*******************************************************************************
+ * @brief
  *   Initialize spi port for efe adc
  *
  * @param mod_som_efe_comm_handle_ptr_t
@@ -478,6 +511,19 @@ void mod_som_efe_reset_adc_f();
  *
  ******************************************************************************/
 void mod_som_efe_read_adc_f();
+/*******************************************************************************
+ * @brief
+ *
+ *
+ * @param
+ *
+ ******************************************************************************/
+#ifdef MOD_SOM_EFE_SIM_DATA
+//#ifdef MOD_SOM_EFE_UART_SPOOF
+void mod_som_efe_define_data_sim_descriptor_f(mod_som_efe_ptr_t module_ptr);
+//#else
+//#endif
+#endif
 /*******************************************************************************
  * @brief
  *

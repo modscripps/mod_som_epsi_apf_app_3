@@ -80,6 +80,7 @@ static const float g = 9.807; // m/s^2
 
 // USER INPUTS
 
+static const float kvec_min_1 = 2, kvec_max_1 = 10;
 
 static uint8_t spectrum_counter; // counter for number of spectra up to dof
 static uint16_t master_counter; //counter of how many values we have processed.
@@ -92,6 +93,7 @@ static void mod_som_epsiobp_fp07_filters_f(float *fp07_filter, float fall_rate);
 static void mod_som_epsiobp_fp07_noise_f();
 uint16_t mod_som_epsiobp_fp07_cutoff_f(float *fp07_spectrum, uint16_t size);
 // MATH AND VECTOR FUNCTIONS
+static float median_f(float *arr, uint16_t n);
 //static void mod_som_epsiobp_pwelch_f(float *data, float *spectrum, uint16_t size, uint16_t sampling_frequency);
 static void power_spectrum_f(float *data, float *spectrum, uint32_t size, float sampling_frequency);
 //static void average_spectra_f(uint16_t size, uint8_t num_blocks, float *spectra_in, float *spectrum_out);
@@ -109,8 +111,9 @@ static float seawater_thermal_diffusivity_f(float salinity, float temperature, f
 static float seawater_kinematic_viscosity_f(float salinity, float temperature, float pressure);
 float fom_panchev_f(float *shear_spec, float epsilon, float kvis,uint16_t kvec_indices, uint16_t kvec_size, float *panchev_spec);
 static float fom_batchelor_f(float *temp_spec,float epsilon, float chi, float kvis, float kappa, uint16_t cutoff, float *batchelor_spec);
-// end
 
+static float trapz_f(const float *data, uint16_t size, float dk);
+// end
 /*------------------------------ Module Code ----------------------------a---*/
 // public functions
 
@@ -126,9 +129,12 @@ static float fom_batchelor_f(float *temp_spec,float epsilon, float chi, float kv
  ******************************************************************************/
 void mod_som_epsiobp_init_f(mod_som_efe_obp_config_ptr_t config_ptr_in, mod_som_efe_obp_settings_ptr_t settings_ptr_in, mod_som_efe_obp_calibration_ptr_t cals_ptr_in)
 {
+
   config = config_ptr_in;
   settings = settings_ptr_in;
   cals_ptr = cals_ptr_in;
+
+  uint32_t nfft_float_size_bytes = sizeof(float)*settings->nfft;
 
 //  // read in calibration inputs
 //  num_shear = config.num_shear;
@@ -170,7 +176,7 @@ void mod_som_epsiobp_init_f(mod_som_efe_obp_config_ptr_t config_ptr_in, mod_som_
   vals->freq =
       (float *)Mem_SegAlloc(
           "MOD SOM EFE OBP vals freq.",DEF_NULL,
-          sizeof(float)*settings->nfft/2,
+          nfft_float_size_bytes/2,
           &err);
 
   // Check error code
@@ -178,14 +184,14 @@ void mod_som_epsiobp_init_f(mod_som_efe_obp_config_ptr_t config_ptr_in, mod_som_
   vals->kvec =
       (float *)Mem_SegAlloc(
           "MOD SOM EFE OBP vals kvec.",DEF_NULL,
-          sizeof(float)*settings->nfft/2,
+          nfft_float_size_bytes/2,
           &err);
   // Check error code
   APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
   vals->fp07_noise =
       (float *)Mem_SegAlloc(
           "MOD SOM EFE OBP vals fp07_noise.",DEF_NULL,
-          sizeof(float)*settings->nfft/2,
+          nfft_float_size_bytes/2,
           &err);
   // Check error code
   APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
@@ -199,14 +205,14 @@ void mod_som_epsiobp_init_f(mod_som_efe_obp_config_ptr_t config_ptr_in, mod_som_
   vals->hamming_window =
       (float *)Mem_SegAlloc(
           "MOD SOM EFE OBP vals hamming_window.",DEF_NULL,
-          sizeof(float)*settings->nfft,
+          nfft_float_size_bytes,
           &err);
   // Check error code
   APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
   spectrum_buffer =
       (float *)Mem_SegAlloc(
           "MOD SOM EFE OBP spectrum_buffer.",DEF_NULL,
-          sizeof(float)*settings->nfft/2,
+          nfft_float_size_bytes/2,
           &err);
   // Check error code
   APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
@@ -224,42 +230,42 @@ void mod_som_epsiobp_init_f(mod_som_efe_obp_config_ptr_t config_ptr_in, mod_som_
   filters_ptr->ca_shear =
       (float *)Mem_SegAlloc(
           "MOD SOM EFE OBP filt ca.",DEF_NULL,
-          sizeof(float)*settings->nfft/2,
+          nfft_float_size_bytes/2,
           &err);
   APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
 
   filters_ptr->adc_tf =
       (float *)Mem_SegAlloc(
           "MOD SOM EFE OBP filt adc tf.",DEF_NULL,
-          sizeof(float)*settings->nfft/2,
+          nfft_float_size_bytes/2,
           &err);
   APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
 
   filters_ptr->fp07_filter =
       (float *)Mem_SegAlloc(
           "MOD SOM EFE OBP filt fpo7.",DEF_NULL,
-          sizeof(float)*settings->nfft/2,
+          nfft_float_size_bytes/2,
           &err);
   APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
 
   filters_ptr->magsq =
       (float *)Mem_SegAlloc(
           "MOD SOM EFE OBP filt magsq.",DEF_NULL,
-          sizeof(float)*settings->nfft/2,
+          nfft_float_size_bytes/2,
           &err);
   APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
 
   filters_ptr->oakey_shear =
       (float *)Mem_SegAlloc(
           "MOD SOM EFE OBP filt oakey.",DEF_NULL,
-          sizeof(float)*settings->nfft/2,
+          nfft_float_size_bytes/2,
           &err);
   APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
 
   filters_ptr->shear_filter =
       (float *)Mem_SegAlloc(
           "MOD SOM EFE OBP filt shear.",DEF_NULL,
-          sizeof(float)*settings->nfft/2,
+          nfft_float_size_bytes/2,
           &err);
   APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
 
@@ -273,21 +279,21 @@ void mod_som_epsiobp_init_f(mod_som_efe_obp_config_ptr_t config_ptr_in, mod_som_
   theospec_ptr->batchelor_spec =
       (float *)Mem_SegAlloc(
           "MOD SOM EFE OBP theo batch.",DEF_NULL,
-          sizeof(float)*settings->nfft/2,
+          nfft_float_size_bytes/2,
           &err);
   APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
 
   theospec_ptr->panchev_spec =
       (float *)Mem_SegAlloc(
           "MOD SOM EFE OBP theo panch.",DEF_NULL,
-          sizeof(float)*settings->nfft/2,
+          nfft_float_size_bytes/2,
           &err);
   APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
 
   theospec_ptr->kn =
       (float *)Mem_SegAlloc(
           "MOD SOM EFE OBP theo kn.",DEF_NULL,
-          sizeof(float)*settings->nfft/2,
+          nfft_float_size_bytes/2,
           &err);
   APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
 
@@ -301,49 +307,49 @@ void mod_som_epsiobp_init_f(mod_som_efe_obp_config_ptr_t config_ptr_in, mod_som_
   fft_ptr->detrended_data =
       (float *)Mem_SegAlloc(
           "MOD SOM EFE OBP fft detre.",DEF_NULL,
-          sizeof(float)*settings->nfft,
+          nfft_float_size_bytes,
           &err);
   APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
   fft_ptr->fft_data =
       (float *)Mem_SegAlloc(
           "MOD SOM EFE OBP fft data.",DEF_NULL,
-          sizeof(float)*settings->nfft,
+          nfft_float_size_bytes,
           &err);
   APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
   fft_ptr->windowed_data =
       (float *)Mem_SegAlloc(
           "MOD SOM EFE OBP fft windata.",DEF_NULL,
-          sizeof(float)*settings->nfft,
+          nfft_float_size_bytes,
           &err);
   APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
   fft_ptr->averaged_data =
       (float *)Mem_SegAlloc(
           "MOD SOM EFE OBP fft avgdata.",DEF_NULL,
-          sizeof(float)*settings->nfft,
+          nfft_float_size_bytes,
           &err);
   APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
   fft_ptr->fp07_smoothed =
       (float *)Mem_SegAlloc(
           "MOD SOM EFE OBP fft fpo7sm.",DEF_NULL,
-          sizeof(float)*settings->nfft,
+          nfft_float_size_bytes,
           &err);
   APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
   fft_ptr->x =
       (float *)Mem_SegAlloc(
           "MOD SOM EFE OBP fft x.",DEF_NULL,
-          sizeof(float)*settings->nfft,
+          nfft_float_size_bytes,
           &err);
   APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
   fft_ptr->y =
       (float *)Mem_SegAlloc(
           "MOD SOM EFE OBP fft y.",DEF_NULL,
-          sizeof(float)*settings->nfft,
+          nfft_float_size_bytes,
           &err);
   APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
   fft_ptr->epsi_spectrum_buffer =
       (float *)Mem_SegAlloc(
           "MOD SOM EFE OBP fft spec.",DEF_NULL,
-          sizeof(float)*settings->nfft,
+          nfft_float_size_bytes/2,
           &err);
   APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
 
@@ -388,6 +394,7 @@ void mod_som_epsiobp_init_f(mod_som_efe_obp_config_ptr_t config_ptr_in, mod_som_
   //initialize master counter
   master_counter = 0;
 }
+
 
 /*******************************************************************************
  * @brief
@@ -561,6 +568,8 @@ void mod_som_efe_obp_calc_epsilon_f(float *local_epsilon, float *nu,
   T = mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_ctd_temperature;
   S = mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_ctd_salinity;
 
+
+
   // calculate wavenumber vector
 //  for (uint16_t i = 0; i < settings->nfft/2; i++) {
 //    //Make the k vector from the freq vector with the appropriate fall speed
@@ -578,7 +587,16 @@ void mod_som_efe_obp_calc_epsilon_f(float *local_epsilon, float *nu,
 
   float kvis = seawater_kinematic_viscosity_f(S, T, P);
   *nu = kvis;
-  static const float kvec_min_1 = 2, kvec_max_1 = 10;
+
+  //2026 05 13 SAN condition to refuse to calculate epsilon since w is bad
+  if (w<0.005f || w>10.0f){
+          *local_epsilon = 0.0f;
+          *fom_ptr = 0.0f;
+          *kcutoff = 0.0f;
+          return;
+  }
+
+
   static float eps_1, log10_eps;
 
   float kvec_limits_1[] = {kvec_min_1, kvec_max_1};
@@ -609,12 +627,15 @@ void mod_som_efe_obp_calc_epsilon_f(float *local_epsilon, float *nu,
   local_avg_spec_shear_ptr=
       &mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_spec_shear_ptr[kvec_indices_1[0]];
 
-  spectrum_integral = 0;
-  //Compute the integral of the spectrum from 2-10 cpm
-  for (uint16_t i = 0; i < kvec_1_size; i++) {
-//    spectrum_integral += (local_avg_spec_shear_ptr[i]*w*pow((2*M_PI*vals->kvec[kvec_indices_1[0]+i]), 2.0))*dk;
-    spectrum_integral += local_avg_spec_shear_ptr[i]*dk;
-  }
+  //2026 06 05 SAN replace rectangular integral with trapezoidal integral
+//  spectrum_integral = 0;
+//  //Compute the integral of the spectrum from 2-10 cpm
+//  for (uint16_t i = 0; i < kvec_1_size; i++) {
+////    spectrum_integral += (local_avg_spec_shear_ptr[i]*w*pow((2*M_PI*vals->kvec[kvec_indices_1[0]+i]), 2.0))*dk;
+//    spectrum_integral += local_avg_spec_shear_ptr[i]*dk;
+//  }
+
+  spectrum_integral = trapz_f(local_avg_spec_shear_ptr, kvec_1_size, dk);
   log10_spectrum_integral = log10(spectrum_integral);
 
 
@@ -652,16 +673,20 @@ void mod_som_efe_obp_calc_epsilon_f(float *local_epsilon, float *nu,
   local_avg_spec_shear_ptr=
       &mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_spec_shear_ptr[kvec_indices_2[0]];
 
-  spectrum_integral = 0;
-  for (uint16_t i = 0; i < kvec_2_size; i++) {
-//    spectrum_kvec_2[i] = (mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_spec_shear_ptr[kvec_indices_2[0] + i]);
-//    spectrum_integral += (local_avg_spec_shear_ptr[i]*w*pow((2*M_PI*vals->kvec[kvec_indices_2[0]+i]), 2.0))*dk;
-    spectrum_integral += local_avg_spec_shear_ptr[i]*dk;
-//
-//    spectrum_integral += spectrum_kvec_2[i]*dk;
-  }
+
+  //2026 06 05 SAN replace rectangular integral with trapezoidal integral
+//  spectrum_integral = 0;
+//  for (uint16_t i = 0; i < kvec_2_size; i++) {
+////    spectrum_kvec_2[i] = (mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_spec_shear_ptr[kvec_indices_2[0] + i]);
+////    spectrum_integral += (local_avg_spec_shear_ptr[i]*w*pow((2*M_PI*vals->kvec[kvec_indices_2[0]+i]), 2.0))*dk;
+//    spectrum_integral += local_avg_spec_shear_ptr[i]*dk;
+////
+////    spectrum_integral += spectrum_kvec_2[i]*dk;
+//  }
+  spectrum_integral = trapz_f(local_avg_spec_shear_ptr, kvec_2_size, dk);
+  //2026 06 05 SAN removing 0.9 correction
   //Compute eps from this and divide by 0.9 to account for the excess over 90%
-  eps_2 = 7.5*kvis*spectrum_integral/0.9;
+  eps_2 = 7.5*kvis*spectrum_integral;
 
 
   // THIRD STAGE
@@ -682,26 +707,31 @@ void mod_som_efe_obp_calc_epsilon_f(float *local_epsilon, float *nu,
   //Compute the integral of the spectrum over this range
   local_avg_spec_shear_ptr=
       &mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_spec_shear_ptr[kvec_indices_3[0]];
+  //2026 06 05 SAN replace rectangular integral with trapezoidal integral
   //Compute the integral of the spectrum
-  spectrum_integral = 0;
-  for (uint16_t i = 0; i < kvec_3_size; i++) {
-//    spectrum_kvec_3[i] = (mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_spec_shear_ptr[kvec_indices_3[0] + i]);
-//    spectrum_integral += (local_avg_spec_shear_ptr[i]*w*pow((2*M_PI*vals->kvec[kvec_indices_3[0]+i]), 2.0))*dk;
-    spectrum_integral += local_avg_spec_shear_ptr[i]*dk;
-//    spectrum_integral += spectrum_kvec_3[i]*dk;
-  } //Compute eps from this and divide by 0.9 to account for the excess over 90%
+//  spectrum_integral = 0;
+//  for (uint16_t i = 0; i < kvec_3_size; i++) {
+////    spectrum_kvec_3[i] = (mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_spec_shear_ptr[kvec_indices_3[0] + i]);
+////    spectrum_integral += (local_avg_spec_shear_ptr[i]*w*pow((2*M_PI*vals->kvec[kvec_indices_3[0]+i]), 2.0))*dk;
+//    spectrum_integral += local_avg_spec_shear_ptr[i]*dk;
+////    spectrum_integral += spectrum_kvec_3[i]*dk;
+  spectrum_integral = trapz_f(local_avg_spec_shear_ptr, kvec_3_size, dk);
   eps_3 = 7.5*kvis*spectrum_integral;
-  if (eps_3 < 1e-10 || kvec_3_size < 4) {
-    eps_3 = 1e-10;
+  //2026 06 20 SAN fix to match with matlab
+  if (eps_3 < 1e-11 || kvec_3_size < 4) {
+    eps_3 = 1e-11;
   } else {
     static float correction;
     static const float c[] = {-3.12067617e-05, -1.31492870e-03, -2.29864661e-02, -2.18323426e-01, -1.23597906, -4.29137352, -8.91987933, -9.58856889, -2.41486526};
     float log10_eps_3 = log10(eps_3);
-    if (log10_eps_3 <= -6) {
+    // 2026 06 04 SAN update to match current MATLAB code from ALB (change from -6 to -5)
+    if (log10_eps_3 <= -5) {
       correction = 0;
     } else if (log10_eps_3 <= -1) {
       correction = c[0]*pow(log10_eps_3, 8.0) + c[1]*pow(log10_eps_3, 7.0) + c[2]*pow(log10_eps_3, 6.0) + c[3]*pow(log10_eps_3, 5.0) + c[4]*pow(log10_eps_3, 4.0) + c[5]*pow(log10_eps_3, 3.0) + c[6]*pow(log10_eps_3, 2.0) + c[7]*log10_eps_3 + c[8];
-      if (log10_eps_3 < -2) {correction = correction + 0.05*(correction + 6.0)*(1.3e-6 - kvis)/(0.3e-6);}
+//      if (log10_eps_3 < -2) {correction = correction + 0.05*(correction + 6.0)*(1.3e-6 - kvis)/(0.3e-6);}
+      // 2026 06 20 SAN (matches MATLAB epsilon2_correct.m:24  -> 0.05*(ler+6)*... )
+      if (log10_eps_3 < -2) {correction = correction + 0.05*(log10_eps_3 + 6.0)*(1.3e-6 - kvis)/(0.3e-6);}
     } else {
       correction = 1.5058;
     }
@@ -748,6 +778,8 @@ void mod_som_efe_obp_calc_chi_f(float *local_epsilon, float *local_chi,
     float chi;
 
 
+
+
 //    //ALB get cut off
 //    *(vals->fp07_cutoff) = mod_som_epsiobp_fp07_cutoff_f(
 //        mod_som_efe_obp_ptr->cpt_dissrate_ptr->avg_spec_temp_ptr,
@@ -758,11 +790,30 @@ void mod_som_efe_obp_calc_chi_f(float *local_epsilon, float *local_chi,
 
     chi_sum = 0;
 
-    for (uint16_t i = 0; i < *(vals->fp07_cutoff); i++) {
+//    for (uint16_t i = 0; i < *(vals->fp07_cutoff); i++) {
+//
+//        // multiply by fall rate and (2*pi*k)^2 to get spectrum vs wavenumber
+////        chi_sum += local_avg_spec_temp_ptr[i]*w*pow((2*M_PI*vals->kvec[i]), 2.0);
+//        chi_sum += local_avg_spec_temp_ptr[i];
+//    }
 
-        // multiply by fall rate and (2*pi*k)^2 to get spectrum vs wavenumber
-//        chi_sum += local_avg_spec_temp_ptr[i]*w*pow((2*M_PI*vals->kvec[i]), 2.0);
-        chi_sum += local_avg_spec_temp_ptr[i];
+
+
+    //2026 05 13 SAN condition to refuse to calculate chi since w is bad
+    if (w<0.005f || w>10.0f){
+            *local_chi = 0.0f;
+            *fcutoff = 0.0f;
+            *fom = 0.0f;
+            return;
+    }
+
+    //2026 06 20 update to match MATLAB
+    // (band k >= 3 cpm, inclusive of cutoff, matching MATLAB & the chi FOM band)
+    chi_sum = 0;
+    //2026 06 20 SAN match MATLAB mod_efe_scan_chi: integrate kmin(=3) <= k <= kc
+    for (uint16_t i = 0; i <= *(vals->fp07_cutoff); i++) {
+            if (vals->kvec[i] < kvec_min_1) {continue;}   // skip below kmin
+            chi_sum += local_avg_spec_temp_ptr[i];
     }
 
     //  compute chi
@@ -857,7 +908,7 @@ void mod_som_epsiobp_shear_filters_f(float *shear_filter, float fall_rate)
 float oakey_filter_f(float f, float fall_rate)
 {
   static const float lambda_c = 0.02;
-  return 1/(1 + pow((lambda_c*f/fall_rate), 2.0));
+  return 1.0/(1.0 + pow((lambda_c*f/fall_rate), 2.0));
 }
 
 /*******************************************************************************
@@ -906,27 +957,42 @@ void mod_som_epsiobp_fp07_noise_f()
 uint16_t mod_som_epsiobp_fp07_cutoff_f(float *fp07_spectrum, uint16_t size)
 {
   // define variables and arrays
-  float signal_noise_ratio = 3;
+  float signal_noise_ratio = 3;  //S2N ratio minimum
   uint16_t window = 15; //this is arbitrary, determined in processing before this
   float threshold;
   uint16_t cutoff = size;
-  float adjust_noise=0;
+//  float adjust_noise=0;
 //  float fp07_smoothed[size];
-  // smooth data
+  // smooth data (moving mean, window 15) -> MATLAB smoothdata(spec,'movmean',15)
   smooth_movingmean_f(fp07_spectrum, fft_ptr->fp07_smoothed, size, window);
+  //2026 06 21 SAN match MATLAB FPO7_cutoff: adjust factor = MEDIAN of
+  //  smoothed/noise over the high-frequency band f > 0.7*f_end
+  //  (was the MEAN over the last 10 bins).
+  float hf_limit = 0.7f * vals->freq[size - 1];
+  uint16_t n_hf = 0;
   for (uint16_t i = size-10; i < size; i++) {
-      adjust_noise+=fft_ptr->fp07_smoothed[i]/vals->fp07_noise[i];
+      //      adjust_noise+=fft_ptr->fp07_smoothed[i]/vals->fp07_noise[i];
+      if (vals->freq[i] > hf_limit) {
+              // theospec_ptr->batchelor_spec used as scratch (FOM hasn't run yet)
+              theospec_ptr->batchelor_spec[n_hf++] =
+                      fft_ptr->fp07_smoothed[i] / vals->fp07_noise[i];
+      }
   }
-  adjust_noise=adjust_noise/10;
+  float adjust_noise = (n_hf > 0) ? median_f(theospec_ptr->batchelor_spec, n_hf) : 1.0f;
+//  adjust_noise=adjust_noise/10;
 
   // loop to find cutoff, starting at the 5th FOCO
-  for (uint16_t i = 5; i < size; i++) {
-    threshold = signal_noise_ratio*vals->fp07_noise[i]*adjust_noise;
-    if (fft_ptr->fp07_smoothed[i] < threshold) {
-      cutoff = i;
-      break;
-    }
+  // find cutoff: first bin (from index 2) where smoothed/adjust < SNR*noise
+  //   i.e. smoothed < SNR*noise*adjust   (MATLAB medspec(3:end))
+  for (uint16_t i = 2; i < size; i++) {
+          threshold = signal_noise_ratio * vals->fp07_noise[i] * adjust_noise;
+          if (fft_ptr->fp07_smoothed[i] < threshold) {
+                  cutoff = i;
+                  break;
+          }
   }
+  // MATLAB: fc_index = fc_index - 1 (step back one bin)
+  if (cutoff > 0) {cutoff = cutoff - 1;}
   return cutoff;
 }
 
@@ -978,7 +1044,8 @@ void power_spectrum_f(float *data, float *spectrum, uint32_t size, float samplin
   // store the correct value for power at the nyquist frequency
   nyquist_power = fft_ptr->fft_data[1];
   // compute the square magnitude of the complex fft values
-  arm_cmplx_mag_squared_f32(fft_ptr->fft_data, fft_ptr->epsi_spectrum_buffer, size);
+  //2026 05 06 SAN fix the FFT point count to half of size
+  arm_cmplx_mag_squared_f32(fft_ptr->fft_data, fft_ptr->epsi_spectrum_buffer, size/2);
   // plug the power at the nyquist frequency into the spectrum vector in the correct location
   spectrum[end] = pow(nyquist_power, 2) / vals->normalization;
   ///////////////////////////////////////////////////////////////////////////////////
@@ -1026,6 +1093,8 @@ void power_spectrum_f(float *data, float *spectrum, uint32_t size, float samplin
  ******************************************************************************/
 void hamming_window_f(uint16_t size, float sampling_frequency, float *window, float* normal)
 {
+    //2026 05 06 SAN fix initialize normal before use
+    *normal = 0.0f;
   for (uint16_t j = 0; j < size; j++) {
     window[j] = 0.54 - 0.46*cos(2*M_PI*j/(size - 1));
     *normal += pow(window[j], 2);
@@ -1384,21 +1453,35 @@ float fom_panchev_f(float *shear_spec, float epsilon, float kvis,uint16_t kvec_i
   float integral = 0;
   float average  = 0;
 
-  //ALB Figure of Merit business
-  float sig_c1 =  5.0/4.0;
-  float sig_c2 = -7.0/9.0;
-  float sig_lnS = sig_c1 * pow((float)settings->degrees_of_freedom,sig_c2);
-  float sum1=0;
-  float fom=0;
+//  //ALB Figure of Merit business
+//  float sig_c1 =  5.0/4.0;
+//  float sig_c2 = -7.0/9.0;
+//  float sig_lnS = sig_c1 * pow((float)settings->degrees_of_freedom,sig_c2);
+//  float sum1=0;
+//  float fom=0;
 
+  //2026 06 19 SAN match MATLAB mod_efe_scan_epsilon FOM definition:
+  //  residuals in log10, mean-absolute-deviation (MATLAB mad), sig_lnS uses
+  //  sqrt and (dof-1), plus the Tm small-sample correction. Ns = 2*length(k)
+  //  with length(k) = nfft/2+1, i.e. Ns = nfft+2.
+  float dof     = (float) settings->degrees_of_freedom;
+  float sig_lnS = sqrt((5.0/4.0) * pow(dof - 1.0, -7.0/9.0));
+  float Ns      = (float) settings->nfft + 2.0;
+  float Tm      = 0.8 + sqrt(1.56/Ns);
+  float sum1    = 0.0;
+  float mad     = 0.0;
+  float fom     = 0.0;
 
   eta = pow(pow(kvis, 3)/epsilon, 1.0/4.0);
   conv = 1/(eta*2.0*M_PI);
 
   // compute spectrum
+  // compute residual spectrum: log10(observed / panchev model)
   for (uint16_t i = 0; i < kvec_size; i++) {
       theospec_ptr->kn[i] = vals->kvec[kvec_indices+i]/conv;
 
+      //2026 06 19 SAN reset the zeta integral for each wavenumber bin
+      sum = 0.0f;
       for (uint16_t j = 0; j < (sizeof(zeta)/sizeof(zeta[0])); j++) {
           z = zeta[j];
           sum = sum + delta*(1 + pow(z, 2))*
@@ -1408,24 +1491,55 @@ float fom_panchev_f(float *shear_spec, float epsilon, float kvis,uint16_t kvec_i
                        (sc32*ac32*pow((theospec_ptr->kn[i]/z), 2)));
       }
       phi = 0.5*pow(theospec_ptr->kn[i], -5.0/3.0)*sum;
-      panchev_spec[i] =log(shear_spec[i]/( scale*pow((theospec_ptr->kn[i]/eta), 2.0)*phi));
+      //2026 06 19 SAN update to log10 to match with MATLAB
+      panchev_spec[i] =log10(shear_spec[i]/(scale*pow((theospec_ptr->kn[i]/eta), 2.0)*phi));
       integral = integral + panchev_spec[i];
   }
 
   average = integral / (float) kvec_size;
-  /*  Compute  variance*/
+  // //  Compute  variance (removed)
+  //  Compute mean absolute deviation (MATLAB mad, default = mean abs dev) */
   for (uint16_t i = 0; i < kvec_size; i++) {
-      {
-        sum1 = sum1 + pow((panchev_spec[i] - average), 2);
-      }
+//      {
+//        sum1 = sum1 + pow((panchev_spec[i] - average), 2);
+//      }
+          sum1 = sum1 + fabs(panchev_spec[i] - average);
   }
-  fom = sum1 / (float)(kvec_size-1);
-  fom = fom /sig_lnS;
+  mad = sum1 / (float) kvec_size;
+  fom = mad / sig_lnS / Tm;
 
   // return integral value
+  // return figure of merit
   return fom;
 }
-
+//2026 06 20 SAN helpers for median-absolute-deviation FOM (MATLAB mad(x,1))
+static int cmp_float_asc_f(const void *pa, const void *pb)
+{
+    float a = *(const float*)pa, b = *(const float*)pb;
+    if (a < b) return -1;
+    if (a > b) return  1;
+    return 0;
+}
+/*******************************************************************************
+ * @brief
+ *   function to calculate the median of an array with n elements
+ * @param arr
+ *   input - array of n elements
+ * @param n
+ *   input - number of elements
+ * @return
+ *   returns median value from the array
+ ******************************************************************************/
+static float median_f(float *arr, uint16_t n)
+{
+//sorts arr IN PLACE and returns the median (MATLAB median convention)
+    if (n == 0) return 0.0f;
+    qsort(arr, n, sizeof(float), cmp_float_asc_f);
+    if (n & 1) {
+            return arr[n/2];
+    }
+    return 0.5f*(arr[n/2 - 1] + arr[n/2]);
+}
 /*******************************************************************************
  * @brief
  *   function to calculate the batchelor spectrum for the current wavenumber vector
@@ -1447,53 +1561,131 @@ float fom_panchev_f(float *shear_spec, float epsilon, float kvis,uint16_t kvec_i
  ******************************************************************************/
 float fom_batchelor_f(float *temp_spec, float epsilon, float chi, float kvis, float kappa, uint16_t cutoff, float *batchelor_spec)
 {
+    //2026 06 20 some changes to match matlab calculation of FOM for chi
   // initialize constants and variables
 //  float eta = pow(pow(kvis, 3)/epsilon, 1.0/4.0);
-  static const float q = 3.7;
+//  static const float q = 3.7;
+  const float q = 3.7;
   float kb = pow((epsilon/kvis/pow(kappa, 2.0)), 1.0/4.0);
-  float a, uppera, g_b;
-//  float dk = vals->kvec[1] - vals->kvec[0];
-  float integral = 0;
-  float average  =0;
+//  float a, uppera, g_b;
+// //  float dk = vals->kvec[1] - vals->kvec[0];
+//  float integral = 0;
+//  float average  =0;
+  float a, uppera, g_b, model;
 
-  //ALB Figure of Merit buisness
-  float sig_c1 =  5.0/4.0;
-  float sig_c2 = -7.0/9.0;
-  float sig_lnS = sig_c1 * pow((float)settings->degrees_of_freedom,sig_c2);
+//  //ALB Figure of Merit buisness
+//  float sig_c1 =  5.0/4.0;
+//  float sig_c2 = -7.0/9.0;
+//  float sig_lnS = sig_c1 * pow((float)settings->degrees_of_freedom,sig_c2);
+  //2026 06 20 SAN match MATLAB mod_efe_scan_chi/compute_fom FOM definition:
+  //  natural-log residuals, MEDIAN-absolute-deviation (MATLAB mad(x,1)),
+  //  correction with Ns = number of wavenumber bins in [kmin, kc].
+  //  NOTE: the batchelor model is linear in chi, so the MATLAB adjust_chi
+  //  rescale only shifts the log-residuals by a constant; median-abs-dev is
+  //  shift invariant, so the rescale (and the exact chi value) do not change
+  //  the FOM and are omitted here.
+  float dof     = (float) settings->degrees_of_freedom;
+  float sig_lnS = sqrt((5.0/4.0)*pow(dof, -7.0/9.0));
+  float fom     = 0;
+  uint16_t n    = 0;
 
-  float sum1;
-  float fom;
-  uint16_t fom_cutoff=cutoff;
+//  float sum1;
+//  float fom;
+//  uint16_t fom_cutoff=cutoff;
+//
+//  // calculate spectrum
+//  for (uint16_t i = 0; i < cutoff; i++) {
+//      a = sqrt(2*q)*2*M_PI*vals->kvec[i]/kb;
+//      uppera = erf(a/sqrt(2.0))*sqrt(M_PI/2);
+//      g_b = 2*M_PI*a*(exp(-pow(a, 2.0)/2) - a*uppera);
+// //      batchelor_spec[i] = sqrt(q/2)*(chi/kb/kappa)*g_b;
+//      batchelor_spec[i] =log(temp_spec[i]/(sqrt(q/2)*(chi/kb/kappa)*g_b));
+//      if (isnan(batchelor_spec[i])){
+//          //ALB end of the inegration
+//          fom_cutoff=i;
+//          break;
+//      }
+// //      integral = integral + batchelor_spec[i]*dk;
+//      integral = integral + batchelor_spec[i];
+//  }
+//
+//  average = integral / (float) fom_cutoff;
 
-  // calculate spectrum
-  for (uint16_t i = 0; i < cutoff; i++) {
-      a = sqrt(2*q)*2*M_PI*vals->kvec[i]/kb;
-      uppera = erf(a/sqrt(2.0))*sqrt(M_PI/2);
-      g_b = 2*M_PI*a*(exp(-pow(a, 2.0)/2) - a*uppera);
-//      batchelor_spec[i] = sqrt(q/2)*(chi/kb/kappa)*g_b;
-      batchelor_spec[i] =log(temp_spec[i]/(sqrt(q/2)*(chi/kb/kappa)*g_b));
-      if (isnan(batchelor_spec[i])){
-          //ALB end of the inegration
-          fom_cutoff=i;
-          break;
-      }
-//      integral = integral + batchelor_spec[i]*dk;
-      integral = integral + batchelor_spec[i];
+  // build natural-log residual spectrum over the band kmin <= k <= kc(cutoff)
+  for (uint16_t i = 0; i <= cutoff; i++) {
+          if (vals->kvec[i] < kvec_min_1) {
+                  continue;
+          }            // skip below kmin
+          a      = sqrt(2*q)*2*M_PI*vals->kvec[i]/kb;
+          uppera = erfc(a/sqrt(2.0))*sqrt(M_PI/2);         // MATLAB batchelor uses erfc
+          g_b    = 2*M_PI*a*(exp(-pow(a, 2.0)/2) - a*uppera);
+          model  = sqrt(q/2)*(chi/kb/kappa)*g_b;
+          if (model <= 0.0f) {
+                  break;
+          }
+          batchelor_spec[n] = log(temp_spec[i]/model);     // natural-log residual
+          if (isnan(batchelor_spec[n]) || isinf(batchelor_spec[n])) {
+                  break;
+          }
+          n++;
   }
 
-  average = integral / (float) fom_cutoff;
-  /*  Compute  variance*/
-  for (uint16_t i = 0; i < fom_cutoff; i++) {
-      {
-        sum1 = sum1 + pow((batchelor_spec[i] - average), 2);
-      }
-      fom = sum1 / (float)(fom_cutoff-1);
-      fom = fom /sig_lnS;
+  if (n < 2) {
+          return 0.0f;
   }
 
-  // return integral value
+  float Ns = (float) n; // MATLAB Ns = length(kin)
+  float Tm = 0.8 + sqrt(1.56/Ns);
+  // mad(resid,1) = median( |resid - median(resid)| )   (note: median_f sorts in place)
+  float median_r = median_f(batchelor_spec, n);
+  for (uint16_t i = 0; i < n; i++) {
+          batchelor_spec[i] = fabs(batchelor_spec[i] - median_r);
+  }
+  float mad_spec = median_f(batchelor_spec, n);
+  fom = mad_spec / sig_lnS / Tm;
+
+  // return figure of merit
   return fom;
 
+
+//  //  Compute  variance
+//  for (uint16_t i = 0; i < fom_cutoff; i++) {
+//      {
+//        sum1 = sum1 + pow((batchelor_spec[i] - average), 2);
+//      }
+//      fom = sum1 / (float)(fom_cutoff-1);
+//      fom = fom /sig_lnS;
+//  }
+
+  // return integral value
+//  return fom;
+
+}
+
+/*******************************************************************************
+ * @brief
+ *      trapezoidal integration of a uniformly-spaced sequence
+ * @param data
+ *            input - pointer to vector P[O..size-1]
+ * @param size
+ *            input - number of points
+ * @param dk
+ *            input - uniform spacing between points
+ * @return
+ *            dk * (P[0]/2 + P[1] + P[2] + ….. + P[size-2] + P[size-1]/2)
+ *            returns 0 if size ‹ 2 (no interval to integrate)
+******************************************************************************/
+static float trapz_f(const float *data, uint16_t size, float dk)
+{
+    if (size < 2) {
+            return 0.0f;
+    }
+    float sum = 0.5f * (data[0] + data[size - 1]);
+    for (int i = 1; i < size - 1; i++) {
+            sum += data[i];
+    }
+
+    return sum * dk;
 }
 /*----------------------------- Test Harness -------------------------------*/
 

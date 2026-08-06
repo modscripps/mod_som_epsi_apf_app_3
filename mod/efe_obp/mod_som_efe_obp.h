@@ -117,6 +117,16 @@
 #define MOD_SOM_EFE_OBP_ACCELL_OFFSET 0.9 //1.8 fullrange/2
 #define MOD_SOM_EFE_OBP_ACCELL_FACTOR 0.4 //400 mV/g
 
+
+
+// 2026 04 24 LW: Switch for debugging fill_segment_task CB overflows with GPIO flags
+#define MOD_SOM_EFE_OBP_SEG_CB_DEBUG_GPIO_ENABLE
+
+// Fill Seg CB Debug GPIO: Use PB0 (SOM Mezz header J9 pin 5)
+#define MOD_SOM_EFE_OBP_SEG_CB_GPIO_PORT gpioPortB
+#define MOD_SOM_EFE_OBP_SEG_CB_GPIO_PIN  0
+
+
 //------------------------------------------------------------------------------
 // TYPEDEFS
 //------------------------------------------------------------------------------
@@ -186,11 +196,11 @@ typedef struct{
   uint32_t   rates_length;
   uint32_t   diffusitvity_length;
 
-  uint32_t   segment_cnt;
-  uint32_t   spectrum_cnt;
-  uint32_t   avgspec_cnt;
-  uint32_t   rates_cnt;
-  uint32_t   record_timestamp;
+  volatile uint32_t   segment_cnt;
+  volatile uint32_t   spectrum_cnt;
+  volatile uint32_t   avgspec_cnt;
+  volatile uint32_t   rates_cnt;
+  uint64_t   record_timestamp;
 
   uint8_t *  record_ptr;     //ALB pointer to the segments section in the record
 
@@ -208,12 +218,13 @@ mod_som_efe_obp_data_consumer_t, *mod_som_efe_obp_data_consumer_ptr_t;
  ******************************************************************************/
 typedef struct{
 
-  uint32_t efe_element_cnt;
+  uint32_t consumed_efe_element_cnt;
   uint32_t efe_element_skipped;
+  uint32_t seg_buff_efe_element_cnt; //2026 04 23 SAN define the count of efe elements that are already in the buffer
   uint32_t ctd_element_cnt;
 
-  uint32_t segment_cnt;
-  uint32_t half_segment_cnt;
+  volatile uint32_t segment_cnt;
+  volatile uint32_t half_segment_cnt;
 
   uint64_t * timestamp_segment_ptr;
   float * segment_buffer_ptr;
@@ -242,8 +253,8 @@ mod_som_efe_obp_data_fill_segment_t, *mod_som_efe_obp_data_fill_segment_ptr_t;
  ******************************************************************************/
 typedef struct{
 
-  uint32_t spectrum_cnt;
-  uint32_t avg_spectrum_cnt;
+  volatile uint32_t spectrum_cnt;
+  volatile uint32_t avg_spectrum_cnt;
 
   uint32_t volt_read_index;
   uint8_t  dof;
@@ -278,7 +289,7 @@ typedef struct{
 
   bool dof_flag;
   bool consumed_flag;
-  uint64_t dissrates_cnt;
+  volatile uint32_t dissrates_cnt;
 //  uint64_t avg_timestamp[MOD_SOM_EFE_OBP_CPT_DISSRATE_NB_RATES_PER_RECORD];
   uint64_t avg_timestamp;
 
@@ -321,7 +332,7 @@ typedef struct{
 //  float    * Tdiff_coeff;
   uint32_t   cafilter_size;
   float    * cafilter_freq;
-  float    * cafilter_coeff;
+  const float    * cafilter_coeff;
   float      fp07_noise[4];
   float      acc_offset;
   float      acc_factor;

@@ -40,14 +40,8 @@
 #ifdef  MOD_SOM_EFE_EN
 #include "mod_som_efe.h"
 #endif
-#ifdef  MOD_SOM_SBE49_EN
-#include "mod_som_sbe49_priv.h"
-#endif
 #ifdef  MOD_SOM_SBE41_EN
 #include "mod_som_sbe41_priv.h"
-#endif
-#ifdef  MOD_SOM_VEC_NAV_EN
-#include "mod_som_vec_nav_priv.h"
 #endif
 
 
@@ -151,7 +145,7 @@ mod_som_status_t mod_som_main_init_f(void){
     CMU_ClockSelectSet(cmuClock_HF, cmuSelect_HFRCO);
     CMU_ClockEnable(cmuClock_GPIO, true);
 
-#if defined(MOD_SOM_BOARD)||defined(MOD_SOM_MEZZANINE_BOARD)
+#if defined(MOD_SOM_BOARD)
     /* Power External Oscillator SOM-U8-U4*/
     // HF oscillator enable high
     GPIO_PinModeSet(MOD_SOM_HFXO_EN_PORT, MOD_SOM_HFXO_EN_PIN, gpioModePushPull, 1);
@@ -217,17 +211,6 @@ mod_som_status_t mod_som_main_init_f(void){
     GPIO_PinModeSet(MOD_SOM_UART_EN_PORT,\
                     MOD_SOM_UART_EN_PIN,\
                     gpioModePushPull, 1);    // URT_EN high
-#endif
-#if defined(MOD_SOM_MEZZANINE_BOARD)
-    /* enable Uart ports */
-    GPIO_PinModeSet(MOD_SOM_MEZZANINE_UART_EN_PORT, \
-                    MOD_SOM_MEZZANINE_UART_EN_PIN, \
-                    gpioModePushPull, 1);    // URT_EN high
-    GPIO_PinModeSet(MOD_SOM_MEZZANINE_UART_VCC_EN_PORT,\
-                    MOD_SOM_MEZZANINE_UART_VCC_EN_PIN,\
-                    gpioModePushPull, 1);    // URT_EN high
-
-
 #endif
 
     RETARGET_SerialInit();
@@ -397,6 +380,18 @@ void mod_som_main_task_f(void *p_arg)
 
     sl_sleeptimer_delay_millisecond(delay);
 
+    //2026 05 16 SAN heading message for debug
+#ifdef MOD_SOM_DEBUG_WDOG
+    printf("\r\n***********************************\r\n");
+    printf("**** MOD_SOM_DEBUG_WDOG is ON *****\r\n");
+    printf("***********************************\r\n");
+#endif
+#ifdef MOD_SOM_EFE_SIM_DATA
+    printf("\r\n***********************************\r\n");
+    printf("**** MOD_SOM_EFE_SIM_DATA is ON ***\r\n");
+    printf("***********************************\r\n");
+#endif
+
     printf("\r\n=====START INITIALIZATION======\r\n");
 
 
@@ -416,9 +411,7 @@ void mod_som_main_task_f(void *p_arg)
     /*****************************************
      * END Post OS start Add your code here
      *****************************************/
-#ifdef MOD_SOM_DEBUG_WDOG
     int32_t counter=0;
-#endif
     //2025 06 14 adding this for monitoring the tasks
     mod_som_apf_ptr_t mod_som_apf_runtime_ptr = mod_som_apf_get_runtime_ptr_f();
     mod_som_sbe41_ptr_t mod_som_sbe41_ptr = mod_som_sbe41_get_runtime_ptr_f();
@@ -432,17 +425,20 @@ void mod_som_main_task_f(void *p_arg)
                 (OS_OPT      )OS_OPT_TIME_DLY,
                 &err);
 //        tick=sl_sleeptimer_get_tick_count64();
-
-#ifdef MOD_SOM_DEBUG_WDOG
         counter++;
         if((counter%10)==0){
-            printf("\r\n##############################\r\n");
-            printf("##############################\r\n");
-            printf("MOD_SOM_DEBUG_WDOG is enabled\r\n");
-            printf("##############################\r\n");
-            printf("##############################\r\n");
-        }
+                //2026 05 14 SAN adding this to notify about debug
+#if defined(MOD_SOM_DEBUG_WDOG) || defined(MOD_SOM_EFE_SIM_DATA)
+                printf("\r\n***********************************\r\n");
+#ifdef MOD_SOM_DEBUG_WDOG
+                printf("MOD_SOM_DEBUG_WDOG is enabled\r\n");
 #endif
+#ifdef MOD_SOM_EFE_SIM_DATA
+                printf("MOD_SOM_EFE_SIM_DATA is enabled\r\n");
+                printf("***********************************\r\n");
+#endif
+#endif
+        }
         //2025 06 14 SAN adding this for monitoring the tasks
         /*
         if(mod_som_apf_runtime_ptr->mod_som_apf_shell_task_tcb_ptr->TaskState == OS_TASK_STATE_DEL){
@@ -670,7 +666,7 @@ void mod_som_main_task_f(void *p_arg)
 
 
         //ALB toggle led to tell us it alive
-        GPIO_PinOutToggle(gpioPortC, 6); // LED
+//        GPIO_PinOutToggle(gpioPortC, 6); // LED
 
         APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
     }
@@ -1641,9 +1637,6 @@ void LDMA_IRQHandler(void){
   }
   if(pending & ch2_bit_position){
       LDMA_IntClear(ch2_bit_position);
-#ifdef MOD_SOM_VECNAV_EN
-      mod_som_vecnav_ldma_irq_handler_f();
-#endif
   }
   if(pending & ch3_bit_position){
       LDMA_IntClear(ch3_bit_position);
@@ -2126,7 +2119,7 @@ void WDOG0_IRQHandler(void)
 #ifdef MOD_SOM_DEBUG_WDOG
   printf("WDOG0 TIMEOUT, ENTERING DEBUG LOOP\r\n");
   while(1){
-
+      __NOP();
   }
   //ALB do something?
     /* Clear flag for interrupt */

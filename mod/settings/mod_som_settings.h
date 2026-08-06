@@ -36,20 +36,8 @@
 #if defined(MOD_SOM_APF_EN)
 #include "mod_som_apf.h"
 #endif
-#if defined(MOD_SOM_SBE49_EN)
-#include "mod_som_sbe49.h"
-#endif
 #if defined(MOD_SOM_VOLTAGE_EN)
 #include "mod_som_voltage.h"
-#endif
-#if defined(MOD_SOM_ACTUATOR_EN)
-#include "mod_som_actuator.h"
-#endif
-#if defined(MOD_SOM_ALTIMETER_EN)
-#include "mod_som_altimeter.h"
-#endif
-#if defined(MOD_SOM_VEC_NAV_EN)
-#include "mod_som_vec_nav.h"
 #endif
 #if defined(MOD_SOM_SBE41_EN)
 #include "mod_som_sbe41.h"
@@ -73,13 +61,17 @@
 #define MOD_SOM_SETTINGS_DEFAULT_CTL_REV_NAME   "rev3"
 #define MOD_SOM_SETTINGS_DEFAULT_CTL_SN         "001"
 #define MOD_SOM_SETTINGS_DEFAULT_FIRMWARE_NAME  PROJECTNAME
-#define MOD_SOM_SETTINGS_DEFAULT_FIRMWARE_GITID "b7e70f7" //using previous commit id
+#define MOD_SOM_SETTINGS_DEFAULT_FIRMWARE_GITID "641e5e3" //using previous commit id
 
 #define MOD_SOM_SETTINGS_DEFAULT_STR_LENGTH       8
 #define MOD_SOM_SETTINGS_DEFAULT_NAME_LENGTH      24
 #define MOD_SOM_SETTINGS_DEFAULT_FIRMWARE_LENGTH  40
 #define MOD_SOM_SETTINGS_HEADER_CHECKSUM_LENGTH   3
 #define MOD_SOM_SETTINGS_PAYLOAD_CHECKSUM_LENGTH  5
+
+//2026 02 26 if this set to none zero then new settings will take affect
+#define MOD_SOM_SETTINGS_NEW_SETTINGS_CMD 0U
+
 //------------------------------------------------------------------------------
 // TYPEDEFS
 //------------------------------------------------------------------------------
@@ -100,9 +92,6 @@ mod_som_calendar_settings_t mod_som_calendar_settings;
 #if defined(MOD_SOM_EFE_EN)
 mod_som_efe_settings_t mod_som_efe_settings;
 #endif
-#if defined(MOD_SOM_SBE49_EN)
-mod_som_sbe49_settings_t mod_som_sbe49_settings;
-#endif
 #if defined(MOD_SOM_SBE41_EN)
 mod_som_sbe41_settings_t mod_som_sbe41_settings;
 #endif
@@ -115,18 +104,8 @@ mod_som_apf_settings_t mod_som_apf_settings;
 #if defined(MOD_SOM_EFE_OBP_EN)
 mod_som_efe_obp_settings_t mod_som_efe_obp_settings;
 #endif
-
 #if defined(MOD_SOM_VOLTAGE_EN)
 mod_som_voltage_settings_t mod_som_voltage_settings;
-#endif
-#if defined(MOD_SOM_ACTUATOR_EN)
-mod_som_actuator_settings_t mod_som_actuator_settings;
-#endif
-#if defined(MOD_SOM_ALTIMETER_EN)
-mod_som_altimeter_settings_t mod_som_altimeter_settings;
-#endif
-#if defined(MOD_SOM_VEC_NAV_EN)
-mod_som_vecnav_settings_t mod_som_vec_nav_settings;
 #endif
 
 }mod_som_settings_struct_t,*mod_som_settings_struct_ptr_t;

@@ -767,9 +767,6 @@ void mod_som_io_define_write_descriptor_f()
 #if defined(MOD_SOM_BOARD)
   mod_som_io_ldma_descriptor_write.xfer.dstAddr=(uint32_t) (&MOD_SOM_MAIN_COM_USART->TXDATA);
 #endif
-#if defined(MOD_SOM_MEZZANINE_BOARD)
-  mod_som_io_ldma_descriptor_write.xfer.dstAddr=(uint32_t) (&MOD_SOM_MEZZANINE_COM_USART->TXDATA);
-#endif
 }
 
 
