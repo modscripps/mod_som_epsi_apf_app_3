@@ -35,6 +35,19 @@ mod_som_sdio_t mod_som_sdio_struct;
 sl_status_t mystatus;
 
 
+
+/*******************************************************************************
+ * @function
+ *     mod_som_sdio_task_f
+ * @abstract
+ *     MOD SOM I/O OS task that would run in parallel with the main task
+ * @discussion
+ *     This task would dequeue the MOD SOM I/O transfer as the data is piped out
+ * @param       p_arg
+ *     argument passed in by OSTaskCreate (not used)
+ ******************************************************************************/
+static void mod_som_sdio_print_task_f(void *p_arg);
+
 /***************************************************************************//**
  * @brief
  *   This function is required by the FAT file system in order to provide
@@ -128,19 +141,16 @@ mod_som_status_t mod_som_sdio_init_f(){
     mod_som_sdio_default_settings_f();
     //allocate memory
     mod_som_sdio_allocate_memory_f();
-//    //ALB enable hardware
+    //ALB enable hardware
     mod_som_sdio_enable_hardware_f();
-//    //ALB Only APEX epsi and because of the big cap.
-//    //ALB I need to charge it
+    //ALB Only APEX epsi and because of the big cap.
+    //ALB I need to charge it
     sl_sleeptimer_delay_millisecond(delay);
 
     //ALB initialize runtime param initialized flag
     mod_som_sdio_struct.initialized_flag = true;
 
-//    //ALB start the SDIO task.
-//    mod_som_sdio_start_f();
-
-//    //ALB disable hardware
+    //ALB disable hardware
     mod_som_sdio_disable_hardware_f();
 
     // return default mod som OK.
@@ -181,7 +191,7 @@ mod_som_status_t mod_som_sdio_enable_hardware_f(){
     sl_sleeptimer_delay_millisecond(delay);
 
     while(local_voltage_runtime_ptr->voltage_adc1<3050){
-        sl_sleeptimer_delay_millisecond(100);
+        sl_sleeptimer_delay_millisecond(delay);
         //ALB   Feed the DOG.
         WDOG_Feed();
     };
@@ -329,7 +339,7 @@ mod_som_status_t mod_som_sdio_mount_fatfs_f(){
     //    res = f_mount(VOLUME_ADDRESS, &Fatfs);
     if (res != FR_OK)
     {
-    	printf("FAT-mount failed: %d\r\n", res);
+        mod_som_io_print_f("FAT-mount failed: %d\r\n", res);
     }
     else if(GPIO_PinInGet(gpioPortF, 8)){
         // 2024 12 12 LW: Only attempt to mount if a card is detected.Add commentMore actions
@@ -598,6 +608,7 @@ mod_som_status_t mod_som_sdio_define_filename_f(CPU_CHAR* filename){
 	if(status_data != MOD_SOM_STATUS_OK){
 	    return MOD_SOM_STATUS_NOT_OK;
 	}
+	
 	mod_som_sdio_struct.open_file_time=mod_som_calendar_get_time_f();
 	//store the date time when we open the file
 //	time_buff=mod_som_calendar_get_datetime_f();
@@ -606,7 +617,7 @@ mod_som_status_t mod_som_sdio_define_filename_f(CPU_CHAR* filename){
 
 
   //ALB every time I open that file the settings are saved first.
-    status_data=mod_som_sdio_write_config_f((uint8_t *) local_settings_ptr,\
+    status_data=mod_som_sdio_write_config_f((uint8_t *) local_settings_ptr,
 	                                        local_settings_ptr->size,
 												   mod_som_sdio_struct.rawdata_file_ptr);
 
@@ -1007,7 +1018,7 @@ mod_som_status_t mod_som_sdio_open_next_datafile(){
     status_data=mod_som_sdio_open_file_f(mod_som_sdio_struct.rawdata_file_ptr);
     mod_som_sdio_struct.open_file_time=mod_som_calendar_get_time_f();
 	time_buff=mod_som_calendar_get_datetime_f();
-    res = f_write(mod_som_sdio_struct.rawdata_file_ptr->fp,\
+    res = f_write(mod_som_sdio_struct.rawdata_file_ptr->fp,
     		time_buff,strlen(time_buff), &byteswritten); /* buffptr = pointer to the data to be written */
     res_sync=f_sync(mod_som_sdio_struct.rawdata_file_ptr->fp);
 
@@ -1446,6 +1457,7 @@ mod_som_status_t mod_som_sdio_read_file_f(mod_som_sdio_file_ptr_t mod_som_sdio_f
         	    res = f_read(mod_som_sdio_file_ptr->fp, mod_som_sdio_struct.read_buff, \
         	            MOD_SOM_SDIO_BLOCK_LENGTH, &byte_read);
         		if (res == FR_OK){
+        			WDOG_Feed();
         			mod_som_io_stream_data_f((uint8_t*)mod_som_sdio_struct.read_buff,byte_read,DEF_NULL);
         		} else{
         			mod_som_io_print_f("\nRead Failure: %d\r\n", res);
@@ -1453,7 +1465,7 @@ mod_som_status_t mod_som_sdio_read_file_f(mod_som_sdio_file_ptr_t mod_som_sdio_f
             //ALB feed the WDOG coz sending long files tiggers the WDOG.
             WDOG_Feed();
             //ALB check If I am at the end of the file. if yes done_reading=1
-            done_reading=f_eof(mod_som_sdio_file_ptr->fp);
+        		done_reading=f_eof(mod_som_sdio_file_ptr->fp);
         	}
         	//2025 05 28  writing flag
         	CORE_ENTER_ATOMIC();
@@ -1819,14 +1831,21 @@ mod_som_status_t mod_som_sdio_stop_f(){
  ******************************************************************************/
 mod_som_status_t mod_som_sdio_write_data_f(mod_som_sdio_file_ptr_t file_ptr, const uint8_t *data_ptr, uint32_t data_length,
         volatile bool * done_streaming_flag_ptr){
+  mod_som_status_t mod_som_status;
+  mod_som_status = MOD_SOM_STATUS_OK;
     if(!mod_som_sdio_struct.initialized_flag)
         return mod_som_sdio_encode_status_f(MOD_SOM_SDIO_STATUS_ERR_NOT_INITIALIZED);
-    if(!mod_som_sdio_struct.started_flag)
-        return mod_som_sdio_encode_status_f(MOD_SOM_SDIO_STATUS_ERR_NOT_STARTED);
+    if(!mod_som_sdio_struct.started_flag){
+            if(!mod_som_sdio_struct.enable_flag){
+                mod_som_status = mod_som_sdio_enable_hardware_f();
+              }
+            if(mod_som_status!=MOD_SOM_STATUS_OK){
+                return mod_som_sdio_encode_status_f(MOD_SOM_SDIO_STATUS_ERR_NOT_STARTED);
+            }
+        }
 
     mod_som_sdio_xfer_ptr_t mod_som_sdio_xfer_item_ptr;
-    mod_som_status_t mod_som_status;
-	  mod_som_status = MOD_SOM_STATUS_OK;
+
 
     mod_som_sdio_xfer_item_ptr = mod_som_sdio_new_xfer_item_f();
 
@@ -1934,8 +1953,8 @@ static void mod_som_sdio_print_task_f(void *p_arg)
                       {
                         bytes_to_send=remaining_bytes;
                       }
-                    res = f_write(tmp_mod_som_sdio_xfer_item_ptr->file_ptr->fp,\
-                                  &tmp_mod_som_sdio_xfer_item_ptr->data_ptr[tmp_mod_som_sdio_xfer_item_ptr->data_length-remaining_bytes],bytes_to_send, &byteswritten); /* buffptr = pointer to the data to be written */
+                    res = f_write(tmp_mod_som_sdio_xfer_item_ptr->file_ptr->fp,
+                                  &tmp_mod_som_sdio_xfer_item_ptr->data_ptr[tmp_mod_som_sdio_xfer_item_ptr->data_length-remaining_bytes],bytes_to_send, &byteswritten); // buffptr = pointer to the data to be written 
                     remaining_bytes=remaining_bytes-byteswritten;
                     if (res != FR_OK)
                       {

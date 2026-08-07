@@ -73,7 +73,7 @@
  * @define MOD_SOM_SDIO_STATUS_PREFIX
  *     16 bit identifying prefix for MOD SOM I/O status
  ******************************************************************************/
-#define MOD_SOM_SDIO_STATUS_PREFIX 0x99U
+#define MOD_SOM_SDIO_STATUS_PREFIX 0x02U
 
 /*******************************************************************************
  * @define MOD_SOM_SDIO_STATUS_ERR_FAIL_TO_ALLOCATE_DYNAMIC_MEMORY
@@ -225,33 +225,33 @@ typedef struct{
 
 typedef struct{
 
-FATFS fat_fs;
-char path[100];
+  FATFS fat_fs;
+  char path[100];
 
-char buff_data[MAXBUFLEN];
-char read_buff[MOD_SOM_SDIO_BLOCK_LENGTH];
+  char buff_data[MAXBUFLEN];
+  char read_buff[MOD_SOM_SDIO_BLOCK_LENGTH];
 
-mod_som_sdio_file_ptr_t rawdata_file_ptr;
-mod_som_sdio_file_ptr_t processdata_file_ptr;
-//mod_som_sdio_file_ptr_t config_file_ptr;
+  mod_som_sdio_file_ptr_t rawdata_file_ptr;
+  mod_som_sdio_file_ptr_t processdata_file_ptr;
+  //mod_som_sdio_file_ptr_t config_file_ptr;
 
-//FIL fstrc_config;
-//FIL fstrc_data;
-//bool CNS2_FLAG = 0;
+  //FIL fstrc_config;
+  //FIL fstrc_data;
+  //bool CNS2_FLAG = 0;
 
-bool initialized_flag;
-bool started_flag;
-bool listoverflow_flag;
-bool enable_flag;
-bool fatfs_mounted;
+  bool initialized_flag;
+  bool started_flag;
+  bool listoverflow_flag;
+  bool enable_flag;
+  bool fatfs_mounted;
 
-uint32_t file_number;
-mod_som_sdio_settings_ptr_t mod_som_sdio_settings_ptr;
-sl_sleeptimer_timestamp_t open_file_time;
-bool new_file_flag;
-MEM_DYN_POOL dyn_mem_pool;
-uint32_t max_size_of_complete_data_block;
-OS_Q msg_queue;
+  uint32_t file_number;
+  mod_som_sdio_settings_ptr_t mod_som_sdio_settings_ptr;
+  sl_sleeptimer_timestamp_t open_file_time;
+  bool new_file_flag;
+  MEM_DYN_POOL dyn_mem_pool;
+  uint32_t max_size_of_complete_data_block;
+  OS_Q msg_queue;
 
 }mod_som_sdio_t,*mod_som_sdio_ptr_t;
 

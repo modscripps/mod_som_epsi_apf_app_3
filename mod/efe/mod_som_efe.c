@@ -254,7 +254,6 @@ uint8_t read_dummy[3];
 
 
 static mod_som_efe_ptr_t mod_som_efe_ptr;
-
 /*******************************************************************************
  * @function
  *     mod_som_io_decode_status_f
@@ -481,7 +480,7 @@ mod_som_status_t mod_som_efe_init_f(){
   mod_som_efe_ptr->voltage=0;
 	mod_som_efe_ptr->sigramp_flag=0;
 
-  //turn on EFE hardware
+  //turn off EFE hardware
   status |= mod_som_efe_disable_hardware_f();
   if (status!=MOD_SOM_STATUS_OK){
       printf("%s not initialized\n",MOD_SOM_EFE_HEADER);
@@ -1658,6 +1657,7 @@ void mod_som_efe_id_f(CPU_INT16U argc,CPU_CHAR *argv[]){
 		case 3:
 			strcpy(mod_som_efe_ptr->settings_ptr->rev,argv[1]);
 			strcpy(mod_som_efe_ptr->settings_ptr->sn,argv[2]);
+			mod_som_settings_save_settings_f();
 			break;
 		default:
 			printf("format: efe.id rev3 001\r\n");
@@ -1701,6 +1701,7 @@ void mod_som_efe_probe_id_f(CPU_INT16U argc,CPU_CHAR *argv[]){
 			strcpy(mod_som_efe_ptr->settings_ptr->sensors[sensor_index-1].name,argv[2]);
 			strcpy(mod_som_efe_ptr->settings_ptr->sensors[sensor_index-1].sn,argv[3]);
 			mod_som_efe_ptr->settings_ptr->sensors[sensor_index-1].cal=cal;
+			mod_som_settings_save_settings_f();
 			break;
 		default:
 			printf("format: efe.id probe_id channel_name probe_sn probe_cal\r\n");
@@ -1780,6 +1781,9 @@ void mod_som_efe_start_mclock_f(mod_som_efe_ptr_t module_ptr)
 	//selector output enable to high all CS high
 	//selector A0,A1,A2,A3 low first ADC (i.e. CS1) low
 	USART0->CMD = USART_CMD_CLEARTX;
+
+  /* enable SPI */
+  USART_Enable(mod_som_efe_ptr->config_ptr->communication.usart, usartEnable);
 
 	//	GPIO_PinModeSet(selectort_port_enable,selector_pin_OE, gpioModePushPull, 1);
 	//	GPIO_PinModeSet(selectort_port_enable,selector_pin_OE, gpioModeWiredAndPullUp, 1);
@@ -2558,13 +2562,6 @@ mod_som_status_t mod_som_efe_sampling_f()
 
   mod_som_efe_config_adc_f(mod_som_efe_ptr);
 
-  //MHA: need to enable the EFE MEZZ board for FCTD
-  //    /* EFE Enable: configure the LEUART pins and EFE MEZZ EN (send power to the EFE MEZZ)*/
-#ifdef MOD_SOM_FCTD_EN
-  GPIO_PinModeSet(MOD_SOM_EFE_MEZZ_EN_PORT, MOD_SOM_EFE_MEZZ_EN_PIN,
-                    gpioModePushPull, 1);
-#endif
-
   switch (mod_som_efe_ptr->consumer_mode){
     case 2:
       //ALB on board processing do nothing
@@ -2612,15 +2609,6 @@ mod_som_status_t mod_som_efe_stop_sampling_f()
 
   //ALB turn off EFE hardware
   mod_som_efe_disable_hardware_f();
-
-	//MHA kluge for FCTD
-#ifdef MOD_SOM_FCTD_EN
-  GPIO_PinModeSet(MOD_SOM_EFE_MEZZ_EN_PORT, MOD_SOM_EFE_MEZZ_EN_PIN,
-                    gpioModePushPull, 0);
-#endif
-
-//  if(RTOS_ERR_CODE_GET(err) != RTOS_ERR_NONE)
-//    return mod_som_efe_encode_status_f(MOD_SOM_EFE_STATUS_FAIL_TOP_SAMPLING);
 
 	return status;
 }

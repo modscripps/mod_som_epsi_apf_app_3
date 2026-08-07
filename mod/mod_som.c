@@ -64,7 +64,6 @@ static bool mod_som_running_flag;
 static CPU_STK mod_som_main_task_stack[MOD_SOM_MAIN_TASK_STK_SIZE];
 static OS_TCB mod_som_main_task_tcb;
 
-
 ////AlB Structure to initialize the watchdog timer.
 ///* Defining the watchdog initialization data */
 WDOG_Init_TypeDef wdog_init =
@@ -203,7 +202,6 @@ mod_som_status_t mod_som_main_init_f(void){
     WDOGn_IntEnable(DEFAULT_WDOG, WDOG_IEN_TOUT);
     NVIC_EnableIRQ(WDOG0_IRQn);
 #endif
-
 
 
 #if defined(MOD_SOM_BOARD)
@@ -750,8 +748,6 @@ mod_som_status_t mod_som_main_task_init_f(void){
 #ifdef  RTOS_MODULE_COMMON_SHELL_AVAIL
     //ALB I am not startig the main shell task
     mod_som_shell_start_f();
-    //ALB add MOD default shell commands.
-    //mod_som_init_shellcmd_f(); //MHA uncomment this line to enable default shell commandsso
 #endif
 
     return mod_som_encode_status_f(MOD_SOM_STATUS_OK);

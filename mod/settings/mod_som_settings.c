@@ -109,9 +109,9 @@ mod_som_status_t mod_som_settings_init_f(){
 		//ALB
 		//ALB We will initialize the module with default settings and then save the the settings in the UserData page
 		mod_som_settings_struct.initialized_flag=false;
-
+      
     MSC_ErasePage(userDataPage_ptr);
-
+      
     //ALB get the settings header
     strncpy(mod_som_settings_struct.header,
             MOD_SOM_SETTINGS_DEFAULT_HEADER,
@@ -125,20 +125,20 @@ mod_som_status_t mod_som_settings_init_f(){
 //            $Projname,
 //            MOD_SOM_SETTINGS_DEFAULT_FIRMWARE_LENGTH);
     //ALB set default efe rev number (rev3)
-    strncpy(mod_som_settings_struct.rev, \
-            MOD_SOM_SETTINGS_DEFAULT_CTL_REV_NAME, \
+    strncpy(mod_som_settings_struct.rev, 
+            MOD_SOM_SETTINGS_DEFAULT_CTL_REV_NAME, 
             MOD_SOM_SETTINGS_DEFAULT_STR_LENGTH);
     //ALB set default efe sn (000)
-    strncpy(mod_som_settings_struct.sn, \
-            MOD_SOM_SETTINGS_DEFAULT_CTL_SN, \
+    strncpy(mod_som_settings_struct.sn, 
+            MOD_SOM_SETTINGS_DEFAULT_CTL_SN, 
             MOD_SOM_SETTINGS_DEFAULT_STR_LENGTH);
     //ALB set default mission name
-    strncpy(mod_som_settings_struct.mission_name, \
-            MOD_SOM_SETTINGS_DEFAULT_MISSION_NAME, \
+    strncpy(mod_som_settings_struct.mission_name, 
+            MOD_SOM_SETTINGS_DEFAULT_MISSION_NAME, 
             MOD_SOM_SETTINGS_DEFAULT_NAME_LENGTH);
     //ALB set default vehicle name
-    strncpy(mod_som_settings_struct.vehicle_name, \
-            MOD_SOM_SETTINGS_DEFAULT_VEHICLE_NAME, \
+    strncpy(mod_som_settings_struct.vehicle_name, 
+            MOD_SOM_SETTINGS_DEFAULT_VEHICLE_NAME, 
             MOD_SOM_SETTINGS_DEFAULT_NAME_LENGTH);
 
 
@@ -175,22 +175,22 @@ mod_som_status_t mod_som_settings_init_f(){
 	    mod_som_settings_struct.size=(uint32_t) (*userDataPage_ptr);
 	    user_page_offset++;
 
-	    memcpy(mod_som_settings_struct.header, \
-	           (char*) &userDataPage_ptr[user_page_offset],\
+	    memcpy(mod_som_settings_struct.header, 
+	           (char*) &userDataPage_ptr[user_page_offset],
 	           MOD_SOM_SETTINGS_DEFAULT_STR_LENGTH);
-	    user_page_offset+=MOD_SOM_SETTINGS_DEFAULT_STR_LENGTH/sizeof(uint32_t)+ \
+	    user_page_offset+=MOD_SOM_SETTINGS_DEFAULT_STR_LENGTH/sizeof(uint32_t)+ 
 	        (MOD_SOM_SETTINGS_DEFAULT_STR_LENGTH % sizeof(uint32_t));
 
-	    memcpy(mod_som_settings_struct.mission_name, \
-	           (uint8_t*) &userDataPage_ptr[user_page_offset], \
+	    memcpy(mod_som_settings_struct.mission_name, 
+	           (uint8_t*) &userDataPage_ptr[user_page_offset], 
 	           MOD_SOM_SETTINGS_DEFAULT_NAME_LENGTH);
-	    user_page_offset+=MOD_SOM_SETTINGS_DEFAULT_NAME_LENGTH/sizeof(uint32_t)+ \
+	    user_page_offset+=MOD_SOM_SETTINGS_DEFAULT_NAME_LENGTH/sizeof(uint32_t)+ 
 	        (MOD_SOM_SETTINGS_DEFAULT_NAME_LENGTH % sizeof(uint32_t));
 
-	    memcpy(mod_som_settings_struct.vehicle_name,\
-	           (uint8_t*) &userDataPage_ptr[user_page_offset],\
+	    memcpy(mod_som_settings_struct.vehicle_name,
+	           (uint8_t*) &userDataPage_ptr[user_page_offset],
 	           MOD_SOM_SETTINGS_DEFAULT_NAME_LENGTH);
-	    user_page_offset+=MOD_SOM_SETTINGS_DEFAULT_NAME_LENGTH/sizeof(uint32_t)+ \
+	    user_page_offset+=MOD_SOM_SETTINGS_DEFAULT_NAME_LENGTH/sizeof(uint32_t)+ 
 	        (MOD_SOM_SETTINGS_DEFAULT_NAME_LENGTH % sizeof(uint32_t));
 
 
@@ -199,7 +199,7 @@ mod_som_status_t mod_som_settings_init_f(){
 	           (uint8_t*) &userDataPage_ptr[user_page_offset],
 	           MOD_SOM_SETTINGS_DEFAULT_FIRMWARE_LENGTH);
 	           */
-	    user_page_offset+=MOD_SOM_SETTINGS_DEFAULT_FIRMWARE_LENGTH/sizeof(uint32_t)+ \
+	    user_page_offset+=MOD_SOM_SETTINGS_DEFAULT_FIRMWARE_LENGTH/sizeof(uint32_t)+ 
 	        (MOD_SOM_SETTINGS_DEFAULT_FIRMWARE_LENGTH % sizeof(uint32_t));
 
 	    /*
@@ -207,132 +207,132 @@ mod_som_status_t mod_som_settings_init_f(){
              (uint8_t*) &userDataPage_ptr[user_page_offset],
              MOD_SOM_SETTINGS_DEFAULT_NAME_LENGTH);
 	    */
-      user_page_offset+=MOD_SOM_SETTINGS_DEFAULT_NAME_LENGTH/sizeof(uint32_t)+ \
+      user_page_offset+=MOD_SOM_SETTINGS_DEFAULT_NAME_LENGTH/sizeof(uint32_t)+ 
           (MOD_SOM_SETTINGS_DEFAULT_NAME_LENGTH % sizeof(uint32_t));
 
 
-	    memcpy(mod_som_settings_struct.rev,\
-	           (uint8_t*) &userDataPage_ptr[user_page_offset],\
+	    memcpy(mod_som_settings_struct.rev,
+	           (uint8_t*) &userDataPage_ptr[user_page_offset],
 	           MOD_SOM_SETTINGS_DEFAULT_STR_LENGTH);
-	    user_page_offset+=MOD_SOM_SETTINGS_DEFAULT_STR_LENGTH/sizeof(uint32_t)+ \
+	    user_page_offset+=MOD_SOM_SETTINGS_DEFAULT_STR_LENGTH/sizeof(uint32_t)+ 
 	        (MOD_SOM_SETTINGS_DEFAULT_STR_LENGTH % sizeof(uint32_t));
 
 
-	    memcpy(mod_som_settings_struct.sn,\
-	           (uint8_t*) &userDataPage_ptr[user_page_offset],\
+	    memcpy(mod_som_settings_struct.sn,
+	           (uint8_t*) &userDataPage_ptr[user_page_offset],
 	           MOD_SOM_SETTINGS_DEFAULT_STR_LENGTH);
-	    user_page_offset+=MOD_SOM_SETTINGS_DEFAULT_STR_LENGTH/sizeof(uint32_t)+ \
+	    user_page_offset+=MOD_SOM_SETTINGS_DEFAULT_STR_LENGTH/sizeof(uint32_t)+ 
 	        (MOD_SOM_SETTINGS_DEFAULT_STR_LENGTH % sizeof(uint32_t));
 
 
-	    memcpy(&mod_som_settings_struct.initialized_flag,\
-	           (uint32_t*) &userDataPage_ptr[user_page_offset],\
+	    memcpy(&mod_som_settings_struct.initialized_flag,
+	           (uint32_t*) &userDataPage_ptr[user_page_offset],
 	           sizeof(uint32_t));
 	    user_page_offset++;
 
 
 	    //here offset should 30
 #if defined(MOD_SOM_CALENDAR_EN)
-	    memcpy(&mod_som_settings_struct.mod_som_calendar_settings.size,\
-	           (uint32_t*) &userDataPage_ptr[user_page_offset],\
+	    memcpy(&mod_som_settings_struct.mod_som_calendar_settings.size,
+	           (uint32_t*) &userDataPage_ptr[user_page_offset],
 	           sizeof(uint32_t));
 	    user_page_offset++;
 
-	    memcpy((uint8_t *) &mod_som_settings_struct.mod_som_calendar_settings.header,\
-	           (uint8_t*) &userDataPage_ptr[user_page_offset],\
+	    memcpy((uint8_t *) &mod_som_settings_struct.mod_som_calendar_settings.header,
+	           (uint8_t*) &userDataPage_ptr[user_page_offset],
 	           mod_som_settings_struct.mod_som_calendar_settings.size-4);
 
-	    user_page_offset+=mod_som_settings_struct.mod_som_calendar_settings.size/sizeof(uint32_t)+ \
+	    user_page_offset+=mod_som_settings_struct.mod_som_calendar_settings.size/sizeof(uint32_t)+ 
 	        (mod_som_settings_struct.mod_som_calendar_settings.size % sizeof(uint32_t))-1;
 
 #endif
 #if defined(MOD_SOM_EFE_EN)
-	    memcpy(&mod_som_settings_struct.mod_som_efe_settings.size,\
-	           (uint32_t*) &userDataPage_ptr[user_page_offset],\
+	    memcpy(&mod_som_settings_struct.mod_som_efe_settings.size,
+	           (uint32_t*) &userDataPage_ptr[user_page_offset],
 	           sizeof(uint32_t));
 	    user_page_offset++;
 
-	    memcpy((uint8_t *) &mod_som_settings_struct.mod_som_efe_settings.header,\
-	           (uint8_t*) &userDataPage_ptr[user_page_offset],\
+	    memcpy((uint8_t *) &mod_som_settings_struct.mod_som_efe_settings.header,
+	           (uint8_t*) &userDataPage_ptr[user_page_offset],
 	           mod_som_settings_struct.mod_som_efe_settings.size-4); //ALB -4 because is the word length in uint8_t
 
-	    user_page_offset+=mod_som_settings_struct.mod_som_efe_settings.size/sizeof(uint32_t)+ \
+	    user_page_offset+=mod_som_settings_struct.mod_som_efe_settings.size/sizeof(uint32_t)+ 
 	        (mod_som_settings_struct.mod_som_efe_settings.size % sizeof(uint32_t))-1; //ALB -1 because is the word length in uint32_t
 #endif
 #if defined(MOD_SOM_SBE41_EN)
 
-	    memcpy(&mod_som_settings_struct.mod_som_sbe41_settings.size,\
-	           (uint32_t*) &userDataPage_ptr[user_page_offset],\
+	    memcpy(&mod_som_settings_struct.mod_som_sbe41_settings.size,
+	           (uint32_t*) &userDataPage_ptr[user_page_offset],
 	           sizeof(uint32_t));
 	    user_page_offset++;
 
-	    memcpy((uint8_t *) &mod_som_settings_struct.mod_som_sbe41_settings.data_header_text,\
-	           (uint8_t*) &userDataPage_ptr[user_page_offset],\
+	    memcpy((uint8_t *) &mod_som_settings_struct.mod_som_sbe41_settings.data_header_text,
+	           (uint8_t*) &userDataPage_ptr[user_page_offset],
 	           mod_som_settings_struct.mod_som_sbe41_settings.size-4);
 
-	    user_page_offset+=mod_som_settings_struct.mod_som_sbe41_settings.size/sizeof(uint32_t)+ \
+	    user_page_offset+=mod_som_settings_struct.mod_som_sbe41_settings.size/sizeof(uint32_t)+ 
 	        (mod_som_settings_struct.mod_som_sbe41_settings.size % sizeof(uint32_t))-1;
 
 
 #endif
 #if defined(MOD_SOM_SDIO_EN)
 
-	    memcpy(&mod_som_settings_struct.mod_som_sdio_settings.size,\
-	           (uint32_t*) &userDataPage_ptr[user_page_offset],\
+	    memcpy(&mod_som_settings_struct.mod_som_sdio_settings.size,
+	           (uint32_t*) &userDataPage_ptr[user_page_offset],
 	           sizeof(uint32_t));
 	    user_page_offset++;
 
-	    memcpy((uint8_t *) &mod_som_settings_struct.mod_som_sdio_settings.header,\
-	           (uint8_t*) &userDataPage_ptr[user_page_offset],\
+	    memcpy((uint8_t *) &mod_som_settings_struct.mod_som_sdio_settings.header,
+	           (uint8_t*) &userDataPage_ptr[user_page_offset],
 	           mod_som_settings_struct.mod_som_sdio_settings.size-4);
 
-	    user_page_offset+=mod_som_settings_struct.mod_som_sdio_settings.size/sizeof(uint32_t)+ \
+	    user_page_offset+=mod_som_settings_struct.mod_som_sdio_settings.size/sizeof(uint32_t)+ 
 	        (mod_som_settings_struct.mod_som_sdio_settings.size % sizeof(uint32_t))-1;
 
 
 #endif
 #if defined(MOD_SOM_APF_EN)
 
-	    memcpy(&mod_som_settings_struct.mod_som_apf_settings.size,\
-	           (uint32_t*) &userDataPage_ptr[user_page_offset],\
+	    memcpy(&mod_som_settings_struct.mod_som_apf_settings.size,
+	           (uint32_t*) &userDataPage_ptr[user_page_offset],
 	           sizeof(uint32_t));
 	    user_page_offset++;
 
-	    memcpy((uint8_t *) &mod_som_settings_struct.mod_som_apf_settings.header,\
-	           (uint8_t*) &userDataPage_ptr[user_page_offset],\
+	    memcpy((uint8_t *) &mod_som_settings_struct.mod_som_apf_settings.header,
+	           (uint8_t*) &userDataPage_ptr[user_page_offset],
 	           mod_som_settings_struct.mod_som_apf_settings.size-4);
 
-	    user_page_offset+=mod_som_settings_struct.mod_som_apf_settings.size/sizeof(uint32_t)+ \
+	    user_page_offset+=mod_som_settings_struct.mod_som_apf_settings.size/sizeof(uint32_t)+ 
 	        (mod_som_settings_struct.mod_som_apf_settings.size % sizeof(uint32_t))-1;
 
 #endif
 #if defined(MOD_SOM_EFE_OBP_EN)
 
-	    memcpy(&mod_som_settings_struct.mod_som_efe_obp_settings.size,\
-	           (uint32_t*) &userDataPage_ptr[user_page_offset],\
+	    memcpy(&mod_som_settings_struct.mod_som_efe_obp_settings.size,
+	           (uint32_t*) &userDataPage_ptr[user_page_offset],
 	           sizeof(uint32_t));
 	    user_page_offset++;
 
-	    memcpy((uint8_t *) &mod_som_settings_struct.mod_som_efe_obp_settings.header,\
-	           (uint8_t*) &userDataPage_ptr[user_page_offset],\
+	    memcpy((uint8_t *) &mod_som_settings_struct.mod_som_efe_obp_settings.header,
+	           (uint8_t*) &userDataPage_ptr[user_page_offset],
 	           mod_som_settings_struct.mod_som_efe_obp_settings.size-4);
 
-	    user_page_offset+=mod_som_settings_struct.mod_som_efe_obp_settings.size/sizeof(uint32_t)+ \
+	    user_page_offset+=mod_som_settings_struct.mod_som_efe_obp_settings.size/sizeof(uint32_t)+ 
 	        (mod_som_settings_struct.mod_som_efe_obp_settings.size % sizeof(uint32_t))-1;
 
 #endif
 
 #if defined(MOD_SOM_VOLTAGE_EN)
-	    memcpy(&mod_som_settings_struct.mod_som_voltage_settings.size,\
-	           (uint32_t*) &userDataPage_ptr[user_page_offset],\
+	    memcpy(&mod_som_settings_struct.mod_som_voltage_settings.size,
+	           (uint32_t*) &userDataPage_ptr[user_page_offset],
 	           sizeof(uint32_t));
 	    user_page_offset++;
 
-	    memcpy((uint8_t *) &mod_som_settings_struct.mod_som_voltage_settings.header,\
-	           (uint8_t*) &userDataPage_ptr[user_page_offset],\
+	    memcpy((uint8_t *) &mod_som_settings_struct.mod_som_voltage_settings.header,
+	           (uint8_t*) &userDataPage_ptr[user_page_offset],
 	           mod_som_settings_struct.mod_som_voltage_settings.size-4);
 
-	    user_page_offset+=mod_som_settings_struct.mod_som_voltage_settings.size/sizeof(uint32_t)+ \
+	    user_page_offset+=mod_som_settings_struct.mod_som_voltage_settings.size/sizeof(uint32_t)+ 
 	        (mod_som_settings_struct.mod_som_voltage_settings.size % sizeof(uint32_t))-1;
 #endif
 
@@ -525,14 +525,13 @@ mod_som_status_t mod_som_settings_sd_settings_f(){
       sprintf((char*) str_payload_chksum,  \
           "*%02x\r\n",payload_chksum);
 
-
-      mod_som_sdio_write_config_f((uint8_t*) &header,\
+      mod_som_sdio_write_config_f((uint8_t*) &header,
                                        length_header,
                                        local_sdio_ptr->rawdata_file_ptr);
       mod_som_sdio_write_config_f((uint8_t*) &mod_som_settings_struct,
                                        sizeof(mod_som_settings_struct),
                                        local_sdio_ptr->rawdata_file_ptr);
-      mod_som_sdio_write_config_f((uint8_t*) &str_payload_chksum,\
+      mod_som_sdio_write_config_f((uint8_t*) &str_payload_chksum,
                                        MOD_SOM_SETTINGS_PAYLOAD_CHECKSUM_LENGTH,
                                        local_sdio_ptr->rawdata_file_ptr);
 

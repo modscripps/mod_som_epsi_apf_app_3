@@ -79,17 +79,6 @@ typedef struct{
 //------------------------------------------------------------------------------
 // functions
 //------------------------------------------------------------------------------
-/*******************************************************************************
- * @function
- *     mod_som_sdio_task_f
- * @abstract
- *     MOD SOM I/O OS task that would run in parallel with the main task
- * @discussion
- *     This task would dequeue the MOD SOM I/O transfer as the data is piped out
- * @param       p_arg
- *     argument passed in by OSTaskCreate (not used)
- ******************************************************************************/
-static void mod_som_sdio_print_task_f(void *p_arg);
 
 ///*******************************************************************************
 // * @function

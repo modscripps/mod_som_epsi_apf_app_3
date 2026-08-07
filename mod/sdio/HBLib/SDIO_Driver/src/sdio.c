@@ -56,11 +56,12 @@ static uint8_t SDIO_S_CardInitialization_and_Identification(SDIO_TypeDef *sdio_t
 static void SDIO_S_CardStdbyToTrsfrMode(SDIO_TypeDef *sdio_t);
 static void SDIO_S_TimeoutSettingonDATLine(SDIO_TypeDef *sdio_t);
 
-static int SDIO_S_SendCMD(SDIO_TypeDef *sdio_t,
-                          BYTE cmd,
-                          DWORD arg,
-                          BYTE rt,
-                          DWORD *buff);
+// 2025 06 30 LW: Trying new CMD function based on mmc_lpc23xx_mci.c from Elm-Chan FATFS ffsamples
+//static int SDIO_S_SendCMD(SDIO_TypeDef *sdio_t,
+//                          BYTE cmd,
+//                          DWORD arg,
+//                          BYTE rt,
+//                          DWORD *buff);
 
 
 void SDIO_GetR2(SDIO_TypeDef *sdio_t, uint32_t *buf);
@@ -99,6 +100,7 @@ uint8_t SDIO_Init(SDIO_TypeDef *sdio_t,
   uint8_t status = SDIO_S_CardInitialization_and_Identification(sdio_t);
   if(status) return status;
   SDIO_S_CardStdbyToTrsfrMode(sdio_t);
+  return 0;
 }
 
 /**************************************************************************//**
@@ -409,7 +411,7 @@ uint32_t SDIO_S_SendCMDWithOutDAT(SDIO_TypeDef *sdio_t,
   while (!(sdio_t->IFCR & _SDIO_IFCR_CMDCOM_MASK) & !(sdio_t->IFCR & _SDIO_IFCR_CMDTOUTERR_MASK));
 
   // Capture whether or not the command timed out
-  if(sdio_t->IFCR & _SDIO_IFCR_CMDTOUTERR_MASK || sdio_t->IFCR & _SDIO_IFCR_ERRINT_MASK)
+  if((sdio_t->IFCR & _SDIO_IFCR_CMDTOUTERR_MASK) || (sdio_t->IFCR & _SDIO_IFCR_ERRINT_MASK))
   {
       status = -1;
       sdio_t->CLOCKCTRL |= (_SDIO_CLOCKCTRL_SFTRSTCMD_MASK);

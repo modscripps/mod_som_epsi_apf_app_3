@@ -77,6 +77,17 @@ LDMA_TransferCfg_t mod_som_io_ldma_signal= LDMA_TRANSFER_CFG_PERIPHERAL(ldmaPeri
 LDMA_Descriptor_t mod_som_io_ldma_write_tx = LDMA_DESCRIPTOR_SINGLE_M2P_BYTE(0,0,0);
 LDMA_Descriptor_t mod_som_io_ldma_descriptor_write;//ALB Descriptor list to send data.
 
+/*******************************************************************************
+ * @function
+ *     mod_som_io_task_f
+ * @abstract
+ *     MOD SOM I/O OS task that would run in parallel with the main task
+ * @discussion
+ *     This task would dequeue the MOD SOM I/O transfer as the data is piped out
+ * @param       p_arg
+ *     argument passed in by OSTaskCreate (not used)
+ ******************************************************************************/
+static void mod_som_io_print_task_f(void *p_arg);
 
 //------------------------------------------------------------------------------
 // global functions
@@ -269,6 +280,7 @@ mod_som_status_t mod_som_io_start_f(void){
     if((RTOS_ERR_CODE_GET(err) != RTOS_ERR_NONE))
         return mod_som_io_encode_status_f(MOD_SOM_IO_STATUS_ERR_FAIL_TO_CREATE_TASK);
 
+    mod_som_io_struct.started_flag = true;
     return mod_som_io_encode_status_f(MOD_SOM_STATUS_OK);
 }
 /*******************************************************************************

@@ -678,36 +678,36 @@ void st_qword (BYTE* ptr, QWORD val)	/* Store an 8-byte word in little-endian */
 /*-----------------------------------------------------------------------*/
 
 /* Copy memory to memory */
-static
-void mem_cpy (void* dst, const void* src, UINT cnt) {
-	BYTE *d = (BYTE*)dst;
-	const BYTE *s = (const BYTE*)src;
-
-	if (cnt) {
-		do *d++ = *s++; while (--cnt);
-	}
-}
+//static
+//void mem_cpy (void* dst, const void* src, UINT cnt) {
+//	BYTE *d = (BYTE*)dst;
+//	const BYTE *s = (const BYTE*)src;
+//
+//	if (cnt) {
+//		do *d++ = *s++; while (--cnt);
+//	}
+//}
 
 /* Fill memory block */
-static
-void mem_set (void* dst, int val, UINT cnt) {
-	BYTE *d = (BYTE*)dst;
-
-	do *d++ = (BYTE)val; while (--cnt);
-}
+//static
+//void mem_set (void* dst, int val, UINT cnt) {
+//	BYTE *d = (BYTE*)dst;
+//
+//	do *d++ = (BYTE)val; while (--cnt);
+//}
 
 /* Compare memory block */
-static
-int mem_cmp (const void* dst, const void* src, UINT cnt) {	/* ZR:same, NZ:different */
-	const BYTE *d = (const BYTE *)dst, *s = (const BYTE *)src;
-	int r = 0;
-
-	do {
-		r = *d++ - *s++;
-	} while (--cnt && r == 0);
-
-	return r;
-}
+//static
+//int mem_cmp (const void* dst, const void* src, UINT cnt) {	/* ZR:same, NZ:different */
+//	const BYTE *d = (const BYTE *)dst, *s = (const BYTE *)src;
+//	int r = 0;
+//
+//	do {
+//		r = *d++ - *s++;
+//	} while (--cnt && r == 0);
+//
+//	return r;
+//}
 
 /* Check if chr is contained in the string */
 static
@@ -1040,6 +1040,7 @@ DWORD get_fat (	/* 0xFFFFFFFF:Disk error, 1:Internal error, 2..0x7FFFFFFF:Cluste
 					break;
 				}
 			}
+			break;
 			/* go next */
 #endif
 		default:
@@ -1158,6 +1159,7 @@ DWORD find_bitmap (	/* 0:No free cluster, 2..:Free cluster found, 0xFFFFFFFF:Dis
 			bm = 1;
 		} while (++i < SS(fs));
 	}
+	  return 0;
 }
 
 
@@ -1195,6 +1197,7 @@ FRESULT change_bitmap (
 		} while (++i < SS(fs));		/* Next byte */
 		i = 0;
 	}
+	return FR_OK;
 }
 
 

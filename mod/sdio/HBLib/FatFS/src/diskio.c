@@ -19,6 +19,8 @@
 #include "em_cmu.h"
 #include "em_wdog.h"
 
+#define MOD_SOM_SDIO_MAX_TRIES 5
+
 static DSTATUS stat = STA_NOINIT;  /* Disk status */
 static UINT CardType;
 
@@ -133,7 +135,7 @@ DRESULT disk_read (
     int32_t tries, res = 0;
   while(count != 0)
   {
-      for(tries=0;tries<5;tries++){
+      for(tries=0;tries<MOD_SOM_SDIO_MAX_TRIES;tries++){
           res = SDIO_ReadSingleBlock(SDIO,sector,buff);
           if(res==0){
               break;
@@ -174,7 +176,7 @@ DRESULT disk_write (
   int32_t tries, res = 0;
   while(count != 0)
   {
-      for(tries=0;tries<5;tries++){
+      for(tries=0;tries<MOD_SOM_SDIO_MAX_TRIES;tries++){
           res = SDIO_WriteSingleBlock(SDIO,sector,buff);
           if(res==0){
               break;
