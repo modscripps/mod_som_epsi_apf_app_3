@@ -263,8 +263,6 @@ typedef struct{
 
 } mod_som_ldma_handle_t, *mod_som_ldma_handle_ptr_t;
 
-
-
 typedef uint32_t mod_som_status_t;
 
 

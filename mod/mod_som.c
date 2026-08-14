@@ -14,6 +14,9 @@
 //------------------------------------------------------------------------------
 #include "mod_som.h"
 #include "mod_som_priv.h"
+/*****************************************
+ * START Include module header files here
+ *****************************************/
 #include "mod_som_io.h"
 #include "mod_som_io_priv.h"
 #ifdef  RTOS_MODULE_COMMON_SHELL_AVAIL
@@ -24,14 +27,6 @@
 #include "mod_som_sdio.h"
 #endif
 
-#include "retargetserial.h"
-
-#if defined(HAL_CONFIG)
-#include "retargetserialhalconfig.h"
-#else
-#include "retargetserialconfig.h"
-#endif
-
 #ifdef MOD_SOM_SETTINGS_EN
 #include "mod_som_settings.h"
 #endif
@@ -40,45 +35,72 @@
 #ifdef  MOD_SOM_EFE_EN
 #include "mod_som_efe.h"
 #endif
+
 #ifdef  MOD_SOM_SBE41_EN
-#include "mod_som_sbe41_priv.h"
+#include "mod_som_sbe41.h"
 #endif
 
+#if defined(MOD_SOM_CALENDAR_EN)
+#include "mod_som_calendar.h"
+#endif
+
+#if defined(MOD_SOM_EFE_OBP_EN)
+#include "mod_som_efe_obp.h"
+#endif
+
+#if defined(MOD_SOM_APF_EN)
+#include "mod_som_apf.h"
+#endif
+#if defined(MOD_SOM_VOLTAGE_EN)
+#include "mod_som_voltage.h"
+#endif
 
 #include <string.h>
 #include <stdarg.h>
+/*****************************************
+ * END Include module header files here
+ *****************************************/
 
+//2026 08 09 adding mod_som type pointer
+/*******************************************************************************
+ * @brief
+ *   MOD SOM Handle
+ *
+ * @field
+ ******************************************************************************/
+typedef struct{
+    volatile bool running_flag;
+    bool sleep_flag;
+    //a way to register all peripherals being used by MOD_SOM
+    mod_som_sys_prf_list_t sys_peripherals_list; //MOD SOM System peripheral list
+    mod_som_prf_list_item_ptr_t prf_list_head_ptr;
+    mod_som_prf_list_item_ptr_t prf_list_tail_ptr;
+    MEM_DYN_POOL prf_dyn_mem_pool;
+    CPU_STK main_task_stack[MOD_SOM_MAIN_TASK_STK_SIZE];
+    OS_TCB main_task_tcb;
+    bool initialized_flag;
+} mod_som_t, *mod_som_ptr_t;
 //------------------------------------------------------------------------------
 // local variables
 //------------------------------------------------------------------------------
-static mod_som_sys_prf_list_ptr_t mod_som_sys_peripherals_list_ptr;
-
-static mod_som_prf_list_item_ptr_t mod_som_prf_list_head_ptr;
-static mod_som_prf_list_item_ptr_t mod_som_prf_list_tail_ptr;
-
-static MEM_DYN_POOL mod_som_prf_dyn_mem_pool;
-static bool mod_som_initialized_flag = false;
-static bool mod_som_running_flag;
-
-
-static CPU_STK mod_som_main_task_stack[MOD_SOM_MAIN_TASK_STK_SIZE];
-static OS_TCB mod_som_main_task_tcb;
+//2026 08 09 adding mod_som type pointer
+static mod_som_ptr_t mod_som_ptr;
 
 ////AlB Structure to initialize the watchdog timer.
 ///* Defining the watchdog initialization data */
 WDOG_Init_TypeDef wdog_init =
 {
-  .enable     = true,                 /* Start watchdog when init done */
-  .debugRun   = false,                /* WDOG not counting during debug halt */
-  .em2Run     = true,                 /* WDOG counting when in EM2 */
-  .em3Run     = true,                 /* WDOG counting when in EM3 */
-  .em4Block   = false,                /* EM4 can be entered */
-  .swoscBlock = false,                /* Do not block disabling LFRCO/LFXO in CMU */
-  .lock       = false,                /* Do not lock WDOG configuration (if locked, reset needed to unlock) */
-  .clkSel     = wdogClkSelULFRCO,     /* Select 1kHZ WDOG oscillator */
-  .perSel     = wdogPeriod_32k,        /* Set the watchdog period to 2049 clock periods (ie ~2 seconds) */
+        .enable     = true,                 /* Start watchdog when init done */
+        .debugRun   = false,                /* WDOG not counting during debug halt */
+        .em2Run     = true,                 /* WDOG counting when in EM2 */
+        .em3Run     = true,                 /* WDOG counting when in EM3 */
+        .em4Block   = false,                /* EM4 can be entered */
+        .swoscBlock = false,                /* Do not block disabling LFRCO/LFXO in CMU */
+        .lock       = false,                /* Do not lock WDOG configuration (if locked, reset needed to unlock) */
+        .clkSel     = wdogClkSelULFRCO,     /* Select 1kHZ WDOG oscillator */
+        .perSel     = wdogPeriod_32k,        /* Set the watchdog period to 2049 clock periods (ie ~2 seconds) */
 #ifdef MOD_SOM_DEBUG_WDOG
-  .resetDisable = true,               //disable reset
+        .resetDisable = true,               //disable reset
 #endif
 };
 
@@ -101,23 +123,21 @@ WDOG_Init_TypeDef wdog_init =
  ******************************************************************************/
 mod_som_status_t mod_som_main_init_f(void){
     RTOS_ERR  err;
-
-    //SN creating a memory pool to register all peripherals being used by MOD_SOM
-    mod_som_sys_peripherals_list_ptr =
-            (mod_som_sys_prf_list_ptr_t)Mem_SegAlloc(
-                    "MOD SOM System peripheral list",DEF_NULL,
-                    sizeof(mod_som_sys_prf_list_t),
+    //2026 08 09 adding mod_som type pointer
+    mod_som_ptr =
+            (mod_som_ptr_t)Mem_SegAlloc(
+                    "MOD SOM variable",DEF_NULL,
+                    sizeof(mod_som_t),
                     &err);
+    memset(mod_som_ptr,sizeof(mod_som_t),0);
     APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
     if(RTOS_ERR_CODE_GET(err) != RTOS_ERR_NONE)
         return mod_som_encode_status_f(MOD_SOM_STATUS_ERR_FAIL_TO_ALLOCATE_MEMORY);
 
-
-    //    Mem_Set(&mod_som_sys_peripherals_list_ptr,0,sizeof(mod_som_sys_prf_list_t));
     // Creates a dynamic memory pool for peripherals
     Mem_DynPoolCreate(
             "MOD SOM peripheral list Dynamic Memory Pool",
-            &mod_som_prf_dyn_mem_pool,
+            &mod_som_ptr->prf_dyn_mem_pool,
             DEF_NULL,
             sizeof(mod_som_prf_list_item_t),
             LIB_MEM_BUF_ALIGN_AUTO,
@@ -127,8 +147,8 @@ mod_som_status_t mod_som_main_init_f(void){
     APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
     if(RTOS_ERR_CODE_GET(err) != RTOS_ERR_NONE)
         return mod_som_encode_status_f(MOD_SOM_STATUS_ERR_FAIL_TO_ALLOCATE_DYNAMIC_MEMORY);
-    mod_som_prf_list_head_ptr = DEF_NULL;
-    mod_som_prf_list_tail_ptr = DEF_NULL;
+    mod_som_ptr->prf_list_head_ptr = DEF_NULL;
+    mod_som_ptr->prf_list_tail_ptr = DEF_NULL;
 
     //  Chip initialization routine for revision errata workarounds
     CHIP_Init();
@@ -171,7 +191,7 @@ mod_som_status_t mod_som_main_init_f(void){
     // needed for sleep timer
     //ADD THIS LINE TO ENABLE 32768 LFXO ON SOM BY ASSERTING THE EM_BUCTRL (and not use the internal RC oscillator) MAG July 2021
     EMU_BUVoutResSet(EMU_BUCTRL_VOUTRES_WEAK);
-//    CMU_ClockSelectSet(cmuClock_LFE, cmuSelect_LFRCO); MHA removed - see below
+    //    CMU_ClockSelectSet(cmuClock_LFE, cmuSelect_LFRCO); MHA removed - see below
     CMU_ClockSelectSet(cmuClock_LFE, cmuSelect_LFXO); // MHA new line - see below
 
     CMU_ClockEnable(cmuClock_RTCC, true);
@@ -179,7 +199,7 @@ mod_som_status_t mod_som_main_init_f(void){
     //MHA NEW CLOCK ENABLE CODE FROM MAG July 2021
     ////////////////////////////////////////////////////
     //TODO ADD THIS LINE TO ENABLE 32768 LFXO ON SOM BY ASSERTING THE EM_BUCTRL (and not use the internal RC oscillator) MAG July 2021
-   //   EMU_BUVoutResSet(EMU_BUCTRL_VOUTRES_WEAK);
+    //   EMU_BUVoutResSet(EMU_BUCTRL_VOUTRES_WEAK);
     //TODO CHANGE THIS LINE TO:
     //   CMU_ClockSelectSet(cmuClock_LFE, cmuSelect_LFXO); // Select the LFXO (32768 external crystal) powered by the battery backup domai
     //FROM OLD LINE:
@@ -194,10 +214,10 @@ mod_som_status_t mod_som_main_init_f(void){
     CMU_ClockEnable(cmuClock_CORELE, true);
     WDOG_Init(&wdog_init);
     /* Locking watchdog register (reset needed to unlock) */
-//    WDOG_Lock();
+    //    WDOG_Lock();
 
 
-//    /* Enable watchdog warning interrupt */
+    //    /* Enable watchdog warning interrupt */
 #ifdef MOD_SOM_DEBUG_WDOG
     WDOGn_IntEnable(DEFAULT_WDOG, WDOG_IEN_TOUT);
     NVIC_EnableIRQ(WDOG0_IRQn);
@@ -221,7 +241,7 @@ mod_som_status_t mod_som_main_init_f(void){
     APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
     if(RTOS_ERR_CODE_GET(err) != RTOS_ERR_NONE)
         return mod_som_encode_status_f(MOD_SOM_STATUS_ERR_FAIL_TO_INIT_MAIN);
-    mod_som_initialized_flag = true;
+    mod_som_ptr->initialized_flag = true;
     return mod_som_encode_status_f(MOD_SOM_STATUS_OK);
 }
 
@@ -231,27 +251,27 @@ mod_som_status_t mod_som_main_init_f(void){
  *   turn off main com
  ******************************************************************************/
 mod_som_status_t mod_som_main_com_off_f(void){
-  mod_som_io_stop_task_f();
-  mod_som_shell_stop_f();
-  RETARGET_SerialdeInit();
-  GPIO_PinModeSet(MOD_SOM_MAIN_COM_EN_PORT, MOD_SOM_MAIN_COM_EN_PIN,
-                  gpioModePushPull, 0);
+    mod_som_io_stop_task_f();
+    mod_som_shell_stop_f();
+    RETARGET_SerialdeInit();
+    GPIO_PinModeSet(MOD_SOM_MAIN_COM_EN_PORT, MOD_SOM_MAIN_COM_EN_PIN,
+                    gpioModePushPull, 0);
 
-  return mod_som_encode_status_f(MOD_SOM_STATUS_OK);
+    return mod_som_encode_status_f(MOD_SOM_STATUS_OK);
 }
 /*******************************************************************************
  * @brief
  *   turn on main com
  ******************************************************************************/
 mod_som_status_t mod_som_main_com_on_f(void){
-  GPIO_PinModeSet(MOD_SOM_MAIN_COM_EN_PORT, MOD_SOM_MAIN_COM_EN_PIN,
-                  gpioModePushPull, 1);
+    GPIO_PinModeSet(MOD_SOM_MAIN_COM_EN_PORT, MOD_SOM_MAIN_COM_EN_PIN,
+                    gpioModePushPull, 1);
 
-  RETARGET_SerialInit();
-   mod_som_io_start_f();
-   mod_som_shell_start_f();
+    RETARGET_SerialInit();
+    mod_som_io_start_f();
+    mod_som_shell_start_f();
 
-  return mod_som_encode_status_f(MOD_SOM_STATUS_OK);
+    return mod_som_encode_status_f(MOD_SOM_STATUS_OK);
 }
 
 /*******************************************************************************
@@ -261,7 +281,7 @@ mod_som_status_t mod_som_main_com_on_f(void){
  *   CRYOstuff on
  ******************************************************************************/
 mod_som_status_t mod_som_prep_sleep_f(void){
-  return mod_som_encode_status_f(MOD_SOM_STATUS_OK);
+    return mod_som_encode_status_f(MOD_SOM_STATUS_OK);
 }
 
 
@@ -280,7 +300,7 @@ mod_som_status_t mod_som_prep_sleep_f(void){
  ******************************************************************************/
 mod_som_status_t mod_som_main_task_start_f(void){
     RTOS_ERR  err;
-    if(!mod_som_initialized_flag)
+    if(!mod_som_ptr->initialized_flag)
         return mod_som_encode_status_f(MOD_SOM_STATUS_ERR_NOT_INITIALIZED_MAIN);
 
     printf("\r\n==============================\r\n");
@@ -295,27 +315,27 @@ mod_som_status_t mod_som_main_task_start_f(void){
     // MNB round robin enbable from cbtest project
     // using Schedule Round Robin to handle 2 or more process has the same priority
     OSSchedRoundRobinCfg( DEF_TRUE,  /* DEF_TRUE to enable, DEF_FALSE to disable        */
-                                     /* Round-Robin scheduling.                         */
-                             10u,    /* Default time amount per task, in OS Ticks.      */
-                            &err);
-       if (err.Code != RTOS_ERR_NONE) {
-           /*ALB  Handle error on Round-Robin Scheduler configuration. */
-    	   //ALB stall if round robin errors
-    	   APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
+                          /* Round-Robin scheduling.                         */
+                          10u,    /* Default time amount per task, in OS Ticks.      */
+                          &err);
+    if (err.Code != RTOS_ERR_NONE) {
+        /*ALB  Handle error on Round-Robin Scheduler configuration. */
+        //ALB stall if round robin errors
+        APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
     }
-    OSTaskCreate(&mod_som_main_task_tcb, // Create the Start Task
-            "Main Task",
-            mod_som_main_task_f,
-            DEF_NULL,
-            MOD_SOM_MAIN_TASK_PRIORITY,
-            mod_som_main_task_stack,
-            (MOD_SOM_MAIN_TASK_STK_SIZE / 10u),
-            MOD_SOM_MAIN_TASK_STK_SIZE,
-            0u,
-            0u,
-            DEF_NULL,
-            (OS_OPT_TASK_STK_CHK | OS_OPT_TASK_STK_CLR),
-            &err);
+    OSTaskCreate(&mod_som_ptr->main_task_tcb, // Create the Start Task
+                 "Main Task",
+                 mod_som_main_task_f,
+                 DEF_NULL,
+                 MOD_SOM_MAIN_TASK_PRIORITY,
+                 mod_som_ptr->main_task_stack,
+                 (MOD_SOM_MAIN_TASK_STK_SIZE / 10u),
+                 MOD_SOM_MAIN_TASK_STK_SIZE,
+                 0u,
+                 0u,
+                 DEF_NULL,
+                 (OS_OPT_TASK_STK_CHK | OS_OPT_TASK_STK_CLR),
+                 &err);
     // Check error code
     //SN stall if Task create fails
     APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
@@ -328,26 +348,26 @@ mod_som_status_t mod_som_main_task_start_f(void){
 
 mod_som_status_t mod_som_main_task_stop_f(void){
 
-  if(!mod_som_running_flag){
-      return mod_som_encode_status_f(MOD_SOM_STATUS_OK);
-  }
+    if(!mod_som_ptr->running_flag){
+        return mod_som_encode_status_f(MOD_SOM_STATUS_OK);
+    }
 
-  mod_som_running_flag = false;
-  sl_sleeptimer_delay_millisecond(100);
+    mod_som_ptr->running_flag = false;
+    sl_sleeptimer_delay_millisecond(100);
 
-  //this is a force quit
-  if(mod_som_main_task_tcb.TaskState != OS_TASK_STATE_DEL){
-      RTOS_ERR err;
-      OSTaskDel(&mod_som_main_task_tcb,
-                &err);
+    //this is a force quit
+    if(mod_som_ptr->main_task_tcb.TaskState != OS_TASK_STATE_DEL){
+        RTOS_ERR err;
+        OSTaskDel(&mod_som_ptr->main_task_tcb,
+                  &err);
 #ifdef MOD_SOM_DEBUG
-      if(RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE){
-          mod_som_io_print_f("%s accomplished\r\n",__func__);
-      }
+        if(RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE){
+            mod_som_io_print_f("%s accomplished\r\n",__func__);
+        }
 #endif
-  }
+    }
 
-  return mod_som_encode_status_f(MOD_SOM_STATUS_OK);
+    return mod_som_encode_status_f(MOD_SOM_STATUS_OK);
 }
 
 /*******************************************************************************
@@ -363,14 +383,14 @@ mod_som_status_t mod_som_main_task_stop_f(void){
 void mod_som_main_task_f(void *p_arg)
 {
     (void)p_arg; // Deliberately unused argument
-//    uint64_t tick;
+    //    uint64_t tick;
     RTOS_ERR err;
     int delay =10;
 
-//    CORE_DECLARE_IRQ_STATE;
+    //    CORE_DECLARE_IRQ_STATE;
 
     //initialize the SOM running flag
-    mod_som_running_flag=true;
+    mod_som_ptr->running_flag=true;
     /*****************************************
      * Initialize main task (i.e. som shell)
      *****************************************/
@@ -416,24 +436,24 @@ void mod_som_main_task_f(void *p_arg)
     mod_som_efe_obp_ptr_t mod_som_efe_obp_ptr=mod_som_efe_obp_get_runtime_ptr_f();
     mod_som_efe_ptr_t mod_som_efe_ptr = mod_som_efe_get_runtime_ptr_f();
 
-    while (mod_som_running_flag) {
+    while (mod_som_ptr->running_flag) {
 
         OSTimeDly (
                 (OS_TICK     )1000,
                 (OS_OPT      )OS_OPT_TIME_DLY,
                 &err);
-//        tick=sl_sleeptimer_get_tick_count64();
+        //        tick=sl_sleeptimer_get_tick_count64();
         counter++;
         if((counter%10)==0){
-                //2026 05 14 SAN adding this to notify about debug
+            //2026 05 14 SAN adding this to notify about debug
 #if defined(MOD_SOM_DEBUG_WDOG) || defined(MOD_SOM_EFE_SIM_DATA)
-                printf("\r\n***********************************\r\n");
+            printf("\r\n***********************************\r\n");
 #ifdef MOD_SOM_DEBUG_WDOG
-                printf("MOD_SOM_DEBUG_WDOG is enabled\r\n");
+            printf("MOD_SOM_DEBUG_WDOG is enabled\r\n");
 #endif
 #ifdef MOD_SOM_EFE_SIM_DATA
-                printf("MOD_SOM_EFE_SIM_DATA is enabled\r\n");
-                printf("***********************************\r\n");
+            printf("MOD_SOM_EFE_SIM_DATA is enabled\r\n");
+            printf("***********************************\r\n");
 #endif
 #endif
         }
@@ -463,189 +483,189 @@ void mod_som_main_task_f(void *p_arg)
 
         }
         //*/
-//
+        //
         ///*
         if(mod_som_apf_runtime_ptr->daq){
-           if(mod_som_apf_runtime_ptr->mod_som_apf_producer_task_tcb_ptr->TaskState == OS_TASK_STATE_DEL){
-               mod_som_io_print_f("$STAT: restarting apf producer task\r\n");
-               OSTaskCreate(mod_som_apf_runtime_ptr->mod_som_apf_producer_task_tcb_ptr,
-                              "apf producer task",
-                              mod_som_apf_producer_task_f,
-                              DEF_NULL,
-                              MOD_SOM_APF_PRODUCER_TASK_PRIO,
-                              mod_som_apf_runtime_ptr->mod_som_apf_producer_task_stk_ptr,
-                              (MOD_SOM_APF_PRODUCER_TASK_STK_SIZE / 10u),
-                              MOD_SOM_APF_PRODUCER_TASK_STK_SIZE,
-                              0u,
-                              0u,
-                              DEF_NULL,
-                              (OS_OPT_TASK_STK_CLR),
-                              &err);
-               // Check error code
-               APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
-               if(RTOS_ERR_CODE_GET(err) != RTOS_ERR_NONE){
-//                   CORE_EXIT_ATOMIC();
-                   mod_som_io_print_f("$ERR: cannot restart apf producer task\r\n");
-               }
-           }
+            if(mod_som_apf_runtime_ptr->mod_som_apf_producer_task_tcb_ptr->TaskState == OS_TASK_STATE_DEL){
+                mod_som_io_print_f("$STAT: restarting apf producer task\r\n");
+                OSTaskCreate(mod_som_apf_runtime_ptr->mod_som_apf_producer_task_tcb_ptr,
+                             "apf producer task",
+                             mod_som_apf_producer_task_f,
+                             DEF_NULL,
+                             MOD_SOM_APF_PRODUCER_TASK_PRIO,
+                             mod_som_apf_runtime_ptr->mod_som_apf_producer_task_stk_ptr,
+                             (MOD_SOM_APF_PRODUCER_TASK_STK_SIZE / 10u),
+                             MOD_SOM_APF_PRODUCER_TASK_STK_SIZE,
+                             0u,
+                             0u,
+                             DEF_NULL,
+                             (OS_OPT_TASK_STK_CLR),
+                             &err);
+                // Check error code
+                APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
+                if(RTOS_ERR_CODE_GET(err) != RTOS_ERR_NONE){
+                    //                   CORE_EXIT_ATOMIC();
+                    mod_som_io_print_f("$ERR: cannot restart apf producer task\r\n");
+                }
+            }
 
-           if(mod_som_apf_runtime_ptr->mod_som_apf_consumer_task_tcb_ptr->TaskState == OS_TASK_STATE_DEL){
-               mod_som_io_print_f("$STAT: restarting apf consumer task\r\n");
-               OSTaskCreate(mod_som_apf_runtime_ptr->mod_som_apf_consumer_task_tcb_ptr,
-                            "apf consumer task",
-                            mod_som_apf_consumer_task_f,
-                            DEF_NULL,
-                            MOD_SOM_APF_CONSUMER_TASK_PRIO,
-                            mod_som_apf_runtime_ptr->mod_som_apf_consumer_task_stk_ptr,
-                            (MOD_SOM_APF_CONSUMER_TASK_STK_SIZE / 10u),
-                            MOD_SOM_APF_CONSUMER_TASK_STK_SIZE,
-                            0u,
-                            0u,
-                            DEF_NULL,
-                            (OS_OPT_TASK_STK_CLR),
-                            &err);
-               // Check error code
-               APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
-               if(RTOS_ERR_CODE_GET(err) != RTOS_ERR_NONE){
-//                   CORE_EXIT_ATOMIC();
-                   mod_som_io_print_f("$ERR: cannot restart apf consumer task\r\n");
-               }
-           }
+            if(mod_som_apf_runtime_ptr->mod_som_apf_consumer_task_tcb_ptr->TaskState == OS_TASK_STATE_DEL){
+                mod_som_io_print_f("$STAT: restarting apf consumer task\r\n");
+                OSTaskCreate(mod_som_apf_runtime_ptr->mod_som_apf_consumer_task_tcb_ptr,
+                             "apf consumer task",
+                             mod_som_apf_consumer_task_f,
+                             DEF_NULL,
+                             MOD_SOM_APF_CONSUMER_TASK_PRIO,
+                             mod_som_apf_runtime_ptr->mod_som_apf_consumer_task_stk_ptr,
+                             (MOD_SOM_APF_CONSUMER_TASK_STK_SIZE / 10u),
+                             MOD_SOM_APF_CONSUMER_TASK_STK_SIZE,
+                             0u,
+                             0u,
+                             DEF_NULL,
+                             (OS_OPT_TASK_STK_CLR),
+                             &err);
+                // Check error code
+                APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
+                if(RTOS_ERR_CODE_GET(err) != RTOS_ERR_NONE){
+                    //                   CORE_EXIT_ATOMIC();
+                    mod_som_io_print_f("$ERR: cannot restart apf consumer task\r\n");
+                }
+            }
 
-           if(mod_som_sbe41_ptr->sbe41_consumer_task_tcb_ptr->TaskState == OS_TASK_STATE_DEL){
-               mod_som_io_print_f("$STAT: restarting sbe41 consumer task\r\n");
-               OSTaskCreate(mod_som_sbe41_ptr->sbe41_consumer_task_tcb_ptr,
-                            "sbe41 consumer task",
-                            mod_som_sbe41_consumer_task_f,
-                            DEF_NULL,
-                            MOD_SOM_SBE41_CONSUMER_TASK_PRIO,
-                            mod_som_sbe41_ptr->sbe41_consumer_task_stk_ptr,
-                            (MOD_SOM_SBE41_CONSUMER_TASK_STK_SIZE / 10u),
-                            MOD_SOM_SBE41_CONSUMER_TASK_STK_SIZE,
-                            0u,
-                            0u,
-                            DEF_NULL,
-                            (OS_OPT_TASK_STK_CLR),
-                            &err);
-               // Check error code
-               APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
-               if(RTOS_ERR_CODE_GET(err) != RTOS_ERR_NONE){
-//                   CORE_EXIT_ATOMIC();
-                   mod_som_io_print_f("$ERR: cannot restart sbe41 consumer task\r\n");
-               }
-           }
+            if(mod_som_sbe41_ptr->sbe41_consumer_task_tcb_ptr->TaskState == OS_TASK_STATE_DEL){
+                mod_som_io_print_f("$STAT: restarting sbe41 consumer task\r\n");
+                OSTaskCreate(mod_som_sbe41_ptr->sbe41_consumer_task_tcb_ptr,
+                             "sbe41 consumer task",
+                             mod_som_sbe41_consumer_task_f,
+                             DEF_NULL,
+                             MOD_SOM_SBE41_CONSUMER_TASK_PRIO,
+                             mod_som_sbe41_ptr->sbe41_consumer_task_stk_ptr,
+                             (MOD_SOM_SBE41_CONSUMER_TASK_STK_SIZE / 10u),
+                             MOD_SOM_SBE41_CONSUMER_TASK_STK_SIZE,
+                             0u,
+                             0u,
+                             DEF_NULL,
+                             (OS_OPT_TASK_STK_CLR),
+                             &err);
+                // Check error code
+                APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
+                if(RTOS_ERR_CODE_GET(err) != RTOS_ERR_NONE){
+                    //                   CORE_EXIT_ATOMIC();
+                    mod_som_io_print_f("$ERR: cannot restart sbe41 consumer task\r\n");
+                }
+            }
 
-           if(mod_som_efe_ptr->efe_consumer_task_tcb_ptr->TaskState == OS_TASK_STATE_DEL){
-               mod_som_io_print_f("$STAT: restarting efe consumer task\r\n");
-               OSTaskCreate(mod_som_efe_ptr->efe_consumer_task_tcb_ptr,
-                            "efe consumer task",
-                            mod_som_efe_consumer_task_f,
-                            DEF_NULL,
-                            MOD_SOM_EFE_CONSUMER_TASK_PRIO,
-                            mod_som_efe_ptr->efe_consumer_task_stk_ptr,
-                            (MOD_SOM_EFE_CONSUMER_TASK_STK_SIZE / 10u),
-                            MOD_SOM_EFE_CONSUMER_TASK_STK_SIZE,
-                            0u,
-                            0u,
-                            DEF_NULL,
-                            (OS_OPT_TASK_STK_CLR),
-                            &err);
-               // Check error code
-               APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
-               if(RTOS_ERR_CODE_GET(err) != RTOS_ERR_NONE){
-//                   CORE_EXIT_ATOMIC();
-                   mod_som_io_print_f("$ERR: cannot restart efe consumer task\r\n");
-               }
-           }
+            if(mod_som_efe_ptr->efe_consumer_task_tcb_ptr->TaskState == OS_TASK_STATE_DEL){
+                mod_som_io_print_f("$STAT: restarting efe consumer task\r\n");
+                OSTaskCreate(mod_som_efe_ptr->efe_consumer_task_tcb_ptr,
+                             "efe consumer task",
+                             mod_som_efe_consumer_task_f,
+                             DEF_NULL,
+                             MOD_SOM_EFE_CONSUMER_TASK_PRIO,
+                             mod_som_efe_ptr->efe_consumer_task_stk_ptr,
+                             (MOD_SOM_EFE_CONSUMER_TASK_STK_SIZE / 10u),
+                             MOD_SOM_EFE_CONSUMER_TASK_STK_SIZE,
+                             0u,
+                             0u,
+                             DEF_NULL,
+                             (OS_OPT_TASK_STK_CLR),
+                             &err);
+                // Check error code
+                APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
+                if(RTOS_ERR_CODE_GET(err) != RTOS_ERR_NONE){
+                    //                   CORE_EXIT_ATOMIC();
+                    mod_som_io_print_f("$ERR: cannot restart efe consumer task\r\n");
+                }
+            }
 
-           if(mod_som_efe_obp_ptr->efe_obp_fill_segment_task_tcb_ptr->TaskState == OS_TASK_STATE_DEL){
-               mod_som_io_print_f("$STAT: restarting efe obp fill segment task\r\n");
-               OSTaskCreate(mod_som_efe_obp_ptr->efe_obp_fill_segment_task_tcb_ptr,
-                            "efe obp fill segment task",
-                            mod_som_efe_obp_fill_segment_task_f,
-                            DEF_NULL,
-                            MOD_SOM_EFE_OBP_FILL_SEGMENT_TASK_PRIO,
-                            mod_som_efe_obp_ptr->efe_obp_fill_segment_task_stk_ptr,
-                            (MOD_SOM_EFE_OBP_FILL_SEGMENT_TASK_STK_SIZE / 10u),
-                            MOD_SOM_EFE_OBP_FILL_SEGMENT_TASK_STK_SIZE,
-                            0u,
-                            0u,
-                            DEF_NULL,
-                            (OS_OPT_TASK_STK_CLR),
-                            &err);
-               // Check error code
-               APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
-               if(RTOS_ERR_CODE_GET(err) != RTOS_ERR_NONE){
-                   //                   CORE_EXIT_ATOMIC();
-                   mod_som_io_print_f("$ERR: cannot restart efe obp fill segment task\r\n");
-               }
-           }
-           if(mod_som_efe_obp_ptr->efe_obp_cpt_spectra_task_tcb_ptr->TaskState == OS_TASK_STATE_DEL){
-               mod_som_io_print_f("$STAT: restarting efe obp spectra task\r\n");
-               OSTaskCreate(mod_som_efe_obp_ptr->efe_obp_cpt_spectra_task_tcb_ptr,
-                            "efe obp spectra task",
-                            mod_som_efe_obp_cpt_spectra_task_f,
-                            DEF_NULL,
-                            MOD_SOM_EFE_OBP_CPT_SPECTRA_TASK_PRIO,
-                            mod_som_efe_obp_ptr->efe_obp_cpt_spectra_task_stk_ptr,
-                            (MOD_SOM_EFE_OBP_CPT_SPECTRA_TASK_STK_SIZE / 10u),
-                            MOD_SOM_EFE_OBP_CPT_SPECTRA_TASK_STK_SIZE,
-                            0u,
-                            0u,
-                            DEF_NULL,
-                            (OS_OPT_TASK_STK_CLR),
-                            &err);
-               // Check error code
-               APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
-               if(RTOS_ERR_CODE_GET(err) != RTOS_ERR_NONE){
-                   //                   CORE_EXIT_ATOMIC();
-                   mod_som_io_print_f("$ERR: cannot restart efe obp spectra task\r\n");
-               }
-           }
-           if(mod_som_efe_obp_ptr->efe_obp_cpt_dissrate_task_tcb_ptr->TaskState == OS_TASK_STATE_DEL){
-               mod_som_io_print_f("$STAT: restarting efe obp cpt_dissrate task\r\n");
-               OSTaskCreate(mod_som_efe_obp_ptr->efe_obp_cpt_dissrate_task_tcb_ptr,
-                                   "efe obp cpt_dissrate task",
-                                   mod_som_efe_obp_cpt_dissrate_task_f,
-                                   DEF_NULL,
-                                   MOD_SOM_EFE_OBP_CPT_DISSRATE_TASK_PRIO,
-                                   mod_som_efe_obp_ptr->efe_obp_cpt_dissrate_task_stk_ptr,
-                                   (MOD_SOM_EFE_OBP_CPT_DISSRATE_TASK_STK_SIZE / 10u),
-                                   MOD_SOM_EFE_OBP_CPT_DISSRATE_TASK_STK_SIZE,
-                                   0u,
-                                   0u,
-                                   DEF_NULL,
-                                   (OS_OPT_TASK_STK_CLR),
-                                   &err);
-               // Check error code
-               APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
-               if(RTOS_ERR_CODE_GET(err) != RTOS_ERR_NONE){
-                   //                   CORE_EXIT_ATOMIC();
-                   mod_som_io_print_f("$ERR: cannot restart efe obp cpt_dissrate task\r\n");
-               }
-           }
-           if(mod_som_efe_obp_ptr->efe_obp_consumer_task_tcb_ptr->TaskState == OS_TASK_STATE_DEL){
-               mod_som_io_print_f("$STAT: restarting efe obp consumer task\r\n");
-               OSTaskCreate(mod_som_efe_obp_ptr->efe_obp_consumer_task_tcb_ptr,
-                            "efe obp consumer task",
-                            mod_som_efe_obp_consumer_task_f,
-                            DEF_NULL,
-                            MOD_SOM_EFE_OBP_CONSUMER_TASK_PRIO,
-                            mod_som_efe_obp_ptr->efe_obp_consumer_task_stk_ptr,
-                            (MOD_SOM_EFE_OBP_CONSUMER_TASK_STK_SIZE / 10u),
-                            MOD_SOM_EFE_OBP_CONSUMER_TASK_STK_SIZE,
-                            0u,
-                            0u,
-                            DEF_NULL,
-                            (OS_OPT_TASK_STK_CLR),
-                            &err);
-               // Check error code
-               APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
-               if(RTOS_ERR_CODE_GET(err) != RTOS_ERR_NONE){
-                   //                   CORE_EXIT_ATOMIC();
-                   mod_som_io_print_f("$ERR: cannot restart efe obp consumer task\r\n");
-               }
-           }
+            if(mod_som_efe_obp_ptr->efe_obp_fill_segment_task_tcb_ptr->TaskState == OS_TASK_STATE_DEL){
+                mod_som_io_print_f("$STAT: restarting efe obp fill segment task\r\n");
+                OSTaskCreate(mod_som_efe_obp_ptr->efe_obp_fill_segment_task_tcb_ptr,
+                             "efe obp fill segment task",
+                             mod_som_efe_obp_fill_segment_task_f,
+                             DEF_NULL,
+                             MOD_SOM_EFE_OBP_FILL_SEGMENT_TASK_PRIO,
+                             mod_som_efe_obp_ptr->efe_obp_fill_segment_task_stk_ptr,
+                             (MOD_SOM_EFE_OBP_FILL_SEGMENT_TASK_STK_SIZE / 10u),
+                             MOD_SOM_EFE_OBP_FILL_SEGMENT_TASK_STK_SIZE,
+                             0u,
+                             0u,
+                             DEF_NULL,
+                             (OS_OPT_TASK_STK_CLR),
+                             &err);
+                // Check error code
+                APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
+                if(RTOS_ERR_CODE_GET(err) != RTOS_ERR_NONE){
+                    //                   CORE_EXIT_ATOMIC();
+                    mod_som_io_print_f("$ERR: cannot restart efe obp fill segment task\r\n");
+                }
+            }
+            if(mod_som_efe_obp_ptr->efe_obp_cpt_spectra_task_tcb_ptr->TaskState == OS_TASK_STATE_DEL){
+                mod_som_io_print_f("$STAT: restarting efe obp spectra task\r\n");
+                OSTaskCreate(mod_som_efe_obp_ptr->efe_obp_cpt_spectra_task_tcb_ptr,
+                             "efe obp spectra task",
+                             mod_som_efe_obp_cpt_spectra_task_f,
+                             DEF_NULL,
+                             MOD_SOM_EFE_OBP_CPT_SPECTRA_TASK_PRIO,
+                             mod_som_efe_obp_ptr->efe_obp_cpt_spectra_task_stk_ptr,
+                             (MOD_SOM_EFE_OBP_CPT_SPECTRA_TASK_STK_SIZE / 10u),
+                             MOD_SOM_EFE_OBP_CPT_SPECTRA_TASK_STK_SIZE,
+                             0u,
+                             0u,
+                             DEF_NULL,
+                             (OS_OPT_TASK_STK_CLR),
+                             &err);
+                // Check error code
+                APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
+                if(RTOS_ERR_CODE_GET(err) != RTOS_ERR_NONE){
+                    //                   CORE_EXIT_ATOMIC();
+                    mod_som_io_print_f("$ERR: cannot restart efe obp spectra task\r\n");
+                }
+            }
+            if(mod_som_efe_obp_ptr->efe_obp_cpt_dissrate_task_tcb_ptr->TaskState == OS_TASK_STATE_DEL){
+                mod_som_io_print_f("$STAT: restarting efe obp cpt_dissrate task\r\n");
+                OSTaskCreate(mod_som_efe_obp_ptr->efe_obp_cpt_dissrate_task_tcb_ptr,
+                             "efe obp cpt_dissrate task",
+                             mod_som_efe_obp_cpt_dissrate_task_f,
+                             DEF_NULL,
+                             MOD_SOM_EFE_OBP_CPT_DISSRATE_TASK_PRIO,
+                             mod_som_efe_obp_ptr->efe_obp_cpt_dissrate_task_stk_ptr,
+                             (MOD_SOM_EFE_OBP_CPT_DISSRATE_TASK_STK_SIZE / 10u),
+                             MOD_SOM_EFE_OBP_CPT_DISSRATE_TASK_STK_SIZE,
+                             0u,
+                             0u,
+                             DEF_NULL,
+                             (OS_OPT_TASK_STK_CLR),
+                             &err);
+                // Check error code
+                APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
+                if(RTOS_ERR_CODE_GET(err) != RTOS_ERR_NONE){
+                    //                   CORE_EXIT_ATOMIC();
+                    mod_som_io_print_f("$ERR: cannot restart efe obp cpt_dissrate task\r\n");
+                }
+            }
+            if(mod_som_efe_obp_ptr->efe_obp_consumer_task_tcb_ptr->TaskState == OS_TASK_STATE_DEL){
+                mod_som_io_print_f("$STAT: restarting efe obp consumer task\r\n");
+                OSTaskCreate(mod_som_efe_obp_ptr->efe_obp_consumer_task_tcb_ptr,
+                             "efe obp consumer task",
+                             mod_som_efe_obp_consumer_task_f,
+                             DEF_NULL,
+                             MOD_SOM_EFE_OBP_CONSUMER_TASK_PRIO,
+                             mod_som_efe_obp_ptr->efe_obp_consumer_task_stk_ptr,
+                             (MOD_SOM_EFE_OBP_CONSUMER_TASK_STK_SIZE / 10u),
+                             MOD_SOM_EFE_OBP_CONSUMER_TASK_STK_SIZE,
+                             0u,
+                             0u,
+                             DEF_NULL,
+                             (OS_OPT_TASK_STK_CLR),
+                             &err);
+                // Check error code
+                APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
+                if(RTOS_ERR_CODE_GET(err) != RTOS_ERR_NONE){
+                    //                   CORE_EXIT_ATOMIC();
+                    mod_som_io_print_f("$ERR: cannot restart efe obp consumer task\r\n");
+                }
+            }
 
         }
 
@@ -664,16 +684,16 @@ void mod_som_main_task_f(void *p_arg)
 
 
         //ALB toggle led to tell us it alive
-//        GPIO_PinOutToggle(gpioPortC, 6); // LED
+        //        GPIO_PinOutToggle(gpioPortC, 6); // LED
 
         APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
     }
 
 #ifdef MOD_SOM_DEBUG
-  mod_som_io_print_f("%s done\r\n",__func__);
+    mod_som_io_print_f("%s done\r\n",__func__);
 #endif
 
-  PP_UNUSED_PARAM(p_arg); // Prevent config warning.
+    PP_UNUSED_PARAM(p_arg); // Prevent config warning.
 }
 
 
@@ -717,7 +737,7 @@ mod_som_status_t mod_som_main_task_init_f(void){
     APP_RTOS_ASSERT_CRITICAL(mod_som_status == MOD_SOM_STATUS_OK,; );
     //Return error if mod_som_shell_init_f fails
     if(mod_som_status != MOD_SOM_STATUS_OK)
-    	return mod_som_encode_status_f(MOD_SOM_STATUS_ERR_FAIL_TO_INIT_RTOS_MODULE);
+        return mod_som_encode_status_f(MOD_SOM_STATUS_ERR_FAIL_TO_INIT_RTOS_MODULE);
 #endif
 
 
@@ -735,7 +755,7 @@ mod_som_status_t mod_som_main_task_init_f(void){
     //enters CPU_SW_EXCEPTION if fails
     APP_RTOS_ASSERT_CRITICAL(RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE,; );
     //Return error if fails
-   if(RTOS_ERR_CODE_GET(err) != RTOS_ERR_NONE)
+    if(RTOS_ERR_CODE_GET(err) != RTOS_ERR_NONE)
         return mod_som_encode_status_f(MOD_SOM_STATUS_ERR_FAIL_TO_INIT_RTOS_MODULE);
 
 #if defined(RTOS_MODULE_IO_SD_AVAIL)
@@ -754,7 +774,363 @@ mod_som_status_t mod_som_main_task_init_f(void){
 }
 
 
+/*******************************************************************************
+ * @brief
+ *   - We are inside the main shell task.
+ *   - This function initialize all the enabled modules.
+ *
+ ******************************************************************************/
+void mod_som_modules_init_f()
+{
+#if defined(MOD_SOM_SETTINGS_EN)
+    mod_som_settings_init_f();
+#endif
+#if defined(MOD_SOM_CALENDAR_EN)
+    mod_som_calendar_init_f();
+#endif
+#if defined(MOD_SOM_VOLTAGE_EN)
+    mod_som_voltage_init_f();
+#endif
+#if defined(MOD_SOM_SDIO_EN)
+    mod_som_sdio_init_f();
+#endif
+#if defined(MOD_SOM_SBE41_EN)
+    mod_som_sbe41_init_f();
+#endif
+#if defined(MOD_SOM_EFE_EN)
+    mod_som_efe_init_f();
+#endif
+#if defined(MOD_SOM_EFE_OBP_EN)
+    mod_som_efe_obp_init_f();
+#endif
+#if defined(MOD_SOM_APF_EN)
+    mod_som_apf_init_f();
+#endif
+#if defined(MOD_SOM_SETTINGS_EN)
+    mod_som_settings_save_settings_f();
+#endif
 
+}
+
+//------------------------------------------------------------------------------
+// MAIN TASK
+//------------------------------------------------------------------------------
+//*******************************************************************************
+/* @brief
+ *   - We are inside the main shell task.
+ *   - This function initialize all the enabled modules.
+ *
+ ******************************************************************************/
+void mod_som_main_start_modules_f()
+{
+
+    //#if defined(MOD_SOM_SDIO_EN)
+    //  CPU_CHAR filename[10]="modsom";
+    //  mod_som_sdio_define_filename_f(filename);
+    //#endif
+
+    //#if defined(MOD_SOM_SETTINGS_EN)
+    //  mod_som_settings_stream_settings_f();
+    //#endif
+    //
+    //#if defined(MOD_SOM_SBE41_EN)
+    //  mod_som_sbe41_connect_f();
+    //  mod_som_sbe41_start_collect_data_f();
+    //#endif
+    //
+    //#if defined(MOD_SOM_EFE_EN)
+    //  mod_som_efe_sampling_f();
+    //#endif
+
+    //  printf("ok\r\n");
+
+}
+
+/*******************************************************************************
+ * @brief
+ *   - We are inside the main shell task.
+ *   - This function initialize all the enabled modules.
+ *
+ ******************************************************************************/
+void mod_som_main_stop_modules_f()
+{
+
+    int delay =1000;
+    mod_som_status_t status;
+    status=MOD_SOM_STATUS_OK;
+
+    // stop ADC master clock timer
+    status|= mod_som_efe_stop_sampling_f();
+
+
+
+    // stop collecting CTD data
+    status|= mod_som_sbe41_stop_collect_data_f();
+    status|= mod_som_sbe41_disconnect_f();
+
+    // stop turbulence processing task
+    status = mod_som_efe_obp_stop_fill_segment_task_f();
+    status|= mod_som_efe_obp_stop_cpt_spectra_task_f();
+    status|= mod_som_efe_obp_stop_cpt_dissrate_task_f();
+    status|= mod_som_efe_obp_stop_consumer_task_f();
+
+    //ALB stop APF producer task
+    status |= mod_som_apf_stop_producer_task_f();
+    //ALB stop APF consumer task
+    status |= mod_som_apf_stop_consumer_task_f();
+
+    sl_sleeptimer_delay_millisecond(delay);
+    //ALB disable SDIO hardware
+    mod_som_sdio_disable_hardware_f();
+
+    //printf("epsi sleep\r\n");
+
+
+    WDOGn_Lock(DEFAULT_WDOG);
+
+}
+
+/*******************************************************************************
+ * @brief
+ *   - We are inside the main shell task.
+ *   - This function initialize all the enabled modules.
+ *
+ ******************************************************************************/
+mod_som_status_t mod_som_main_sleep_f()
+{
+    //  int delay =1000;
+
+    if (mod_som_ptr->sleep_flag==false){
+        mod_som_io_print_f("Making all modules are stopped \r\n");
+        //      mod_som_main_stop_modules_f();
+
+        //Select intern HFRCO
+        //      CMU_OscillatorEnable(cmuOsc_HFRCO, true,true);
+        //      CMU_ClockSelectSet(cmuClock_HF, cmuSelect_HFRCO);
+
+        //ALB Disable HFXO
+        //ALB IF cmuSelect_HFRCO is NOT selected before it will reset the whole board
+        /* Power External Oscillator SOM-U8-U4*/
+        // HF oscillator disable.
+
+        /* Freeze registers to avoid stalling for LF synchronization. */
+        LEUART_FreezeEnable(LEUART0, true);
+
+        LEUART0->CMD = LEUART_CMD_RXDIS | LEUART_CMD_TXDIS | LEUART_CMD_RXBLOCKEN
+                | LEUART_CMD_CLEARTX | LEUART_CMD_CLEARRX;
+        // turn dowm HFXO
+        //
+        //ALB      DC/DC burst mode  PF10 low
+        RETARGET_SerialFlush(); // Wait for UART TX buffer to be empty
+        CMU_ClockSelectSet(cmuClock_HF, cmuSelect_HFRCO);
+        CMU_HFRCOBandSet(cmuHFRCOFreq_13M0Hz);
+        RETARGET_SerialInit(); // Re-enable VCOM
+        GPIO_PinModeSet(gpioPortF, 10, gpioModePushPull, 0);
+        CMU_OscillatorEnable(cmuOsc_HFXO, false, false);
+        GPIO_PinModeSet(MOD_SOM_HFXO_EN_PORT,
+                        MOD_SOM_HFXO_EN_PIN,
+                        gpioModePushPull, 0);
+
+        //2025 08 22 trying to mitigate clock errors for LEUART0
+        CMU_ClockEnable(cmuClock_GPIO, true);
+
+        /* Enable CORE LE clock in order to access LE modules */
+        CMU_ClockEnable(cmuClock_HFLE, true);
+        //        CMU_ClockSelectSet(cmuClock_LFB, cmuSelect_HFCLKLE);
+        CMU_ClockSelectSet(cmuClock_LFB, cmuSelect_LFXO); // Set a reference clock
+
+        //ALB cmuClkDiv_1 works with baudrate 115200. Only for testing
+        //        CMU_ClockDivSet(MOD_SOM_APF_USART_CLK,cmuClkDiv_1);
+        //ALB cmuClkDiv_4 works with baudrate 9600. apex mode
+        CMU_ClockDivSet(cmuClock_LEUART0, cmuClkDiv_1); // Don't prescale LEUART clock
+        //        CMU_ClockDivSet(MOD_SOM_APF_USART_CLK,cmuClkDiv_4);
+        CMU_ClockEnable(cmuClock_LEUART0, true);    /* Enable device clock */
+
+        // 2d) Clear any error/overflow that might have occurred during the gate
+        LEUART0->IFC = LEUART_IF_FERR | LEUART_IF_PERR | LEUART_IF_RXOF;
+
+        LEUART0->CMD = LEUART_CMD_RXEN | LEUART_CMD_TXEN | LEUART_CMD_RXBLOCKDIS
+                | LEUART_CMD_CLEARTX | LEUART_CMD_CLEARRX;
+        /* Freeze registers to avoid stalling for LF synchronization. */
+        LEUART_FreezeEnable(LEUART0, false);
+
+
+        //      GPIO_PinModeSet(MOD_SOM_SBE41_EN_PORT, MOD_SOM_SBE41_EN_PIN,gpioModePushPull, 0);
+
+        //WAKE UP CMD
+        //      GPIO_PinModeSet(gpioPortF, 10, gpioModePushPull, 1);
+        //      RETARGET_SerialFlush(); // Wait for UART TX buffer to be empty
+        //      CMU_ClockSelectSet(cmuClock_HF, cmuSelect_HFXO);
+        //      RETARGET_SerialInit(); // Re-enable VCOM
+
+
+
+        //ALB I want to keep LEUART alive  (SBEcom) so I reconnect it
+        //ALB It also send some power to the SBE I need to NOT do this
+
+        //      CMU_ClockEnable(cmuClock_HFLE, true);
+        //      CMU_ClockSelectSet(cmuClock_LFB, cmuSelect_LFXO); // Set a reference clock
+        //      CMU_ClockEnable(cmuClock_LEUART0, true);    /* Enable device clock */
+        //      CMU_ClockDivSet(cmuClock_LEUART0, cmuClkDiv_1); // Don't prescale LEUART clock
+        //      LEUART_Init_TypeDef init = LEUART_INIT_DEFAULT;
+        //      LEUART_Init(LEUART0, &init);
+        EMU_EnterEM2(false);
+        mod_som_ptr->sleep_flag=true;
+
+    }else{
+        EMU_EnterEM2(false);
+    }
+
+    return 0;
+}
+
+/*******************************************************************************
+ * @brief
+ *   - trying to do some sort of power off
+ *
+ ******************************************************************************/
+mod_som_status_t mod_som_main_wake_up_f()
+{
+
+    int delay =1000;
+
+    if (mod_som_ptr->sleep_flag==true){
+        mod_som_io_print_f("Waking up modules\r\n");
+
+        /* Freeze registers to avoid stalling for LF synchronization. */
+        LEUART_FreezeEnable(LEUART0, true);
+        NVIC_DisableIRQ(LEUART0_IRQn);
+        LEUART_IntDisable(LEUART0,~0x0);
+        LEUART_IntClear(LEUART0, ~0x0);
+
+        LEUART0->CMD = LEUART_CMD_RXDIS | LEUART_CMD_TXDIS | LEUART_CMD_RXBLOCKEN
+                | LEUART_CMD_CLEARTX | LEUART_CMD_CLEARRX;
+
+        //ALB      DC/DC not burst mode  PF10 high
+        GPIO_PinModeSet(gpioPortF, 10, gpioModePushPull, 1);
+
+        //      GPIO_PinModeSet(MOD_SOM_SBE41_EN_PORT, MOD_SOM_SBE41_EN_PIN, gpioModePushPull, 1);
+
+        // turn dowm HFXO
+        GPIO_PinModeSet(MOD_SOM_HFXO_EN_PORT, MOD_SOM_HFXO_EN_PIN, gpioModePushPull, 1);
+        //      //Select intern HFXO
+        CMU_OscillatorEnable(cmuOsc_HFXO, true, true);
+        RETARGET_SerialFlush(); // Wait for UART TX buffer to be empty
+        CMU_ClockSelectSet(cmuClock_HF, cmuSelect_HFXO);
+        RETARGET_SerialInit(); // Re-enable VCOM
+        sl_sleeptimer_delay_millisecond(delay/4);
+
+        //      // HFRCO oscillator disable.
+        //      CMU_OscillatorEnable(cmuOsc_HFRCO, false, false);
+        //
+        //      CMU_ClockEnable(cmuClock_HFLE, true);
+        CMU_ClockEnable(cmuClock_HFPER, true);
+        //      CMU_ClockEnable(cmuClock_CORELE, true);
+
+
+        //ALB Software reset of SDIO
+        SDIO->CLOCKCTRL|=(_SDIO_CLOCKCTRL_SFTRSTA_MASK & SDIO_CLOCKCTRL_SFTRSTA);
+
+        sl_sleeptimer_delay_millisecond(delay/4);
+
+        //2025 08 22 SAN testing a fix for LEUART Timing when waking up
+
+#if defined(_CMU_HFPERCLKEN0_MASK)
+        CMU_ClockEnable(cmuClock_HFPER, true);
+#endif
+        CMU_ClockEnable(cmuClock_GPIO, true);
+
+        /* Enable CORE LE clock in order to access LE modules */
+        CMU_ClockEnable(cmuClock_HFLE, true);
+        //        CMU_ClockSelectSet(cmuClock_LFB, cmuSelect_HFCLKLE);
+        CMU_ClockSelectSet(cmuClock_LFB, cmuSelect_LFXO); // Set a reference clock
+
+        //ALB cmuClkDiv_1 works with baudrate 115200. Only for testing
+        //        CMU_ClockDivSet(MOD_SOM_APF_USART_CLK,cmuClkDiv_1);
+        //ALB cmuClkDiv_4 works with baudrate 9600. apex mode
+        CMU_ClockDivSet(cmuClock_LEUART0, cmuClkDiv_1); // Don't prescale LEUART clock
+        //        CMU_ClockDivSet(MOD_SOM_APF_USART_CLK,cmuClkDiv_4);
+        CMU_ClockEnable(cmuClock_LEUART0, true);    /* Enable device clock */
+
+
+
+        LEUART0->IFC = LEUART_IF_FERR | LEUART_IF_PERR | LEUART_IF_RXOF;
+        LEUART0->CMD = LEUART_CMD_RXEN | LEUART_CMD_TXEN | LEUART_CMD_RXBLOCKDIS
+                | LEUART_CMD_CLEARTX | LEUART_CMD_CLEARRX;
+
+        //2025 08 28 SAN add a loopback to tickle the receive section with some signals
+        LEUART0->CTRL |= LEUART_CTRL_LOOPBK;
+        /* Freeze registers to avoid stalling for LF synchronization. */
+        LEUART_FreezeEnable(LEUART0, false);
+
+
+        sl_sleeptimer_delay_millisecond(delay/2);
+
+        int i;
+
+        char send_char = 0x07;//0x1b;//'A';
+        char rx_char[21];
+        for(i=0; i<10;i++){
+            while (!(LEUART0->STATUS & LEUART_STATUS_TXBL));
+            LEUART_Tx(LEUART0,  send_char);
+            //           send_char++;
+
+            sl_sleeptimer_delay_millisecond(10);
+            if((LEUART0->STATUS & _LEUART_STATUS_RXDATAV_MASK)){
+                rx_char[i] = LEUART_Rx(LEUART0);
+            }
+
+        }
+
+        while((LEUART0->STATUS & _LEUART_STATUS_RXDATAV_MASK)){
+            rx_char[0] = LEUART_Rx(LEUART0);
+        }
+#ifdef MOD_SOM_DEBUG
+        rx_char[20] = '\0';
+        mod_som_io_print_f("rx_chars: %s\r\n",rx_char);
+#else
+        (void)rx_char;
+#endif
+
+        while (!(LEUART0->STATUS & LEUART_STATUS_TXC));
+        //       LEUART_FreezeEnable(LEUART0, true);
+        LEUART0->CTRL &= ~LEUART_CTRL_LOOPBK;
+        //       LEUART_FreezeEnable(LEUART0, false);
+        while(LEUART0->SYNCBUSY){
+
+        }
+
+        LEUART_IntClear(LEUART0, ~0x0);
+        LEUART_IntEnable(LEUART0, LEUART_IF_RXDATAV);
+        NVIC_EnableIRQ(LEUART0_IRQn);
+
+
+        mod_som_ptr->sleep_flag=false;
+
+    }
+
+    return 0;
+}
+
+
+mod_som_status_t mod_som_main_power_off_f(){
+    mod_som_status_t status;
+    mod_som_apf_ptr_t mod_som_apf_ptr = mod_som_apf_get_runtime_ptr_f();
+    if(mod_som_apf_ptr->daq){
+        status= MOD_SOM_APF_STATUS_DAQ_ALREADY_STARTED;
+        mod_som_apf_daq_stop_f();
+    }
+    status = mod_som_sdio_disable_hardware_f();
+    status = mod_som_voltage_stop_scan_task_f();
+    status = mod_som_voltage_stop_adc1_scan_task_f();
+    status = mod_som_shell_stop_f();
+    status = mod_som_apf_stop_shell_task_f();
+    status = mod_som_io_stop_task_f();
+    status = mod_som_main_task_stop_f();
+    (void )status;
+    // TODO really check for errors
+    return MOD_SOM_APF_STATUS_OK;
+}
 
 /*******************************************************************************
  * @brief
@@ -767,11 +1143,11 @@ mod_som_status_t mod_som_add_peripheral_f(mod_som_prf_ptr_t peripheral_ptr){
 
     mod_som_prf_list_item_ptr_t prf_list_item_ptr;
     bool need_to_add_flag = false;
-    if(mod_som_prf_list_head_ptr == DEF_NULL){
+    if(mod_som_ptr->prf_list_head_ptr == DEF_NULL){
         prf_list_item_ptr = mod_som_new_prf_list_item_f(peripheral_ptr);
         need_to_add_flag = true;
     }else{
-        prf_list_item_ptr = mod_som_prf_list_head_ptr;
+        prf_list_item_ptr = mod_som_ptr->prf_list_head_ptr;
         need_to_add_flag = true;
         do {
             if(prf_list_item_ptr->prf_ptr == peripheral_ptr){
@@ -785,221 +1161,221 @@ mod_som_status_t mod_som_add_peripheral_f(mod_som_prf_ptr_t peripheral_ptr){
 
     }
     if(need_to_add_flag){
-        if(mod_som_prf_list_head_ptr == DEF_NULL){
-            mod_som_prf_list_head_ptr=prf_list_item_ptr;
-            mod_som_prf_list_tail_ptr=prf_list_item_ptr;
+        if(mod_som_ptr->prf_list_head_ptr == DEF_NULL){
+            mod_som_ptr->prf_list_head_ptr=prf_list_item_ptr;
+            mod_som_ptr->prf_list_tail_ptr=prf_list_item_ptr;
         }else{
-            prf_list_item_ptr->prev_item_ptr = mod_som_prf_list_tail_ptr;
-            mod_som_prf_list_tail_ptr->next_item_ptr = prf_list_item_ptr;
-            mod_som_prf_list_tail_ptr=prf_list_item_ptr;
+            prf_list_item_ptr->prev_item_ptr = mod_som_ptr->prf_list_tail_ptr;
+            mod_som_ptr->prf_list_tail_ptr->next_item_ptr = prf_list_item_ptr;
+            mod_som_ptr->prf_list_tail_ptr=prf_list_item_ptr;
         }
     }
 
     switch ((uint32_t)peripheral_ptr->handle_port){
-    case MSC_BASE:
-        mod_som_sys_peripherals_list_ptr->MSC_prf_ptr = peripheral_ptr;
-        break;
-    case EMU_BASE:
-        mod_som_sys_peripherals_list_ptr->EMU_prf_ptr = peripheral_ptr;
-        break;
-    case RMU_BASE:
-        mod_som_sys_peripherals_list_ptr->RMU_prf_ptr = peripheral_ptr;
-        break;
-    case CMU_BASE:
-        mod_som_sys_peripherals_list_ptr->CMU_prf_ptr = peripheral_ptr;
-        break;
-    case CRYPTO0_BASE:
-        mod_som_sys_peripherals_list_ptr->CRYPTO0_prf_ptr = peripheral_ptr;
-        break;
-    case LESENSE_BASE:
-        mod_som_sys_peripherals_list_ptr->LESENSE_prf_ptr = peripheral_ptr;
-        break;
-    case EBI_BASE:
-        mod_som_sys_peripherals_list_ptr->EBI_prf_ptr = peripheral_ptr;
-        break;
-    case ETH_BASE:
-        mod_som_sys_peripherals_list_ptr->ETH_prf_ptr = peripheral_ptr;
-        break;
-    case SDIO_BASE:
-        mod_som_sys_peripherals_list_ptr->SDIO_prf_ptr = peripheral_ptr;
-        break;
-    case GPIO_BASE:
-        mod_som_sys_peripherals_list_ptr->GPIO_prf_ptr = peripheral_ptr;
-        break;
-    case PRS_BASE:
-        mod_som_sys_peripherals_list_ptr->PRS_prf_ptr = peripheral_ptr;
-        break;
-    case LDMA_BASE:
-        mod_som_sys_peripherals_list_ptr->LDMA_prf_ptr = peripheral_ptr;
-        break;
-    case FPUEH_BASE:
-        mod_som_sys_peripherals_list_ptr->FPUEH_prf_ptr = peripheral_ptr;
-        break;
-    case GPCRC_BASE:
-        mod_som_sys_peripherals_list_ptr->GPCRC_prf_ptr = peripheral_ptr;
-        break;
-    case CAN0_BASE:
-        mod_som_sys_peripherals_list_ptr->CAN0_prf_ptr = peripheral_ptr;
-        break;
-    case CAN1_BASE:
-        mod_som_sys_peripherals_list_ptr->CAN1_prf_ptr = peripheral_ptr;
-        break;
-    case TIMER0_BASE:
-        mod_som_sys_peripherals_list_ptr->TIMER0_prf_ptr = peripheral_ptr;
-        break;
-    case TIMER1_BASE:
-        mod_som_sys_peripherals_list_ptr->TIMER1_prf_ptr = peripheral_ptr;
-        break;
-    case TIMER2_BASE:
-        mod_som_sys_peripherals_list_ptr->TIMER2_prf_ptr = peripheral_ptr;
-        break;
-    case TIMER3_BASE:
-        mod_som_sys_peripherals_list_ptr->TIMER3_prf_ptr = peripheral_ptr;
-        break;
-    case TIMER4_BASE:
-        mod_som_sys_peripherals_list_ptr->TIMER4_prf_ptr = peripheral_ptr;
-        break;
-    case TIMER5_BASE:
-        mod_som_sys_peripherals_list_ptr->TIMER5_prf_ptr = peripheral_ptr;
-        break;
-    case TIMER6_BASE:
-        mod_som_sys_peripherals_list_ptr->TIMER6_prf_ptr = peripheral_ptr;
-        break;
-    case WTIMER0_BASE:
-        mod_som_sys_peripherals_list_ptr->WTIMER0_prf_ptr = peripheral_ptr;
-        break;
-    case WTIMER1_BASE:
-        mod_som_sys_peripherals_list_ptr->WTIMER1_prf_ptr = peripheral_ptr;
-        break;
-    case WTIMER2_BASE:
-        mod_som_sys_peripherals_list_ptr->WTIMER2_prf_ptr = peripheral_ptr;
-        break;
-    case WTIMER3_BASE:
-        mod_som_sys_peripherals_list_ptr->WTIMER3_prf_ptr = peripheral_ptr;
-        break;
-    case USART0_BASE:
-        mod_som_sys_peripherals_list_ptr->USART0_prf_ptr = peripheral_ptr;
-        break;
-    case USART1_BASE:
-        mod_som_sys_peripherals_list_ptr->USART1_prf_ptr = peripheral_ptr;
-        break;
-    case USART2_BASE:
-        mod_som_sys_peripherals_list_ptr->USART2_prf_ptr = peripheral_ptr;
-        break;
-    case USART3_BASE:
-        mod_som_sys_peripherals_list_ptr->USART3_prf_ptr = peripheral_ptr;
-        break;
-    case USART4_BASE:
-        mod_som_sys_peripherals_list_ptr->USART4_prf_ptr = peripheral_ptr;
-        break;
-    case USART5_BASE:
-        mod_som_sys_peripherals_list_ptr->USART5_prf_ptr = peripheral_ptr;
-        break;
-    case UART0_BASE:
-        mod_som_sys_peripherals_list_ptr->UART0_prf_ptr = peripheral_ptr;
-        break;
-    case UART1_BASE:
-        mod_som_sys_peripherals_list_ptr->UART1_prf_ptr = peripheral_ptr;
-        break;
-    case QSPI0_BASE:
-        mod_som_sys_peripherals_list_ptr->QSPI0_prf_ptr = peripheral_ptr;
-        break;
-    case LEUART0_BASE:
-        mod_som_sys_peripherals_list_ptr->LEUART0_prf_ptr = peripheral_ptr;
-        break;
-    case LEUART1_BASE:
-        mod_som_sys_peripherals_list_ptr->LEUART1_prf_ptr = peripheral_ptr;
-        break;
-    case LETIMER0_BASE:
-        mod_som_sys_peripherals_list_ptr->LETIMER0_prf_ptr = peripheral_ptr;
-        break;
-    case LETIMER1_BASE:
-        mod_som_sys_peripherals_list_ptr->LETIMER1_prf_ptr = peripheral_ptr;
-        break;
-    case CRYOTIMER_BASE:
-        mod_som_sys_peripherals_list_ptr->CRYOTIMER_prf_ptr = peripheral_ptr;
-        break;
-    case PCNT0_BASE:
-        mod_som_sys_peripherals_list_ptr->PCNT0_prf_ptr = peripheral_ptr;
-        break;
-    case PCNT1_BASE:
-        mod_som_sys_peripherals_list_ptr->PCNT1_prf_ptr = peripheral_ptr;
-        break;
-    case PCNT2_BASE:
-        mod_som_sys_peripherals_list_ptr->PCNT2_prf_ptr = peripheral_ptr;
-        break;
-    case I2C0_BASE:
-        mod_som_sys_peripherals_list_ptr->I2C0_prf_ptr = peripheral_ptr;
-        break;
-    case I2C1_BASE:
-        mod_som_sys_peripherals_list_ptr->I2C1_prf_ptr = peripheral_ptr;
-        break;
-    case I2C2_BASE:
-        mod_som_sys_peripherals_list_ptr->I2C2_prf_ptr = peripheral_ptr;
-        break;
-    case ADC0_BASE:
-        mod_som_sys_peripherals_list_ptr->ADC0_prf_ptr = peripheral_ptr;
-        break;
-    case ADC1_BASE:
-        mod_som_sys_peripherals_list_ptr->ADC1_prf_ptr = peripheral_ptr;
-        break;
-    case ACMP0_BASE:
-        mod_som_sys_peripherals_list_ptr->ACMP0_prf_ptr = peripheral_ptr;
-        break;
-    case ACMP1_BASE:
-        mod_som_sys_peripherals_list_ptr->ACMP1_prf_ptr = peripheral_ptr;
-        break;
-    case ACMP2_BASE:
-        mod_som_sys_peripherals_list_ptr->ACMP2_prf_ptr = peripheral_ptr;
-        break;
-    case ACMP3_BASE:
-        mod_som_sys_peripherals_list_ptr->ACMP3_prf_ptr = peripheral_ptr;
-        break;
-    case VDAC0_BASE:
-        mod_som_sys_peripherals_list_ptr->VDAC0_prf_ptr = peripheral_ptr;
-        break;
-    case USB_BASE:
-        mod_som_sys_peripherals_list_ptr->USB_prf_ptr = peripheral_ptr;
-        break;
-    case IDAC0_BASE:
-        mod_som_sys_peripherals_list_ptr->IDAC0_prf_ptr = peripheral_ptr;
-        break;
-    case CSEN_BASE:
-        mod_som_sys_peripherals_list_ptr->CSEN_prf_ptr = peripheral_ptr;
-        break;
-    case LCD_BASE:
-        mod_som_sys_peripherals_list_ptr->LCD_prf_ptr = peripheral_ptr;
-        break;
-    case RTC_BASE:
-        mod_som_sys_peripherals_list_ptr->RTC_prf_ptr = peripheral_ptr;
-        break;
-    case RTCC_BASE:
-        mod_som_sys_peripherals_list_ptr->RTCC_prf_ptr = peripheral_ptr;
-        break;
-    case WDOG0_BASE:
-        mod_som_sys_peripherals_list_ptr->WDOG0_prf_ptr = peripheral_ptr;
-        break;
-    case WDOG1_BASE:
-        mod_som_sys_peripherals_list_ptr->WDOG1_prf_ptr = peripheral_ptr;
-        break;
-    case ETM_BASE:
-        mod_som_sys_peripherals_list_ptr->ETM_prf_ptr = peripheral_ptr;
-        break;
-    case SMU_BASE:
-        mod_som_sys_peripherals_list_ptr->SMU_prf_ptr = peripheral_ptr;
-        break;
-    case TRNG0_BASE:
-        mod_som_sys_peripherals_list_ptr->TRNG0_prf_ptr = peripheral_ptr;
-        break;
-    case DEVINFO_BASE:
-        mod_som_sys_peripherals_list_ptr->DEVINFO_prf_ptr = peripheral_ptr;
-        break;
-    case ROMTABLE_BASE:
-        mod_som_sys_peripherals_list_ptr->ROMTABLE_prf_ptr = peripheral_ptr;
-        break;
-    default:
-        return mod_som_encode_status_f(MOD_SOM_STATUS_ERR_FAIL_TO_FIND_BASE_PRF);
-        break;
+        case MSC_BASE:
+            mod_som_ptr->sys_peripherals_list.MSC_prf_ptr = peripheral_ptr;
+            break;
+        case EMU_BASE:
+            mod_som_ptr->sys_peripherals_list.EMU_prf_ptr = peripheral_ptr;
+            break;
+        case RMU_BASE:
+            mod_som_ptr->sys_peripherals_list.RMU_prf_ptr = peripheral_ptr;
+            break;
+        case CMU_BASE:
+            mod_som_ptr->sys_peripherals_list.CMU_prf_ptr = peripheral_ptr;
+            break;
+        case CRYPTO0_BASE:
+            mod_som_ptr->sys_peripherals_list.CRYPTO0_prf_ptr = peripheral_ptr;
+            break;
+        case LESENSE_BASE:
+            mod_som_ptr->sys_peripherals_list.LESENSE_prf_ptr = peripheral_ptr;
+            break;
+        case EBI_BASE:
+            mod_som_ptr->sys_peripherals_list.EBI_prf_ptr = peripheral_ptr;
+            break;
+        case ETH_BASE:
+            mod_som_ptr->sys_peripherals_list.ETH_prf_ptr = peripheral_ptr;
+            break;
+        case SDIO_BASE:
+            mod_som_ptr->sys_peripherals_list.SDIO_prf_ptr = peripheral_ptr;
+            break;
+        case GPIO_BASE:
+            mod_som_ptr->sys_peripherals_list.GPIO_prf_ptr = peripheral_ptr;
+            break;
+        case PRS_BASE:
+            mod_som_ptr->sys_peripherals_list.PRS_prf_ptr = peripheral_ptr;
+            break;
+        case LDMA_BASE:
+            mod_som_ptr->sys_peripherals_list.LDMA_prf_ptr = peripheral_ptr;
+            break;
+        case FPUEH_BASE:
+            mod_som_ptr->sys_peripherals_list.FPUEH_prf_ptr = peripheral_ptr;
+            break;
+        case GPCRC_BASE:
+            mod_som_ptr->sys_peripherals_list.GPCRC_prf_ptr = peripheral_ptr;
+            break;
+        case CAN0_BASE:
+            mod_som_ptr->sys_peripherals_list.CAN0_prf_ptr = peripheral_ptr;
+            break;
+        case CAN1_BASE:
+            mod_som_ptr->sys_peripherals_list.CAN1_prf_ptr = peripheral_ptr;
+            break;
+        case TIMER0_BASE:
+            mod_som_ptr->sys_peripherals_list.TIMER0_prf_ptr = peripheral_ptr;
+            break;
+        case TIMER1_BASE:
+            mod_som_ptr->sys_peripherals_list.TIMER1_prf_ptr = peripheral_ptr;
+            break;
+        case TIMER2_BASE:
+            mod_som_ptr->sys_peripherals_list.TIMER2_prf_ptr = peripheral_ptr;
+            break;
+        case TIMER3_BASE:
+            mod_som_ptr->sys_peripherals_list.TIMER3_prf_ptr = peripheral_ptr;
+            break;
+        case TIMER4_BASE:
+            mod_som_ptr->sys_peripherals_list.TIMER4_prf_ptr = peripheral_ptr;
+            break;
+        case TIMER5_BASE:
+            mod_som_ptr->sys_peripherals_list.TIMER5_prf_ptr = peripheral_ptr;
+            break;
+        case TIMER6_BASE:
+            mod_som_ptr->sys_peripherals_list.TIMER6_prf_ptr = peripheral_ptr;
+            break;
+        case WTIMER0_BASE:
+            mod_som_ptr->sys_peripherals_list.WTIMER0_prf_ptr = peripheral_ptr;
+            break;
+        case WTIMER1_BASE:
+            mod_som_ptr->sys_peripherals_list.WTIMER1_prf_ptr = peripheral_ptr;
+            break;
+        case WTIMER2_BASE:
+            mod_som_ptr->sys_peripherals_list.WTIMER2_prf_ptr = peripheral_ptr;
+            break;
+        case WTIMER3_BASE:
+            mod_som_ptr->sys_peripherals_list.WTIMER3_prf_ptr = peripheral_ptr;
+            break;
+        case USART0_BASE:
+            mod_som_ptr->sys_peripherals_list.USART0_prf_ptr = peripheral_ptr;
+            break;
+        case USART1_BASE:
+            mod_som_ptr->sys_peripherals_list.USART1_prf_ptr = peripheral_ptr;
+            break;
+        case USART2_BASE:
+            mod_som_ptr->sys_peripherals_list.USART2_prf_ptr = peripheral_ptr;
+            break;
+        case USART3_BASE:
+            mod_som_ptr->sys_peripherals_list.USART3_prf_ptr = peripheral_ptr;
+            break;
+        case USART4_BASE:
+            mod_som_ptr->sys_peripherals_list.USART4_prf_ptr = peripheral_ptr;
+            break;
+        case USART5_BASE:
+            mod_som_ptr->sys_peripherals_list.USART5_prf_ptr = peripheral_ptr;
+            break;
+        case UART0_BASE:
+            mod_som_ptr->sys_peripherals_list.UART0_prf_ptr = peripheral_ptr;
+            break;
+        case UART1_BASE:
+            mod_som_ptr->sys_peripherals_list.UART1_prf_ptr = peripheral_ptr;
+            break;
+        case QSPI0_BASE:
+            mod_som_ptr->sys_peripherals_list.QSPI0_prf_ptr = peripheral_ptr;
+            break;
+        case LEUART0_BASE:
+            mod_som_ptr->sys_peripherals_list.LEUART0_prf_ptr = peripheral_ptr;
+            break;
+        case LEUART1_BASE:
+            mod_som_ptr->sys_peripherals_list.LEUART1_prf_ptr = peripheral_ptr;
+            break;
+        case LETIMER0_BASE:
+            mod_som_ptr->sys_peripherals_list.LETIMER0_prf_ptr = peripheral_ptr;
+            break;
+        case LETIMER1_BASE:
+            mod_som_ptr->sys_peripherals_list.LETIMER1_prf_ptr = peripheral_ptr;
+            break;
+        case CRYOTIMER_BASE:
+            mod_som_ptr->sys_peripherals_list.CRYOTIMER_prf_ptr = peripheral_ptr;
+            break;
+        case PCNT0_BASE:
+            mod_som_ptr->sys_peripherals_list.PCNT0_prf_ptr = peripheral_ptr;
+            break;
+        case PCNT1_BASE:
+            mod_som_ptr->sys_peripherals_list.PCNT1_prf_ptr = peripheral_ptr;
+            break;
+        case PCNT2_BASE:
+            mod_som_ptr->sys_peripherals_list.PCNT2_prf_ptr = peripheral_ptr;
+            break;
+        case I2C0_BASE:
+            mod_som_ptr->sys_peripherals_list.I2C0_prf_ptr = peripheral_ptr;
+            break;
+        case I2C1_BASE:
+            mod_som_ptr->sys_peripherals_list.I2C1_prf_ptr = peripheral_ptr;
+            break;
+        case I2C2_BASE:
+            mod_som_ptr->sys_peripherals_list.I2C2_prf_ptr = peripheral_ptr;
+            break;
+        case ADC0_BASE:
+            mod_som_ptr->sys_peripherals_list.ADC0_prf_ptr = peripheral_ptr;
+            break;
+        case ADC1_BASE:
+            mod_som_ptr->sys_peripherals_list.ADC1_prf_ptr = peripheral_ptr;
+            break;
+        case ACMP0_BASE:
+            mod_som_ptr->sys_peripherals_list.ACMP0_prf_ptr = peripheral_ptr;
+            break;
+        case ACMP1_BASE:
+            mod_som_ptr->sys_peripherals_list.ACMP1_prf_ptr = peripheral_ptr;
+            break;
+        case ACMP2_BASE:
+            mod_som_ptr->sys_peripherals_list.ACMP2_prf_ptr = peripheral_ptr;
+            break;
+        case ACMP3_BASE:
+            mod_som_ptr->sys_peripherals_list.ACMP3_prf_ptr = peripheral_ptr;
+            break;
+        case VDAC0_BASE:
+            mod_som_ptr->sys_peripherals_list.VDAC0_prf_ptr = peripheral_ptr;
+            break;
+        case USB_BASE:
+            mod_som_ptr->sys_peripherals_list.USB_prf_ptr = peripheral_ptr;
+            break;
+        case IDAC0_BASE:
+            mod_som_ptr->sys_peripherals_list.IDAC0_prf_ptr = peripheral_ptr;
+            break;
+        case CSEN_BASE:
+            mod_som_ptr->sys_peripherals_list.CSEN_prf_ptr = peripheral_ptr;
+            break;
+        case LCD_BASE:
+            mod_som_ptr->sys_peripherals_list.LCD_prf_ptr = peripheral_ptr;
+            break;
+        case RTC_BASE:
+            mod_som_ptr->sys_peripherals_list.RTC_prf_ptr = peripheral_ptr;
+            break;
+        case RTCC_BASE:
+            mod_som_ptr->sys_peripherals_list.RTCC_prf_ptr = peripheral_ptr;
+            break;
+        case WDOG0_BASE:
+            mod_som_ptr->sys_peripherals_list.WDOG0_prf_ptr = peripheral_ptr;
+            break;
+        case WDOG1_BASE:
+            mod_som_ptr->sys_peripherals_list.WDOG1_prf_ptr = peripheral_ptr;
+            break;
+        case ETM_BASE:
+            mod_som_ptr->sys_peripherals_list.ETM_prf_ptr = peripheral_ptr;
+            break;
+        case SMU_BASE:
+            mod_som_ptr->sys_peripherals_list.SMU_prf_ptr = peripheral_ptr;
+            break;
+        case TRNG0_BASE:
+            mod_som_ptr->sys_peripherals_list.TRNG0_prf_ptr = peripheral_ptr;
+            break;
+        case DEVINFO_BASE:
+            mod_som_ptr->sys_peripherals_list.DEVINFO_prf_ptr = peripheral_ptr;
+            break;
+        case ROMTABLE_BASE:
+            mod_som_ptr->sys_peripherals_list.ROMTABLE_prf_ptr = peripheral_ptr;
+            break;
+        default:
+            return mod_som_encode_status_f(MOD_SOM_STATUS_ERR_FAIL_TO_FIND_BASE_PRF);
+            break;
     }
     return mod_som_encode_status_f(MOD_SOM_STATUS_OK);
 }
@@ -1016,19 +1392,19 @@ mod_som_status_t mod_som_rmv_peripheral_f(mod_som_prf_ptr_t peripheral_ptr){
     mod_som_prf_list_item_ptr_t prf_list_item_ptr;
     mod_som_status_t mod_som_status;
     bool found_flag = false;
-    if(mod_som_prf_list_head_ptr == DEF_NULL){
+    if(mod_som_ptr->prf_list_head_ptr == DEF_NULL){
         return mod_som_encode_status_f(MOD_SOM_STATUS_ERR_QUEUE_EMPTY);
     }else{
-        prf_list_item_ptr = mod_som_prf_list_head_ptr;
+        prf_list_item_ptr = mod_som_ptr->prf_list_head_ptr;
         do {
             if(prf_list_item_ptr->prf_ptr == peripheral_ptr){ //remove item from list
                 ((mod_som_prf_list_item_ptr_t)(prf_list_item_ptr->prev_item_ptr))->next_item_ptr = prf_list_item_ptr->next_item_ptr;
                 ((mod_som_prf_list_item_ptr_t)(prf_list_item_ptr->next_item_ptr))->prev_item_ptr = prf_list_item_ptr->prev_item_ptr;
-                if(prf_list_item_ptr == mod_som_prf_list_head_ptr){
-                    mod_som_prf_list_head_ptr = prf_list_item_ptr->next_item_ptr;
+                if(prf_list_item_ptr == mod_som_ptr->prf_list_head_ptr){
+                    mod_som_ptr->prf_list_head_ptr = prf_list_item_ptr->next_item_ptr;
                 }
-                if(prf_list_item_ptr == mod_som_prf_list_tail_ptr){
-                    mod_som_prf_list_tail_ptr = prf_list_item_ptr->prev_item_ptr;
+                if(prf_list_item_ptr == mod_som_ptr->prf_list_tail_ptr){
+                    mod_som_ptr->prf_list_tail_ptr = prf_list_item_ptr->prev_item_ptr;
                 }
                 mod_som_status = mod_som_free_prf_list_item_f(prf_list_item_ptr);
                 if(mod_som_status != MOD_SOM_STATUS_OK)
@@ -1046,210 +1422,210 @@ mod_som_status_t mod_som_rmv_peripheral_f(mod_som_prf_ptr_t peripheral_ptr){
     }
 
     switch ((uint32_t)peripheral_ptr->handle_port){
-    case MSC_BASE:
-        mod_som_sys_peripherals_list_ptr->MSC_prf_ptr = DEF_NULL;
-        break;
-    case EMU_BASE:
-        mod_som_sys_peripherals_list_ptr->EMU_prf_ptr = DEF_NULL;
-        break;
-    case RMU_BASE:
-        mod_som_sys_peripherals_list_ptr->RMU_prf_ptr = DEF_NULL;
-        break;
-    case CMU_BASE:
-        mod_som_sys_peripherals_list_ptr->CMU_prf_ptr = DEF_NULL;
-        break;
-    case CRYPTO0_BASE:
-        mod_som_sys_peripherals_list_ptr->CRYPTO0_prf_ptr = DEF_NULL;
-        break;
-    case LESENSE_BASE:
-        mod_som_sys_peripherals_list_ptr->LESENSE_prf_ptr = DEF_NULL;
-        break;
-    case EBI_BASE:
-        mod_som_sys_peripherals_list_ptr->EBI_prf_ptr = DEF_NULL;
-        break;
-    case ETH_BASE:
-        mod_som_sys_peripherals_list_ptr->ETH_prf_ptr = DEF_NULL;
-        break;
-    case SDIO_BASE:
-        mod_som_sys_peripherals_list_ptr->SDIO_prf_ptr = DEF_NULL;
-        break;
-    case GPIO_BASE:
-        mod_som_sys_peripherals_list_ptr->GPIO_prf_ptr = DEF_NULL;
-        break;
-    case PRS_BASE:
-        mod_som_sys_peripherals_list_ptr->PRS_prf_ptr = DEF_NULL;
-        break;
-    case LDMA_BASE:
-        mod_som_sys_peripherals_list_ptr->LDMA_prf_ptr = DEF_NULL;
-        break;
-    case FPUEH_BASE:
-        mod_som_sys_peripherals_list_ptr->FPUEH_prf_ptr = DEF_NULL;
-        break;
-    case GPCRC_BASE:
-        mod_som_sys_peripherals_list_ptr->GPCRC_prf_ptr = DEF_NULL;
-        break;
-    case CAN0_BASE:
-        mod_som_sys_peripherals_list_ptr->CAN0_prf_ptr = DEF_NULL;
-        break;
-    case CAN1_BASE:
-        mod_som_sys_peripherals_list_ptr->CAN1_prf_ptr = DEF_NULL;
-        break;
-    case TIMER0_BASE:
-        mod_som_sys_peripherals_list_ptr->TIMER0_prf_ptr = DEF_NULL;
-        break;
-    case TIMER1_BASE:
-        mod_som_sys_peripherals_list_ptr->TIMER1_prf_ptr = DEF_NULL;
-        break;
-    case TIMER2_BASE:
-        mod_som_sys_peripherals_list_ptr->TIMER2_prf_ptr = DEF_NULL;
-        break;
-    case TIMER3_BASE:
-        mod_som_sys_peripherals_list_ptr->TIMER3_prf_ptr = DEF_NULL;
-        break;
-    case TIMER4_BASE:
-        mod_som_sys_peripherals_list_ptr->TIMER4_prf_ptr = DEF_NULL;
-        break;
-    case TIMER5_BASE:
-        mod_som_sys_peripherals_list_ptr->TIMER5_prf_ptr = DEF_NULL;
-        break;
-    case TIMER6_BASE:
-        mod_som_sys_peripherals_list_ptr->TIMER6_prf_ptr = DEF_NULL;
-        break;
-    case WTIMER0_BASE:
-        mod_som_sys_peripherals_list_ptr->WTIMER0_prf_ptr = DEF_NULL;
-        break;
-    case WTIMER1_BASE:
-        mod_som_sys_peripherals_list_ptr->WTIMER1_prf_ptr = DEF_NULL;
-        break;
-    case WTIMER2_BASE:
-        mod_som_sys_peripherals_list_ptr->WTIMER2_prf_ptr = DEF_NULL;
-        break;
-    case WTIMER3_BASE:
-        mod_som_sys_peripherals_list_ptr->WTIMER3_prf_ptr = DEF_NULL;
-        break;
-    case USART0_BASE:
-        mod_som_sys_peripherals_list_ptr->USART0_prf_ptr = DEF_NULL;
-        break;
-    case USART1_BASE:
-        mod_som_sys_peripherals_list_ptr->USART1_prf_ptr = DEF_NULL;
-        break;
-    case USART2_BASE:
-        mod_som_sys_peripherals_list_ptr->USART2_prf_ptr = DEF_NULL;
-        break;
-    case USART3_BASE:
-        mod_som_sys_peripherals_list_ptr->USART3_prf_ptr = DEF_NULL;
-        break;
-    case USART4_BASE:
-        mod_som_sys_peripherals_list_ptr->USART4_prf_ptr = DEF_NULL;
-        break;
-    case USART5_BASE:
-        mod_som_sys_peripherals_list_ptr->USART5_prf_ptr = DEF_NULL;
-        break;
-    case UART0_BASE:
-        mod_som_sys_peripherals_list_ptr->UART0_prf_ptr = DEF_NULL;
-        break;
-    case UART1_BASE:
-        mod_som_sys_peripherals_list_ptr->UART1_prf_ptr = DEF_NULL;
-        break;
-    case QSPI0_BASE:
-        mod_som_sys_peripherals_list_ptr->QSPI0_prf_ptr = DEF_NULL;
-        break;
-    case LEUART0_BASE:
-        mod_som_sys_peripherals_list_ptr->LEUART0_prf_ptr = DEF_NULL;
-        break;
-    case LEUART1_BASE:
-        mod_som_sys_peripherals_list_ptr->LEUART1_prf_ptr = DEF_NULL;
-        break;
-    case LETIMER0_BASE:
-        mod_som_sys_peripherals_list_ptr->LETIMER0_prf_ptr = DEF_NULL;
-        break;
-    case LETIMER1_BASE:
-        mod_som_sys_peripherals_list_ptr->LETIMER1_prf_ptr = DEF_NULL;
-        break;
-    case CRYOTIMER_BASE:
-        mod_som_sys_peripherals_list_ptr->CRYOTIMER_prf_ptr = DEF_NULL;
-        break;
-    case PCNT0_BASE:
-        mod_som_sys_peripherals_list_ptr->PCNT0_prf_ptr = DEF_NULL;
-        break;
-    case PCNT1_BASE:
-        mod_som_sys_peripherals_list_ptr->PCNT1_prf_ptr = DEF_NULL;
-        break;
-    case PCNT2_BASE:
-        mod_som_sys_peripherals_list_ptr->PCNT2_prf_ptr = DEF_NULL;
-        break;
-    case I2C0_BASE:
-        mod_som_sys_peripherals_list_ptr->I2C0_prf_ptr = DEF_NULL;
-        break;
-    case I2C1_BASE:
-        mod_som_sys_peripherals_list_ptr->I2C1_prf_ptr = DEF_NULL;
-        break;
-    case I2C2_BASE:
-        mod_som_sys_peripherals_list_ptr->I2C2_prf_ptr = DEF_NULL;
-        break;
-    case ADC0_BASE:
-        mod_som_sys_peripherals_list_ptr->ADC0_prf_ptr = DEF_NULL;
-        break;
-    case ADC1_BASE:
-        mod_som_sys_peripherals_list_ptr->ADC1_prf_ptr = DEF_NULL;
-        break;
-    case ACMP0_BASE:
-        mod_som_sys_peripherals_list_ptr->ACMP0_prf_ptr = DEF_NULL;
-        break;
-    case ACMP1_BASE:
-        mod_som_sys_peripherals_list_ptr->ACMP1_prf_ptr = DEF_NULL;
-        break;
-    case ACMP2_BASE:
-        mod_som_sys_peripherals_list_ptr->ACMP2_prf_ptr = DEF_NULL;
-        break;
-    case ACMP3_BASE:
-        mod_som_sys_peripherals_list_ptr->ACMP3_prf_ptr = DEF_NULL;
-        break;
-    case VDAC0_BASE:
-        mod_som_sys_peripherals_list_ptr->VDAC0_prf_ptr = DEF_NULL;
-        break;
-    case USB_BASE:
-        mod_som_sys_peripherals_list_ptr->USB_prf_ptr = DEF_NULL;
-        break;
-    case IDAC0_BASE:
-        mod_som_sys_peripherals_list_ptr->IDAC0_prf_ptr = DEF_NULL;
-        break;
-    case CSEN_BASE:
-        mod_som_sys_peripherals_list_ptr->CSEN_prf_ptr = DEF_NULL;
-        break;
-    case LCD_BASE:
-        mod_som_sys_peripherals_list_ptr->LCD_prf_ptr = DEF_NULL;
-        break;
-    case RTC_BASE:
-        mod_som_sys_peripherals_list_ptr->RTC_prf_ptr = DEF_NULL;
-        break;
-    case RTCC_BASE:
-        mod_som_sys_peripherals_list_ptr->RTCC_prf_ptr = DEF_NULL;
-        break;
-    case WDOG0_BASE:
-        mod_som_sys_peripherals_list_ptr->WDOG0_prf_ptr = DEF_NULL;
-        break;
-    case WDOG1_BASE:
-        mod_som_sys_peripherals_list_ptr->WDOG1_prf_ptr = DEF_NULL;
-        break;
-    case ETM_BASE:
-        mod_som_sys_peripherals_list_ptr->ETM_prf_ptr = DEF_NULL;
-        break;
-    case SMU_BASE:
-        mod_som_sys_peripherals_list_ptr->SMU_prf_ptr = DEF_NULL;
-        break;
-    case TRNG0_BASE:
-        mod_som_sys_peripherals_list_ptr->TRNG0_prf_ptr = DEF_NULL;
-        break;
-    case DEVINFO_BASE:
-        mod_som_sys_peripherals_list_ptr->DEVINFO_prf_ptr = DEF_NULL;
-        break;
-    case ROMTABLE_BASE:
-        mod_som_sys_peripherals_list_ptr->ROMTABLE_prf_ptr = DEF_NULL;
-        break;
-    default:
-        return mod_som_encode_status_f(MOD_SOM_STATUS_ERR_FAIL_TO_FIND_BASE_PRF);
-        break;
+        case MSC_BASE:
+            mod_som_ptr->sys_peripherals_list.MSC_prf_ptr = DEF_NULL;
+            break;
+        case EMU_BASE:
+            mod_som_ptr->sys_peripherals_list.EMU_prf_ptr = DEF_NULL;
+            break;
+        case RMU_BASE:
+            mod_som_ptr->sys_peripherals_list.RMU_prf_ptr = DEF_NULL;
+            break;
+        case CMU_BASE:
+            mod_som_ptr->sys_peripherals_list.CMU_prf_ptr = DEF_NULL;
+            break;
+        case CRYPTO0_BASE:
+            mod_som_ptr->sys_peripherals_list.CRYPTO0_prf_ptr = DEF_NULL;
+            break;
+        case LESENSE_BASE:
+            mod_som_ptr->sys_peripherals_list.LESENSE_prf_ptr = DEF_NULL;
+            break;
+        case EBI_BASE:
+            mod_som_ptr->sys_peripherals_list.EBI_prf_ptr = DEF_NULL;
+            break;
+        case ETH_BASE:
+            mod_som_ptr->sys_peripherals_list.ETH_prf_ptr = DEF_NULL;
+            break;
+        case SDIO_BASE:
+            mod_som_ptr->sys_peripherals_list.SDIO_prf_ptr = DEF_NULL;
+            break;
+        case GPIO_BASE:
+            mod_som_ptr->sys_peripherals_list.GPIO_prf_ptr = DEF_NULL;
+            break;
+        case PRS_BASE:
+            mod_som_ptr->sys_peripherals_list.PRS_prf_ptr = DEF_NULL;
+            break;
+        case LDMA_BASE:
+            mod_som_ptr->sys_peripherals_list.LDMA_prf_ptr = DEF_NULL;
+            break;
+        case FPUEH_BASE:
+            mod_som_ptr->sys_peripherals_list.FPUEH_prf_ptr = DEF_NULL;
+            break;
+        case GPCRC_BASE:
+            mod_som_ptr->sys_peripherals_list.GPCRC_prf_ptr = DEF_NULL;
+            break;
+        case CAN0_BASE:
+            mod_som_ptr->sys_peripherals_list.CAN0_prf_ptr = DEF_NULL;
+            break;
+        case CAN1_BASE:
+            mod_som_ptr->sys_peripherals_list.CAN1_prf_ptr = DEF_NULL;
+            break;
+        case TIMER0_BASE:
+            mod_som_ptr->sys_peripherals_list.TIMER0_prf_ptr = DEF_NULL;
+            break;
+        case TIMER1_BASE:
+            mod_som_ptr->sys_peripherals_list.TIMER1_prf_ptr = DEF_NULL;
+            break;
+        case TIMER2_BASE:
+            mod_som_ptr->sys_peripherals_list.TIMER2_prf_ptr = DEF_NULL;
+            break;
+        case TIMER3_BASE:
+            mod_som_ptr->sys_peripherals_list.TIMER3_prf_ptr = DEF_NULL;
+            break;
+        case TIMER4_BASE:
+            mod_som_ptr->sys_peripherals_list.TIMER4_prf_ptr = DEF_NULL;
+            break;
+        case TIMER5_BASE:
+            mod_som_ptr->sys_peripherals_list.TIMER5_prf_ptr = DEF_NULL;
+            break;
+        case TIMER6_BASE:
+            mod_som_ptr->sys_peripherals_list.TIMER6_prf_ptr = DEF_NULL;
+            break;
+        case WTIMER0_BASE:
+            mod_som_ptr->sys_peripherals_list.WTIMER0_prf_ptr = DEF_NULL;
+            break;
+        case WTIMER1_BASE:
+            mod_som_ptr->sys_peripherals_list.WTIMER1_prf_ptr = DEF_NULL;
+            break;
+        case WTIMER2_BASE:
+            mod_som_ptr->sys_peripherals_list.WTIMER2_prf_ptr = DEF_NULL;
+            break;
+        case WTIMER3_BASE:
+            mod_som_ptr->sys_peripherals_list.WTIMER3_prf_ptr = DEF_NULL;
+            break;
+        case USART0_BASE:
+            mod_som_ptr->sys_peripherals_list.USART0_prf_ptr = DEF_NULL;
+            break;
+        case USART1_BASE:
+            mod_som_ptr->sys_peripherals_list.USART1_prf_ptr = DEF_NULL;
+            break;
+        case USART2_BASE:
+            mod_som_ptr->sys_peripherals_list.USART2_prf_ptr = DEF_NULL;
+            break;
+        case USART3_BASE:
+            mod_som_ptr->sys_peripherals_list.USART3_prf_ptr = DEF_NULL;
+            break;
+        case USART4_BASE:
+            mod_som_ptr->sys_peripherals_list.USART4_prf_ptr = DEF_NULL;
+            break;
+        case USART5_BASE:
+            mod_som_ptr->sys_peripherals_list.USART5_prf_ptr = DEF_NULL;
+            break;
+        case UART0_BASE:
+            mod_som_ptr->sys_peripherals_list.UART0_prf_ptr = DEF_NULL;
+            break;
+        case UART1_BASE:
+            mod_som_ptr->sys_peripherals_list.UART1_prf_ptr = DEF_NULL;
+            break;
+        case QSPI0_BASE:
+            mod_som_ptr->sys_peripherals_list.QSPI0_prf_ptr = DEF_NULL;
+            break;
+        case LEUART0_BASE:
+            mod_som_ptr->sys_peripherals_list.LEUART0_prf_ptr = DEF_NULL;
+            break;
+        case LEUART1_BASE:
+            mod_som_ptr->sys_peripherals_list.LEUART1_prf_ptr = DEF_NULL;
+            break;
+        case LETIMER0_BASE:
+            mod_som_ptr->sys_peripherals_list.LETIMER0_prf_ptr = DEF_NULL;
+            break;
+        case LETIMER1_BASE:
+            mod_som_ptr->sys_peripherals_list.LETIMER1_prf_ptr = DEF_NULL;
+            break;
+        case CRYOTIMER_BASE:
+            mod_som_ptr->sys_peripherals_list.CRYOTIMER_prf_ptr = DEF_NULL;
+            break;
+        case PCNT0_BASE:
+            mod_som_ptr->sys_peripherals_list.PCNT0_prf_ptr = DEF_NULL;
+            break;
+        case PCNT1_BASE:
+            mod_som_ptr->sys_peripherals_list.PCNT1_prf_ptr = DEF_NULL;
+            break;
+        case PCNT2_BASE:
+            mod_som_ptr->sys_peripherals_list.PCNT2_prf_ptr = DEF_NULL;
+            break;
+        case I2C0_BASE:
+            mod_som_ptr->sys_peripherals_list.I2C0_prf_ptr = DEF_NULL;
+            break;
+        case I2C1_BASE:
+            mod_som_ptr->sys_peripherals_list.I2C1_prf_ptr = DEF_NULL;
+            break;
+        case I2C2_BASE:
+            mod_som_ptr->sys_peripherals_list.I2C2_prf_ptr = DEF_NULL;
+            break;
+        case ADC0_BASE:
+            mod_som_ptr->sys_peripherals_list.ADC0_prf_ptr = DEF_NULL;
+            break;
+        case ADC1_BASE:
+            mod_som_ptr->sys_peripherals_list.ADC1_prf_ptr = DEF_NULL;
+            break;
+        case ACMP0_BASE:
+            mod_som_ptr->sys_peripherals_list.ACMP0_prf_ptr = DEF_NULL;
+            break;
+        case ACMP1_BASE:
+            mod_som_ptr->sys_peripherals_list.ACMP1_prf_ptr = DEF_NULL;
+            break;
+        case ACMP2_BASE:
+            mod_som_ptr->sys_peripherals_list.ACMP2_prf_ptr = DEF_NULL;
+            break;
+        case ACMP3_BASE:
+            mod_som_ptr->sys_peripherals_list.ACMP3_prf_ptr = DEF_NULL;
+            break;
+        case VDAC0_BASE:
+            mod_som_ptr->sys_peripherals_list.VDAC0_prf_ptr = DEF_NULL;
+            break;
+        case USB_BASE:
+            mod_som_ptr->sys_peripherals_list.USB_prf_ptr = DEF_NULL;
+            break;
+        case IDAC0_BASE:
+            mod_som_ptr->sys_peripherals_list.IDAC0_prf_ptr = DEF_NULL;
+            break;
+        case CSEN_BASE:
+            mod_som_ptr->sys_peripherals_list.CSEN_prf_ptr = DEF_NULL;
+            break;
+        case LCD_BASE:
+            mod_som_ptr->sys_peripherals_list.LCD_prf_ptr = DEF_NULL;
+            break;
+        case RTC_BASE:
+            mod_som_ptr->sys_peripherals_list.RTC_prf_ptr = DEF_NULL;
+            break;
+        case RTCC_BASE:
+            mod_som_ptr->sys_peripherals_list.RTCC_prf_ptr = DEF_NULL;
+            break;
+        case WDOG0_BASE:
+            mod_som_ptr->sys_peripherals_list.WDOG0_prf_ptr = DEF_NULL;
+            break;
+        case WDOG1_BASE:
+            mod_som_ptr->sys_peripherals_list.WDOG1_prf_ptr = DEF_NULL;
+            break;
+        case ETM_BASE:
+            mod_som_ptr->sys_peripherals_list.ETM_prf_ptr = DEF_NULL;
+            break;
+        case SMU_BASE:
+            mod_som_ptr->sys_peripherals_list.SMU_prf_ptr = DEF_NULL;
+            break;
+        case TRNG0_BASE:
+            mod_som_ptr->sys_peripherals_list.TRNG0_prf_ptr = DEF_NULL;
+            break;
+        case DEVINFO_BASE:
+            mod_som_ptr->sys_peripherals_list.DEVINFO_prf_ptr = DEF_NULL;
+            break;
+        case ROMTABLE_BASE:
+            mod_som_ptr->sys_peripherals_list.ROMTABLE_prf_ptr = DEF_NULL;
+            break;
+        default:
+            return mod_som_encode_status_f(MOD_SOM_STATUS_ERR_FAIL_TO_FIND_BASE_PRF);
+            break;
 
     }
     return mod_som_encode_status_f(MOD_SOM_STATUS_OK);
@@ -1393,11 +1769,11 @@ mod_som_status_t mod_som_encode_status_f(uint8_t mod_som_io_status){
 
 mod_som_prf_list_item_ptr_t mod_som_new_prf_list_item_f(mod_som_prf_ptr_t peripheral_ptr){
     RTOS_ERR err;
-    if(!mod_som_initialized_flag)
+    if(!mod_som_ptr->initialized_flag)
         mod_som_main_init_f();
     mod_som_prf_list_item_ptr_t mod_som_prf_list_item_ptr =
             (mod_som_prf_list_item_ptr_t)Mem_DynPoolBlkGet(
-                    &mod_som_prf_dyn_mem_pool,
+                    &mod_som_ptr->prf_dyn_mem_pool,
                     &err);
     // Check error code
     //ALB Stall if error in Mem_DynPoolBlkGet
@@ -1416,11 +1792,11 @@ mod_som_prf_list_item_ptr_t mod_som_new_prf_list_item_f(mod_som_prf_ptr_t periph
 
 mod_som_status_t mod_som_free_prf_list_item_f(mod_som_prf_list_item_ptr_t prf_list_item_ptr){
     RTOS_ERR err;
-    if(!mod_som_initialized_flag)
+    if(!mod_som_ptr->initialized_flag)
         mod_som_main_init_f();
-    Mem_DynPoolBlkFree(&mod_som_prf_dyn_mem_pool,
-            (void *)prf_list_item_ptr,
-            &err);
+    Mem_DynPoolBlkFree(&mod_som_ptr->prf_dyn_mem_pool,
+                       (void *)prf_list_item_ptr,
+                       &err);
     APP_RTOS_ASSERT_DBG((RTOS_ERR_CODE_GET(err) == RTOS_ERR_NONE), 1);
     if(RTOS_ERR_CODE_GET(err) != RTOS_ERR_NONE)
         return mod_som_encode_status_f(MOD_SOM_STATUS_ERR_FAIL_TO_FREE_MEMORY);
@@ -1589,16 +1965,16 @@ uint32_t mod_som_lut_hex_str_f(uint32_t num, char *s, bool lower_case)
 
 
 void EMU_IRQHandler(void){
-    if(mod_som_sys_peripherals_list_ptr->EMU_prf_ptr != DEF_NULL){
-        mod_som_sys_peripherals_list_ptr->EMU_prf_ptr->irq_handler_1_f(
-                (void *)mod_som_sys_peripherals_list_ptr->EMU_prf_ptr->device_ptr);
+    if(mod_som_ptr->sys_peripherals_list.EMU_prf_ptr != DEF_NULL){
+        mod_som_ptr->sys_peripherals_list.EMU_prf_ptr->irq_handler_1_f(
+                (void *)mod_som_ptr->sys_peripherals_list.EMU_prf_ptr->device_ptr);
     }
     return;
 }
 //void WDOG0_IRQHandler(void){
-//    if(mod_som_sys_peripherals_list_ptr->WDOG0_prf_ptr != DEF_NULL){
-//        mod_som_sys_peripherals_list_ptr->WDOG0_prf_ptr->irq_handler_1_f(
-//                (void *)mod_som_sys_peripherals_list_ptr->WDOG0_prf_ptr->device_ptr);
+//    if(mod_som_ptr->sys_peripherals_list.WDOG0_prf_ptr != DEF_NULL){
+//        mod_som_ptr->sys_peripherals_list.WDOG0_prf_ptr->irq_handler_1_f(
+//                (void *)mod_som_ptr->sys_peripherals_list.WDOG0_prf_ptr->device_ptr);
 //    }
 //    return;
 //}
@@ -1606,40 +1982,40 @@ void EMU_IRQHandler(void){
 // TODO create different IRQ handler with Mike
 void LDMA_IRQHandler(void){
 
-  //ALB so far I am hard coding the ch bit position.
-  //ALB lets check for automatic channel selection.
-  uint8_t ch0_bit_position=1;
-  uint8_t ch1_bit_position=2;
-  uint8_t ch2_bit_position=4;
-  uint8_t ch3_bit_position=8;
-  uint32_t pending;
+    //ALB so far I am hard coding the ch bit position.
+    //ALB lets check for automatic channel selection.
+    uint8_t ch0_bit_position=1;
+    uint8_t ch1_bit_position=2;
+    uint8_t ch2_bit_position=4;
+    uint8_t ch3_bit_position=8;
+    uint32_t pending;
 
-  /* Read interrupt source */
-  pending = LDMA->IF;
+    /* Read interrupt source */
+    pending = LDMA->IF;
 
-  CORE_DECLARE_IRQ_STATE;
-  CORE_ENTER_ATOMIC();
+    CORE_DECLARE_IRQ_STATE;
+    CORE_ENTER_ATOMIC();
 
-  /* clear interrupt source */
-  LDMA->IFC;
-  if (pending & ch0_bit_position){
-      LDMA_IntClear(ch0_bit_position);
-      mod_som_efe_ldma_irq_handler_f();
+    /* clear interrupt source */
+    LDMA->IFC;
+    if (pending & ch0_bit_position){
+        LDMA_IntClear(ch0_bit_position);
+        mod_som_efe_ldma_irq_handler_f();
 
-  }
-  if(pending & ch1_bit_position){
-      LDMA_IntClear(ch1_bit_position);
-      mod_som_sbe41_ldma_irq_handler_f();
-  }
-  if(pending & ch2_bit_position){
-      LDMA_IntClear(ch2_bit_position);
-  }
-  if(pending & ch3_bit_position){
-      LDMA_IntClear(ch3_bit_position);
-      mod_som_io_ldma_irq_handler_f();
-  }
+    }
+    if(pending & ch1_bit_position){
+        LDMA_IntClear(ch1_bit_position);
+        mod_som_sbe41_ldma_irq_handler_f();
+    }
+    if(pending & ch2_bit_position){
+        LDMA_IntClear(ch2_bit_position);
+    }
+    if(pending & ch3_bit_position){
+        LDMA_IntClear(ch3_bit_position);
+        mod_som_io_ldma_irq_handler_f();
+    }
 
-  CORE_EXIT_ATOMIC();
+    CORE_EXIT_ATOMIC();
 
 
     return;
@@ -1647,460 +2023,460 @@ void LDMA_IRQHandler(void){
 //ALB end comment
 
 //void GPIO_EVEN_IRQHandler(void){
-//if(mod_som_sys_peripherals_list_ptr->GPIO_prf_ptr != DEF_NULL){
-//    mod_som_sys_peripherals_list_ptr->GPIO_prf_ptr->irq_handler_1_f(
-//            (void *)mod_som_sys_peripherals_list_ptr->GPIO_prf_ptr->device_ptr);
+//if(mod_som_ptr->sys_peripherals_list.GPIO_prf_ptr != DEF_NULL){
+//    mod_som_ptr->sys_peripherals_list.GPIO_prf_ptr->irq_handler_1_f(
+//            (void *)mod_som_ptr->sys_peripherals_list.GPIO_prf_ptr->device_ptr);
 //}
 //    return;
 //}
 void SMU_IRQHandler(void){
-    if(mod_som_sys_peripherals_list_ptr->SMU_prf_ptr != DEF_NULL){
-        mod_som_sys_peripherals_list_ptr->SMU_prf_ptr->irq_handler_1_f(
-                (void *)mod_som_sys_peripherals_list_ptr->SMU_prf_ptr->device_ptr);
+    if(mod_som_ptr->sys_peripherals_list.SMU_prf_ptr != DEF_NULL){
+        mod_som_ptr->sys_peripherals_list.SMU_prf_ptr->irq_handler_1_f(
+                (void *)mod_som_ptr->sys_peripherals_list.SMU_prf_ptr->device_ptr);
     }
     return;
 }
 void TIMER0_IRQHandler(void){
-    if(mod_som_sys_peripherals_list_ptr->TIMER0_prf_ptr != DEF_NULL){
-        mod_som_sys_peripherals_list_ptr->TIMER0_prf_ptr->irq_handler_1_f(
-                (void *)mod_som_sys_peripherals_list_ptr->TIMER0_prf_ptr->device_ptr);
+    if(mod_som_ptr->sys_peripherals_list.TIMER0_prf_ptr != DEF_NULL){
+        mod_som_ptr->sys_peripherals_list.TIMER0_prf_ptr->irq_handler_1_f(
+                (void *)mod_som_ptr->sys_peripherals_list.TIMER0_prf_ptr->device_ptr);
     }
     return;
 }
 void USART0_RX_IRQHandler(void){
-    if(mod_som_sys_peripherals_list_ptr->USART0_prf_ptr != DEF_NULL){
-        mod_som_sys_peripherals_list_ptr->USART0_prf_ptr->irq_handler_1_f(
-                (void *)mod_som_sys_peripherals_list_ptr->USART0_prf_ptr->device_ptr);
+    if(mod_som_ptr->sys_peripherals_list.USART0_prf_ptr != DEF_NULL){
+        mod_som_ptr->sys_peripherals_list.USART0_prf_ptr->irq_handler_1_f(
+                (void *)mod_som_ptr->sys_peripherals_list.USART0_prf_ptr->device_ptr);
     }
     return;
 }
 void USART0_TX_IRQHandler(void){
-    if(mod_som_sys_peripherals_list_ptr->USART0_prf_ptr != DEF_NULL){
-        mod_som_sys_peripherals_list_ptr->USART0_prf_ptr->irq_handler_2_f(
-                (void *)mod_som_sys_peripherals_list_ptr->USART0_prf_ptr->device_ptr);
+    if(mod_som_ptr->sys_peripherals_list.USART0_prf_ptr != DEF_NULL){
+        mod_som_ptr->sys_peripherals_list.USART0_prf_ptr->irq_handler_2_f(
+                (void *)mod_som_ptr->sys_peripherals_list.USART0_prf_ptr->device_ptr);
     }
     return;
 }
 void ACMP0_IRQHandler(void){
-    if(mod_som_sys_peripherals_list_ptr->ACMP0_prf_ptr != DEF_NULL){
-        mod_som_sys_peripherals_list_ptr->ACMP0_prf_ptr->irq_handler_1_f(
-                (void *)mod_som_sys_peripherals_list_ptr->ACMP0_prf_ptr->device_ptr);
+    if(mod_som_ptr->sys_peripherals_list.ACMP0_prf_ptr != DEF_NULL){
+        mod_som_ptr->sys_peripherals_list.ACMP0_prf_ptr->irq_handler_1_f(
+                (void *)mod_som_ptr->sys_peripherals_list.ACMP0_prf_ptr->device_ptr);
     }
     return;
 }
 //void ADC0_IRQHandler(void){
-//    if(mod_som_sys_peripherals_list_ptr->ADC0_prf_ptr != DEF_NULL){
-//        mod_som_sys_peripherals_list_ptr->ADC0_prf_ptr->irq_handler_1_f(
-//                (void *)mod_som_sys_peripherals_list_ptr->ADC0_prf_ptr->device_ptr);
+//    if(mod_som_ptr->sys_peripherals_list.ADC0_prf_ptr != DEF_NULL){
+//        mod_som_ptr->sys_peripherals_list.ADC0_prf_ptr->irq_handler_1_f(
+//                (void *)mod_som_ptr->sys_peripherals_list.ADC0_prf_ptr->device_ptr);
 //    }
 //    return;
 //}
 void IDAC0_IRQHandler(void){
-    if(mod_som_sys_peripherals_list_ptr->IDAC0_prf_ptr != DEF_NULL){
-        mod_som_sys_peripherals_list_ptr->IDAC0_prf_ptr->irq_handler_1_f(
-                (void *)mod_som_sys_peripherals_list_ptr->IDAC0_prf_ptr->device_ptr);
+    if(mod_som_ptr->sys_peripherals_list.IDAC0_prf_ptr != DEF_NULL){
+        mod_som_ptr->sys_peripherals_list.IDAC0_prf_ptr->irq_handler_1_f(
+                (void *)mod_som_ptr->sys_peripherals_list.IDAC0_prf_ptr->device_ptr);
     }
     return;
 }
 void I2C0_IRQHandler(void){
-    if(mod_som_sys_peripherals_list_ptr->I2C0_prf_ptr != DEF_NULL){
-        mod_som_sys_peripherals_list_ptr->I2C0_prf_ptr->irq_handler_1_f(
-                (void *)mod_som_sys_peripherals_list_ptr->I2C0_prf_ptr->device_ptr);
+    if(mod_som_ptr->sys_peripherals_list.I2C0_prf_ptr != DEF_NULL){
+        mod_som_ptr->sys_peripherals_list.I2C0_prf_ptr->irq_handler_1_f(
+                (void *)mod_som_ptr->sys_peripherals_list.I2C0_prf_ptr->device_ptr);
     }
     return;
 }
 void I2C1_IRQHandler(void){
-    if(mod_som_sys_peripherals_list_ptr->I2C1_prf_ptr != DEF_NULL){
-        mod_som_sys_peripherals_list_ptr->I2C1_prf_ptr->irq_handler_1_f(
-                (void *)mod_som_sys_peripherals_list_ptr->I2C1_prf_ptr->device_ptr);
+    if(mod_som_ptr->sys_peripherals_list.I2C1_prf_ptr != DEF_NULL){
+        mod_som_ptr->sys_peripherals_list.I2C1_prf_ptr->irq_handler_1_f(
+                (void *)mod_som_ptr->sys_peripherals_list.I2C1_prf_ptr->device_ptr);
     }
     return;
 }
 //void GPIO_ODD_IRQHandler(void){
-//if(mod_som_sys_peripherals_list_ptr->GPIO_prf_ptr != DEF_NULL){
-//    mod_som_sys_peripherals_list_ptr->GPIO_prf_ptr->irq_handler_2_f(
-//            (void *)mod_som_sys_peripherals_list_ptr->GPIO_prf_ptr->device_ptr);
+//if(mod_som_ptr->sys_peripherals_list.GPIO_prf_ptr != DEF_NULL){
+//    mod_som_ptr->sys_peripherals_list.GPIO_prf_ptr->irq_handler_2_f(
+//            (void *)mod_som_ptr->sys_peripherals_list.GPIO_prf_ptr->device_ptr);
 //    return;
 //}
 //}
 void TIMER1_IRQHandler(void){
-    if(mod_som_sys_peripherals_list_ptr->TIMER1_prf_ptr != DEF_NULL){
-        mod_som_sys_peripherals_list_ptr->TIMER1_prf_ptr->irq_handler_1_f(
-                (void *)mod_som_sys_peripherals_list_ptr->TIMER1_prf_ptr->device_ptr);
+    if(mod_som_ptr->sys_peripherals_list.TIMER1_prf_ptr != DEF_NULL){
+        mod_som_ptr->sys_peripherals_list.TIMER1_prf_ptr->irq_handler_1_f(
+                (void *)mod_som_ptr->sys_peripherals_list.TIMER1_prf_ptr->device_ptr);
     }
     return;
 }
 void TIMER2_IRQHandler(void){
-    if(mod_som_sys_peripherals_list_ptr->TIMER2_prf_ptr != DEF_NULL){
-        mod_som_sys_peripherals_list_ptr->TIMER2_prf_ptr->irq_handler_1_f(
-                (void *)mod_som_sys_peripherals_list_ptr->TIMER2_prf_ptr->device_ptr);
+    if(mod_som_ptr->sys_peripherals_list.TIMER2_prf_ptr != DEF_NULL){
+        mod_som_ptr->sys_peripherals_list.TIMER2_prf_ptr->irq_handler_1_f(
+                (void *)mod_som_ptr->sys_peripherals_list.TIMER2_prf_ptr->device_ptr);
     }
     return;
 }
 void TIMER3_IRQHandler(void){
-    if(mod_som_sys_peripherals_list_ptr->TIMER3_prf_ptr != DEF_NULL){
-        mod_som_sys_peripherals_list_ptr->TIMER3_prf_ptr->irq_handler_1_f(
-                (void *)mod_som_sys_peripherals_list_ptr->TIMER3_prf_ptr->device_ptr);
+    if(mod_som_ptr->sys_peripherals_list.TIMER3_prf_ptr != DEF_NULL){
+        mod_som_ptr->sys_peripherals_list.TIMER3_prf_ptr->irq_handler_1_f(
+                (void *)mod_som_ptr->sys_peripherals_list.TIMER3_prf_ptr->device_ptr);
     }
     return;
 }
 void USART1_RX_IRQHandler(void){
-    if(mod_som_sys_peripherals_list_ptr->USART1_prf_ptr != DEF_NULL){
-        mod_som_sys_peripherals_list_ptr->USART1_prf_ptr->irq_handler_1_f(
-                (void *)mod_som_sys_peripherals_list_ptr->USART1_prf_ptr->device_ptr);
+    if(mod_som_ptr->sys_peripherals_list.USART1_prf_ptr != DEF_NULL){
+        mod_som_ptr->sys_peripherals_list.USART1_prf_ptr->irq_handler_1_f(
+                (void *)mod_som_ptr->sys_peripherals_list.USART1_prf_ptr->device_ptr);
     }
     return;
 }
 void USART1_TX_IRQHandler(void){
-    if(mod_som_sys_peripherals_list_ptr->USART1_prf_ptr != DEF_NULL){
-        mod_som_sys_peripherals_list_ptr->USART1_prf_ptr->irq_handler_2_f(
-                (void *)mod_som_sys_peripherals_list_ptr->USART1_prf_ptr->device_ptr);
+    if(mod_som_ptr->sys_peripherals_list.USART1_prf_ptr != DEF_NULL){
+        mod_som_ptr->sys_peripherals_list.USART1_prf_ptr->irq_handler_2_f(
+                (void *)mod_som_ptr->sys_peripherals_list.USART1_prf_ptr->device_ptr);
     }
     return;
 }
 void USART2_RX_IRQHandler(void){
-    if(mod_som_sys_peripherals_list_ptr->USART2_prf_ptr != DEF_NULL){
-        mod_som_sys_peripherals_list_ptr->USART2_prf_ptr->irq_handler_1_f(
-                (void *)mod_som_sys_peripherals_list_ptr->USART2_prf_ptr->device_ptr);
+    if(mod_som_ptr->sys_peripherals_list.USART2_prf_ptr != DEF_NULL){
+        mod_som_ptr->sys_peripherals_list.USART2_prf_ptr->irq_handler_1_f(
+                (void *)mod_som_ptr->sys_peripherals_list.USART2_prf_ptr->device_ptr);
     }
     return;
 }
 void USART2_TX_IRQHandler(void){
-    if(mod_som_sys_peripherals_list_ptr->USART2_prf_ptr != DEF_NULL){
-        mod_som_sys_peripherals_list_ptr->USART2_prf_ptr->irq_handler_2_f(
-                (void *)mod_som_sys_peripherals_list_ptr->USART2_prf_ptr->device_ptr);
+    if(mod_som_ptr->sys_peripherals_list.USART2_prf_ptr != DEF_NULL){
+        mod_som_ptr->sys_peripherals_list.USART2_prf_ptr->irq_handler_2_f(
+                (void *)mod_som_ptr->sys_peripherals_list.USART2_prf_ptr->device_ptr);
     }
     return;
 }
 void UART0_RX_IRQHandler(void){
-    if(mod_som_sys_peripherals_list_ptr->UART0_prf_ptr != DEF_NULL){
-        mod_som_sys_peripherals_list_ptr->UART0_prf_ptr->irq_handler_1_f(
-                (void *)mod_som_sys_peripherals_list_ptr->UART0_prf_ptr->device_ptr);
+    if(mod_som_ptr->sys_peripherals_list.UART0_prf_ptr != DEF_NULL){
+        mod_som_ptr->sys_peripherals_list.UART0_prf_ptr->irq_handler_1_f(
+                (void *)mod_som_ptr->sys_peripherals_list.UART0_prf_ptr->device_ptr);
     }
     return;
 }
 void UART0_TX_IRQHandler(void){
-    if(mod_som_sys_peripherals_list_ptr->UART0_prf_ptr != DEF_NULL){
-        mod_som_sys_peripherals_list_ptr->UART0_prf_ptr->irq_handler_2_f(
-                (void *)mod_som_sys_peripherals_list_ptr->UART0_prf_ptr->device_ptr);
+    if(mod_som_ptr->sys_peripherals_list.UART0_prf_ptr != DEF_NULL){
+        mod_som_ptr->sys_peripherals_list.UART0_prf_ptr->irq_handler_2_f(
+                (void *)mod_som_ptr->sys_peripherals_list.UART0_prf_ptr->device_ptr);
     }
     return;
 }
 //ALB comment to make the retarget serial port works on the SOM MEZZANINE REV2
 //void UART1_RX_IRQHandler(void){
-//    if(mod_som_sys_peripherals_list_ptr->UART1_prf_ptr != DEF_NULL){
-//        mod_som_sys_peripherals_list_ptr->UART1_prf_ptr->irq_handler_1_f(
-//                (void *)mod_som_sys_peripherals_list_ptr->UART1_prf_ptr->device_ptr);
+//    if(mod_som_ptr->sys_peripherals_list.UART1_prf_ptr != DEF_NULL){
+//        mod_som_ptr->sys_peripherals_list.UART1_prf_ptr->irq_handler_1_f(
+//                (void *)mod_som_ptr->sys_peripherals_list.UART1_prf_ptr->device_ptr);
 //    }
 //    return;
 //}
 void UART1_TX_IRQHandler(void){
-    if(mod_som_sys_peripherals_list_ptr->UART1_prf_ptr != DEF_NULL){
-        mod_som_sys_peripherals_list_ptr->UART1_prf_ptr->irq_handler_2_f(
-                (void *)mod_som_sys_peripherals_list_ptr->UART1_prf_ptr->device_ptr);
+    if(mod_som_ptr->sys_peripherals_list.UART1_prf_ptr != DEF_NULL){
+        mod_som_ptr->sys_peripherals_list.UART1_prf_ptr->irq_handler_2_f(
+                (void *)mod_som_ptr->sys_peripherals_list.UART1_prf_ptr->device_ptr);
     }
     return;
 }
 //void LEUART0_IRQHandler(void){
-//    if(mod_som_sys_peripherals_list_ptr->LEUART0_prf_ptr != DEF_NULL){
+//    if(mod_som_ptr->sys_peripherals_list.LEUART0_prf_ptr != DEF_NULL){
 //        //        printf("LEUART0_IRQHandler();\r\n");
-//        mod_som_sys_peripherals_list_ptr->LEUART0_prf_ptr->irq_handler_1_f(
-//                (void *)mod_som_sys_peripherals_list_ptr->LEUART0_prf_ptr->device_ptr);
+//        mod_som_ptr->sys_peripherals_list.LEUART0_prf_ptr->irq_handler_1_f(
+//                (void *)mod_som_ptr->sys_peripherals_list.LEUART0_prf_ptr->device_ptr);
 //        //    printf("LEUART0_IRQHandler();\r\n");
 //    }
 //    return;
 //}
 void LEUART1_IRQHandler(void){
-    if(mod_som_sys_peripherals_list_ptr->LEUART1_prf_ptr != DEF_NULL){
-        mod_som_sys_peripherals_list_ptr->LEUART1_prf_ptr->irq_handler_1_f(
-                (void *)mod_som_sys_peripherals_list_ptr->LEUART1_prf_ptr->device_ptr);
+    if(mod_som_ptr->sys_peripherals_list.LEUART1_prf_ptr != DEF_NULL){
+        mod_som_ptr->sys_peripherals_list.LEUART1_prf_ptr->irq_handler_1_f(
+                (void *)mod_som_ptr->sys_peripherals_list.LEUART1_prf_ptr->device_ptr);
     }
     return;
 }
 void LETIMER0_IRQHandler(void){
-    if(mod_som_sys_peripherals_list_ptr->LETIMER0_prf_ptr != DEF_NULL){
-        mod_som_sys_peripherals_list_ptr->LETIMER0_prf_ptr->irq_handler_1_f(
-                (void *)mod_som_sys_peripherals_list_ptr->LETIMER0_prf_ptr->device_ptr);
+    if(mod_som_ptr->sys_peripherals_list.LETIMER0_prf_ptr != DEF_NULL){
+        mod_som_ptr->sys_peripherals_list.LETIMER0_prf_ptr->irq_handler_1_f(
+                (void *)mod_som_ptr->sys_peripherals_list.LETIMER0_prf_ptr->device_ptr);
     }
     return;
 }
 void PCNT0_IRQHandler(void){
-    if(mod_som_sys_peripherals_list_ptr->PCNT0_prf_ptr != DEF_NULL){
-        mod_som_sys_peripherals_list_ptr->PCNT0_prf_ptr->irq_handler_1_f(
-                (void *)mod_som_sys_peripherals_list_ptr->PCNT0_prf_ptr->device_ptr);
+    if(mod_som_ptr->sys_peripherals_list.PCNT0_prf_ptr != DEF_NULL){
+        mod_som_ptr->sys_peripherals_list.PCNT0_prf_ptr->irq_handler_1_f(
+                (void *)mod_som_ptr->sys_peripherals_list.PCNT0_prf_ptr->device_ptr);
     }
     return;
 }
 void PCNT1_IRQHandler(void){
-    if(mod_som_sys_peripherals_list_ptr->PCNT1_prf_ptr != DEF_NULL){
-        mod_som_sys_peripherals_list_ptr->PCNT1_prf_ptr->irq_handler_1_f(
-                (void *)mod_som_sys_peripherals_list_ptr->PCNT1_prf_ptr->device_ptr);
+    if(mod_som_ptr->sys_peripherals_list.PCNT1_prf_ptr != DEF_NULL){
+        mod_som_ptr->sys_peripherals_list.PCNT1_prf_ptr->irq_handler_1_f(
+                (void *)mod_som_ptr->sys_peripherals_list.PCNT1_prf_ptr->device_ptr);
     }
     return;
 }
 void PCNT2_IRQHandler(void){
-    if(mod_som_sys_peripherals_list_ptr->PCNT2_prf_ptr != DEF_NULL){
-        mod_som_sys_peripherals_list_ptr->PCNT2_prf_ptr->irq_handler_1_f(
-                (void *)mod_som_sys_peripherals_list_ptr->PCNT2_prf_ptr->device_ptr);
+    if(mod_som_ptr->sys_peripherals_list.PCNT2_prf_ptr != DEF_NULL){
+        mod_som_ptr->sys_peripherals_list.PCNT2_prf_ptr->irq_handler_1_f(
+                (void *)mod_som_ptr->sys_peripherals_list.PCNT2_prf_ptr->device_ptr);
     }
     return;
 }
 //void RTCC_IRQHandler(void){
-//if(mod_som_sys_peripherals_list_ptr->RTCC_prf_ptr != DEF_NULL){
-//    mod_som_sys_peripherals_list_ptr->RTCC_prf_ptr->irq_handler_1_f(
-//            (void *)mod_som_sys_peripherals_list_ptr->RTCC_prf_ptr->device_ptr);
+//if(mod_som_ptr->sys_peripherals_list.RTCC_prf_ptr != DEF_NULL){
+//    mod_som_ptr->sys_peripherals_list.RTCC_prf_ptr->irq_handler_1_f(
+//            (void *)mod_som_ptr->sys_peripherals_list.RTCC_prf_ptr->device_ptr);
 //}
 //    return;
 //}
 void CMU_IRQHandler(void){
-    if(mod_som_sys_peripherals_list_ptr->CMU_prf_ptr != DEF_NULL){
-        mod_som_sys_peripherals_list_ptr->CMU_prf_ptr->irq_handler_1_f(
-                (void *)mod_som_sys_peripherals_list_ptr->CMU_prf_ptr->device_ptr);
+    if(mod_som_ptr->sys_peripherals_list.CMU_prf_ptr != DEF_NULL){
+        mod_som_ptr->sys_peripherals_list.CMU_prf_ptr->irq_handler_1_f(
+                (void *)mod_som_ptr->sys_peripherals_list.CMU_prf_ptr->device_ptr);
     }
     return;
 }
 void MSC_IRQHandler(void){
-    if(mod_som_sys_peripherals_list_ptr->MSC_prf_ptr != DEF_NULL){
-        mod_som_sys_peripherals_list_ptr->MSC_prf_ptr->irq_handler_1_f(
-                (void *)mod_som_sys_peripherals_list_ptr->MSC_prf_ptr->device_ptr);
+    if(mod_som_ptr->sys_peripherals_list.MSC_prf_ptr != DEF_NULL){
+        mod_som_ptr->sys_peripherals_list.MSC_prf_ptr->irq_handler_1_f(
+                (void *)mod_som_ptr->sys_peripherals_list.MSC_prf_ptr->device_ptr);
     }
     return;
 }
 void CRYPTO0_IRQHandler(void){
-    if(mod_som_sys_peripherals_list_ptr->CRYPTO0_prf_ptr != DEF_NULL){
-        mod_som_sys_peripherals_list_ptr->CRYPTO0_prf_ptr->irq_handler_1_f(
-                (void *)mod_som_sys_peripherals_list_ptr->CRYPTO0_prf_ptr->device_ptr);
+    if(mod_som_ptr->sys_peripherals_list.CRYPTO0_prf_ptr != DEF_NULL){
+        mod_som_ptr->sys_peripherals_list.CRYPTO0_prf_ptr->irq_handler_1_f(
+                (void *)mod_som_ptr->sys_peripherals_list.CRYPTO0_prf_ptr->device_ptr);
     }
     return;
 }
 void CRYOTIMER_IRQHandler(void){
-    if(mod_som_sys_peripherals_list_ptr->CRYOTIMER_prf_ptr != DEF_NULL){
-        mod_som_sys_peripherals_list_ptr->CRYOTIMER_prf_ptr->irq_handler_1_f(
-                (void *)mod_som_sys_peripherals_list_ptr->CRYOTIMER_prf_ptr->device_ptr);
+    if(mod_som_ptr->sys_peripherals_list.CRYOTIMER_prf_ptr != DEF_NULL){
+        mod_som_ptr->sys_peripherals_list.CRYOTIMER_prf_ptr->irq_handler_1_f(
+                (void *)mod_som_ptr->sys_peripherals_list.CRYOTIMER_prf_ptr->device_ptr);
     }
     return;
 }
 void FPUEH_IRQHandler(void){
-    if(mod_som_sys_peripherals_list_ptr->FPUEH_prf_ptr != DEF_NULL){
-        mod_som_sys_peripherals_list_ptr->FPUEH_prf_ptr->irq_handler_1_f(
-                (void *)mod_som_sys_peripherals_list_ptr->FPUEH_prf_ptr->device_ptr);
+    if(mod_som_ptr->sys_peripherals_list.FPUEH_prf_ptr != DEF_NULL){
+        mod_som_ptr->sys_peripherals_list.FPUEH_prf_ptr->irq_handler_1_f(
+                (void *)mod_som_ptr->sys_peripherals_list.FPUEH_prf_ptr->device_ptr);
     }
     return;
 }
 void USART3_RX_IRQHandler(void){
-    if(mod_som_sys_peripherals_list_ptr->USART3_prf_ptr != DEF_NULL){
-        mod_som_sys_peripherals_list_ptr->USART3_prf_ptr->irq_handler_1_f(
-                (void *)mod_som_sys_peripherals_list_ptr->USART3_prf_ptr->device_ptr);
+    if(mod_som_ptr->sys_peripherals_list.USART3_prf_ptr != DEF_NULL){
+        mod_som_ptr->sys_peripherals_list.USART3_prf_ptr->irq_handler_1_f(
+                (void *)mod_som_ptr->sys_peripherals_list.USART3_prf_ptr->device_ptr);
     }
     return;
 }
 void USART3_TX_IRQHandler(void){
-    if(mod_som_sys_peripherals_list_ptr->USART3_prf_ptr != DEF_NULL){
-        mod_som_sys_peripherals_list_ptr->USART3_prf_ptr->irq_handler_2_f(
-                (void *)mod_som_sys_peripherals_list_ptr->USART3_prf_ptr->device_ptr);
+    if(mod_som_ptr->sys_peripherals_list.USART3_prf_ptr != DEF_NULL){
+        mod_som_ptr->sys_peripherals_list.USART3_prf_ptr->irq_handler_2_f(
+                (void *)mod_som_ptr->sys_peripherals_list.USART3_prf_ptr->device_ptr);
     }
     return;
 }
 void USART4_RX_IRQHandler(void){
-    if(mod_som_sys_peripherals_list_ptr->USART4_prf_ptr != DEF_NULL){
-        mod_som_sys_peripherals_list_ptr->USART4_prf_ptr->irq_handler_1_f(
-                (void *)mod_som_sys_peripherals_list_ptr->USART4_prf_ptr->device_ptr);
+    if(mod_som_ptr->sys_peripherals_list.USART4_prf_ptr != DEF_NULL){
+        mod_som_ptr->sys_peripherals_list.USART4_prf_ptr->irq_handler_1_f(
+                (void *)mod_som_ptr->sys_peripherals_list.USART4_prf_ptr->device_ptr);
     }
     return;
 }
 void USART4_TX_IRQHandler(void){
-    if(mod_som_sys_peripherals_list_ptr->USART4_prf_ptr != DEF_NULL){
-        mod_som_sys_peripherals_list_ptr->USART4_prf_ptr->irq_handler_2_f(
-                (void *)mod_som_sys_peripherals_list_ptr->USART4_prf_ptr->device_ptr);
+    if(mod_som_ptr->sys_peripherals_list.USART4_prf_ptr != DEF_NULL){
+        mod_som_ptr->sys_peripherals_list.USART4_prf_ptr->irq_handler_2_f(
+                (void *)mod_som_ptr->sys_peripherals_list.USART4_prf_ptr->device_ptr);
     }
     return;
 }
 void WTIMER0_IRQHandler(void){
-    if(mod_som_sys_peripherals_list_ptr->WTIMER0_prf_ptr != DEF_NULL){
-        mod_som_sys_peripherals_list_ptr->WTIMER0_prf_ptr->irq_handler_1_f(
-                (void *)mod_som_sys_peripherals_list_ptr->WTIMER0_prf_ptr->device_ptr);
+    if(mod_som_ptr->sys_peripherals_list.WTIMER0_prf_ptr != DEF_NULL){
+        mod_som_ptr->sys_peripherals_list.WTIMER0_prf_ptr->irq_handler_1_f(
+                (void *)mod_som_ptr->sys_peripherals_list.WTIMER0_prf_ptr->device_ptr);
     }
     return;
 }
 void WTIMER1_IRQHandler(void){
-    if(mod_som_sys_peripherals_list_ptr->WTIMER1_prf_ptr != DEF_NULL){
-        mod_som_sys_peripherals_list_ptr->WTIMER1_prf_ptr->irq_handler_1_f(
-                (void *)mod_som_sys_peripherals_list_ptr->WTIMER1_prf_ptr->device_ptr);
+    if(mod_som_ptr->sys_peripherals_list.WTIMER1_prf_ptr != DEF_NULL){
+        mod_som_ptr->sys_peripherals_list.WTIMER1_prf_ptr->irq_handler_1_f(
+                (void *)mod_som_ptr->sys_peripherals_list.WTIMER1_prf_ptr->device_ptr);
     }
     return;
 }
 //void WTIMER2_IRQHandler(void){
-//    if(mod_som_sys_peripherals_list_ptr->WTIMER2_prf_ptr != DEF_NULL){
-//        mod_som_sys_peripherals_list_ptr->WTIMER2_prf_ptr->irq_handler_1_f(
-//                (void *)mod_som_sys_peripherals_list_ptr->WTIMER2_prf_ptr->device_ptr);
+//    if(mod_som_ptr->sys_peripherals_list.WTIMER2_prf_ptr != DEF_NULL){
+//        mod_som_ptr->sys_peripherals_list.WTIMER2_prf_ptr->irq_handler_1_f(
+//                (void *)mod_som_ptr->sys_peripherals_list.WTIMER2_prf_ptr->device_ptr);
 //    }
 //    return;
 //}
 //void WTIMER3_IRQHandler(void){
-//    if(mod_som_sys_peripherals_list_ptr->WTIMER3_prf_ptr != DEF_NULL){
-//        mod_som_sys_peripherals_list_ptr->WTIMER3_prf_ptr->irq_handler_1_f(
-//                (void *)mod_som_sys_peripherals_list_ptr->WTIMER3_prf_ptr->device_ptr);
+//    if(mod_som_ptr->sys_peripherals_list.WTIMER3_prf_ptr != DEF_NULL){
+//        mod_som_ptr->sys_peripherals_list.WTIMER3_prf_ptr->irq_handler_1_f(
+//                (void *)mod_som_ptr->sys_peripherals_list.WTIMER3_prf_ptr->device_ptr);
 //    }
 //    return;
 //}
 void I2C2_IRQHandler(void){
-    if(mod_som_sys_peripherals_list_ptr->I2C2_prf_ptr != DEF_NULL){
-        mod_som_sys_peripherals_list_ptr->I2C2_prf_ptr->irq_handler_1_f(
-                (void *)mod_som_sys_peripherals_list_ptr->I2C2_prf_ptr->device_ptr);
+    if(mod_som_ptr->sys_peripherals_list.I2C2_prf_ptr != DEF_NULL){
+        mod_som_ptr->sys_peripherals_list.I2C2_prf_ptr->irq_handler_1_f(
+                (void *)mod_som_ptr->sys_peripherals_list.I2C2_prf_ptr->device_ptr);
     }
     return;
 }
 void VDAC0_IRQHandler(void){
-    if(mod_som_sys_peripherals_list_ptr->VDAC0_prf_ptr != DEF_NULL){
-        mod_som_sys_peripherals_list_ptr->VDAC0_prf_ptr->irq_handler_1_f(
-                (void *)mod_som_sys_peripherals_list_ptr->VDAC0_prf_ptr->device_ptr);
+    if(mod_som_ptr->sys_peripherals_list.VDAC0_prf_ptr != DEF_NULL){
+        mod_som_ptr->sys_peripherals_list.VDAC0_prf_ptr->irq_handler_1_f(
+                (void *)mod_som_ptr->sys_peripherals_list.VDAC0_prf_ptr->device_ptr);
     }
     return;
 }
 void TIMER4_IRQHandler(void){
-    if(mod_som_sys_peripherals_list_ptr->TIMER4_prf_ptr != DEF_NULL){
-        mod_som_sys_peripherals_list_ptr->TIMER4_prf_ptr->irq_handler_1_f(
-                (void *)mod_som_sys_peripherals_list_ptr->TIMER4_prf_ptr->device_ptr);
+    if(mod_som_ptr->sys_peripherals_list.TIMER4_prf_ptr != DEF_NULL){
+        mod_som_ptr->sys_peripherals_list.TIMER4_prf_ptr->irq_handler_1_f(
+                (void *)mod_som_ptr->sys_peripherals_list.TIMER4_prf_ptr->device_ptr);
     }
     return;
 }
 void TIMER5_IRQHandler(void){
-    if(mod_som_sys_peripherals_list_ptr->TIMER5_prf_ptr != DEF_NULL){
-        mod_som_sys_peripherals_list_ptr->TIMER5_prf_ptr->irq_handler_1_f(
-                (void *)mod_som_sys_peripherals_list_ptr->TIMER5_prf_ptr->device_ptr);
+    if(mod_som_ptr->sys_peripherals_list.TIMER5_prf_ptr != DEF_NULL){
+        mod_som_ptr->sys_peripherals_list.TIMER5_prf_ptr->irq_handler_1_f(
+                (void *)mod_som_ptr->sys_peripherals_list.TIMER5_prf_ptr->device_ptr);
     }
     return;
 }
 void TIMER6_IRQHandler(void){
-    if(mod_som_sys_peripherals_list_ptr->TIMER5_prf_ptr != DEF_NULL){
-        mod_som_sys_peripherals_list_ptr->TIMER5_prf_ptr->irq_handler_1_f(
-                (void *)mod_som_sys_peripherals_list_ptr->TIMER5_prf_ptr->device_ptr);
+    if(mod_som_ptr->sys_peripherals_list.TIMER5_prf_ptr != DEF_NULL){
+        mod_som_ptr->sys_peripherals_list.TIMER5_prf_ptr->irq_handler_1_f(
+                (void *)mod_som_ptr->sys_peripherals_list.TIMER5_prf_ptr->device_ptr);
     }
     return;
 }
 //void USART5_RX_IRQHandler(void){
-//if(mod_som_sys_peripherals_list_ptr->USART5_prf_ptr != DEF_NULL){
-//    mod_som_sys_peripherals_list_ptr->USART5_prf_ptr->irq_handler_1_f(
-//            (void *)mod_som_sys_peripherals_list_ptr->USART5_prf_ptr->device_ptr);
+//if(mod_som_ptr->sys_peripherals_list.USART5_prf_ptr != DEF_NULL){
+//    mod_som_ptr->sys_peripherals_list.USART5_prf_ptr->irq_handler_1_f(
+//            (void *)mod_som_ptr->sys_peripherals_list.USART5_prf_ptr->device_ptr);
 //}
 //    return;
 //}
 void USART5_TX_IRQHandler(void){
-    if(mod_som_sys_peripherals_list_ptr->USART5_prf_ptr != DEF_NULL){
-        mod_som_sys_peripherals_list_ptr->USART5_prf_ptr->irq_handler_2_f(
-                (void *)mod_som_sys_peripherals_list_ptr->USART5_prf_ptr->device_ptr);
+    if(mod_som_ptr->sys_peripherals_list.USART5_prf_ptr != DEF_NULL){
+        mod_som_ptr->sys_peripherals_list.USART5_prf_ptr->irq_handler_2_f(
+                (void *)mod_som_ptr->sys_peripherals_list.USART5_prf_ptr->device_ptr);
     }
     return;
 }
 void CSEN_IRQHandler(void){
-    if(mod_som_sys_peripherals_list_ptr->CSEN_prf_ptr != DEF_NULL){
-        mod_som_sys_peripherals_list_ptr->CSEN_prf_ptr->irq_handler_1_f(
-                (void *)mod_som_sys_peripherals_list_ptr->CSEN_prf_ptr->device_ptr);
+    if(mod_som_ptr->sys_peripherals_list.CSEN_prf_ptr != DEF_NULL){
+        mod_som_ptr->sys_peripherals_list.CSEN_prf_ptr->irq_handler_1_f(
+                (void *)mod_som_ptr->sys_peripherals_list.CSEN_prf_ptr->device_ptr);
     }
     return;
 }
 void LESENSE_IRQHandler(void){
-    if(mod_som_sys_peripherals_list_ptr->LESENSE_prf_ptr != DEF_NULL){
-        mod_som_sys_peripherals_list_ptr->LESENSE_prf_ptr->irq_handler_1_f(
-                (void *)mod_som_sys_peripherals_list_ptr->LESENSE_prf_ptr->device_ptr);
+    if(mod_som_ptr->sys_peripherals_list.LESENSE_prf_ptr != DEF_NULL){
+        mod_som_ptr->sys_peripherals_list.LESENSE_prf_ptr->irq_handler_1_f(
+                (void *)mod_som_ptr->sys_peripherals_list.LESENSE_prf_ptr->device_ptr);
     }
     return;
 }
 void EBI_IRQHandler(void){
-    if(mod_som_sys_peripherals_list_ptr->EBI_prf_ptr != DEF_NULL){
-        mod_som_sys_peripherals_list_ptr->EBI_prf_ptr->irq_handler_1_f(
-                (void *)mod_som_sys_peripherals_list_ptr->EBI_prf_ptr->device_ptr);
+    if(mod_som_ptr->sys_peripherals_list.EBI_prf_ptr != DEF_NULL){
+        mod_som_ptr->sys_peripherals_list.EBI_prf_ptr->irq_handler_1_f(
+                (void *)mod_som_ptr->sys_peripherals_list.EBI_prf_ptr->device_ptr);
     }
     return;
 }
 void ACMP2_IRQHandler(void){
-    if(mod_som_sys_peripherals_list_ptr->ACMP2_prf_ptr != DEF_NULL){
-        mod_som_sys_peripherals_list_ptr->ACMP2_prf_ptr->irq_handler_1_f(
-                (void *)mod_som_sys_peripherals_list_ptr->ACMP2_prf_ptr->device_ptr);
+    if(mod_som_ptr->sys_peripherals_list.ACMP2_prf_ptr != DEF_NULL){
+        mod_som_ptr->sys_peripherals_list.ACMP2_prf_ptr->irq_handler_1_f(
+                (void *)mod_som_ptr->sys_peripherals_list.ACMP2_prf_ptr->device_ptr);
     }
     return;
 }
 //void ADC1_IRQHandler(void){
-//    if(mod_som_sys_peripherals_list_ptr->ADC1_prf_ptr != DEF_NULL){
-//        mod_som_sys_peripherals_list_ptr->ADC1_prf_ptr->irq_handler_1_f(
-//                (void *)mod_som_sys_peripherals_list_ptr->ADC1_prf_ptr->device_ptr);
+//    if(mod_som_ptr->sys_peripherals_list.ADC1_prf_ptr != DEF_NULL){
+//        mod_som_ptr->sys_peripherals_list.ADC1_prf_ptr->irq_handler_1_f(
+//                (void *)mod_som_ptr->sys_peripherals_list.ADC1_prf_ptr->device_ptr);
 //    }
 //    return;
 //}
 void LCD_IRQHandler(void){
-    if(mod_som_sys_peripherals_list_ptr->LCD_prf_ptr != DEF_NULL){
-        mod_som_sys_peripherals_list_ptr->LCD_prf_ptr->irq_handler_1_f(
-                (void *)mod_som_sys_peripherals_list_ptr->LCD_prf_ptr->device_ptr);
+    if(mod_som_ptr->sys_peripherals_list.LCD_prf_ptr != DEF_NULL){
+        mod_som_ptr->sys_peripherals_list.LCD_prf_ptr->irq_handler_1_f(
+                (void *)mod_som_ptr->sys_peripherals_list.LCD_prf_ptr->device_ptr);
     }
     return;
 }
 void SDIO_IRQHandler(void){
-    if(mod_som_sys_peripherals_list_ptr->SDIO_prf_ptr != DEF_NULL){
-        mod_som_sys_peripherals_list_ptr->SDIO_prf_ptr->irq_handler_1_f(
-                (void *)mod_som_sys_peripherals_list_ptr->SDIO_prf_ptr->device_ptr);
+    if(mod_som_ptr->sys_peripherals_list.SDIO_prf_ptr != DEF_NULL){
+        mod_som_ptr->sys_peripherals_list.SDIO_prf_ptr->irq_handler_1_f(
+                (void *)mod_som_ptr->sys_peripherals_list.SDIO_prf_ptr->device_ptr);
     }
     return;
 }
 void ETH_IRQHandler(void){
-    if(mod_som_sys_peripherals_list_ptr->ETH_prf_ptr != DEF_NULL){
-        mod_som_sys_peripherals_list_ptr->ETH_prf_ptr->irq_handler_1_f(
-                (void *)mod_som_sys_peripherals_list_ptr->ETH_prf_ptr->device_ptr);
+    if(mod_som_ptr->sys_peripherals_list.ETH_prf_ptr != DEF_NULL){
+        mod_som_ptr->sys_peripherals_list.ETH_prf_ptr->irq_handler_1_f(
+                (void *)mod_som_ptr->sys_peripherals_list.ETH_prf_ptr->device_ptr);
     }
     return;
 }
 void CAN0_IRQHandler(void){
-    if(mod_som_sys_peripherals_list_ptr->CAN0_prf_ptr != DEF_NULL){
-        mod_som_sys_peripherals_list_ptr->CAN0_prf_ptr->irq_handler_1_f(
-                (void *)mod_som_sys_peripherals_list_ptr->CAN0_prf_ptr->device_ptr);
+    if(mod_som_ptr->sys_peripherals_list.CAN0_prf_ptr != DEF_NULL){
+        mod_som_ptr->sys_peripherals_list.CAN0_prf_ptr->irq_handler_1_f(
+                (void *)mod_som_ptr->sys_peripherals_list.CAN0_prf_ptr->device_ptr);
     }
     return;
 }
 void CAN1_IRQHandler(void){
-    if(mod_som_sys_peripherals_list_ptr->CAN1_prf_ptr != DEF_NULL){
-        mod_som_sys_peripherals_list_ptr->CAN1_prf_ptr->irq_handler_1_f(
-                (void *)mod_som_sys_peripherals_list_ptr->CAN1_prf_ptr->device_ptr);
+    if(mod_som_ptr->sys_peripherals_list.CAN1_prf_ptr != DEF_NULL){
+        mod_som_ptr->sys_peripherals_list.CAN1_prf_ptr->irq_handler_1_f(
+                (void *)mod_som_ptr->sys_peripherals_list.CAN1_prf_ptr->device_ptr);
     }
     return;
 }
 void USB_IRQHandler(void){
-    if(mod_som_sys_peripherals_list_ptr->USB_prf_ptr != DEF_NULL){
-        mod_som_sys_peripherals_list_ptr->USB_prf_ptr->irq_handler_1_f(
-                (void *)mod_som_sys_peripherals_list_ptr->USB_prf_ptr->device_ptr);
+    if(mod_som_ptr->sys_peripherals_list.USB_prf_ptr != DEF_NULL){
+        mod_som_ptr->sys_peripherals_list.USB_prf_ptr->irq_handler_1_f(
+                (void *)mod_som_ptr->sys_peripherals_list.USB_prf_ptr->device_ptr);
     }
     return;
 }
 void RTC_IRQHandler(void){
-    if(mod_som_sys_peripherals_list_ptr->RTC_prf_ptr != DEF_NULL){
-        mod_som_sys_peripherals_list_ptr->RTC_prf_ptr->irq_handler_1_f(
-                (void *)mod_som_sys_peripherals_list_ptr->RTC_prf_ptr->device_ptr);
+    if(mod_som_ptr->sys_peripherals_list.RTC_prf_ptr != DEF_NULL){
+        mod_som_ptr->sys_peripherals_list.RTC_prf_ptr->irq_handler_1_f(
+                (void *)mod_som_ptr->sys_peripherals_list.RTC_prf_ptr->device_ptr);
     }
     return;
 }
 void WDOG1_IRQHandler(void){
-    if(mod_som_sys_peripherals_list_ptr->WDOG1_prf_ptr != DEF_NULL){
-        mod_som_sys_peripherals_list_ptr->WDOG1_prf_ptr->irq_handler_1_f(
-                (void *)mod_som_sys_peripherals_list_ptr->WDOG1_prf_ptr->device_ptr);
+    if(mod_som_ptr->sys_peripherals_list.WDOG1_prf_ptr != DEF_NULL){
+        mod_som_ptr->sys_peripherals_list.WDOG1_prf_ptr->irq_handler_1_f(
+                (void *)mod_som_ptr->sys_peripherals_list.WDOG1_prf_ptr->device_ptr);
     }
     return;
 }
 void LETIMER1_IRQHandler(void){
-    if(mod_som_sys_peripherals_list_ptr->LETIMER1_prf_ptr != DEF_NULL){
-        mod_som_sys_peripherals_list_ptr->LETIMER1_prf_ptr->irq_handler_1_f(
-                (void *)mod_som_sys_peripherals_list_ptr->LETIMER1_prf_ptr->device_ptr);
+    if(mod_som_ptr->sys_peripherals_list.LETIMER1_prf_ptr != DEF_NULL){
+        mod_som_ptr->sys_peripherals_list.LETIMER1_prf_ptr->irq_handler_1_f(
+                (void *)mod_som_ptr->sys_peripherals_list.LETIMER1_prf_ptr->device_ptr);
     }
     return;
 }
 void TRNG0_IRQHandler(void){
-    if(mod_som_sys_peripherals_list_ptr->TRNG0_prf_ptr != DEF_NULL){
-        mod_som_sys_peripherals_list_ptr->TRNG0_prf_ptr->irq_handler_1_f(
-                (void *)mod_som_sys_peripherals_list_ptr->TRNG0_prf_ptr->device_ptr);
+    if(mod_som_ptr->sys_peripherals_list.TRNG0_prf_ptr != DEF_NULL){
+        mod_som_ptr->sys_peripherals_list.TRNG0_prf_ptr->irq_handler_1_f(
+                (void *)mod_som_ptr->sys_peripherals_list.TRNG0_prf_ptr->device_ptr);
     }
     return;
 }
 void QSPI0_IRQHandler(void){
-    if(mod_som_sys_peripherals_list_ptr->QSPI0_prf_ptr != DEF_NULL){
-        mod_som_sys_peripherals_list_ptr->QSPI0_prf_ptr->irq_handler_1_f(
-                (void *)mod_som_sys_peripherals_list_ptr->QSPI0_prf_ptr->device_ptr);
+    if(mod_som_ptr->sys_peripherals_list.QSPI0_prf_ptr != DEF_NULL){
+        mod_som_ptr->sys_peripherals_list.QSPI0_prf_ptr->irq_handler_1_f(
+                (void *)mod_som_ptr->sys_peripherals_list.QSPI0_prf_ptr->device_ptr);
     }
     return;
 }
@@ -2113,21 +2489,21 @@ void QSPI0_IRQHandler(void){
 void WDOG0_IRQHandler(void)
 {
 #ifdef MOD_SOM_DEBUG_WDOG
-  printf("WDOG0 TIMEOUT, ENTERING DEBUG LOOP\r\n");
-  while(1){
-      __NOP();
-  }
-  //ALB do something?
+    printf("WDOG0 TIMEOUT, ENTERING DEBUG LOOP\r\n");
+    while(1){
+        __NOP();
+    }
+    //ALB do something?
     /* Clear flag for interrupt */
-  //  uint8_t toto = 0;
-//          WDOGn_IntClear(DEFAULT_WDOG, WDOG_IEN_TOUT);
+    //  uint8_t toto = 0;
+    //          WDOGn_IntClear(DEFAULT_WDOG, WDOG_IEN_TOUT);
 
 #else
-  if(mod_som_sys_peripherals_list_ptr->WDOG1_prf_ptr != DEF_NULL){
-          mod_som_sys_peripherals_list_ptr->WDOG1_prf_ptr->irq_handler_1_f(
-                  (void *)mod_som_sys_peripherals_list_ptr->WDOG1_prf_ptr->device_ptr);
-      }
-      return;
+    if(mod_som_ptr->sys_peripherals_list.WDOG1_prf_ptr != DEF_NULL){
+        mod_som_ptr->sys_peripherals_list.WDOG1_prf_ptr->irq_handler_1_f(
+                (void *)mod_som_ptr->sys_peripherals_list.WDOG1_prf_ptr->device_ptr);
+    }
+    return;
 #endif
 
 }

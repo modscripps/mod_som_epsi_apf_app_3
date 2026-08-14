@@ -212,6 +212,7 @@ DRESULT disk_ioctl (
   BYTE n, csd[16], *ptr = buff;
   DWORD csize;
   uint32_t val = 0;
+  int32_t status = 0;
 
   if (drv) return RES_PARERR;
   if (stat & STA_NOINIT) return RES_NOTRDY;
@@ -219,7 +220,11 @@ DRESULT disk_ioctl (
   res = RES_ERROR;
   switch (ctrl) {
     case CTRL_SYNC :                /* Flush dirty buffer if present */
-      SDIO_WaitForWriteFinish(SDIO);
+      status = SDIO_WaitForWriteFinish(SDIO);
+      if(status){
+              res = RES_ERROR;
+              break;
+      }
       res = RES_OK;
       break;
 

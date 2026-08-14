@@ -148,7 +148,7 @@ int32_t SDIO_ReadSingleBlock(SDIO_TypeDef *sdio_t,
 uint8_t SDIO_GetActCardStateType(void);
 
 // 2025 04 28 LW: Adding functions to complete disk_ioctl stubs
-void SDIO_WaitForWriteFinish(SDIO_TypeDef *sdio_t);
+int32_t SDIO_WaitForWriteFinish(SDIO_TypeDef *sdio_t);
 
 uint8_t SDIO_GetSectorCount(SDIO_TypeDef *sdio_t,
                              uint32_t *sector_cnt);

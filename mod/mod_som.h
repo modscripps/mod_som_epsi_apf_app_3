@@ -124,6 +124,9 @@
  ******************************************************************************/
 #define MOD_SOM_STATUS_ERR_QUEUE_EMPTY 0x0AU
 
+
+
+
 //------------------------------------------------------------------------------
 // FUNCTIONS
 //------------------------------------------------------------------------------
@@ -174,7 +177,8 @@ uint32_t mod_som_generate_data_block_f(
         uint8_t * data_block_ptr,
         uint8_t *data_header_ptr, uint32_t data_header_length,
         uint8_t *data_ptr, uint32_t data_length,
-        uint64_t data_timestamp);
+        uint64_t data_timestamp
+        );
 
 
 /*******************************************************************************

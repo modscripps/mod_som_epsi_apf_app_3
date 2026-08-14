@@ -35,11 +35,16 @@
 
 #include "diskio.h"
 #include "sl_sleeptimer.h"
+#include "em_wdog.h"
+#include <stdio.h>
+#include "mod_som_cfg.h"
 /******************************************************************************
  * Local defines
  *****************************************************************************/
 #define LOCAL_STA_NODISK    0x02
 #define WAIT_TIME_OUT_MS    1000UL
+//2026 08 08 SAN SD spec requires card init (ACMD41) to complete within 1s
+#define ACMD41_INIT_TIME_OUT_MS   1500UL
 /******************************************************************************
  * Local prototypes
  *****************************************************************************/
@@ -362,11 +367,22 @@ uint32_t SDIO_S_SendCMDWithOutDAT(SDIO_TypeDef *sdio_t,
   uint32_t regVal_u32 = sdio_t->PRSSTAT;
 //  //ALB add delay
 //  int delay=0xFFFF;
+  uint32_t tick;
+  uint32_t start_time_ms;
+  uint32_t curr_time_ms;
 
+  tick = sl_sleeptimer_get_tick_count();
+  start_time_ms = sl_sleeptimer_tick_to_ms(tick);
   //1. Check Command Inhibit Used
   while (regVal_u32 & _SDIO_PRSSTAT_CMDINHIBITCMD_MASK)
   {
     regVal_u32 = sdio_t->PRSSTAT;
+    tick = sl_sleeptimer_get_tick_count();
+    curr_time_ms = sl_sleeptimer_tick_to_ms(tick);
+    if((curr_time_ms-start_time_ms)>WAIT_TIME_OUT_MS){
+        sdio_t->CLOCKCTRL |= (_SDIO_CLOCKCTRL_SFTRSTCMD_MASK);
+        return -1;
+    }
   }
 
   // 2. Check command with busy
@@ -381,7 +397,16 @@ uint32_t SDIO_S_SendCMDWithOutDAT(SDIO_TypeDef *sdio_t,
     }
     else
     {
-      while (sdio_t->PRSSTAT & _SDIO_PRSSTAT_CMDINHIBITDAT_MASK);
+      tick = sl_sleeptimer_get_tick_count();
+      start_time_ms = sl_sleeptimer_tick_to_ms(tick);
+      while (sdio_t->PRSSTAT & _SDIO_PRSSTAT_CMDINHIBITDAT_MASK){
+          tick = sl_sleeptimer_get_tick_count();
+          curr_time_ms = sl_sleeptimer_tick_to_ms(tick);
+          if((curr_time_ms-start_time_ms)>WAIT_TIME_OUT_MS){
+              sdio_t->CLOCKCTRL |= (_SDIO_CLOCKCTRL_SFTRSTDAT_MASK);
+              return -1;
+          }
+      }
     }
   }
 
@@ -408,7 +433,17 @@ uint32_t SDIO_S_SendCMDWithOutDAT(SDIO_TypeDef *sdio_t,
 
   // Sequence to Finalize Command
   // 1. Wait for Command Complete
-  while (!(sdio_t->IFCR & _SDIO_IFCR_CMDCOM_MASK) & !(sdio_t->IFCR & _SDIO_IFCR_CMDTOUTERR_MASK));
+  tick = sl_sleeptimer_get_tick_count();
+  start_time_ms = sl_sleeptimer_tick_to_ms(tick);
+  while (!(sdio_t->IFCR & _SDIO_IFCR_CMDCOM_MASK) & !(sdio_t->IFCR & _SDIO_IFCR_CMDTOUTERR_MASK)){
+      tick = sl_sleeptimer_get_tick_count();
+      curr_time_ms = sl_sleeptimer_tick_to_ms(tick);
+      if((curr_time_ms-start_time_ms)>WAIT_TIME_OUT_MS){
+          status = -1;
+          sdio_t->CLOCKCTRL |= (_SDIO_CLOCKCTRL_SFTRSTCMD_MASK);
+          break;
+      }
+  }
 
   // Capture whether or not the command timed out
   if((sdio_t->IFCR & _SDIO_IFCR_CMDTOUTERR_MASK) || (sdio_t->IFCR & _SDIO_IFCR_ERRINT_MASK))
@@ -749,6 +784,13 @@ static uint8_t SDIO_S_CardInitialization_and_Identification(SDIO_TypeDef *sdio_t
   uint32_t tempVar_u32 = 0x0;
   uint8_t attemptCnt_u8 = 2;
   uint32_t resp = 0;
+  //2026 08 08 SAN bound the ACMD41 busy loops with a timeout
+  uint32_t tick;
+  uint32_t start_time_ms;
+  uint32_t curr_time_ms;
+#if defined(MOD_SOM_DEBUG)
+  uint32_t acmd41_iter_u32 = 0;
+#endif
 //  //ALB add result of SDIO_S_SendCMDWithOutDAT
 //  uint8_t return_SendCMDWithOutDAT=0;
 
@@ -793,6 +835,14 @@ static uint8_t SDIO_S_CardInitialization_and_Identification(SDIO_TypeDef *sdio_t
     }
   }
 
+
+  //2026 08 08 SAN diagnostic: one line per card init, shows if CMD8 was answered
+#if defined(MOD_SOM_DEBUG)
+  printf("SDIO CMD8 resp=0x%08lx F8=%d\r\n",
+         (unsigned long)sdio_t->RESP0,
+         (int)SDIO_ActCardState_st.F8_u1);
+#endif
+
   // 5. Get SDIO OCR (CMD5) Voltage window = 0
   tempVar_u32 = sdio_t->RESP0;
 
@@ -811,6 +861,10 @@ static uint8_t SDIO_S_CardInitialization_and_Identification(SDIO_TypeDef *sdio_t
     {
       // OCR OK
       // 23. Check busy
+      //2026 08 08 SAN bound this loop: it spun forever when the card answered
+      //CMD8 but never completed init (WDOG0 hang during f_mount)
+      tick = sl_sleeptimer_get_tick_count();
+      start_time_ms = sl_sleeptimer_tick_to_ms(tick);
       while (!(sdio_t->RESP0 & (1 << _ACMD41_RESPONSE_BUSY_BIT_SHIFT)))
       {
         // 21. Initialization (ACMD41 HCS=1, S18R, XPC) Set Voltage Window
@@ -822,6 +876,25 @@ static uint8_t SDIO_S_CardInitialization_and_Identification(SDIO_TypeDef *sdio_t
                                                  1 << _ACMD41_S18R_SHIFT);
         SDIO_ActCardState_st.CCS_u1 = ((sdio_t->RESP0 & 1 << 30) >> 30);
         SDIO_ActCardState_st.S18A_u1 = ((sdio_t->RESP0 & 1 << 24) >> 24);
+        WDOG_Feed();
+
+#if defined(MOD_SOM_DEBUG)
+        acmd41_iter_u32++;
+        if((acmd41_iter_u32 % 200) == 0){
+            printf("SDIO ACMD41 waiting, OCR=0x%08lx\r\n",
+                   (unsigned long)sdio_t->RESP0);
+        }
+#endif
+        tick = sl_sleeptimer_get_tick_count();
+        curr_time_ms = sl_sleeptimer_tick_to_ms(tick);
+        if((curr_time_ms-start_time_ms)>ACMD41_INIT_TIME_OUT_MS){
+#if defined(MOD_SOM_DEBUG)
+            printf("SDIO ACMD41 timeout, OCR=0x%08lx\r\n",
+                   (unsigned long)sdio_t->RESP0);
+#endif
+            SDIO_ActCardState_st.cardType_u3 = Unusable_Card;
+            return -1;
+        }
       }
 
       // 24. Check CCS
@@ -857,6 +930,9 @@ static uint8_t SDIO_S_CardInitialization_and_Identification(SDIO_TypeDef *sdio_t
     {
       // OCR OK
       // 16. Check busy
+      //2026 08 08 SAN bound this loop, same reason as the F8=1 branch above
+      tick = sl_sleeptimer_get_tick_count();
+      start_time_ms = sl_sleeptimer_tick_to_ms(tick);
       while (!(sdio_t->RESP0 & (1 << _ACMD41_RESPONSE_BUSY_BIT_SHIFT)))
       {
         // 21. Initialization (ACMD41 HCS=1, S18R, XPC) Set Voltage Window
@@ -866,6 +942,24 @@ static uint8_t SDIO_S_CardInitialization_and_Identification(SDIO_TypeDef *sdio_t
         SDIO_ActCardState_st.CCS_u1 = ((sdio_t->RESP0 & 1 << 30) >> 30);
         SDIO_ActCardState_st.S18A_u1 = ((sdio_t->RESP0 & 1 << 24) >> 24);
         SDIO_ActCardState_st.cardType_u3 = SDSC_Ver101_or_Ver110;
+        WDOG_Feed();
+#if defined(MOD_SOM_DEBUG)
+        acmd41_iter_u32++;
+        if((acmd41_iter_u32 % 200) == 0){
+            printf("SDIO ACMD41 waiting, OCR=0x%08lx\r\n",
+                   (unsigned long)sdio_t->RESP0);
+        }
+#endif
+        tick = sl_sleeptimer_get_tick_count();
+        curr_time_ms = sl_sleeptimer_tick_to_ms(tick);
+        if((curr_time_ms-start_time_ms)>ACMD41_INIT_TIME_OUT_MS){
+#if defined(MOD_SOM_DEBUG)
+            printf("SDIO ACMD41 timeout, OCR=0x%08lx\r\n",
+                   (unsigned long)sdio_t->RESP0);
+#endif
+            SDIO_ActCardState_st.cardType_u3 = Unusable_Card;
+            return -1;
+        }
       }
     } else
     {
@@ -930,10 +1024,22 @@ uint8_t SDIO_GetActCardStateType(void)
 
 
 // 2025 04 28 LW: Return when there is no write in progress (for CTRL_SYNC)
-void SDIO_WaitForWriteFinish(SDIO_TypeDef *sdio_t)
+int32_t SDIO_WaitForWriteFinish(SDIO_TypeDef *sdio_t)
 {
-    while(sdio_t->PRSSTAT & _SDIO_PRSSTAT_WRTRANACT_MASK);
-    return;
+    //2026 08 08 SAN bounded wait
+    uint32_t tick;
+    uint32_t start_time_ms;
+    uint32_t curr_time_ms;
+    tick = sl_sleeptimer_get_tick_count();
+    start_time_ms = sl_sleeptimer_tick_to_ms(tick);
+    while(sdio_t->PRSSTAT & _SDIO_PRSSTAT_WRTRANACT_MASK){
+        tick = sl_sleeptimer_get_tick_count();
+        curr_time_ms = sl_sleeptimer_tick_to_ms(tick);
+        if((curr_time_ms-start_time_ms)>WAIT_TIME_OUT_MS){
+            return -1;
+        }
+    }
+    return 0;
 }
 
 uint8_t SDIO_GetSectorCount(SDIO_TypeDef *sdio_t,
@@ -1005,6 +1111,10 @@ uint8_t SDIO_GetBlockSize(SDIO_TypeDef *sdio_t,
   uint32_t tmpReg_u32 = 0;
   uint32_t rcv_buf[16];
   uint32_t* localbuffptr_pu32;
+  //2026 08 08 SAN bound the ACMD13 waits with a timeout
+  uint32_t tick;
+  uint32_t start_time_ms;
+  uint32_t curr_time_ms;
 
   // Get card state
   status = SDIO_S_SendCMDWithOutDAT(sdio_t, CMD13,
@@ -1025,7 +1135,15 @@ uint8_t SDIO_GetBlockSize(SDIO_TypeDef *sdio_t,
   ////// SEND ACMD13 //////
 
   // Wait until the card is ready for the command
-  while (sdio_t->PRSSTAT & _SDIO_PRSSTAT_CMDINHIBITCMD_MASK);
+  tick = sl_sleeptimer_get_tick_count();
+  start_time_ms = sl_sleeptimer_tick_to_ms(tick);
+  while (sdio_t->PRSSTAT & _SDIO_PRSSTAT_CMDINHIBITCMD_MASK){
+      tick = sl_sleeptimer_get_tick_count();
+      curr_time_ms = sl_sleeptimer_tick_to_ms(tick);
+      if((curr_time_ms-start_time_ms)>WAIT_TIME_OUT_MS){
+          return -1;
+      }
+  }
 
   // Disable DAT CRC check (broken for this command?)
   sdio_t->IFENC &= ~(SDIO_IFENC_DATCRCERREN);
@@ -1038,12 +1156,28 @@ uint8_t SDIO_GetBlockSize(SDIO_TypeDef *sdio_t,
   sdio_t->TFRMODE = tmpReg_u32;
 
   // Wait for Command Complete
-  while (!(sdio_t->IFCR & _SDIO_IFCR_CMDCOM_MASK));
+  tick = sl_sleeptimer_get_tick_count();
+  start_time_ms = sl_sleeptimer_tick_to_ms(tick);
+  while (!(sdio_t->IFCR & _SDIO_IFCR_CMDCOM_MASK)){
+      tick = sl_sleeptimer_get_tick_count();
+      curr_time_ms = sl_sleeptimer_tick_to_ms(tick);
+      if((curr_time_ms-start_time_ms)>WAIT_TIME_OUT_MS){
+          return -1;
+      }
+  }
   // Clear previous command complete int
   sdio_t->IFCR = (_SDIO_IFCR_CMDCOM_MASK);
 
   // 10. wait for Buffer Read Ready int
-  while (!(sdio_t->IFCR & _SDIO_IFCR_BFRRDRDY_MASK));
+  tick = sl_sleeptimer_get_tick_count();
+  start_time_ms = sl_sleeptimer_tick_to_ms(tick);
+  while (!(sdio_t->IFCR & _SDIO_IFCR_BFRRDRDY_MASK)){
+      tick = sl_sleeptimer_get_tick_count();
+      curr_time_ms = sl_sleeptimer_tick_to_ms(tick);
+      if((curr_time_ms-start_time_ms)>WAIT_TIME_OUT_MS){
+          return -1;
+      }
+  }
 
   // 11. clear previous Buffer Read Ready Int
   sdio_t->IFCR = (_SDIO_IFCR_BFRRDRDY_MASK);
@@ -1067,7 +1201,15 @@ uint8_t SDIO_GetBlockSize(SDIO_TypeDef *sdio_t,
       SDIO_ActCardState_st.cardRCA_u16 << _CMD13_RCA_SHIFT);
 
   // 19. Wait for transfer completed int
-  while (!(sdio_t->IFCR & _SDIO_IFCR_TRANCOM_MASK));
+  tick = sl_sleeptimer_get_tick_count();
+  start_time_ms = sl_sleeptimer_tick_to_ms(tick);
+  while (!(sdio_t->IFCR & _SDIO_IFCR_TRANCOM_MASK)){
+      tick = sl_sleeptimer_get_tick_count();
+      curr_time_ms = sl_sleeptimer_tick_to_ms(tick);
+      if((curr_time_ms-start_time_ms)>WAIT_TIME_OUT_MS){
+          return -1;
+      }
+  }
 
   // 20. CLear Transfer completed status
   while (sdio_t->IFCR & (_SDIO_IFCR_TRANCOM_MASK))

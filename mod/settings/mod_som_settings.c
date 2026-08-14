@@ -467,73 +467,11 @@ mod_som_status_t mod_som_settings_save_settings_f(){
  ******************************************************************************/
 mod_som_status_t mod_som_settings_sd_settings_f(){
 
-  //time stamp
-  uint64_t tick;
-  uint64_t timestamp;
-  uint32_t t_hex[2];
-  uint8_t * local_header;
-  uint8_t header[100];
-  uint8_t header_chksum;
-  uint8_t payload_chksum;
-  uint8_t str_payload_chksum[MOD_SOM_SETTINGS_PAYLOAD_CHECKSUM_LENGTH];
-  uint8_t length_header=32;
-  uint8_t * local_settings_ptr;
-
-  mod_som_sdio_ptr_t local_sdio_ptr=mod_som_sdio_get_runtime_ptr_f();
-
-
-  tick=sl_sleeptimer_get_tick_count64();
-  mystatus = sl_sleeptimer_tick64_to_ms(tick,\
-                                        &timestamp);
-
-  t_hex[0] = (uint32_t) (timestamp>>32);
-  t_hex[1] = (uint32_t) timestamp;
-
-  //header  contains SBE,flags. Currently flags are hard coded to 0x1e
-  //time stamp will come at the end of header
-      sprintf((char*) header,  \
-          "$%s%08x%08x%08x*FF", \
-          mod_som_settings_struct.header, \
-          (int) t_hex[0],\
-          (int) t_hex[1],\
-          sizeof(mod_som_settings_struct));
-
-      header_chksum=0;
-      for(int i=0;i<length_header-
-                    MOD_SOM_SETTINGS_HEADER_CHECKSUM_LENGTH;i++) // 29 = sync char(1)+ tag (4) + hextimestamp (16) + payload size (8).
-        {
-          header_chksum ^=header[i];
-        }
-
-
-      // the curr_consumer_element_ptr should be at the right place to
-      // write the checksum already
-      //write checksum at the end of the steam block (record).
-      local_header = &header[length_header-
-                             MOD_SOM_SETTINGS_HEADER_CHECKSUM_LENGTH+1];
-      *((uint16_t*)local_header) = \
-          mod_som_int8_2hex_f(header_chksum);
-
-      // compute checksum on settings payload
-      payload_chksum=0;
-      local_settings_ptr=(uint8_t*)&mod_som_settings_struct;
-      for(int i=0;i<sizeof(mod_som_settings_struct);i++)
-        {
-          payload_chksum ^=*(local_settings_ptr++);
-        }
-
-      sprintf((char*) str_payload_chksum,  \
-          "*%02x\r\n",payload_chksum);
-
-      mod_som_sdio_write_config_f((uint8_t*) &header,
-                                       length_header,
-                                       local_sdio_ptr->rawdata_file_ptr);
-      mod_som_sdio_write_config_f((uint8_t*) &mod_som_settings_struct,
-                                       sizeof(mod_som_settings_struct),
-                                       local_sdio_ptr->rawdata_file_ptr);
-      mod_som_sdio_write_config_f((uint8_t*) &str_payload_chksum,
-                                       MOD_SOM_SETTINGS_PAYLOAD_CHECKSUM_LENGTH,
-                                       local_sdio_ptr->rawdata_file_ptr);
+    mod_som_sdio_ptr_t local_sdio_ptr=mod_som_sdio_get_runtime_ptr_f();
+    mod_som_status_t status_data=mod_som_sdio_write_config_f(local_sdio_ptr->rawdata_file_ptr);
+    if(status_data!=MOD_SOM_STATUS_OK){
+            return mod_som_settings_encode_status_f(MOD_SOM_STATUS_NOT_OK);
+    }
 
       return mod_som_settings_encode_status_f(MOD_SOM_STATUS_OK);
 }

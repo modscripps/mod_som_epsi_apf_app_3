@@ -222,8 +222,10 @@ mod_som_status_t mod_som_sdio_enable_hardware_f(){
 
 
     sl_sleeptimer_delay_millisecond(delay);
+    WDOG_Feed();
     if (!mod_som_sdio_struct.fatfs_mounted){
         status = mod_som_sdio_mount_fatfs_f();
+        WDOG_Feed();
         if(status == MOD_SOM_STATUS_OK){
             mod_som_sdio_struct.fatfs_mounted=true;
         }else{
@@ -340,6 +342,8 @@ mod_som_status_t mod_som_sdio_mount_fatfs_f(){
     if (res != FR_OK)
     {
         mod_som_io_print_f("FAT-mount failed: %d\r\n", res);
+        //2026 08 08 SAN propagate the failure so enable_hardware can bail
+        return mod_som_sdio_encode_status_f(MOD_SOM_SDIO_STATUS_FAIL_MOUNT);
     }
     else if(GPIO_PinInGet(gpioPortF, 8)){
         // 2024 12 12 LW: Only attempt to mount if a card is detected.Add commentMore actions
@@ -354,6 +358,8 @@ mod_som_status_t mod_som_sdio_mount_fatfs_f(){
         if (res != FR_OK)
           {
             mod_som_io_print_f("FAT-mount failed: %d\r\n", res);
+            //2026 08 08 SAN propagate the failure so enable_hardware can bail
+            return mod_som_sdio_encode_status_f(MOD_SOM_SDIO_STATUS_FAIL_MOUNT);
           }
         else
           {
@@ -361,8 +367,6 @@ mod_som_status_t mod_som_sdio_mount_fatfs_f(){
           }
       }
 
-    // return default mod som OK.
-    //TODO handle error from the previous calls.
     return mod_som_sdio_encode_status_f(MOD_SOM_STATUS_OK);
 
 }
@@ -617,9 +621,7 @@ mod_som_status_t mod_som_sdio_define_filename_f(CPU_CHAR* filename){
 
 
   //ALB every time I open that file the settings are saved first.
-    status_data=mod_som_sdio_write_config_f((uint8_t *) local_settings_ptr,
-	                                        local_settings_ptr->size,
-												   mod_som_sdio_struct.rawdata_file_ptr);
+    status_data=mod_som_sdio_write_config_f(mod_som_sdio_struct.rawdata_file_ptr);
 
 
 
@@ -1153,9 +1155,7 @@ mod_som_status_t mod_som_sdio_close_file_f(mod_som_sdio_file_ptr_t mod_som_sdio_
  * @return
  *   MOD_SOM_STATUS_OK if function execute nicely
  ******************************************************************************/
-mod_som_status_t mod_som_sdio_write_config_f(uint8_t *data_ptr,
-                                             uint32_t data_length,
-                                             mod_som_sdio_file_ptr_t file_ptr){
+mod_som_status_t mod_som_sdio_write_config_f(mod_som_sdio_file_ptr_t file_ptr){
 
 	FRESULT res;
 	UINT byteswritten=0;
@@ -1173,6 +1173,11 @@ mod_som_status_t mod_som_sdio_write_config_f(uint8_t *data_ptr,
     uint8_t str_payload_chksum[MOD_SOM_SETTINGS_PAYLOAD_CHECKSUM_LENGTH];
     uint8_t length_header=32;
 //    uint8_t * local_settings_ptr;
+    mod_som_settings_struct_ptr_t local_settings_ptr=
+            mod_som_settings_get_settings_f();
+    uint8_t *data_ptr = (uint8_t *)local_settings_ptr;
+    uint32_t data_length = local_settings_ptr->size;
+
 
 
 	if(file_ptr->is_open_flag==0){
@@ -1206,7 +1211,7 @@ mod_som_status_t mod_som_sdio_write_config_f(uint8_t *data_ptr,
 	//time stamp will come at the end of header
 	sprintf((char*) header,  \
 	        "$%s%08x%08x%08x*FF", \
-	        "SOM3", \
+	        local_settings_ptr->header, \
 	        (int) t_hex[0],\
 	        (int) t_hex[1],\
 	        (int) data_length);
@@ -1845,7 +1850,6 @@ mod_som_status_t mod_som_sdio_write_data_f(mod_som_sdio_file_ptr_t file_ptr, con
         }
 
     mod_som_sdio_xfer_ptr_t mod_som_sdio_xfer_item_ptr;
-
 
     mod_som_sdio_xfer_item_ptr = mod_som_sdio_new_xfer_item_f();
 

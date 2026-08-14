@@ -47,6 +47,7 @@
 #define MOD_SOM_SDIO_CANNOT_OPEN_CONF_FILE  0x7U
 #define MOD_SOM_SDIO_CANNOT_OPEN_DATA_FILE  0x8U
 #define MOD_SOM_SDIO_OPEN_PREV_PROCESS_FILE 0x9U
+#define MOD_SOM_SDIO_STATUS_FAIL_MOUNT      0x9U
 #define MOD_SOM_SDIO_NO_PROCESS_FILE        0x10U
 
 
@@ -396,9 +397,8 @@ mod_som_status_t mod_som_sdio_close_file_f(mod_som_sdio_file_ptr_t mod_som_sdio_
  * @return
  *   MOD_SOM_STATUS_OK if function execute nicely
  ******************************************************************************/
-mod_som_status_t mod_som_sdio_write_config_f(uint8_t *data_ptr,
-                                                  uint32_t data_length,
-                                                  mod_som_sdio_file_ptr_t file_ptr);
+mod_som_status_t mod_som_sdio_write_config_f(mod_som_sdio_file_ptr_t file_ptr);
+
 /*******************************************************************************
  * @brief
  *   a function to write config file
