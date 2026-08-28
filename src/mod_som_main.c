@@ -37,7 +37,7 @@
  *\
  ******************************************************************************/
 int main(void)
-  {
+{
     mod_som_status_t status;
 
     //ALB initialize the som board before OSCreateTask

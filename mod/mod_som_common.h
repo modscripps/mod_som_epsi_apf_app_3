@@ -192,8 +192,9 @@ typedef struct{
   GPIO_Port_TypeDef en_port;
   unsigned int tx_pin;
   unsigned int rx_pin;
-  unsigned int route;
-  unsigned int en_pin;
+  unsigned int tx_route;
+  unsigned int rx_route;
+    unsigned int en_pin;
   mod_som_uart_parity_t parity;
   mod_som_uart_data_bits_t data_bits;
   mod_som_uart_stop_bits_t stop_bits;

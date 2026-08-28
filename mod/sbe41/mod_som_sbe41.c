@@ -128,10 +128,11 @@ mod_som_status_t mod_som_sbe41_construct_config_f(){
 
   mod_som_sbe41_config_ptr_t config_ptr = mod_som_sbe41_ptr->config_ptr;
   config_ptr->port.com_port   = (void *)MOD_SOM_SBE41_USART;
-  config_ptr->port.route      = MOD_SOM_SBE41_TX_LOC;
+  config_ptr->port.tx_route      = MOD_SOM_SBE41_TX_LOC;
   config_ptr->port.tx_port    = MOD_SOM_SBE41_TX_PORT;
   config_ptr->port.tx_pin     = MOD_SOM_SBE41_TX_PIN;
 
+  config_ptr->port.rx_route      = MOD_SOM_SBE41_RX_LOC;
   config_ptr->port.rx_port    = MOD_SOM_SBE41_RX_PORT;
   config_ptr->port.rx_pin     = MOD_SOM_SBE41_RX_PIN;
 
@@ -419,9 +420,9 @@ mod_som_status_t mod_som_sbe41_construct_com_prf_f(){
   usart_ptr->ROUTELOC0 = (usart_ptr->ROUTELOC0
                            & ~(_USART_ROUTELOC0_TXLOC_MASK
                            | _USART_ROUTELOC0_RXLOC_MASK))
-                           | (mod_som_sbe41_ptr->config_ptr->port.route
+                           | (mod_som_sbe41_ptr->config_ptr->port.tx_route
                            << _USART_ROUTELOC0_TXLOC_SHIFT)
-                           | (mod_som_sbe41_ptr->config_ptr->port.route
+                           | (mod_som_sbe41_ptr->config_ptr->port.rx_route
                            << _USART_ROUTELOC0_RXLOC_SHIFT);
 
   //ALB enable the USART ROUTE.

@@ -657,7 +657,6 @@ mod_som_status_t mod_som_efe_stop_sampling_f();
  ******************************************************************************/
 mod_som_status_t mod_som_efe_sigramp_f();
 
-
 void  mod_som_efe_consumer_task_f (void  *p_arg);
 
 mod_som_status_t mod_som_efe_start_consumer_task_f (void);

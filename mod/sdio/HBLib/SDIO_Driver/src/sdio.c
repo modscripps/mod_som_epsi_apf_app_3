@@ -160,16 +160,11 @@ int32_t SDIO_ReadSingleBlock(SDIO_TypeDef *sdio_t,
 
   sdio_t->TFRMODE = tmpReg_u32;
   //2025 08 28 SAN update to give each while loop a timeout cased on  WAIT_TIME_OUT_MS
-  uint32_t tick;
-  uint32_t start_time_ms;
-  uint32_t curr_time_ms;
-  tick = sl_sleeptimer_get_tick_count();
-  start_time_ms = sl_sleeptimer_tick_to_ms(tick);
+  uint32_t start_tick;
+  start_tick = sl_sleeptimer_get_tick_count();
   // 6. wait for Command Complete
   while (!(sdio_t->IFCR & _SDIO_IFCR_CMDCOM_MASK)){
-      tick = sl_sleeptimer_get_tick_count();
-      curr_time_ms = sl_sleeptimer_tick_to_ms(tick);
-      if((curr_time_ms-start_time_ms)>WAIT_TIME_OUT_MS){
+      if(sl_sleeptimer_tick_to_ms(sl_sleeptimer_get_tick_count()-start_tick)>WAIT_TIME_OUT_MS){
           return -1;
       }
   }
@@ -177,13 +172,10 @@ int32_t SDIO_ReadSingleBlock(SDIO_TypeDef *sdio_t,
   // 7. clear previous command complete int
   sdio_t->IFCR = (_SDIO_IFCR_CMDCOM_MASK);
 
-  tick = sl_sleeptimer_get_tick_count();
-  start_time_ms = sl_sleeptimer_tick_to_ms(tick);
+  start_tick = sl_sleeptimer_get_tick_count();
   // 10. wait for Buffer Read Ready int
   while (!(sdio_t->IFCR & _SDIO_IFCR_BFRRDRDY_MASK)){
-      tick = sl_sleeptimer_get_tick_count();
-      curr_time_ms = sl_sleeptimer_tick_to_ms(tick);
-      if((curr_time_ms-start_time_ms)>WAIT_TIME_OUT_MS){
+      if(sl_sleeptimer_tick_to_ms(sl_sleeptimer_get_tick_count()-start_tick)>WAIT_TIME_OUT_MS){
           return -1;
       }
   }
@@ -200,26 +192,20 @@ int32_t SDIO_ReadSingleBlock(SDIO_TypeDef *sdio_t,
     destination_pu32++;
   }
 
-  tick = sl_sleeptimer_get_tick_count();
-  start_time_ms = sl_sleeptimer_tick_to_ms(tick);
+  start_tick = sl_sleeptimer_get_tick_count();
   // 19. Wait for transfer completed int
   while (!(sdio_t->IFCR & _SDIO_IFCR_TRANCOM_MASK)){
-      tick = sl_sleeptimer_get_tick_count();
-      curr_time_ms = sl_sleeptimer_tick_to_ms(tick);
-      if((curr_time_ms-start_time_ms)>WAIT_TIME_OUT_MS){
+      if(sl_sleeptimer_tick_to_ms(sl_sleeptimer_get_tick_count()-start_tick)>WAIT_TIME_OUT_MS){
           return -1;
       }
   }
 
-  tick = sl_sleeptimer_get_tick_count();
-  start_time_ms = sl_sleeptimer_tick_to_ms(tick);
+  start_tick = sl_sleeptimer_get_tick_count();
   // 20. CLear Transfer completed status
   while (sdio_t->IFCR & (_SDIO_IFCR_TRANCOM_MASK))
   {
     sdio_t->IFCR = (_SDIO_IFCR_TRANCOM_MASK);
-    tick = sl_sleeptimer_get_tick_count();
-    curr_time_ms = sl_sleeptimer_tick_to_ms(tick);
-    if((curr_time_ms-start_time_ms)>WAIT_TIME_OUT_MS){
+    if(sl_sleeptimer_tick_to_ms(sl_sleeptimer_get_tick_count()-start_tick)>WAIT_TIME_OUT_MS){
         return -1;
     }
   }
@@ -279,16 +265,11 @@ int32_t SDIO_WriteSingleBlock( SDIO_TypeDef *sdio_t,
 
   sdio_t->TFRMODE = tmpReg_u32;
   //2025 08 28 SAN update to give each while loop a timeout cased on  WAIT_TIME_OUT_MS
-  uint32_t tick;
-  uint32_t start_time_ms;
-  uint32_t curr_time_ms;
-  tick = sl_sleeptimer_get_tick_count();
-  start_time_ms = sl_sleeptimer_tick_to_ms(tick);
+  uint32_t start_tick;
+  start_tick = sl_sleeptimer_get_tick_count();
   // 6. wait for Command Complete
   while (!(sdio_t->IFCR & _SDIO_IFCR_CMDCOM_MASK)){
-      tick = sl_sleeptimer_get_tick_count();
-      curr_time_ms = sl_sleeptimer_tick_to_ms(tick);
-      if((curr_time_ms-start_time_ms)>WAIT_TIME_OUT_MS){
+      if(sl_sleeptimer_tick_to_ms(sl_sleeptimer_get_tick_count()-start_tick)>WAIT_TIME_OUT_MS){
           return -1;
       }
   }
@@ -296,13 +277,10 @@ int32_t SDIO_WriteSingleBlock( SDIO_TypeDef *sdio_t,
   // 7. clear previous command complete int
   sdio_t->IFCR = (_SDIO_IFCR_CMDCOM_MASK);
 
-  tick = sl_sleeptimer_get_tick_count();
-  start_time_ms = sl_sleeptimer_tick_to_ms(tick);
+  start_tick = sl_sleeptimer_get_tick_count();
   // 10. wait for Buffer Write Ready int
   while (!(sdio_t->IFCR & _SDIO_IFCR_BFRWRRDY_MASK)){
-      tick = sl_sleeptimer_get_tick_count();
-      curr_time_ms = sl_sleeptimer_tick_to_ms(tick);
-      if((curr_time_ms-start_time_ms)>WAIT_TIME_OUT_MS){
+      if(sl_sleeptimer_tick_to_ms(sl_sleeptimer_get_tick_count()-start_tick)>WAIT_TIME_OUT_MS){
           return -1;
       }
   }
@@ -319,26 +297,20 @@ int32_t SDIO_WriteSingleBlock( SDIO_TypeDef *sdio_t,
     origin_pu32++;
   }
 
-  tick = sl_sleeptimer_get_tick_count();
-  start_time_ms = sl_sleeptimer_tick_to_ms(tick);
+  start_tick = sl_sleeptimer_get_tick_count();
   // 19. Wait for transfer completed int
   while (!(sdio_t->IFCR & _SDIO_IFCR_TRANCOM_MASK)){
-      tick = sl_sleeptimer_get_tick_count();
-      curr_time_ms = sl_sleeptimer_tick_to_ms(tick);
-      if((curr_time_ms-start_time_ms)>WAIT_TIME_OUT_MS){
+      if(sl_sleeptimer_tick_to_ms(sl_sleeptimer_get_tick_count()-start_tick)>WAIT_TIME_OUT_MS){
           return -1;
       }
   }
 
-  tick = sl_sleeptimer_get_tick_count();
-  start_time_ms = sl_sleeptimer_tick_to_ms(tick);
+  start_tick = sl_sleeptimer_get_tick_count();
   // 20. CLear Transfer completed status
   while (sdio_t->IFCR & (_SDIO_IFCR_TRANCOM_MASK))
   {
       sdio_t->IFCR = (_SDIO_IFCR_TRANCOM_MASK);
-      tick = sl_sleeptimer_get_tick_count();
-      curr_time_ms = sl_sleeptimer_tick_to_ms(tick);
-      if((curr_time_ms-start_time_ms)>WAIT_TIME_OUT_MS){
+      if(sl_sleeptimer_tick_to_ms(sl_sleeptimer_get_tick_count()-start_tick)>WAIT_TIME_OUT_MS){
           return -1;
       }
   }
@@ -367,19 +339,14 @@ uint32_t SDIO_S_SendCMDWithOutDAT(SDIO_TypeDef *sdio_t,
   uint32_t regVal_u32 = sdio_t->PRSSTAT;
 //  //ALB add delay
 //  int delay=0xFFFF;
-  uint32_t tick;
-  uint32_t start_time_ms;
-  uint32_t curr_time_ms;
+  uint32_t start_tick;
 
-  tick = sl_sleeptimer_get_tick_count();
-  start_time_ms = sl_sleeptimer_tick_to_ms(tick);
+  start_tick = sl_sleeptimer_get_tick_count();
   //1. Check Command Inhibit Used
   while (regVal_u32 & _SDIO_PRSSTAT_CMDINHIBITCMD_MASK)
   {
     regVal_u32 = sdio_t->PRSSTAT;
-    tick = sl_sleeptimer_get_tick_count();
-    curr_time_ms = sl_sleeptimer_tick_to_ms(tick);
-    if((curr_time_ms-start_time_ms)>WAIT_TIME_OUT_MS){
+    if(sl_sleeptimer_tick_to_ms(sl_sleeptimer_get_tick_count()-start_tick)>WAIT_TIME_OUT_MS){
         sdio_t->CLOCKCTRL |= (_SDIO_CLOCKCTRL_SFTRSTCMD_MASK);
         return -1;
     }
@@ -397,12 +364,9 @@ uint32_t SDIO_S_SendCMDWithOutDAT(SDIO_TypeDef *sdio_t,
     }
     else
     {
-      tick = sl_sleeptimer_get_tick_count();
-      start_time_ms = sl_sleeptimer_tick_to_ms(tick);
+      start_tick = sl_sleeptimer_get_tick_count();
       while (sdio_t->PRSSTAT & _SDIO_PRSSTAT_CMDINHIBITDAT_MASK){
-          tick = sl_sleeptimer_get_tick_count();
-          curr_time_ms = sl_sleeptimer_tick_to_ms(tick);
-          if((curr_time_ms-start_time_ms)>WAIT_TIME_OUT_MS){
+          if(sl_sleeptimer_tick_to_ms(sl_sleeptimer_get_tick_count()-start_tick)>WAIT_TIME_OUT_MS){
               sdio_t->CLOCKCTRL |= (_SDIO_CLOCKCTRL_SFTRSTDAT_MASK);
               return -1;
           }
@@ -433,12 +397,9 @@ uint32_t SDIO_S_SendCMDWithOutDAT(SDIO_TypeDef *sdio_t,
 
   // Sequence to Finalize Command
   // 1. Wait for Command Complete
-  tick = sl_sleeptimer_get_tick_count();
-  start_time_ms = sl_sleeptimer_tick_to_ms(tick);
+  start_tick = sl_sleeptimer_get_tick_count();
   while (!(sdio_t->IFCR & _SDIO_IFCR_CMDCOM_MASK) & !(sdio_t->IFCR & _SDIO_IFCR_CMDTOUTERR_MASK)){
-      tick = sl_sleeptimer_get_tick_count();
-      curr_time_ms = sl_sleeptimer_tick_to_ms(tick);
-      if((curr_time_ms-start_time_ms)>WAIT_TIME_OUT_MS){
+      if(sl_sleeptimer_tick_to_ms(sl_sleeptimer_get_tick_count()-start_tick)>WAIT_TIME_OUT_MS){
           status = -1;
           sdio_t->CLOCKCTRL |= (_SDIO_CLOCKCTRL_SFTRSTCMD_MASK);
           break;
@@ -785,9 +746,7 @@ static uint8_t SDIO_S_CardInitialization_and_Identification(SDIO_TypeDef *sdio_t
   uint8_t attemptCnt_u8 = 2;
   uint32_t resp = 0;
   //2026 08 08 SAN bound the ACMD41 busy loops with a timeout
-  uint32_t tick;
-  uint32_t start_time_ms;
-  uint32_t curr_time_ms;
+  uint32_t start_tick;
 #if defined(MOD_SOM_DEBUG)
   uint32_t acmd41_iter_u32 = 0;
 #endif
@@ -863,8 +822,7 @@ static uint8_t SDIO_S_CardInitialization_and_Identification(SDIO_TypeDef *sdio_t
       // 23. Check busy
       //2026 08 08 SAN bound this loop: it spun forever when the card answered
       //CMD8 but never completed init (WDOG0 hang during f_mount)
-      tick = sl_sleeptimer_get_tick_count();
-      start_time_ms = sl_sleeptimer_tick_to_ms(tick);
+      start_tick = sl_sleeptimer_get_tick_count();
       while (!(sdio_t->RESP0 & (1 << _ACMD41_RESPONSE_BUSY_BIT_SHIFT)))
       {
         // 21. Initialization (ACMD41 HCS=1, S18R, XPC) Set Voltage Window
@@ -885,9 +843,7 @@ static uint8_t SDIO_S_CardInitialization_and_Identification(SDIO_TypeDef *sdio_t
                    (unsigned long)sdio_t->RESP0);
         }
 #endif
-        tick = sl_sleeptimer_get_tick_count();
-        curr_time_ms = sl_sleeptimer_tick_to_ms(tick);
-        if((curr_time_ms-start_time_ms)>ACMD41_INIT_TIME_OUT_MS){
+        if(sl_sleeptimer_tick_to_ms(sl_sleeptimer_get_tick_count()-start_tick)>ACMD41_INIT_TIME_OUT_MS){
 #if defined(MOD_SOM_DEBUG)
             printf("SDIO ACMD41 timeout, OCR=0x%08lx\r\n",
                    (unsigned long)sdio_t->RESP0);
@@ -931,8 +887,7 @@ static uint8_t SDIO_S_CardInitialization_and_Identification(SDIO_TypeDef *sdio_t
       // OCR OK
       // 16. Check busy
       //2026 08 08 SAN bound this loop, same reason as the F8=1 branch above
-      tick = sl_sleeptimer_get_tick_count();
-      start_time_ms = sl_sleeptimer_tick_to_ms(tick);
+      start_tick = sl_sleeptimer_get_tick_count();
       while (!(sdio_t->RESP0 & (1 << _ACMD41_RESPONSE_BUSY_BIT_SHIFT)))
       {
         // 21. Initialization (ACMD41 HCS=1, S18R, XPC) Set Voltage Window
@@ -950,9 +905,7 @@ static uint8_t SDIO_S_CardInitialization_and_Identification(SDIO_TypeDef *sdio_t
                    (unsigned long)sdio_t->RESP0);
         }
 #endif
-        tick = sl_sleeptimer_get_tick_count();
-        curr_time_ms = sl_sleeptimer_tick_to_ms(tick);
-        if((curr_time_ms-start_time_ms)>ACMD41_INIT_TIME_OUT_MS){
+        if(sl_sleeptimer_tick_to_ms(sl_sleeptimer_get_tick_count()-start_tick)>ACMD41_INIT_TIME_OUT_MS){
 #if defined(MOD_SOM_DEBUG)
             printf("SDIO ACMD41 timeout, OCR=0x%08lx\r\n",
                    (unsigned long)sdio_t->RESP0);
@@ -1027,15 +980,10 @@ uint8_t SDIO_GetActCardStateType(void)
 int32_t SDIO_WaitForWriteFinish(SDIO_TypeDef *sdio_t)
 {
     //2026 08 08 SAN bounded wait
-    uint32_t tick;
-    uint32_t start_time_ms;
-    uint32_t curr_time_ms;
-    tick = sl_sleeptimer_get_tick_count();
-    start_time_ms = sl_sleeptimer_tick_to_ms(tick);
+    uint32_t start_tick;
+    start_tick = sl_sleeptimer_get_tick_count();
     while(sdio_t->PRSSTAT & _SDIO_PRSSTAT_WRTRANACT_MASK){
-        tick = sl_sleeptimer_get_tick_count();
-        curr_time_ms = sl_sleeptimer_tick_to_ms(tick);
-        if((curr_time_ms-start_time_ms)>WAIT_TIME_OUT_MS){
+        if(sl_sleeptimer_tick_to_ms(sl_sleeptimer_get_tick_count()-start_tick)>WAIT_TIME_OUT_MS){
             return -1;
         }
     }
@@ -1112,9 +1060,7 @@ uint8_t SDIO_GetBlockSize(SDIO_TypeDef *sdio_t,
   uint32_t rcv_buf[16];
   uint32_t* localbuffptr_pu32;
   //2026 08 08 SAN bound the ACMD13 waits with a timeout
-  uint32_t tick;
-  uint32_t start_time_ms;
-  uint32_t curr_time_ms;
+  uint32_t start_tick;
 
   // Get card state
   status = SDIO_S_SendCMDWithOutDAT(sdio_t, CMD13,
@@ -1135,12 +1081,9 @@ uint8_t SDIO_GetBlockSize(SDIO_TypeDef *sdio_t,
   ////// SEND ACMD13 //////
 
   // Wait until the card is ready for the command
-  tick = sl_sleeptimer_get_tick_count();
-  start_time_ms = sl_sleeptimer_tick_to_ms(tick);
+  start_tick = sl_sleeptimer_get_tick_count();
   while (sdio_t->PRSSTAT & _SDIO_PRSSTAT_CMDINHIBITCMD_MASK){
-      tick = sl_sleeptimer_get_tick_count();
-      curr_time_ms = sl_sleeptimer_tick_to_ms(tick);
-      if((curr_time_ms-start_time_ms)>WAIT_TIME_OUT_MS){
+     if(sl_sleeptimer_tick_to_ms(sl_sleeptimer_get_tick_count()-start_tick)>WAIT_TIME_OUT_MS){
           return -1;
       }
   }
@@ -1156,12 +1099,9 @@ uint8_t SDIO_GetBlockSize(SDIO_TypeDef *sdio_t,
   sdio_t->TFRMODE = tmpReg_u32;
 
   // Wait for Command Complete
-  tick = sl_sleeptimer_get_tick_count();
-  start_time_ms = sl_sleeptimer_tick_to_ms(tick);
+  start_tick = sl_sleeptimer_get_tick_count();
   while (!(sdio_t->IFCR & _SDIO_IFCR_CMDCOM_MASK)){
-      tick = sl_sleeptimer_get_tick_count();
-      curr_time_ms = sl_sleeptimer_tick_to_ms(tick);
-      if((curr_time_ms-start_time_ms)>WAIT_TIME_OUT_MS){
+      if(sl_sleeptimer_tick_to_ms(sl_sleeptimer_get_tick_count()-start_tick)>WAIT_TIME_OUT_MS){
           return -1;
       }
   }
@@ -1169,12 +1109,9 @@ uint8_t SDIO_GetBlockSize(SDIO_TypeDef *sdio_t,
   sdio_t->IFCR = (_SDIO_IFCR_CMDCOM_MASK);
 
   // 10. wait for Buffer Read Ready int
-  tick = sl_sleeptimer_get_tick_count();
-  start_time_ms = sl_sleeptimer_tick_to_ms(tick);
+  start_tick = sl_sleeptimer_get_tick_count();
   while (!(sdio_t->IFCR & _SDIO_IFCR_BFRRDRDY_MASK)){
-      tick = sl_sleeptimer_get_tick_count();
-      curr_time_ms = sl_sleeptimer_tick_to_ms(tick);
-      if((curr_time_ms-start_time_ms)>WAIT_TIME_OUT_MS){
+      if(sl_sleeptimer_tick_to_ms(sl_sleeptimer_get_tick_count()-start_tick)>WAIT_TIME_OUT_MS){
           return -1;
       }
   }
@@ -1201,12 +1138,9 @@ uint8_t SDIO_GetBlockSize(SDIO_TypeDef *sdio_t,
       SDIO_ActCardState_st.cardRCA_u16 << _CMD13_RCA_SHIFT);
 
   // 19. Wait for transfer completed int
-  tick = sl_sleeptimer_get_tick_count();
-  start_time_ms = sl_sleeptimer_tick_to_ms(tick);
+  start_tick = sl_sleeptimer_get_tick_count();
   while (!(sdio_t->IFCR & _SDIO_IFCR_TRANCOM_MASK)){
-      tick = sl_sleeptimer_get_tick_count();
-      curr_time_ms = sl_sleeptimer_tick_to_ms(tick);
-      if((curr_time_ms-start_time_ms)>WAIT_TIME_OUT_MS){
+      if(sl_sleeptimer_tick_to_ms(sl_sleeptimer_get_tick_count()-start_tick)>WAIT_TIME_OUT_MS){
           return -1;
       }
   }

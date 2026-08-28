@@ -398,10 +398,11 @@ mod_som_apf_status_t mod_som_apf_construct_config_ptr_f(){
   config_ptr->vibration_cut_off= MOD_SOM_APF_VIBRATION_CUT_OFF;
 
   config_ptr->port.com_port   = (void *)MOD_SOM_APF_USART;
-  config_ptr->port.route      = MOD_SOM_APF_TX_LOC;
+  config_ptr->port.tx_route      = MOD_SOM_APF_TX_LOC;
   config_ptr->port.tx_port    = MOD_SOM_APF_TX_PORT;
   config_ptr->port.tx_pin     = MOD_SOM_APF_TX_PIN;
 
+  config_ptr->port.rx_route      = MOD_SOM_APF_RX_LOC;
   config_ptr->port.rx_port    = MOD_SOM_APF_RX_PORT;
   config_ptr->port.rx_pin     = MOD_SOM_APF_RX_PIN;
 
@@ -688,9 +689,9 @@ mod_som_apf_status_t mod_som_apf_construct_com_prf_f(){
         leuart_ptr->ROUTELOC0 = (leuart_ptr->ROUTELOC0
                                  & ~(_LEUART_ROUTELOC0_TXLOC_MASK
                                  | _LEUART_ROUTELOC0_RXLOC_MASK))
-                                 | (mod_som_apf_ptr->config_ptr->port.route
+                                 | (mod_som_apf_ptr->config_ptr->port.tx_route
                                  << _LEUART_ROUTELOC0_TXLOC_SHIFT)
-                                 | (mod_som_apf_ptr->config_ptr->port.route
+                                 | (mod_som_apf_ptr->config_ptr->port.rx_route
                                  << _LEUART_ROUTELOC0_RXLOC_SHIFT);
 
         //ALB enable the LEUART ROUTE.

@@ -209,14 +209,13 @@ mod_som_status_t mod_som_sdio_enable_hardware_f(){
 
 //ALB TODO Make CD works
     //sml use proper CD pin connected to SDIO
-    GPIO_PinModeSet(gpioPortF, 8, gpioModeInput, 1);              // SDIO_CD sml match the hw
-    //    GPIO_PinModeSet(gpioPortB, 10, gpioModeInput, 1);              // SDIO_CD
-    GPIO_PinModeSet(gpioPortE, 15, gpioModePushPullAlternate, 0); // SDIO_CMD
-    GPIO_PinModeSet(gpioPortE, 14, gpioModePushPullAlternate, 1); // SDIO_CLK
-    GPIO_PinModeSet(gpioPortA, 0, gpioModePushPullAlternate, 1);  // SDIO_DAT0
-    GPIO_PinModeSet(gpioPortA, 1, gpioModePushPullAlternate, 1);  // SDIO_DAT1
-    GPIO_PinModeSet(gpioPortA, 2, gpioModePushPullAlternate, 1);  // SDIO_DAT2
-    GPIO_PinModeSet(gpioPortA, 3, gpioModePushPullAlternate, 1);  // SDIO_DAT3
+    GPIO_PinModeSet(MOD_SOM_SD1_9_SDIO_CD_L1_PORT, MOD_SOM_SD1_9_SDIO_CD_L1_PIN, gpioModeInput, 1);              // SDIO_CD sml match the hw 
+    GPIO_PinModeSet(MOD_SOM_SD1_3_SDIO_CMD_L1_PORT, MOD_SOM_SD1_3_SDIO_CMD_L1_PIN, gpioModePushPullAlternate, 0); // SDIO_CMD
+    GPIO_PinModeSet(MOD_SOM_SD1_5_SDIO_CLK_L1_PORT, MOD_SOM_SD1_5_SDIO_CLK_L1_PIN, gpioModePushPullAlternate, 1); // SDIO_CLK
+    GPIO_PinModeSet(MOD_SOM_SD1_7_SDIO_DAT0_L1_PORT, MOD_SOM_SD1_7_SDIO_DAT0_L1_PIN, gpioModePushPullAlternate, 1);  // SDIO_DAT0
+    GPIO_PinModeSet(MOD_SOM_SD1_8_SDIO_DAT1_L1_PORT, MOD_SOM_SD1_8_SDIO_DAT1_L1_PIN, gpioModePushPullAlternate, 1);  // SDIO_DAT1
+    GPIO_PinModeSet(MOD_SOM_SD1_1_SDIO_DAT2_L1_PORT, MOD_SOM_SD1_1_SDIO_DAT2_L1_PIN, gpioModePushPullAlternate, 1);  // SDIO_DAT2
+    GPIO_PinModeSet(MOD_SOM_SD1_2_SDIO_DAT3_L1_PORT, MOD_SOM_SD1_2_SDIO_DAT3_L1_PIN, gpioModePushPullAlternate, 1);  // SDIO_DAT3
 
     sl_sleeptimer_delay_millisecond(delay);
 
@@ -284,17 +283,13 @@ mod_som_status_t status=0;
         status=1;
       }
 
-
-
-    //TODO use bsp_som variables to initialize the SD card.
-    // Soldered sdCard slot
-    GPIO_PinModeSet(gpioPortF, 8, gpioModeInput, 0);             // SDIO_CD
-    GPIO_PinModeSet(gpioPortE, 15, gpioModePushPullAlternate, 0); // SDIO_CMD
-    GPIO_PinModeSet(gpioPortE, 14, gpioModePushPullAlternate, 0); // SDIO_CLK
-    GPIO_PinModeSet(gpioPortA, 0, gpioModePushPullAlternate, 0);  // SDIO_DAT0
-    GPIO_PinModeSet(gpioPortA, 1, gpioModePushPullAlternate, 0);  // SDIO_DAT1
-    GPIO_PinModeSet(gpioPortA, 2, gpioModePushPullAlternate, 0);  // SDIO_DAT2
-    GPIO_PinModeSet(gpioPortA, 3, gpioModePushPullAlternate, 0);  // SDIO_DAT3
+GPIO_PinModeSet(MOD_SOM_SD1_9_SDIO_CD_L1_PORT, MOD_SOM_SD1_9_SDIO_CD_L1_PIN, gpioModeInput, 0);              // SDIO_CD sml match the hw 
+    GPIO_PinModeSet(MOD_SOM_SD1_3_SDIO_CMD_L1_PORT, MOD_SOM_SD1_3_SDIO_CMD_L1_PIN, gpioModePushPullAlternate, 0); // SDIO_CMD
+    GPIO_PinModeSet(MOD_SOM_SD1_5_SDIO_CLK_L1_PORT, MOD_SOM_SD1_5_SDIO_CLK_L1_PIN, gpioModePushPullAlternate, 0); // SDIO_CLK
+    GPIO_PinModeSet(MOD_SOM_SD1_7_SDIO_DAT0_L1_PORT, MOD_SOM_SD1_7_SDIO_DAT0_L1_PIN, gpioModePushPullAlternate, 0);  // SDIO_DAT0
+    GPIO_PinModeSet(MOD_SOM_SD1_8_SDIO_DAT1_L1_PORT, MOD_SOM_SD1_8_SDIO_DAT1_L1_PIN, gpioModePushPullAlternate, 0);  // SDIO_DAT1
+    GPIO_PinModeSet(MOD_SOM_SD1_1_SDIO_DAT2_L1_PORT, MOD_SOM_SD1_1_SDIO_DAT2_L1_PIN, gpioModePushPullAlternate, 0);  // SDIO_DAT2
+    GPIO_PinModeSet(MOD_SOM_SD1_2_SDIO_DAT3_L1_PORT, MOD_SOM_SD1_2_SDIO_DAT3_L1_PIN, gpioModePushPullAlternate, 0);  // SDIO_DAT3
 
 
     sl_sleeptimer_delay_millisecond(delay);
@@ -316,7 +311,6 @@ mod_som_status_t status=0;
   return status;
 
 }
-
 
 /*******************************************************************************
  * @brief
@@ -345,27 +339,27 @@ mod_som_status_t mod_som_sdio_mount_fatfs_f(){
         //2026 08 08 SAN propagate the failure so enable_hardware can bail
         return mod_som_sdio_encode_status_f(MOD_SOM_SDIO_STATUS_FAIL_MOUNT);
     }
-    else if(GPIO_PinInGet(gpioPortF, 8)){
+    else if(GPIO_PinInGet(MOD_SOM_SD1_9_SDIO_CD_L1_PORT, MOD_SOM_SD1_9_SDIO_CD_L1_PIN)){
         // 2024 12 12 LW: Only attempt to mount if a card is detected.Add commentMore actions
 
         mod_som_io_print_f("FAT-mount failed: No SD card detected.\r\n");
         return mod_som_sdio_encode_status_f(MOD_SOM_SDIO_STATUS_ERR_NO_CARD_DETECTED);
-    }else
-      {
+    }
+    else{
         res=f_mount(&mod_som_sdio_struct.fat_fs,(TCHAR *) "" ,1);
 
         //    res = f_mount(VOLUME_ADDRESS, &Fatfs);
         if (res != FR_OK)
-          {
+        {
             mod_som_io_print_f("FAT-mount failed: %d\r\n", res);
             //2026 08 08 SAN propagate the failure so enable_hardware can bail
             return mod_som_sdio_encode_status_f(MOD_SOM_SDIO_STATUS_FAIL_MOUNT);
-          }
+        }
         else
-          {
+        {
             mod_som_io_print_f("FAT-mount successful.\r\n");
-          }
-      }
+        }
+    }
 
     return mod_som_sdio_encode_status_f(MOD_SOM_STATUS_OK);
 
@@ -616,8 +610,7 @@ mod_som_status_t mod_som_sdio_define_filename_f(CPU_CHAR* filename){
 	mod_som_sdio_struct.open_file_time=mod_som_calendar_get_time_f();
 	//store the date time when we open the file
 //	time_buff=mod_som_calendar_get_datetime_f();
-  mod_som_settings_struct_ptr_t local_settings_ptr=
-                                          mod_som_settings_get_settings_f();
+
 
 
   //ALB every time I open that file the settings are saved first.
@@ -1367,8 +1360,6 @@ mod_som_status_t mod_som_sdio_stop_store_f(){
 	return mod_som_sdio_encode_status_f(MOD_SOM_STATUS_OK);
 }
 
-
-
 /*******************************************************************************
  * @brief
  *   a function read the config file and streaming it to the main comm port
@@ -1838,16 +1829,17 @@ mod_som_status_t mod_som_sdio_write_data_f(mod_som_sdio_file_ptr_t file_ptr, con
         volatile bool * done_streaming_flag_ptr){
   mod_som_status_t mod_som_status;
   mod_som_status = MOD_SOM_STATUS_OK;
-    if(!mod_som_sdio_struct.initialized_flag)
+    if(!mod_som_sdio_struct.initialized_flag){
         return mod_som_sdio_encode_status_f(MOD_SOM_SDIO_STATUS_ERR_NOT_INITIALIZED);
+    }
     if(!mod_som_sdio_struct.started_flag){
-            if(!mod_som_sdio_struct.enable_flag){
-                mod_som_status = mod_som_sdio_enable_hardware_f();
-              }
-            if(mod_som_status!=MOD_SOM_STATUS_OK){
-                return mod_som_sdio_encode_status_f(MOD_SOM_SDIO_STATUS_ERR_NOT_STARTED);
-            }
+        if(!mod_som_sdio_struct.enable_flag){
+            mod_som_status = mod_som_sdio_enable_hardware_f();
         }
+        if(mod_som_status!=MOD_SOM_STATUS_OK){
+            return mod_som_sdio_encode_status_f(MOD_SOM_SDIO_STATUS_ERR_NOT_STARTED);
+        }
+    }
 
     mod_som_sdio_xfer_ptr_t mod_som_sdio_xfer_item_ptr;
 

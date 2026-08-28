@@ -51,6 +51,7 @@
 #if defined(MOD_SOM_APF_EN)
 #include "mod_som_apf.h"
 #endif
+
 #if defined(MOD_SOM_VOLTAGE_EN)
 #include "mod_som_voltage.h"
 #endif
@@ -86,8 +87,8 @@ typedef struct{
 //2026 08 09 adding mod_som type pointer
 static mod_som_ptr_t mod_som_ptr;
 
-////AlB Structure to initialize the watchdog timer.
-///* Defining the watchdog initialization data */
+//AlB Structure to initialize the watchdog timer.
+/* Defining the watchdog initialization data */
 WDOG_Init_TypeDef wdog_init =
 {
         .enable     = true,                 /* Start watchdog when init done */
@@ -861,7 +862,6 @@ void mod_som_main_stop_modules_f()
 
     // stop ADC master clock timer
     status|= mod_som_efe_stop_sampling_f();
-
 
 
     // stop collecting CTD data
@@ -2015,7 +2015,7 @@ void LDMA_IRQHandler(void){
         mod_som_io_ldma_irq_handler_f();
     }
 
-    CORE_EXIT_ATOMIC();
+  CORE_EXIT_ATOMIC();
 
 
     return;
@@ -2162,14 +2162,15 @@ void UART0_TX_IRQHandler(void){
     }
     return;
 }
-//ALB comment to make the retarget serial port works on the SOM MEZZANINE REV2
-//void UART1_RX_IRQHandler(void){
-//    if(mod_som_ptr->sys_peripherals_list.UART1_prf_ptr != DEF_NULL){
-//        mod_som_ptr->sys_peripherals_list.UART1_prf_ptr->irq_handler_1_f(
-//                (void *)mod_som_ptr->sys_peripherals_list.UART1_prf_ptr->device_ptr);
-//    }
-//    return;
-//}
+#ifdef MOD_SOM_BOARD
+void UART1_RX_IRQHandler(void){
+    if(mod_som_ptr->sys_peripherals_list.UART1_prf_ptr != DEF_NULL){
+        mod_som_ptr->sys_peripherals_list.UART1_prf_ptr->irq_handler_1_f(
+                (void *)mod_som_ptr->sys_peripherals_list.UART1_prf_ptr->device_ptr);
+    }
+    return;
+}
+#endif
 void UART1_TX_IRQHandler(void){
     if(mod_som_ptr->sys_peripherals_list.UART1_prf_ptr != DEF_NULL){
         mod_som_ptr->sys_peripherals_list.UART1_prf_ptr->irq_handler_2_f(
@@ -2291,6 +2292,22 @@ void USART4_TX_IRQHandler(void){
     }
     return;
 }
+#ifdef MOD_SOM_MEZZANINE_BOARD
+void USART5_RX_IRQHandler(void){
+    if(mod_som_ptr->sys_peripherals_list.USART5_prf_ptr != DEF_NULL){
+        mod_som_ptr->sys_peripherals_list.USART5_prf_ptr->irq_handler_1_f(
+                (void *)mod_som_ptr->sys_peripherals_list.USART5_prf_ptr->device_ptr);
+    }
+    return;
+}
+#endif
+void USART5_TX_IRQHandler(void){
+    if(mod_som_ptr->sys_peripherals_list.USART5_prf_ptr != DEF_NULL){
+        mod_som_ptr->sys_peripherals_list.USART5_prf_ptr->irq_handler_2_f(
+                (void *)mod_som_ptr->sys_peripherals_list.USART5_prf_ptr->device_ptr);
+    }
+    return;
+}
 void WTIMER0_IRQHandler(void){
     if(mod_som_ptr->sys_peripherals_list.WTIMER0_prf_ptr != DEF_NULL){
         mod_som_ptr->sys_peripherals_list.WTIMER0_prf_ptr->irq_handler_1_f(
@@ -2351,20 +2368,6 @@ void TIMER6_IRQHandler(void){
     if(mod_som_ptr->sys_peripherals_list.TIMER5_prf_ptr != DEF_NULL){
         mod_som_ptr->sys_peripherals_list.TIMER5_prf_ptr->irq_handler_1_f(
                 (void *)mod_som_ptr->sys_peripherals_list.TIMER5_prf_ptr->device_ptr);
-    }
-    return;
-}
-//void USART5_RX_IRQHandler(void){
-//if(mod_som_ptr->sys_peripherals_list.USART5_prf_ptr != DEF_NULL){
-//    mod_som_ptr->sys_peripherals_list.USART5_prf_ptr->irq_handler_1_f(
-//            (void *)mod_som_ptr->sys_peripherals_list.USART5_prf_ptr->device_ptr);
-//}
-//    return;
-//}
-void USART5_TX_IRQHandler(void){
-    if(mod_som_ptr->sys_peripherals_list.USART5_prf_ptr != DEF_NULL){
-        mod_som_ptr->sys_peripherals_list.USART5_prf_ptr->irq_handler_2_f(
-                (void *)mod_som_ptr->sys_peripherals_list.USART5_prf_ptr->device_ptr);
     }
     return;
 }

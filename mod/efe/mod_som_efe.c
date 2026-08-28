@@ -190,11 +190,11 @@ sensor_spec_t ch1  = {"t1","999",99, MOD_AD7124_TEMP, 0x7080};
 sensor_spec_t ch2  = {"t2","999",99, MOD_AD7124_TEMP, 0x3080};
 sensor_spec_t ch3  = {"s1","999",99, MOD_AD7124_SHEAR, 0x5080};//epsi
 sensor_spec_t ch4  = {"s2","999",99, MOD_AD7124_SHEAR, 0x1080};//epsi
-//sensor_spec_t ch3  = {"s1","000",0, MOD_AD7124_FLUO, 0x5080};//FCTD
-//sensor_spec_t ch4  = {"s2","000",0, MOD_AD7124_UCOND, 0x1080};//FCTD
 sensor_spec_t ch5  = {"a1","000",0, MOD_AD7124_ACCELLX, 0x6080};
 sensor_spec_t ch6  = {"a2","000",0, MOD_AD7124_ACCELLY, 0x2080};
 sensor_spec_t ch7  = {"a3","000",0, MOD_AD7124_ACCELLZ, 0x4080};
+sensor_spec_t ch8  = {"f1","000",0, MOD_AD7124_FLUO, 0x5080};//FCTD
+sensor_spec_t ch9  = {"c1","000",0, MOD_AD7124_UCOND, 0x1080};//FCTD
 #endif
 
 ////MHA STANDALONE EFE CODE.  6/28/2021
@@ -997,7 +997,7 @@ void  mod_som_efe_consumer_task_f(void  *p_arg){
             elmnts_avail = mod_som_efe_ptr->sample_count -
                            mod_som_efe_ptr->consumer_ptr->cnsmr_cnt;  //calculate number of elements available have been produced
             // LOOP without delay until caught up to latest produced element
-            while (elmnts_avail > 0)
+            while (elmnts_avail > 0 && !mod_som_efe_ptr->consumer_ptr->data_ready_flg)
               {
                 // When have circular buffer overflow: have produced data bigger than consumer data: 1 circular buffer (n_elmnts)
                 // calculate new consumer count to skip ahead to the tail of the circular buffer (with optional padding),
@@ -1048,14 +1048,14 @@ void  mod_som_efe_consumer_task_f(void  *p_arg){
                                mod_som_efe_ptr->consumer_ptr->cnsmr_cnt; //elements available have been produced
                 if((mod_som_efe_ptr->consumer_ptr->cnsmr_cnt %
                     mod_som_efe_ptr->settings_ptr->nb_sample_per_record) ==0){
-                    mod_som_efe_ptr->consumer_ptr->data_ready_flg=1;
+                    mod_som_efe_ptr->consumer_ptr->data_ready_flg=true;
                     break;
                 }
               }  // end of while (elemts_avail > 0)
             // No more data available. All data are stored in the stream buffer.
 
 
-            if (mod_som_efe_ptr->consumer_ptr->data_ready_flg &
+            if (mod_som_efe_ptr->consumer_ptr->data_ready_flg &&
                 mod_som_efe_ptr->consumer_ptr->consumed_flag){
 
                 // We are almost ready to send. Just need to get the header, compute the chcksum, append it
@@ -1140,7 +1140,7 @@ void  mod_som_efe_consumer_task_f(void  *p_arg){
 
                 //ALB update reset_cnsmr_cnt so we can fill the stream block from 0 again
                 reset_cnsmr_cnt=mod_som_efe_ptr->consumer_ptr->cnsmr_cnt;
-                mod_som_efe_ptr->consumer_ptr->data_ready_flg=0;
+                mod_som_efe_ptr->consumer_ptr->data_ready_flg=false;
 
             }//end if (mod_som_efe_ptr->sampling_flag)
         } // data_ready_flg
@@ -1216,7 +1216,7 @@ mod_som_status_t mod_som_efe_disable_hardware_f(){
 	//ALB TODO change the port and pin syntax using the som hearders
 
 	/* Analog Enable*/
-	GPIO_PinModeSet(gpioPortB, 7, gpioModePushPull, 0); 	// power the ADC
+	GPIO_PinModeSet(MOD_SOM_J11_3_PORT, MOD_SOM_J11_3_PIN, gpioModePushPull, 0); 	// power the ADC
 
 	return mod_som_efe_encode_status_f(MOD_SOM_STATUS_OK);
 

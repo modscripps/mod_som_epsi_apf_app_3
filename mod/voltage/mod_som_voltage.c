@@ -56,13 +56,13 @@ mod_som_voltage_ptr_t mod_som_voltage_ptr;
  *   or otherwise
  ******************************************************************************/
 mod_som_status_t mod_som_voltage_init_f(){
-    mod_som_status_t status;
+    mod_som_status_t status = 0;
     RTOS_ERR  err;
 
 #ifdef  RTOS_MODULE_COMMON_SHELL_AVAIL
-    status = mod_som_voltage_init_cmd_f();
-    if(status != MOD_SOM_STATUS_OK)
-        return mod_som_voltage_encode_status_f(MOD_SOM_VOLTAGE_STATUS_FAIL_INIT_CMD);
+//    status = mod_som_voltage_init_cmd_f();
+//    if(status != MOD_SOM_STATUS_OK)
+//        return mod_som_voltage_encode_status_f(MOD_SOM_VOLTAGE_STATUS_FAIL_INIT_CMD);
 #endif
 
 
@@ -454,8 +454,6 @@ mod_som_status_t mod_som_voltage_stop_adc1_scan_task_f(){
   return mod_som_voltage_encode_status_f(MOD_SOM_STATUS_OK);
 }
 
-
-
 /*******************************************************************************
  * @brief
  *   mod_som_voltage_mode_f
@@ -526,7 +524,7 @@ mod_som_status_t mod_som_voltage_scan_f(void){
 /*******************************************************************************
  * @brief
  *   mod_som_voltage_scan_f
- *   scan the GG11 ADC0 on GPIO PD0
+ *   scan the GG11 ADC1 on GPIO PD0
  *   I grab the time stamp here to reduce the time in the IRQ Handler but the stream
  *   So be aware the time stamp is not super precise here.
  *   There is a lag between the voltage measurement and the timestamp.

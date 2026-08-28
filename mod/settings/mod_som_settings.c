@@ -260,7 +260,6 @@ mod_som_status_t mod_som_settings_init_f(){
 	        (mod_som_settings_struct.mod_som_efe_settings.size % sizeof(uint32_t))-1; //ALB -1 because is the word length in uint32_t
 #endif
 #if defined(MOD_SOM_SBE41_EN)
-
 	    memcpy(&mod_som_settings_struct.mod_som_sbe41_settings.size,
 	           (uint32_t*) &userDataPage_ptr[user_page_offset],
 	           sizeof(uint32_t));
@@ -269,12 +268,10 @@ mod_som_status_t mod_som_settings_init_f(){
 	    memcpy((uint8_t *) &mod_som_settings_struct.mod_som_sbe41_settings.data_header_text,
 	           (uint8_t*) &userDataPage_ptr[user_page_offset],
 	           mod_som_settings_struct.mod_som_sbe41_settings.size-4);
-
-	    user_page_offset+=mod_som_settings_struct.mod_som_sbe41_settings.size/sizeof(uint32_t)+ 
+ user_page_offset+=mod_som_settings_struct.mod_som_sbe41_settings.size/sizeof(uint32_t)+ 
 	        (mod_som_settings_struct.mod_som_sbe41_settings.size % sizeof(uint32_t))-1;
-
-
 #endif
+
 #if defined(MOD_SOM_SDIO_EN)
 
 	    memcpy(&mod_som_settings_struct.mod_som_sdio_settings.size,

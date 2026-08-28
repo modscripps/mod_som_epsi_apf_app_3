@@ -9,8 +9,8 @@
  *
  ******************************************************************************/
 
-#ifndef MOD_BSP_CFG_H_
-#define MOD_BSP_CFG_H_
+#ifndef MOD_SOM_CFG_H_
+#define MOD_SOM_CFG_H_
 
 #include <mod_som_bsp.h>
 #include <mod_som_common.h>
